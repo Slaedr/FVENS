@@ -27,7 +27,9 @@
 #ifndef __AMATRIX2_H
 #include "amatrix2.hpp"
 #endif
-
+#ifndef __ALINALG_H
+#include "alinalg.hpp"
+#endif
 #ifndef __ADATASTRUCTURES_H
 #include "adatastructures.hpp"
 #endif
@@ -790,6 +792,6 @@ public:
 
 		outf.close();
 	}
-};
+}
 
 } // end namespace acfd
