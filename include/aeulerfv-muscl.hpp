@@ -1,3 +1,8 @@
+/** @file aeulerfv-muscl.hpp
+ * @brief Implements the main time loop for explicit time-integration of Euler equations to steady state.
+ * @author Aditya Kashi
+ */
+
 #ifndef _GLIBCXX_IOSTREAM
 #include <iostream>
 #endif
@@ -27,11 +32,13 @@ using namespace acfd;
 
 namespace acfd {
 
-// set the flux calculation method here
+/// set the flux calculation method here
 typedef VanLeerFlux2 Flux;
+
 //set time explicit stepping scheme here
 //typedef TimeStepRK1 TimeStep;
 
+/// Class encapsulating the main time-stepping loop for 2nd order solution of Euler equations
 class EulerFV
 {
 	UTriMesh* m;
@@ -40,30 +47,40 @@ class EulerFV
 	Matrix<double> r_boundary;
 	int nvars;
 	Matrix<double> uinf;
-	Matrix<double> integ;		// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each face
+	/// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each face
+	Matrix<double> integ;
 
+	/// Flux (boundary integral) calculation context
 	Flux flux;
 
-	//Quantities needed for linear least-squares reconstruction. !NOTE: Zero these after each time step!!!
+	//Quantities needed for linear least-squares reconstruction.
 	Matrix<double> w2xy;
 	Matrix<double> w2x2;
 	Matrix<double> w2y2;
 
 public:
-	Matrix<double> u;			// vector of unknowns
-	Matrix<double> dudx;		// x-slopes
-	Matrix<double> dudy;		// y-slopes
-	// The following 2 are for postprocessing
-	Matrix<double> scalars;		// col 1 contains density, col 2 contains mach number, col 3 contains pressure
+	/// vector of unknowns
+	Matrix<double> u;
+	/// x-slopes
+	Matrix<double> dudx;
+	/// y-slopes
+	Matrix<double> dudy;
+	/// postprocessing array - col 1 contains density, col 2 contains mach number, col 3 contains pressure.
+	Matrix<double> scalars;
+	/// postprocessing array for velocities
 	Matrix<double> velocities;
 
-	EulerFV(UTriMesh* mesh)		// Make sure jacobians and face data are computed!
+	/// Setup function.
+	/// \note Make sure jacobians and face data are computed!
+	EulerFV(UTriMesh* mesh)		
 	{
 		m = mesh;
 		cout << "EulerFV: Computing required mesh data...\n";
 		m->compute_jacobians();
 		m->compute_face_data();
 		cout << "EulerFV: Mesh data computed.\n";
+
+		// for 2D Euler equations, we have 4 variables
 		nvars = 4;
 
 		m_inverse.setup(m->gnelem(),1,ROWMAJOR);		// just a vector for FVM. For DG, this will be an array of Matrices
@@ -77,7 +94,7 @@ public:
 
 		for(int i = 0; i < m->gnelem(); i++)
 			m_inverse(i) = 2.0/mesh->jacobians(i);
-		
+
 		w2xy.setup(m->gnelem(),1,ROWMAJOR);
 		w2x2.setup(m->gnelem(),1,ROWMAJOR);
 		w2y2.setup(m->gnelem(),1,ROWMAJOR);
@@ -88,9 +105,14 @@ public:
 		flux.setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &r_boundary, &integ, 1);	// 1 gauss point
 	}
 
+	/// Function to feed needed data
+	/** \param Minf Free-stream Mach number
+	 * \param vinf Free stream velocity magnitude
+	 * \param a Angle of attack (radians)
+	 * \param rhoinf Free stream density
+	 */
 	void loaddata(double Minf, double vinf, double a, double rhoinf)
 	{
-		// load initial data. Note that a is in radians
 		// Note that reference density and reference velocity are the values at infinity
 		//cout << "EulerFV: loaddata(): Calculating initial data...\n";
 		double vx = vinf*cos(a);
@@ -125,17 +147,20 @@ public:
 	void calculate_leastsquaresLHS()
 	{
 		cout << "EulerFV: calculate_leastsquaresLHS(): Calculating LHS terms for least-squares linear reconstruction...\n";
+		double xi, yi, xj, yj;
+		int jnode, ied, ielem, jelem;
 		/*for(int ielem = 0; ielem < m->gnelem(); ielem++)
 		{
-			double xi = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
+			xi = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
 			xi = xi / 3.0;
-			double yi = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
+			yi = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
 			yi = yi / 3.0;
 
-			for(int jnode = 0; jnode < m->gnnode(); jnode++)
+			for(jnode = 0; jnode < m->gnnode(); jnode++)
 			{
-				int jelem = m->gesuel(ielem,jnode);
+				jelem = m->gesuel(ielem,jnode);
 				double xj, yj;
+
 				// check whether the element is real or ghost
 				if(jelem < m->gnelem())
 				{
@@ -144,9 +169,11 @@ public:
 					yj = m->gcoords(m->ginpoel(jelem, 0), 1) + m->gcoords(m->ginpoel(jelem, 1), 1) + m->gcoords(m->ginpoel(jelem, 2), 1);
 					yj = yj / 3.0;
 				}
-				else{
+				else
+				{
 					// Ghost cell is reflection of boundary cell about midpoint of boundary face
 					// first get coords of endpoints of boundary face. We know jnode is the interior node
+
 					double x1 = m->gcoords(m->ginpoel(ielem, perm(0,m->gnnode(),jnode,1)), 0);
 					double y1 = m->gcoords(m->ginpoel(ielem, perm(0,m->gnnode(),jnode,1)), 1);
 					double x2 = m->gcoords(m->ginpoel(ielem, perm(0,m->gnnode(),jnode,2)), 0);
@@ -163,16 +190,16 @@ public:
 		}*/
 
 		// Boundary faces
-		/*for(int ied = 0; ied < m->gnbface(); ied++)
+		/*for(ied = 0; ied < m->gnbface(); ied++)
 		{
-			int ielem = m->gintfac(ied,0); //int lel = ielem;
-			//int jelem = m->gintfac(ied,1); //int rel = jelem;
+			ielem = m->gintfac(ied,0); //int lel = ielem;
+			//jelem = m->gintfac(ied,1); //int rel = jelem;
 			double nx = m->ggallfa(ied,0);
 			double ny = m->ggallfa(ied,1);
 
-			double xi = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
+			xi = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
 			xi = xi / 3.0;
-			double yi = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
+			yi = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
 			yi = yi / 3.0;
 
 			// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
@@ -197,8 +224,8 @@ public:
 				xs = x1;
 				ys = yi;
 			}
-			double xj = 2*xs-xi;
-			double yj = 2*ys-yi;
+			xj = 2*xs-xi;
+			yj = 2*ys-yi;
 
 			w2x2(ielem) += 1.0/( (xj-xi)*(xj-xi)+(yj-yi)*(yj-yi) )*(xj-xi)*(xj-xi);
 			w2y2(ielem) += 1.0/( (xj-xi)*(xj-xi)+(yj-yi)*(yj-yi) )*(yj-yi)*(yj-yi);
@@ -206,18 +233,18 @@ public:
 		}*/
 
 		// Internal faces
-		for(int ied = m->gnbface(); ied < m->gnaface(); ied++)
+		for(ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
-			int ielem = m->gintfac(ied,0);
-			int jelem = m->gintfac(ied,1);
-			double xi = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
+			ielem = m->gintfac(ied,0);
+			jelem = m->gintfac(ied,1);
+			xi = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
 			xi = xi / 3.0;
-			double yi = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
+			yi = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
 			yi = yi / 3.0;
 
-			double xj = m->gcoords(m->ginpoel(jelem, 0), 0) + m->gcoords(m->ginpoel(jelem, 1), 0) + m->gcoords(m->ginpoel(jelem, 2), 0);
+			xj = m->gcoords(m->ginpoel(jelem, 0), 0) + m->gcoords(m->ginpoel(jelem, 1), 0) + m->gcoords(m->ginpoel(jelem, 2), 0);
 			xj = xj / 3.0;
-			double yj = m->gcoords(m->ginpoel(jelem, 0), 1) + m->gcoords(m->ginpoel(jelem, 1), 1) + m->gcoords(m->ginpoel(jelem, 2), 1);
+			yj = m->gcoords(m->ginpoel(jelem, 0), 1) + m->gcoords(m->ginpoel(jelem, 1), 1) + m->gcoords(m->ginpoel(jelem, 2), 1);
 			yj = yj / 3.0;
 
 			for(int i = 0; i < nvars; i++)
@@ -266,6 +293,9 @@ public:
 	}
 
 
+	/// Implements the main time-stepping loop
+	/** Simple forward Euler (or 1-stage Runge-Kutta) time stepping.
+	 */
 	void solve_rk1(double time, double cfl)
 	{
 		double telapsed = 0.0;
@@ -320,7 +350,7 @@ public:
 		}
 
 		//calculate gradients
-		flux.compute_ls_reconstruction(&u);
+		//flux.compute_ls_reconstruction(&u);
 	}
 
 	void solve_rk1_steady(double tol, double cfl)
@@ -352,6 +382,7 @@ public:
 			//calculate fluxes
 			//calculate_r_domain();		// not needed in FVM
 			calculate_r_boundary();		// this invokes Flux calculating function
+			
 			/*if(step==0) {
 				dudx.mprint(); dudy.mprint(); break;
 			}*/
