@@ -1,4 +1,4 @@
-/* Performs one time step of Matrix ODE of the form M dU/dx = R (where M is a NxN matrix while U and R are 
+/** Performs one time step of Matrix ODE of the form M dU/dx = R (where M is a NxN matrix while U and R are 
 N-vectors) in an EXPLICIT scheme. */
 
 #ifndef __AMATRIX2_H

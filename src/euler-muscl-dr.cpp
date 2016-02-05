@@ -2,9 +2,7 @@
 #include <fstream>
 #include <string>
 #include <aoutput.hpp>
-#include "aeulerfv-muscl.hpp"
-
-const double Pi = 3.14159265358979323846;
+#include <aeulerfv-muscl.hpp>
 
 using namespace std;
 using namespace acfd;
@@ -44,7 +42,7 @@ int main()
 	// Now start computation
 
 	EulerFV prob(&m);
-	prob.loaddata(M_inf, vinf, alpha*Pi/180, rho_inf);
+	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
 	//All hell breaks loose
 	prob.solve_rk1_steady(tolerance, cfl);

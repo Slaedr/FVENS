@@ -7,7 +7,7 @@ if(len(sys.argv) < 2):
 	print("Error. Please provide input file name.")
 	sys.exit(-1)
 	
-fname = "../data/" + sys.argv[1]
+fname = "../data/" + argv[1]
 
 data = np.genfromtxt(fname)
 n = data.shape[0]

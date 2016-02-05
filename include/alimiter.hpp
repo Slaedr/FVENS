@@ -124,7 +124,10 @@ class VanAlbadaLimiter
     Matrix<double>* yb;
     Matrix<double>* xi;
     Matrix<double>* yi;
-    Matrix<double>* gx;     // x-coords of gauss points of each cell - needed to calculate interface values at these points
+
+	/// x-coords of gauss points of each face
+    Matrix<double>* gx;
+	/// y-coordinates of gauss points of each face
     Matrix<double>* gy;
     int nvars;
     int ng;                 // number of gauss points
@@ -138,7 +141,6 @@ class VanAlbadaLimiter
     Matrix<double>* ufr;
 
 public:
-    VanAlbadaLimiter() {}
 
     void setup_limiter(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* unknow_ghost, Matrix<double>* x_deriv, Matrix<double>* y_deriv, Matrix<double>* x_ghost_centres, Matrix<double>* y_ghost_centres, Matrix<double>* x_centres, Matrix<double>* y_centres, Matrix<double>* gauss_x, Matrix<double>* gauss_y, Matrix<double>* limits_left, Matrix<double>* limits_right, Matrix<double>* uface_left, Matrix<double>* uface_right, Matrix<double>* u_farfield, double adiabatic_index)
     {
@@ -199,9 +201,9 @@ public:
         }
     }
 
-    void compute_interface_values()
+    /// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
+	void compute_interface_values()
     {
-        // Calculate values of variables at left and right sides of each face based on computed derivatives
 		// (a) internal faces
         //cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
         Matrix<double> deltam(nvars,1,ROWMAJOR);
@@ -451,9 +453,9 @@ public:
 		}
     }
 
-    void compute_unlimited_interface_values()
+    /// Calculate values of variables at left and right sides of each face based on computed derivatives but without limiter.
+	void compute_unlimited_interface_values()
     {
-        // Calculate values of variables at left and right sides of each face based on computed derivatives
 		// (a) internal faces
         //cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
 		for(int ied = m->gnbface(); ied < m->gnaface(); ied++)

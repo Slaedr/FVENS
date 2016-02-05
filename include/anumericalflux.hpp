@@ -1,3 +1,13 @@
+/** \file anumericalfluc.hpp
+ * \brief Implements numerical flux schemes for Euler and Navier-Stokes equations.
+ * \author Aditya Kashi
+ * \date March 2015
+ */
+
+#ifndef __ACONSTANTS_H
+#include <aconstants.h>
+#endif
+
 #ifndef __AMATRIX2_H
 #include <amatrix2.hpp>
 #endif
@@ -307,9 +317,10 @@ public:
 
 };
 
+
 typedef VanAlbadaLimiter Limiter;
 
-// Van Leer fluxes with MUSCL reconstruction for 2nd order accuracy
+/// Van Leer fluxes with MUSCL reconstruction for 2nd order accuracy
 class VanLeerFlux2
 {
 	UTriMesh* m;
@@ -318,64 +329,59 @@ class VanLeerFlux2
 	Matrix<double>* rhsel;
 	Matrix<double>* uinf;			// a state vector which has initial conditions
 	Matrix<double> ug;				// holds ghost states for each boundary face
-	Matrix<double>* cflden;			// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each face
+	
+	/// stores whether the limiter context has been allocated
+	bool limiter_allocated;
+	
+	/// stores \f$ int_{\partial \Omega_I} ( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face
+	Matrix<double>* cflden;			
+	
 	int nvars;
 
-	// The 4 arrays below hold centroids of elements - first 2 for real elements and next 2 for ghost elements
+	/// x centroids of elements
 	Matrix<double> xi;
+	/// y centroids of elements
 	Matrix<double> yi;
+	/// x centroids of ghost elements
 	Matrix<double> xb;
+	/// y centroids of ghost elements
 	Matrix<double> yb;
 
-	int ngauss;						// number of gauss points per face
-	Matrix<double> gaussx;			// holds coordinates of gauss points
+	/// number of gauss points per face
+	int ngauss;
+	/// holds x-coordinates of gauss points
+	Matrix<double> gaussx;
+	/// holds y-coordinates of gauss points
 	Matrix<double> gaussy;
 
+	/// x-components of gradients of flow (conserved) variables
 	Matrix<double>* dudx;
+	/// y-components of gradients of flow (conserved) variables
 	Matrix<double>* dudy;
+	/// LHS coeffs for least-squares reconstruction
 	Matrix<double>* w2x2;
+	/// LHS coeffs for least-squares reconstruction
 	Matrix<double>* w2y2;
+	/// LHS coeffs for least-squares reconstruction
 	Matrix<double>* w2xy;
 
-	Matrix<double> ufl;				// left data at each face
-	Matrix<double> ufr;				// right data at each face
+	/// left data (of conserved variables) at each face
+	Matrix<double> ufl;
+	/// right data (of conserved variables) at each face
+	Matrix<double> ufr;
 
-	//Limiter stuff:
-	Limiter lim;
+	/// Limiter context
+	Limiter* lim;
+	/// value of limiter \f$ \phi \f$ used for computing limited flow variables of left cell
 	Matrix<double> phi_l;
+	/// value of limiter \f$ \phi \f$ used for computing limited flow variables of right cell
 	Matrix<double> phi_r;
 
 public:
-	VanLeerFlux2() {}
-
-	// DO NOT USE this constructor - use setup() instead
-	VanLeerFlux2(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* derx, Matrix<double>* dery, Matrix<double>* _w2x2, Matrix<double>* _w2y2, Matrix<double>* _w2xy, Matrix<double>* uinit, Matrix<double>* rhsel_in, Matrix<double>* cfl_den, int gauss_order)
+	VanLeerFlux2()
 	{
-		nvars = unknowns->cols();
-		m = mesh;
-		u = unknowns;
-		dudx = derx;
-		dudy = dery;
-		w2x2 = _w2x2;
-		w2y2 = _w2y2;
-		w2xy = _w2xy;
-		uinf = uinit;
-		rhsel = rhsel_in;
-		fluxes.setup(m->gnaface(), u->cols(), ROWMAJOR);
-		ufl.setup(m->gnaface(), u->cols(), ROWMAJOR);
-		ufr.setup(m->gnaface(), u->cols(), ROWMAJOR);
-		ug.setup(m->gnbface(),u->cols(),ROWMAJOR);
-		cflden = cfl_den;
-		ngauss = gauss_order;
-		gaussx.setup(m->gnaface(),ngauss,ROWMAJOR);
-		gaussx.setup(m->gnaface(),ngauss,ROWMAJOR);
-		// The 4 arrays below hold centroids of elements - first 2 for real elements and next 2 for ghost elements
-		xi.setup(m->gnelem(),1,ROWMAJOR);
-		yi.setup(m->gnelem(),1,ROWMAJOR);
-		xb.setup(m->gnbface(),1,ROWMAJOR);
-		yb.setup(m->gnbface(),1,ROWMAJOR);
+		limiter_allocated = false;
 	}
-
 	void setup(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* derx, Matrix<double>* dery, Matrix<double>* _w2x2, Matrix<double>* _w2y2, Matrix<double>* _w2xy, Matrix<double>* uinit, Matrix<double>* rhsel_in, Matrix<double>* cfl_den, int gauss_order)
 	{
 		nvars = unknowns->cols();
@@ -403,6 +409,8 @@ public:
 		phi_l.setup(m->gnaface(), nvars, ROWMAJOR);
 		phi_r.setup(m->gnaface(), nvars, ROWMAJOR);
 
+		lim = new Limiter();
+		limiter_allocated = true;
 		//lim.setup_limiter(m, u, &ug, &xb, &yb, &xi, &yi, &phi);
 
 		// Calculate centroids of elements and coordinates of gauss points
@@ -426,13 +434,13 @@ public:
 			y1 = m->gcoords(m->gintfac(ied,2),1);
 			y2 = m->gcoords(m->gintfac(ied,3),1);
 			//double xs, ys;
-			if(dabs(nx)>1e-8 && dabs(ny)>1e-8)  // check if nx = 0
+			if(dabs(nx)>A_SMALL_NUMBER && dabs(ny)>A_SMALL_NUMBER)  // check if nx = 0
 			{
 				//xs = (y2-y1)/(x2-x1)*x1 + ny/nx*xi(ielem) + y1-yi(ielem);
 				xs = ( yi(ielem)-y1 - ny/nx*xi(ielem) + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
 				ys = ny/nx*xs + yi(ielem) - ny/nx*xi(ielem);
 			}
-			else if(dabs(nx)<=1e-8)
+			else if(dabs(nx)<=A_SMALL_NUMBER)
 			{
 				xs = xi(ielem);
 				ys = y1;
@@ -467,7 +475,7 @@ public:
 
 		//cout << "VanLeerFlux2: setup(): Calculating gauss points\n";
 		//Calculate and store coordinates of GAUSS POINTS (general implementation)
-		//double x1,y1,x2,y2; 
+		// Gauss points are uniformly distributed along the face.
 		int ig;
 		for(int ied = 0; ied < m->gnaface(); ied++)
 		{
@@ -484,8 +492,17 @@ public:
 		//gaussx.mprint(); gaussy.mprint();
 		//cout << "VanLeerFlux2: setup(): Done\n";
 	}
+	
+	~VanLeerFlux2()
+	{
+		if(limiter_allocated)
+			delete lim;
+	}
 
-	void compute_ghostcell_states()		// for computing RHS of least-squares problem
+	/// Computes flow variables in ghost cells using characteristic boundary conditions
+	/** Required for computing RHS of least-squares problem.
+	 */
+	void compute_ghostcell_states()
 	{
 		//cout << "VanLeerFlux2: compute_ghostcell_states()\n";
 		int lel, rel;
@@ -582,11 +599,11 @@ public:
 		//ug.mprint();
 	}
 
-	// Calculate gradients by Least-squares reconstruction
-	void compute_ls_reconstruction(Matrix<double>* u)		// u should be a nelem x nvars matrix
+	/// Calculate gradients by Least-squares reconstruction
+	void compute_ls_reconstruction()		
 	{
 		//cout << "VanLeerFlux2: compute_ls_gradients(): Computing ghost cell data...\n";
-		Matrix<double> w2yu(m->gnelem(),nvars,ROWMAJOR), w2xu(m->gnelem(),nvars,ROWMAJOR);
+		Matrix<double> w2yu(m->gnelem(),nvars), w2xu(m->gnelem(),nvars);
 		w2xu.zeros(); w2yu.zeros();
 
 		//calculate ghost states
@@ -636,29 +653,31 @@ public:
 			}
 
 		//compute limiters
-		lim.setup_limiter(m, u, &ug, dudx, dudy, &xb, &yb, &xi, &yi, &gaussx, &gaussy, &phi_l, &phi_r, &ufl, &ufr, uinf, g);
-		lim.compute_limiters();
-		lim.compute_interface_values();
+		
+		lim->setup_limiter(m, u, &ug, dudx, dudy, &xb, &yb, &xi, &yi, &gaussx, &gaussy, &phi_l, &phi_r, &ufl, &ufr, uinf, g);
+		//lim->compute_limiters(); 		// ----------- enable for shock capturing! -----------
+		//lim->compute_interface_values();
+		lim->compute_unlimited_interface_values();
 
 		// cout << "VanLeerFlux2: compute_ls_gradients(): Computing values at faces - internal\n";
 	}
 
 
-	//TODO: generalize flux calculation to multiple gauss points
+	/// Compute flux values at each face, integrate, and add to residual rhsel .
 	void compute_fluxes()
 	{
 		//cout << "VanLeerFlux2: compute_fluxes(): Computing fluxes at boundary faces\n";
 
 		//FIrst compute gradients and values at interfaces. This calculates ghost states as well (in ufr).
-		compute_ls_reconstruction(u);
+		compute_ls_reconstruction();
 
-		//loop over boundary faces
 		double nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj;
 		int lel, rel;
 		Matrix<double> fiplus(u->cols(),1,ROWMAJOR);
 		Matrix<double> fjminus(u->cols(),1,ROWMAJOR);
 		int ied;
 		
+		//loop over boundary faces
 		for(ied = 0; ied < m->gnbface(); ied++)
 		{
 			nx = m->ggallfa(ied,0);
@@ -697,23 +716,6 @@ public:
 				fiplus(2) = fiplus(0) * (ufl(ied,2)/ufl(ied,0) + ny*(2.0*ci - vni)/g);
 				fiplus(3) = fiplus(0) * ( (vmags - vni*vni)/2.0 + pow((g-1)*vni+2*ci, 2)/(2*(g*g-1)) );
 			}
-
-			/*if(Mnj > 1.0) fjminus.zeros();
-			else if(Mnj < -1.0)
-			{
-				fjminus(0) = ug(ied,0)*vnj;
-				fjminus(1) = vnj*ug(ied,1) + pj*nx;
-				fjminus(2) = vnj*ug(ied,2) + pj*ny;
-				fjminus(3) = vnj*(ug(ied,3) + pj);
-			}
-			else
-			{
-				double vmags = pow(ug(ied,1)/ug(ied,0), 2) + pow(ug(ied,2)/ug(ied,0), 2);	// square of velocity magnitude
-				fjminus(0) = -ug(ied,0)*cj*pow(Mnj-1, 2)/4.0;
-				fjminus(1) = fjminus(0) * (ug(ied,1)/ug(ied,0) + nx*(-2.0*cj - vnj)/g);
-				fjminus(2) = fjminus(0) * (ug(ied,2)/ug(ied,0) + ny*(-2.0*cj - vnj)/g);
-				fjminus(3) = fjminus(0) * ( (vmags - vnj*vnj)/2.0 + pow((g-1)*vnj-2*cj, 2)/(2*(g*g-1)) );
-			}*/
 
 			if(Mnj > 1.0) fjminus.zeros();
 			else if(Mnj < -1.0)

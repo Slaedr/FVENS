@@ -23,7 +23,7 @@
 #include <amesh2.hpp>
 #endif
 
-#include "anumericalflux.hpp"
+#include "anumericalflux_parallel.hpp"
 //#include "atimeint.hpp"
 
 using namespace std;
@@ -295,7 +295,6 @@ public:
 
 	/// Implements the main time-stepping loop
 	/** Simple forward Euler (or 1-stage Runge-Kutta) time stepping.
-	 * \param time Physical time upto which simulation should proceed
 	 */
 	void solve_rk1(double time, double cfl)
 	{
@@ -354,7 +353,6 @@ public:
 		//flux.compute_ls_reconstruction(&u);
 	}
 
-	/// Time-stepping loop for steady-state
 	void solve_rk1_steady(double tol, double cfl)
 	{
 		//double telapsed = 0.0;
@@ -432,7 +430,7 @@ public:
 		}
 
 		//calculate gradients
-		flux.compute_ls_reconstruction();
+		flux.compute_ls_reconstruction(&u);
 		delete [] err;
 	}
 
@@ -545,7 +543,7 @@ public:
 		}
 
 		//calculate gradients
-		flux.compute_ls_reconstruction();
+		flux.compute_ls_reconstruction(&u);
 		delete [] err;
 	}
 
