@@ -101,7 +101,7 @@ public:
 				cj = sqrt(g*pj/ug(0,0));
 				vnj = (ug(0,1)*nx + ug(0,2)*ny)/ug(0,0);
 			}
-			if(m->ggallfa(ied,3) == 4)		// inflow or outflow
+			if(m->ggallfa(ied,3) == 4)		// inflow or outflow DOES NOT WORK
 			{
 				/*if(Mni < -1.0)
 				{

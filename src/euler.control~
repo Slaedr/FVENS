@@ -1,5 +1,5 @@
 -mesh_file
-../data/feflo.domn.cylinder.medium
+../data/feflo.domn.sphere.medium
 -output_file
 ../data/medium.vtu
 -CFL
