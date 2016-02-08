@@ -1,6 +1,7 @@
 /** @file aeulerfv-muscl.hpp
  * @brief Implements the main time loop for explicit time-integration of Euler equations to steady state.
  * @author Aditya Kashi
+ * \note NOTE: Need to implement characteristic inflow/outflow BCs
  */
 
 #ifndef _GLIBCXX_IOSTREAM
@@ -23,7 +24,7 @@
 #include <amesh2.hpp>
 #endif
 
-#include "anumericalflux_parallel.hpp"
+#include "anumericalflux.hpp"
 //#include "atimeint.hpp"
 
 using namespace std;
@@ -53,6 +54,18 @@ class EulerFV
 	/// Flux (boundary integral) calculation context
 	Flux flux;
 
+	/// Cell centers
+	Matrix<double> xc;
+	/// Cell centers
+	Matrix<double> yc;
+
+	/// Ghost cell centers
+	Matrix<double> xcg;
+	/// Ghost cell centers
+	Matrix<double> ycg;
+	/// Ghost cell flow quantities
+	Matrix<double> ug;
+
 	//Quantities needed for linear least-squares reconstruction.
 	Matrix<double> w2xy;
 	Matrix<double> w2x2;
@@ -72,7 +85,7 @@ public:
 
 	/// Setup function.
 	/// \note Make sure jacobians and face data are computed!
-	EulerFV(UTriMesh* mesh)		
+	EulerFV(UTriMesh* mesh)
 	{
 		m = mesh;
 		cout << "EulerFV: Computing required mesh data...\n";
@@ -91,6 +104,12 @@ public:
 		integ.setup(m->gnelem(), 1,ROWMAJOR);
 		dudx.setup(m->gnelem(), nvars, ROWMAJOR);
 		dudy.setup(m->gnelem(), nvars, ROWMAJOR);
+
+		xc.setup(m->gnelem(),1);
+		yc.setup(m->gnelem(),1);
+		xcg.setup(m->gbface(),1);
+		ycg.setup(m->gbface(),1);
+		ug.setup(m->gbface(),nvars);
 
 		for(int i = 0; i < m->gnelem(); i++)
 			m_inverse(i) = 2.0/mesh->jacobians(i);
@@ -295,6 +314,7 @@ public:
 
 	/// Implements the main time-stepping loop
 	/** Simple forward Euler (or 1-stage Runge-Kutta) time stepping.
+	 * \param time Physical time upto which simulation should proceed
 	 */
 	void solve_rk1(double time, double cfl)
 	{
@@ -353,6 +373,7 @@ public:
 		//flux.compute_ls_reconstruction(&u);
 	}
 
+	/// Time-stepping loop for steady-state
 	void solve_rk1_steady(double tol, double cfl)
 	{
 		//double telapsed = 0.0;
@@ -382,7 +403,7 @@ public:
 			//calculate fluxes
 			//calculate_r_domain();		// not needed in FVM
 			calculate_r_boundary();		// this invokes Flux calculating function
-			
+
 			/*if(step==0) {
 				dudx.mprint(); dudy.mprint(); break;
 			}*/
@@ -430,7 +451,7 @@ public:
 		}
 
 		//calculate gradients
-		flux.compute_ls_reconstruction(&u);
+		flux.compute_ls_reconstruction();
 		delete [] err;
 	}
 
@@ -543,7 +564,7 @@ public:
 		}
 
 		//calculate gradients
-		flux.compute_ls_reconstruction(&u);
+		flux.compute_ls_reconstruction();
 		delete [] err;
 	}
 

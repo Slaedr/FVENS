@@ -1,4 +1,4 @@
-/** \file anumericalfluc.hpp
+/** \file anumericalflux.hpp
  * \brief Implements numerical flux schemes for Euler and Navier-Stokes equations.
  * \author Aditya Kashi
  * \date March 2015
@@ -26,6 +26,38 @@ namespace acfd {
 
 /// Adiabatic index
 const double g = 1.4;
+
+/// Abstract class from which to derive all numerical flux classes
+class InviscidFlux
+{
+	UTriMesh* m;
+	int nvars;
+	/// left-side state for each face
+	Matrix<double>* ul;
+	/// right-side state for each face
+	Matrix<double>* ur;
+	/// Stores total integral of flux for each element
+	Matrix<double>* rhsel;
+	/// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each element, needed for computation of CFL number
+	Matrix<double>* cflden;
+	/// Stores flux at each face
+	Matrix<double> fluxes;
+
+public:
+	void setup(UTriMesh* mesh, Matrix<double>* uleft, Matrix<double>* uright, Matrix<double>* rhs_ele, Matrix<double>* cfl_denom);
+	virtual void compute_fluxes() = 0;
+};
+
+void InviscidFlux::setup(UTriMesh* mesh, Matrix<double>* uleft, Matrix<double>* uright, Matrix<double>* rhs_ele, Matrix<double>* cfl_denom)
+{
+	m = mesh;
+	ul = uleft;
+	ur = uright;
+	rhsel = rhs_ele;
+	cflden = cfl_denom;
+	nvars = ul->cols();			// we assume ul and ar are (naface x nvars) arrays
+	fluxes.setup(m->gnaface(),nvars);
+}
 
 /// Inviscid flux calculation context for firs order Van-Leer flux-vector splitting
 /** Asumption: boundary face flag is 2 for slip wall BC and 4 for inflow/outflow (far-field)
@@ -73,7 +105,7 @@ public:
 		Matrix<double> fiplus(u->cols(),1,ROWMAJOR);
 		Matrix<double> fjminus(u->cols(),1,ROWMAJOR);
 		Matrix<double> ug(1, u->cols(), ROWMAJOR);		// stores ghost state
-		
+
 		for(int ied = 0; ied < m->gnbface(); ied++)
 		{
 			nx = m->ggallfa(ied,0);
@@ -329,13 +361,13 @@ class VanLeerFlux2
 	Matrix<double>* rhsel;
 	Matrix<double>* uinf;			// a state vector which has initial conditions
 	Matrix<double> ug;				// holds ghost states for each boundary face
-	
+
 	/// stores whether the limiter context has been allocated
 	bool limiter_allocated;
-	
+
 	/// stores \f$ int_{\partial \Omega_I} ( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face
-	Matrix<double>* cflden;			
-	
+	Matrix<double>* cflden;
+
 	int nvars;
 
 	/// x centroids of elements
@@ -492,7 +524,7 @@ public:
 		//gaussx.mprint(); gaussy.mprint();
 		//cout << "VanLeerFlux2: setup(): Done\n";
 	}
-	
+
 	~VanLeerFlux2()
 	{
 		if(limiter_allocated)
@@ -600,7 +632,7 @@ public:
 	}
 
 	/// Calculate gradients by Least-squares reconstruction
-	void compute_ls_reconstruction()		
+	void compute_ls_reconstruction()
 	{
 		//cout << "VanLeerFlux2: compute_ls_gradients(): Computing ghost cell data...\n";
 		Matrix<double> w2yu(m->gnelem(),nvars), w2xu(m->gnelem(),nvars);
@@ -653,7 +685,7 @@ public:
 			}
 
 		//compute limiters
-		
+
 		lim->setup_limiter(m, u, &ug, dudx, dudy, &xb, &yb, &xi, &yi, &gaussx, &gaussy, &phi_l, &phi_r, &ufl, &ufr, uinf, g);
 		//lim->compute_limiters(); 		// ----------- enable for shock capturing! -----------
 		//lim->compute_interface_values();
@@ -676,7 +708,7 @@ public:
 		Matrix<double> fiplus(u->cols(),1,ROWMAJOR);
 		Matrix<double> fjminus(u->cols(),1,ROWMAJOR);
 		int ied;
-		
+
 		//loop over boundary faces
 		for(ied = 0; ied < m->gnbface(); ied++)
 		{
@@ -733,7 +765,7 @@ public:
 				fjminus(2) = fjminus(0) * (ufr(ied,2)/ufr(ied,0) + ny*(-2.0*cj - vnj)/g);
 				fjminus(3) = fjminus(0) * ( (vmags - vnj*vnj)/2.0 + pow((g-1)*vnj-2*cj, 2)/(2*(g*g-1)) );
 			}
-			
+
 			//Update the flux vector
 			for(int i = 0; i < nvars; i++)
 				fluxes(ied, i) = (fiplus(i) + fjminus(i));
@@ -741,7 +773,7 @@ public:
 			//Integrate the fluxes here using Quadrature2D class; not needed in case of FVM.
 			for(int i = 0; i < nvars; i++)
 				fluxes(ied, i) *= len;
-			
+
 			// scatter the flux to elements' boundary integrals
 			for(int i = 0; i < nvars; i++)
 				//rhsel->operator()(lel,i) -= fluxes(ied,i);

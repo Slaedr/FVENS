@@ -1,6 +1,7 @@
 /** @file aeulerfv-muscl.hpp
  * @brief Implements the main time loop for explicit time-integration of Euler equations to steady state.
  * @author Aditya Kashi
+ * \note NOTE: Need to implement characteristic inflow/outflow BCs
  */
 
 #ifndef _GLIBCXX_IOSTREAM
@@ -53,6 +54,18 @@ class EulerFV
 	/// Flux (boundary integral) calculation context
 	Flux flux;
 
+	/// Cell centers
+	Matrix<double> xc;
+	/// Cell centers
+	Matrix<double> yc;
+
+	/// Ghost cell centers
+	Matrix<double> xcg;
+	/// Ghost cell centers
+	Matrix<double> ycg;
+	/// Ghost cell flow quantities
+	Matrix<double> ug;
+
 	//Quantities needed for linear least-squares reconstruction.
 	Matrix<double> w2xy;
 	Matrix<double> w2x2;
@@ -72,7 +85,7 @@ public:
 
 	/// Setup function.
 	/// \note Make sure jacobians and face data are computed!
-	EulerFV(UTriMesh* mesh)		
+	EulerFV(UTriMesh* mesh)
 	{
 		m = mesh;
 		cout << "EulerFV: Computing required mesh data...\n";
@@ -92,6 +105,12 @@ public:
 		dudx.setup(m->gnelem(), nvars, ROWMAJOR);
 		dudy.setup(m->gnelem(), nvars, ROWMAJOR);
 
+		xc.setup(m->gnelem(),1);
+		yc.setup(m->gnelem(),1);
+		xcg.setup(m->gbface(),1);
+		ycg.setup(m->gbface(),1);
+		ug.setup(m->gbface(),nvars);
+
 		for(int i = 0; i < m->gnelem(); i++)
 			m_inverse(i) = 2.0/mesh->jacobians(i);
 
@@ -105,7 +124,7 @@ public:
 		flux.setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &r_boundary, &integ, 1);	// 1 gauss point
 	}
 
-	/// Function to feed needed data
+	/// Function to feed needed data, and compute cell-centers
 	/** \param Minf Free-stream Mach number
 	 * \param vinf Free stream velocity magnitude
 	 * \param a Angle of attack (radians)
@@ -128,18 +147,51 @@ public:
 			for(int j = 0; j < nvars; j++)
 				u(i,j) = uinf(0,j);
 
-		/*Matrix<double> xi(m->gnelem(),1); Matrix<double> yi(m->gnelem(),1);
 		for(int ielem = 0; ielem < m->gnelem(); ielem++)
 		{
-			xi(ielem) = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
-			xi(ielem) = xi(ielem) / 3.0;
-			yi(ielem) = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
-			yi(ielem) = yi(ielem) / 3.0;
+			xc(ielem) = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
+			xc(ielem) = xi(ielem) / 3.0;
+			yc(ielem) = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
+			yc(ielem) = yi(ielem) / 3.0;
 		}
-		for(int i = 0; i < m->gnelem(); i++)
+
+		double x1, y1, x2, y2, xs, ys;
+
+		for(ied = 0; ied < m->gnbface(); ied++)
 		{
-			u(i,0) = 2.0*xi(i);
-		}*/
+			ielem = m->gintfac(ied,0); //int lel = ielem;
+			//jelem = m->gintfac(ied,1); //int rel = jelem;
+			double nx = m->ggallfa(ied,0);
+			double ny = m->ggallfa(ied,1);
+
+			xi = xc.get(ielem);
+			yi = yc.get(ielem);
+
+			// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
+			//       It is NOT the reflection about the midpoint of the boundary-face
+			x1 = m->gcoords(m->gintfac(ied,2),0);
+			x2 = m->gcoords(m->gintfac(ied,3),0);
+			y1 = m->gcoords(m->gintfac(ied,2),1);
+			y2 = m->gcoords(m->gintfac(ied,3),1);
+
+			if(dabs(nx)>A_SMALL_NUMBER && dabs(ny)>A_SMALL_NUMBER)		// check if nx != 0 and ny != 0
+			{
+				xs = ( yi-y1 - ny/nx*xi + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
+				ys = ny/nx*xs + yi - ny/nx*xi;
+			}
+			else if(dabs(nx)<=A_SMALL_NUMBER)
+			{
+				xs = xi;
+				ys = y1;
+			}
+			else
+			{
+				xs = x1;
+				ys = yi;
+			}
+			xcg(ied) = 2*xs-xi;
+			ycg(ied) = 2*ys-yi;
+		}
 
 		//cout << "EulerFV: loaddata(): Initial data calculated.\n";
 	}
@@ -384,7 +436,7 @@ public:
 			//calculate fluxes
 			//calculate_r_domain();		// not needed in FVM
 			calculate_r_boundary();		// this invokes Flux calculating function
-			
+
 			/*if(step==0) {
 				dudx.mprint(); dudy.mprint(); break;
 			}*/
