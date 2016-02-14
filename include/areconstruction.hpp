@@ -4,7 +4,11 @@
  * @date February 3, 2016
  */
 
-using namespace std;
+#ifndef _GLIBCXX_VECTOR
+#include <vector>
+#endif
+
+#define __ARECONSTRUCTION_H 1
 
 namespace acfd
 {
@@ -14,31 +18,34 @@ class Reconstruction
 {
 	UTriMesh* m;
 	/// Cell centers' x-coords
-	Matrix<double>* xc;
+	amat::Matrix<double>* xc;
 	/// Cell centers' y-coords
-	Matrix<double>* yc;
+	amat::Matrix<double>* yc;
 	/// Ghost cell centers' x-coords
-	Matrix<double>* xcg;
+	amat::Matrix<double>* xcg;
 	/// Ghost cell centers' y-coords
-	Matrix<double>* ycg;
+	amat::Matrix<double>* ycg;
 	/// Number of converved variables
 	int nvars;
 	/// Cell-centered flow vaiables
-	Matrix<double>* u;
+	amat::Matrix<double>* u;
+	/// flow variables at ghost cells
+	amat::Matrix<double>* ug;
 	/// Cell-centred x-gradients
-	Matrix<double>* dudx;
+	amat::Matrix<double>* dudx;
 	/// Cell-centred y-gradients
-	Matrix<double>* dudy;
+	amat::Matrix<double>* dudy;
 
 public:
-	void setup(UTriMesh* mesh, Matrix<double>* unk, Matrix<double>* gradx, Matrix<double>* grady, Matrix<double>* _xc, Matrix<double>* _yc, Matrix<double>* _xcg, Matrix<double>* _ycg);
+	virtual void setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg);
 	virtual void compute_gradients() = 0;
 };
 
-Reconstruction::setup(UTriMesh* mesh, Matrix<double>* unk, Matrix<double>* gradx, Matrix<double>* grady, Matrix<double>* _xc, Matrix<double>* _yc, Matrix<double>* _xcg, Matrix<double>* _ycg)
+void Reconstruction::setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg)
 {
 	m = mesh;
 	u = unk;
+	ug = unkg;
 	dudx = gradx;
 	dudy = grady;
 	xc = _xc;
@@ -49,7 +56,9 @@ Reconstruction::setup(UTriMesh* mesh, Matrix<double>* unk, Matrix<double>* gradx
 }
 
 /**
- * @brief Implements reconstruction using the Green-Gauss theorem over elements.
+ * @brief Implements linear reconstruction using the Green-Gauss theorem over elements.
+ * 
+ * The scheme is compact.
  */
 class GreenGaussReconstruction : public Reconstruction
 {
@@ -59,17 +68,62 @@ public:
 
 GreenGaussReconstruction::compute_gradients()
 {
-	for(int i = 0; i < u->cols(); i++)
+	gradx->zeros(); grady->zeros();
+	
+	int iface, idim, ielem, jelem;
+	double areainv1, areainv2;
+	std::vector<double> ut(nvars);
+	
+	for(iface = 0; iface < m->gnbface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		areainv1 = 1.0/m->gjacobians(ielem);
+		
+		for(ivar = 0; ivar < nvars; ivar++)
+		{
+			ut[ivar] = (u->get(ielem,ivar) + ug->get(iface,ivar))*0.5*m->ggallfa(iface,2);
+			(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
+			(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
+		}
+	}
+
+	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		jelem = m->gintfac(iface,1);
+		areainv1 = 1.0/m->gjacobians(ielem);
+		areainv2 = 1.0/m->gjacobians(jelem);
+		
+		for(ivar = 0; ivar < nvars; ivar++)
+		{
+			ut[ivar] = (u->get(ielem,ivar) + u->get(jelem,ivar))*0.5*m->ggallfa(iface,2);
+			(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
+			(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
+			(*dudx)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,0))*areainv2;
+			(*dudy)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,1))*areainv2;
+		}
+	}
 }
 
 /// Class implementing linear weighted least-squares reconstruction
 class WeightedLeastSquaresReconstruction : public Reconstruction
 {
-	Matrix<double> w2x2;
-	Matrix<double> w2y2;
-	Matrix<double> w2xy;
-	Matrix<double> w2xu;
-	Matrix<double> w2yu;
+	amat::Matrix<double> w2x2;
+	amat::Matrix<double> w2y2;
+	amat::Matrix<double> w2xy;
+	amat::Matrix<double> w2xu;
+	amat::Matrix<double> w2yu;
+
+public:
+	void setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg);
+	void compute_gradients();
 };
+
+void WeightedLeastSquaresReconstruction::setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg)
+{
+	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _xc, _yc, _xcg, _ycg);
+
+	// compute LHS of least-squares problem
+}
 
 } // end namespace

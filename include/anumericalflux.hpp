@@ -508,7 +508,7 @@ public:
 		//cout << "VanLeerFlux2: setup(): Calculating gauss points\n";
 		//Calculate and store coordinates of GAUSS POINTS (general implementation)
 		// Gauss points are uniformly distributed along the face.
-		int ig;
+		/*int ig;
 		for(int ied = 0; ied < m->gnaface(); ied++)
 		{
 			x1 = m->gcoords(m->gintfac(ied,2),0);
@@ -520,7 +520,7 @@ public:
 				gaussx(ied,ig) = x1 + (double)(ig+1)/(double)(ngauss+1) * (x2-x1);
 				gaussy(ied,ig) = y1 + (double)(ig+1)/(double)(ngauss+1) * (y2-y1);
 			}
-		}
+		}*/
 		//gaussx.mprint(); gaussy.mprint();
 		//cout << "VanLeerFlux2: setup(): Done\n";
 	}
