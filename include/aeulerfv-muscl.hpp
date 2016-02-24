@@ -24,6 +24,10 @@
 #include <amesh2.hpp>
 #endif
 
+#ifndef __ARECONSTRUCTION_H
+#include <areconstruction.hpp>
+#endif
+
 #include "anumericalflux.hpp"
 //#include "atimeint.hpp"
 
@@ -54,6 +58,9 @@ class EulerFV
 	/// Flux (boundary integral) calculation context
 	Flux flux;
 
+	/// Reconstruction context
+	Reconstruction* rec;
+
 	/// Cell centers
 	Matrix<double> xc;
 	/// Cell centers
@@ -72,6 +79,11 @@ class EulerFV
 	Matrix<double> gx;
 	/// Faces' Gauss points - y coords
 	Matrix<double> gy;
+
+	/// Left state at each face (assuming 1 Gauss point per face)
+	Matrix<double> uleft;
+	/// Rigt state at each face (assuming 1 Gauss point per face)
+	Matrix<double> uright;
 
 	//Quantities needed for linear least-squares reconstruction.
 	Matrix<double> w2xy;
@@ -116,10 +128,10 @@ public:
 
 		xc.setup(m->gnelem(),1);
 		yc.setup(m->gnelem(),1);
-		xcg.setup(m->gbface(),1);
-		ycg.setup(m->gbface(),1);
-		ug.setup(m->gbface(),nvars);
-		gx.setup(m->gnaface(), nguassf);
+		xcg.setup(m->gnface(),1);
+		ycg.setup(m->gnface(),1);
+		ug.setup(m->gnface(),nvars);
+		gx.setup(m->gnaface(), ngaussf);
 		gy.setup(m->gnaface(), ngaussf);
 
 		for(int i = 0; i < m->gnelem(); i++)
@@ -132,7 +144,15 @@ public:
 		w2y2.zeros();
 		w2xy.zeros();
 
-		flux.setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &r_boundary, &integ, 1);	// 1 gauss point
+		flux.setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &r_boundary, &integ, ngaussf);	// 1 gauss point
+
+		rec = new GreenGaussReconstruction();
+		rec->setup(m, &u, &ug, &dudx, &dudy, &xc, &yc, &xcg, &ycg);
+	}
+
+	~EulerFV()
+	{
+		delete rec;
 	}
 
 	/// Function to feed needed data, and compute cell-centers
@@ -163,13 +183,13 @@ public:
 		for(int ielem = 0; ielem < m->gnelem(); ielem++)
 		{
 			xc(ielem) = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
-			xc(ielem) = xi(ielem) / 3.0;
+			xc(ielem) = xc(ielem) / 3.0;
 			yc(ielem) = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
-			yc(ielem) = yi(ielem) / 3.0;
+			yc(ielem) = yc(ielem) / 3.0;
 		}
 
-		int ied, ig;
-		double x1, y1, x2, y2, xs, ys;
+		int ied, ig, ielem;
+		double x1, y1, x2, y2, xs, ys, xi, yi;
 
 		for(ied = 0; ied < m->gnbface(); ied++)
 		{
@@ -215,10 +235,10 @@ public:
 			y1 = m->gcoords(m->gintfac(ied,2),1);
 			x2 = m->gcoords(m->gintfac(ied,3),0);
 			y2 = m->gcoords(m->gintfac(ied,3),1);
-			for(ig = 0; ig < ngauss; ig++)
+			for(ig = 0; ig < ngaussf; ig++)
 			{
-				gx(ied,ig) = x1 + (double)(ig+1)/(double)(ngauss+1) * (x2-x1);
-				gy(ied,ig) = y1 + (double)(ig+1)/(double)(ngauss+1) * (y2-y1);
+				gx(ied,ig) = x1 + (double)(ig+1)/(double)(ngaussf+1) * (x2-x1);
+				gy(ied,ig) = y1 + (double)(ig+1)/(double)(ngaussf+1) * (y2-y1);
 			}
 		}
 
@@ -562,12 +582,11 @@ public:
 			calculate_r_boundary();		// this invokes Flux calculating function
 
 			/*if(step==0) {
-				dudx.mprint(); dudy.mprint(); break;
+				//dudx.mprint(); dudy.mprint();
+				break;
 			}*/
 
 			//calculate dt based on CFL
-			// Vector to hold time steps
-
 
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{

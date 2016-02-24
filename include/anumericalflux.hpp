@@ -19,7 +19,8 @@
 //#include "aquadrature.hpp"
 #include "alimiter.hpp"
 
-using namespace amat;
+#define __ANUMERICALFLUX_H 1
+
 using namespace acfd;
 
 namespace acfd {
@@ -33,22 +34,22 @@ class InviscidFlux
 	UTriMesh* m;
 	int nvars;
 	/// left-side state for each face
-	Matrix<double>* ul;
+	amat::Matrix<double>* ul;
 	/// right-side state for each face
-	Matrix<double>* ur;
+	amat::Matrix<double>* ur;
 	/// Stores total integral of flux for each element
-	Matrix<double>* rhsel;
+	amat::Matrix<double>* rhsel;
 	/// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each element, needed for computation of CFL number
-	Matrix<double>* cflden;
+	amat::Matrix<double>* cflden;
 	/// Stores flux at each face
-	Matrix<double> fluxes;
+	amat::Matrix<double> fluxes;
 
 public:
-	void setup(UTriMesh* mesh, Matrix<double>* uleft, Matrix<double>* uright, Matrix<double>* rhs_ele, Matrix<double>* cfl_denom);
+	void setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
 	virtual void compute_fluxes() = 0;
 };
 
-void InviscidFlux::setup(UTriMesh* mesh, Matrix<double>* uleft, Matrix<double>* uright, Matrix<double>* rhs_ele, Matrix<double>* cfl_denom)
+void InviscidFlux::setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom)
 {
 	m = mesh;
 	ul = uleft;
@@ -65,34 +66,34 @@ void InviscidFlux::setup(UTriMesh* mesh, Matrix<double>* uleft, Matrix<double>* 
 class VanLeerFlux
 {
 	UTriMesh* m;
-	Matrix<double>* u;				// nelem x nvars matrix holding values of unknowns at each cell
-	Matrix<double> fluxes;			// stores flux at each face
-	Matrix<double>* rhsel;
-	Matrix<double>* uinf;			// a state vector which has initial conditions
-	Matrix<double>* cflden;			// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each face
+	amat::Matrix<double>* u;				// nelem x nvars matrix holding values of unknowns at each cell
+	amat::Matrix<double> fluxes;			// stores flux at each face
+	amat::Matrix<double>* rhsel;
+	amat::Matrix<double>* uinf;			// a state vector which has initial conditions
+	amat::Matrix<double>* cflden;			// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each face
 	int nvars;
 
 public:
 	VanLeerFlux() {}
 
-	VanLeerFlux(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* uinit, Matrix<double>* rhsel_in, Matrix<double>* cfl_den)
+	VanLeerFlux(UTriMesh* mesh, amat::Matrix<double>* unknowns, amat::Matrix<double>* uinit, amat::Matrix<double>* rhsel_in, amat::Matrix<double>* cfl_den)
 	{
 		nvars = unknowns->cols();
 		m = mesh;
 		u = unknowns;
 		uinf = uinit;
 		rhsel = rhsel_in;
-		fluxes.setup(m->gnaface(), u->cols(), ROWMAJOR);
+		fluxes.setup(m->gnaface(), u->cols(), amat::ROWMAJOR);
 	}
 
-	void setup(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* uinit, Matrix<double>* rhsel_in, Matrix<double>* cfl_den)
+	void setup(UTriMesh* mesh, amat::Matrix<double>* unknowns, amat::Matrix<double>* uinit, amat::Matrix<double>* rhsel_in, amat::Matrix<double>* cfl_den)
 	{
 		nvars = unknowns->cols();
 		m = mesh;
 		u = unknowns;
 		uinf = uinit;
 		rhsel = rhsel_in;
-		fluxes.setup(m->gnaface(), u->cols(), ROWMAJOR);
+		fluxes.setup(m->gnaface(), u->cols(), amat::ROWMAJOR);
 		cflden = cfl_den;
 	}
 
@@ -102,9 +103,9 @@ public:
 		//loop over boundary faces. Need to account for boundary conditions here
 		double nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj;
 		int lel, rel;
-		Matrix<double> fiplus(u->cols(),1,ROWMAJOR);
-		Matrix<double> fjminus(u->cols(),1,ROWMAJOR);
-		Matrix<double> ug(1, u->cols(), ROWMAJOR);		// stores ghost state
+		amat::Matrix<double> fiplus(u->cols(),1,amat::ROWMAJOR);
+		amat::Matrix<double> fjminus(u->cols(),1,amat::ROWMAJOR);
+		amat::Matrix<double> ug(1, u->cols(), amat::ROWMAJOR);		// stores ghost state
 
 		for(int ied = 0; ied < m->gnbface(); ied++)
 		{
@@ -356,65 +357,65 @@ typedef VanAlbadaLimiter Limiter;
 class VanLeerFlux2
 {
 	UTriMesh* m;
-	Matrix<double>* u;				// nelem x nvars matrix holding values of unknowns at each cell
-	Matrix<double> fluxes;			// stores flux at each face
-	Matrix<double>* rhsel;
-	Matrix<double>* uinf;			// a state vector which has initial conditions
-	Matrix<double> ug;				// holds ghost states for each boundary face
+	amat::Matrix<double>* u;				// nelem x nvars matrix holding values of unknowns at each cell
+	amat::Matrix<double> fluxes;			// stores flux at each face
+	amat::Matrix<double>* rhsel;
+	amat::Matrix<double>* uinf;			// a state vector which has initial conditions
+	amat::Matrix<double> ug;				// holds ghost states for each boundary face
 
 	/// stores whether the limiter context has been allocated
 	bool limiter_allocated;
 
 	/// stores \f$ int_{\partial \Omega_I} ( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face
-	Matrix<double>* cflden;
+	amat::Matrix<double>* cflden;
 
 	int nvars;
 
 	/// x centroids of elements
-	Matrix<double> xi;
+	amat::Matrix<double> xi;
 	/// y centroids of elements
-	Matrix<double> yi;
+	amat::Matrix<double> yi;
 	/// x centroids of ghost elements
-	Matrix<double> xb;
+	amat::Matrix<double> xb;
 	/// y centroids of ghost elements
-	Matrix<double> yb;
+	amat::Matrix<double> yb;
 
 	/// number of gauss points per face
 	int ngauss;
 	/// holds x-coordinates of gauss points
-	Matrix<double> gaussx;
+	amat::Matrix<double> gaussx;
 	/// holds y-coordinates of gauss points
-	Matrix<double> gaussy;
+	amat::Matrix<double> gaussy;
 
 	/// x-components of gradients of flow (conserved) variables
-	Matrix<double>* dudx;
+	amat::Matrix<double>* dudx;
 	/// y-components of gradients of flow (conserved) variables
-	Matrix<double>* dudy;
+	amat::Matrix<double>* dudy;
 	/// LHS coeffs for least-squares reconstruction
-	Matrix<double>* w2x2;
+	amat::Matrix<double>* w2x2;
 	/// LHS coeffs for least-squares reconstruction
-	Matrix<double>* w2y2;
+	amat::Matrix<double>* w2y2;
 	/// LHS coeffs for least-squares reconstruction
-	Matrix<double>* w2xy;
+	amat::Matrix<double>* w2xy;
 
 	/// left data (of conserved variables) at each face
-	Matrix<double> ufl;
+	amat::Matrix<double> ufl;
 	/// right data (of conserved variables) at each face
-	Matrix<double> ufr;
+	amat::Matrix<double> ufr;
 
 	/// Limiter context
 	Limiter* lim;
 	/// value of limiter \f$ \phi \f$ used for computing limited flow variables of left cell
-	Matrix<double> phi_l;
+	amat::Matrix<double> phi_l;
 	/// value of limiter \f$ \phi \f$ used for computing limited flow variables of right cell
-	Matrix<double> phi_r;
+	amat::Matrix<double> phi_r;
 
 public:
 	VanLeerFlux2()
 	{
 		limiter_allocated = false;
 	}
-	void setup(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* derx, Matrix<double>* dery, Matrix<double>* _w2x2, Matrix<double>* _w2y2, Matrix<double>* _w2xy, Matrix<double>* uinit, Matrix<double>* rhsel_in, Matrix<double>* cfl_den, int gauss_order)
+	void setup(UTriMesh* mesh, amat::Matrix<double>* unknowns, amat::Matrix<double>* derx, amat::Matrix<double>* dery, amat::Matrix<double>* _w2x2, amat::Matrix<double>* _w2y2, amat::Matrix<double>* _w2xy, amat::Matrix<double>* uinit, amat::Matrix<double>* rhsel_in, amat::Matrix<double>* cfl_den, int gauss_order)
 	{
 		nvars = unknowns->cols();
 		m = mesh;
@@ -426,20 +427,20 @@ public:
 		w2xy = _w2xy;
 		uinf = uinit;
 		rhsel = rhsel_in;
-		fluxes.setup(m->gnaface(), u->cols(), ROWMAJOR);
-		ufl.setup(m->gnaface(), u->cols(), ROWMAJOR);
-		ufr.setup(m->gnaface(), u->cols(), ROWMAJOR);
-		ug.setup(m->gnbface(),u->cols(),ROWMAJOR);
+		fluxes.setup(m->gnaface(), u->cols(), amat::ROWMAJOR);
+		ufl.setup(m->gnaface(), u->cols(), amat::ROWMAJOR);
+		ufr.setup(m->gnaface(), u->cols(), amat::ROWMAJOR);
+		ug.setup(m->gnbface(),u->cols(),amat::ROWMAJOR);
 		cflden = cfl_den;
 		ngauss = gauss_order;
-		gaussx.setup(m->gnaface(),ngauss,ROWMAJOR);
-		gaussy.setup(m->gnaface(),ngauss,ROWMAJOR);
-		xi.setup(m->gnelem(),1,ROWMAJOR);
-		yi.setup(m->gnelem(),1,ROWMAJOR);
-		xb.setup(m->gnbface(),1,ROWMAJOR);
-		yb.setup(m->gnbface(),1,ROWMAJOR);
-		phi_l.setup(m->gnaface(), nvars, ROWMAJOR);
-		phi_r.setup(m->gnaface(), nvars, ROWMAJOR);
+		gaussx.setup(m->gnaface(),ngauss,amat::ROWMAJOR);
+		gaussy.setup(m->gnaface(),ngauss,amat::ROWMAJOR);
+		xi.setup(m->gnelem(),1,amat::ROWMAJOR);
+		yi.setup(m->gnelem(),1,amat::ROWMAJOR);
+		xb.setup(m->gnbface(),1,amat::ROWMAJOR);
+		yb.setup(m->gnbface(),1,amat::ROWMAJOR);
+		phi_l.setup(m->gnaface(), nvars, amat::ROWMAJOR);
+		phi_r.setup(m->gnaface(), nvars, amat::ROWMAJOR);
 
 		lim = new Limiter();
 		limiter_allocated = true;
@@ -491,24 +492,17 @@ public:
 		// Internal element centroids
 		for(int ielem = 0; ielem < m->gnelem(); ielem++)
 		{
-			/*int ielem = m->gintfac(ied,0);
-			int jelem = m->gintfac(ied,1);*/
 			xi(ielem) = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
 			xi(ielem) = xi(ielem) / 3.0;
 			yi(ielem) = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
 			yi(ielem) = yi(ielem) / 3.0;
-
-			/*xi(jelem) = m->gcoords(m->ginpoel(jelem, 0), 0) + m->gcoords(m->ginpoel(jelem, 1), 0) + m->gcoords(m->ginpoel(jelem, 2), 0);
-			xi(jelem) /= 3.0;
-			yi(jelem) = m->gcoords(m->ginpoel(jelem, 0), 1) + m->gcoords(m->ginpoel(jelem, 1), 1) + m->gcoords(m->ginpoel(jelem, 2), 1);
-			yi(jelem) /= 3.0;*/
 		}
 		//xi.mprint(); yi.mprint();
 
 		//cout << "VanLeerFlux2: setup(): Calculating gauss points\n";
 		//Calculate and store coordinates of GAUSS POINTS (general implementation)
 		// Gauss points are uniformly distributed along the face.
-		/*int ig;
+		int ig;
 		for(int ied = 0; ied < m->gnaface(); ied++)
 		{
 			x1 = m->gcoords(m->gintfac(ied,2),0);
@@ -520,7 +514,7 @@ public:
 				gaussx(ied,ig) = x1 + (double)(ig+1)/(double)(ngauss+1) * (x2-x1);
 				gaussy(ied,ig) = y1 + (double)(ig+1)/(double)(ngauss+1) * (y2-y1);
 			}
-		}*/
+		}
 		//gaussx.mprint(); gaussy.mprint();
 		//cout << "VanLeerFlux2: setup(): Done\n";
 	}
@@ -635,7 +629,7 @@ public:
 	void compute_ls_reconstruction()
 	{
 		//cout << "VanLeerFlux2: compute_ls_gradients(): Computing ghost cell data...\n";
-		Matrix<double> w2yu(m->gnelem(),nvars), w2xu(m->gnelem(),nvars);
+		amat::Matrix<double> w2yu(m->gnelem(),nvars), w2xu(m->gnelem(),nvars);
 		w2xu.zeros(); w2yu.zeros();
 
 		//calculate ghost states
@@ -705,8 +699,8 @@ public:
 
 		double nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj;
 		int lel, rel;
-		Matrix<double> fiplus(u->cols(),1,ROWMAJOR);
-		Matrix<double> fjminus(u->cols(),1,ROWMAJOR);
+		amat::Matrix<double> fiplus(u->cols(),1,amat::ROWMAJOR);
+		amat::Matrix<double> fjminus(u->cols(),1,amat::ROWMAJOR);
 		int ied;
 
 		//loop over boundary faces
@@ -794,8 +788,8 @@ public:
 			lel = m->gintfac(ied,0);	// left element
 			rel = m->gintfac(ied,1);	// right element
 
-			Matrix<double> fiplus(u->cols(),1,ROWMAJOR);
-			Matrix<double> fjminus(u->cols(),1,ROWMAJOR);
+			amat::Matrix<double> fiplus(u->cols(),1,amat::ROWMAJOR);
+			amat::Matrix<double> fjminus(u->cols(),1,amat::ROWMAJOR);
 
 			//calculate presures from u
 			double pi = (g-1)*(ufl(ied,3) - 0.5*(pow(ufl(ied,1),2)+pow(ufl(ied,2),2))/ufl(ied,0));
@@ -872,10 +866,10 @@ public:
 		//cout << "VanLeerFlux2: compute_fluxes(): Fluxes computed.\n";
 	}
 
-	Matrix<double> centroid_x_coords() {
+	amat::Matrix<double> centroid_x_coords() {
 		return xi;
 	}
-	Matrix<double> centroid_y_coords() {
+	amat::Matrix<double> centroid_y_coords() {
 		return yi;
 	}
 };

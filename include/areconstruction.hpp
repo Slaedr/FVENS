@@ -16,6 +16,7 @@ namespace acfd
 /// Abstract class for variable gradient reconstruction schemes
 class Reconstruction
 {
+protected:
 	UTriMesh* m;
 	/// Cell centers' x-coords
 	amat::Matrix<double>* xc;
@@ -37,11 +38,11 @@ class Reconstruction
 	amat::Matrix<double>* dudy;
 
 public:
-	virtual void setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg);
+	virtual void setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg);
 	virtual void compute_gradients() = 0;
 };
 
-void Reconstruction::setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg)
+void Reconstruction::setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg)
 {
 	m = mesh;
 	u = unk;
@@ -66,11 +67,11 @@ public:
 	void compute_gradients();
 };
 
-GreenGaussReconstruction::compute_gradients()
+void GreenGaussReconstruction::compute_gradients()
 {
-	gradx->zeros(); grady->zeros();
+	dudx->zeros(); dudy->zeros();
 	
-	int iface, idim, ielem, jelem;
+	int iface, idim, ielem, jelem, ivar;
 	double areainv1, areainv2;
 	std::vector<double> ut(nvars);
 	
@@ -115,15 +116,20 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 	amat::Matrix<double> w2yu;
 
 public:
-	void setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg);
+	void setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg);
 	void compute_gradients();
 };
 
-void WeightedLeastSquaresReconstruction::setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, const amat::Matrix<double>* gradx, const amat::Matrix<double>* grady, const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg)
+void WeightedLeastSquaresReconstruction::setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg)
 {
 	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _xc, _yc, _xcg, _ycg);
 
 	// compute LHS of least-squares problem
+}
+
+void WeightedLeastSquaresReconstruction::compute_gradients()
+{
+	// compute weighted least-squares gradients
 }
 
 } // end namespace
