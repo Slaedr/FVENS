@@ -21,14 +21,19 @@
 
 #define __ANUMERICALFLUX_H 1
 
-using namespace acfd;
-
 namespace acfd {
 
 /// Adiabatic index
 const double g = 1.4;
 
 /// Abstract class from which to derive all numerical flux classes
+/** The class is such that given the left and right states at each face, fluxes are computed and added to the RHS of the left and right elements of each face.
+ * The integral of the maximum magnitude of eigenvalue over each face is also computed:
+ * \f[
+ * \int_{f_i} (|v_n| + c) \mathrm{d}l
+ * \f]
+ * so that time steps can be calculated for explicit time stepping.
+ */
 class InviscidFlux
 {
 	UTriMesh* m;
@@ -45,7 +50,16 @@ class InviscidFlux
 	amat::Matrix<double> fluxes;
 
 public:
-	void setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
+	/// Sets up data for the inviscid flux scheme
+	/** \param[in] mesh is the mesh on which to compute fluxes
+	 * \param[in] uleft is the vector of left states for each face (boundary and interior)
+	 * \param[in] uright is the vector of right states for all faces
+	 * \param[out] rhs_ele is the vector containing the RHS for each element. The computed fluxes are summed into this vector.
+	 * \param[out] cfl_denom contains the denominator of the eigenvalue magnitude estimation for the purpose of computing CFL number.
+	 */
+	virtual void setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
+
+	/// Actually carries out the flux computation
 	virtual void compute_fluxes() = 0;
 };
 
@@ -60,10 +74,119 @@ void InviscidFlux::setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matr
 	fluxes.setup(m->gnaface(),nvars);
 }
 
+/// Given left and right states at each face, the Van-Leer flux-vector-splitting is calculated at each face
+class VanLeerFlux : public InviscidFlux
+{
+	amat::Matrix<double> fiplus;
+	amat::Matrix<double> fjminus;
+
+public:
+	void setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
+	void compute_fluxes();
+};
+
+VanLeerFlux::setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom)
+{
+	InviscidFlux::setup(mesh, uleft, uright, rhs_ele, cfl_denom);
+	fiplus.setup(ul->cols(), 1);
+	fjminus.setup(ul->cols(), 1);
+}
+
+void VanLeerFlux::compute_fluxes()
+{
+	double nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
+	int lel, rel, ied;
+	amat::Matrix<double> fiplus(u->cols(),1);
+	amat::Matrix<double> fjminus(u->cols(),1);
+
+	for(int ied = 0; ied < m->gnaface(); ied++)
+	{
+		nx = m->ggallfa(ied,0);
+		ny = m->ggallfa(ied,1);
+		len = m->ggallfa(ied,2);
+		lel = m->gintfac(ied,0);	// left element
+		rel = m->gintfac(ied,1);	// right element
+
+		//calculate presures from u
+		pi = (g-1)*(ul->get(ied,3) - 0.5*(pow(ul->get(ied,1),2)+pow(ul->get(ied,2),2))/ul->get(ied,0));
+		pj = (g-1)*(ur->get(ied,3) - 0.5*(pow(ur->get(ied,1),2)+pow(ur->get(ied,2),2))/ur->get(ied,0));
+		//calculate speeds of sound
+		ci = sqrt(g*pi/ul->get(ied,0));
+		cj = sqrt(g*pj/ur->get(ied,0));
+		//calculate normal velocities
+		vni = (ul->get(ied,1)*nx +ul->get(ied,2)*ny)/ul->get(ied,0);
+		vnj = (ur->get(ied,1)*nx + ur->get(ied,2)*ny)/ur->get(ied,0);
+
+		//Normal mach numbers
+		Mni = vni/ci;
+		Mnj = vnj/cj;
+
+		//Calculate split fluxes
+		if(Mni < -1.0) fiplus.zeros();
+		else if(Mni > 1.0)
+		{
+			fiplus(0) = ul->get(ied,0)*vni;
+			fiplus(1) = vni*ul->get(ied,1) + pi*nx;
+			fiplus(2) = vni*ul->get(ied,2) + pi*ny;
+			fiplus(3) = vni*(ul->get(ied,3) + pi);
+		}
+		else
+		{
+			vmags = pow(ul->get(ied,1)/ul->get(ied,0), 2) + pow(ul->get(ied,2)/ul->get(ied,0), 2);	// square of velocity magnitude
+			fiplus(0) = ul->get(ied,0)*ci*pow(Mni+1, 2)/4.0;
+			fiplus(1) = fiplus(0) * (ul->get(ied,1)/ul->get(ied,0) + nx*(2.0*ci - vni)/g);
+			fiplus(2) = fiplus(0) * (ul->get(ied,2)/ul->get(ied,0) + ny*(2.0*ci - vni)/g);
+			fiplus(3) = fiplus(0) * ( (vmags - vni*vni)/2.0 + pow((g-1)*vni+2*ci, 2)/(2*(g*g-1)) );
+		}
+
+		if(Mnj > 1.0) fjminus.zeros();
+		else if(Mnj < -1.0)
+		{
+			fjminus(0) = ur->get(ied,0)*vnj;
+			fjminus(1) = vnj*ur->get(ied,1) + pj*nx;
+			fjminus(2) = vnj*ur->get(ied,2) + pj*ny;
+			fjminus(3) = vnj*(ur->get(ied,3) + pj);
+		}
+		else
+		{
+			vmags = pow(ur->get(ied,1)/ur->get(ied,0), 2) + pow(ur->get(ied,2)/ur->get(ied,0), 2);	// square of velocity magnitude
+			fjminus(0) = -ur->get(ied,0)*cj*pow(Mnj-1, 2)/4.0;
+			fjminus(1) = fjminus(0) * (ur->get(ied,1)/ur->get(ied,0) + nx*(-2.0*cj - vnj)/g);
+			fjminus(2) = fjminus(0) * (ur->get(ied,2)/ur->get(ied,0) + ny*(-2.0*cj - vnj)/g);
+			fjminus(3) = fjminus(0) * ( (vmags - vnj*vnj)/2.0 + pow((g-1)*vnj-2*cj, 2)/(2*(g*g-1)) );
+		}
+
+		//Update the flux vector
+		for(int i = 0; i < 4; i++)
+			fluxes(ied, i) = (fiplus(i) + fjminus(i));
+
+		//TODO: Integrate the fluxes here using Quadrature2D class; not needed in case of FVM.
+		for(int i = 0; i < nvars; i++)
+			fluxes(ied, i) *= len;
+
+		// scatter the flux to elements' boundary integrands
+		for(int i = 0; i < nvars; i++)
+		{
+			//rhsel->operator()(lel,i) -= fluxes(ied,i);
+			(*rhsel)(lel,i) -= fluxes(ied,i);
+			//rhsel->operator()(rel,i) += fluxes(ied,i);
+			if(rel >= 0 && rel < m->gnelem())
+				(*rhsel)(rel,i) += fluxes(ied,i);
+		}
+
+		// calculate integ for CFL purposes
+		//(*cflden)(lel,0) += (dabs(vni + vnj)/2.0 + (ci+cj)/2.0)*len;
+		//(*cflden)(rel,0) += (dabs(vni + vnj)/2.0 + (ci+cj)/2.0)*len;
+		(*cflden)(lel,0) += (dabs(vni) + ci)*len;
+		if(rel >= 0 && rel < m->gnelem())
+			(*cflden)(rel,0) += (dabs(vnj) + cj)*len;
+	}
+}
+
 /// Inviscid flux calculation context for firs order Van-Leer flux-vector splitting
 /** Asumption: boundary face flag is 2 for slip wall BC and 4 for inflow/outflow (far-field)
  */
-class VanLeerFlux
+class VanLeerFlux1
 {
 	UTriMesh* m;
 	amat::Matrix<double>* u;				// nelem x nvars matrix holding values of unknowns at each cell
@@ -74,9 +197,9 @@ class VanLeerFlux
 	int nvars;
 
 public:
-	VanLeerFlux() {}
+	VanLeerFlux1() {}
 
-	VanLeerFlux(UTriMesh* mesh, amat::Matrix<double>* unknowns, amat::Matrix<double>* uinit, amat::Matrix<double>* rhsel_in, amat::Matrix<double>* cfl_den)
+	VanLeerFlux1(UTriMesh* mesh, amat::Matrix<double>* unknowns, amat::Matrix<double>* uinit, amat::Matrix<double>* rhsel_in, amat::Matrix<double>* cfl_den)
 	{
 		nvars = unknowns->cols();
 		m = mesh;

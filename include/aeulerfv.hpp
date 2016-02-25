@@ -28,7 +28,7 @@ using namespace acfd;
 namespace acfd {
 
 // set the flux calculation method here
-typedef VanLeerFlux Flux;
+typedef VanLeerFlux1 Flux;
 //set time explicit stepping scheme here
 typedef TimeStepRK1 TimeStep;
 
