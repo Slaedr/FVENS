@@ -10,5 +10,10 @@
 
 	/// A small number likely smaller than most convergence tolerances
 	#define A_SMALL_NUMBER 1e-12
+	
+namespace acfd
+{
+	typedef double acfd_real;
+}
 
 #endif

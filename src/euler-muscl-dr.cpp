@@ -38,6 +38,8 @@ int main()
 	ifstream meshs(meshfile);
 
 	UTriMesh m(meshs);
+	m->compute_jacobians();
+	m->compute_face_data();
 
 	// Now start computation
 

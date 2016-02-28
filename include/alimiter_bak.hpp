@@ -11,8 +11,6 @@
 namespace acfd {
 
 /// Abstract class for computing face values (for each Gauss point) from cell-centered values and gradients
-/** \note Face values at boundary faces are only computed for the left (interior) side. Right side values for boundary faces need to computed elsewhere using boundary conditions.
- */
 class FaceDataComputation
 {
 protected:
@@ -30,116 +28,71 @@ protected:
 	amat::Matrix<acfd_real>* ufl;		/// left face flow data
 	amat::Matrix<acfd_real>* ufr;
 	int nvars;
-	
-	// for local use
-	int ielem;
-	int jelem;
-	int ied;
-	acfd_real nx;
-	acfd_real ny;
-
 public:
-    void setup(const UTriMesh* mesh, const amat::Matrix<amat_real>* unknowns, const amat::Matrix<amat_real>* unknow_ghost, const amat::Matrix<amat_real>* x_deriv, amat::Matrix<amat_real>* y_deriv, 
-			amat::Matrix<amat_real>* x_ghost_centres, amat::Matrix<amat_real>* y_ghost_centres, amat::Matrix<amat_real>* x_centres, amat::Matrix<amat_real>* y_centres, 
-			amat::Matrix<amat_real>* gauss_x, amat::Matrix<amat_real>* gauss_y, amat::Matrix<amat_real>* uface_left, amat::Matrix<amat_real>* uface_right);
 	virtual void compute_face_values() = 0;
 };
-    
-void FaceDataComputation::setup(UTriMesh* mesh, amat::Matrix<amat_real>* unknowns, amat::Matrix<amat_real>* unknow_ghost, amat::Matrix<amat_real>* x_deriv, amat::Matrix<amat_real>* y_deriv, 
-		amat::Matrix<amat_real>* x_ghost_centres, amat::Matrix<amat_real>* y_ghost_centres, amat::Matrix<amat_real>* x_centres, amat::Matrix<amat_real>* y_centres, 
-		amat::Matrix<amat_real>* gauss_x, amat::Matrix<amat_real>* gauss_y, amat::Matrix<amat_real>* uface_left, amat::Matrix<amat_real>* uface_right)
+
+class VanAlbadaLimiter
 {
-	m = mesh;
-	u = unknowns;
-	ug = unknow_ghost;          // contains ghost cell states according to BCs for each boundary edge
-	uinf = u_farfield;
-	nvars = u->cols();
-	dudx = x_deriv;
-	dudy = y_deriv;
-	xi = x_centres;
-	yi = y_centres;
-	xb = x_ghost_centres;       // contains x-coord of right "cell centroid" of each boundary edge
-	yb = y_ghost_centres;       // contains y-coord of right "cell centroid" of each boundary edge
-	gx = gauss_x;
-	gy = gauss_y;
-	ufl = uface_left;
-	ufr = uface_right;
-	ng = gx->cols();
-}
+    UTriMesh* m;
+    Matrix<double>* u;
+    Matrix<double>* ug;
+    Matrix<double>* uinf;
+    Matrix<double>* dudx;
+    Matrix<double>* dudy;
+    Matrix<double>* xb;
+    Matrix<double>* yb;
+    Matrix<double>* xi;
+    Matrix<double>* yi;
 
-/// Calculate values of variables at left and right sides of each face based on computed derivatives but without limiter.
-/** ug (cell centered flow variables at ghost cells) are not used for this
- */
-class NoLimiter : public FaceDataComputation
-{
-public:
-	void compute_face_values();
-}
+	/// x-coords of gauss points of each face
+    Matrix<double>* gx;
+	/// y-coordinates of gauss points of each face
+    Matrix<double>* gy;
+    int nvars;
+    int ng;                 // number of gauss points
+    double eps;
+    double k;               // van-Albada parameter
+    double g;               // adiabatic index
 
-void NoLimiter::compute_face_values()
-{
-	// (a) internal faces
-	//cout << "NoLimiter: compute_face_values(): Computing values at faces - internal\n";
-	for(ied = m->gnbface(); ied < m->gnaface(); ied++)
-	{
-		ielem = m->gintfac(ied,0);
-		jelem = m->gintfac(ied,1);
-
-		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
-		for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
-		{
-			for(int i = 0; i < nvars; i++)
-			{
-
-				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
-				(*ufr)(ied,i) = u->get(jelem,i) + dudx->get(jelem,i)*(gx->get(ied,0)-xi->get(jelem)) + dudy->get(jelem,i)*(gy->get(ied,0)-yi->get(jelem));
-			}
-		}
-	}
-	//cout << "NoLimiter: compute_unlimited_interface_values(): Computing values at faces - boundary\n";
-	//Now calculate ghost states at boundary faces using the ufl and ufr of cells
-	for(int ied = 0; ied < m->gnbface(); ied++)
-	{
-		ielem = m->gintfac(ied,0);
-		nx = m->ggallfa(ied,0);
-		ny = m->ggallfa(ied,1);
-
-		for(int ig = 0; ig < ng; ig++)
-		{
-			for(int i = 0; i < nvars; i++)
-				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
-		}
-	}
-}
-
-/// Computes face values using the Van-Albada limiter
-class VanAlbadaLimiter : public FaceDataComputation
-{
-    acfd_real eps;
-    acfd_real k;               			/// van-Albada parameter
-	amat::Matrix<acfd_real> phi_l;		/// left-face limiter values
-	amat::Matrix<acfd_real> phi_r;		/// right-face limiter values
+    Matrix<double>* phi_l;
+    Matrix<double>* phi_r;
+    Matrix<double>* ufl;
+    Matrix<double>* ufr;
 
 public:
-	void setup(UTriMesh* mesh, amat::Matrix<amat_real>* unknowns, amat::Matrix<amat_real>* unknow_ghost, amat::Matrix<amat_real>* x_deriv, amat::Matrix<amat_real>* y_deriv, 
-			amat::Matrix<amat_real>* x_ghost_centres, amat::Matrix<amat_real>* y_ghost_centres, amat::Matrix<amat_real>* x_centres, amat::Matrix<amat_real>* y_centres, 
-			amat::Matrix<amat_real>* gauss_x, amat::Matrix<amat_real>* gauss_y, amat::Matrix<amat_real>* uface_left, amat::Matrix<amat_real>* uface_right);
-	{
-		FaceDataComputation::setup(UTriMesh* mesh, amat::Matrix<amat_real>* unknowns, amat::Matrix<amat_real>* unknow_ghost, amat::Matrix<amat_real>* x_deriv, amat::Matrix<amat_real>* y_deriv, 
-			amat::Matrix<amat_real>* x_ghost_centres, amat::Matrix<amat_real>* y_ghost_centres, amat::Matrix<amat_real>* x_centres, amat::Matrix<amat_real>* y_centres, 
-			amat::Matrix<amat_real>* gauss_x, amat::Matrix<amat_real>* gauss_y, amat::Matrix<amat_real>* uface_left, amat::Matrix<amat_real>* uface_right);
-		eps = 1e-8;
-		k = 1.0/3.0;
-		phi_l.setup(naface, nvars);
-		phi_r.setup(naface, nvars);
-	}
+
+    void setup_limiter(UTriMesh* mesh, Matrix<double>* unknowns, Matrix<double>* unknow_ghost, Matrix<double>* x_deriv, Matrix<double>* y_deriv, Matrix<double>* x_ghost_centres, Matrix<double>* y_ghost_centres, Matrix<double>* x_centres, Matrix<double>* y_centres, Matrix<double>* gauss_x, Matrix<double>* gauss_y, Matrix<double>* limits_left, Matrix<double>* limits_right, Matrix<double>* uface_left, Matrix<double>* uface_right, Matrix<double>* u_farfield, double adiabatic_index)
+    {
+        m = mesh;
+        u = unknowns;
+        ug = unknow_ghost;          // contains ghost cell states according to BCs for each boundary edge
+        uinf = u_farfield;
+        nvars = u->cols();
+        eps = 1e-8;
+        k = 1.0/3.0;
+        dudx = x_deriv;
+        dudy = y_deriv;
+        xi = x_centres;
+        yi = y_centres;
+        xb = x_ghost_centres;       // contains x-coord of right "cell centroid" of each boundary edge
+        yb = y_ghost_centres;       // contains y-coord of right "cell centroid" of each boundary edge
+        gx = gauss_x;
+        gy = gauss_y;
+        phi_l = limits_left;
+        phi_r = limits_right;
+        ufl = uface_left;
+        ufr = uface_right;
+        ng = gx->cols();
+        g = adiabatic_index;
+    }
 
     void compute_limiters()
     {
         for(int ied = 0; ied < m->gnbface(); ied++)
         {
             int lel = m->gintfac(ied,0);
-            amat::Matrix<amat_real> deltam(nvars,1);
+            Matrix<double> deltam(nvars,1,ROWMAJOR);
             for(int i = 0; i < nvars; i++)
             {
                 deltam(i) = 2 * ( dudx->get(lel,i)*(xb->get(ied)-xi->get(lel)) + dudy->get(lel,i)*(yb->get(ied)-yi->get(lel)) ) - (ug->get(ied,i) - u->get(lel,i));
@@ -152,8 +105,8 @@ public:
         {
             int lel = m->gintfac(ied,0);
             int rel = m->gintfac(ied,1);
-            amat::Matrix<amat_real> deltam(nvars,1);
-            amat::Matrix<amat_real> deltap(nvars,1);
+            Matrix<double> deltam(nvars,1,ROWMAJOR);
+            Matrix<double> deltap(nvars,1,ROWMAJOR);
             for(int i = 0; i < nvars; i++)
             {
                 deltam(i) = 2 * ( dudx->get(lel,i)*(xi->get(rel)-xi->get(lel)) + dudy->get(lel,i)*(yi->get(rel)-yi->get(lel)) ) - (u->get(rel,i) - u->get(lel,i));
@@ -169,18 +122,18 @@ public:
     }
 
     /// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
-	void compute_face_values()
+	void compute_interface_values()
     {
 		// (a) internal faces
         //cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
-        amat::Matrix<amat_real> deltam(nvars,1);
-        amat::Matrix<amat_real> deltap(nvars,1);
+        Matrix<double> deltam(nvars,1,ROWMAJOR);
+        Matrix<double> deltap(nvars,1,ROWMAJOR);
 		for(int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
 			int ielem = m->gintfac(ied,0); int lel = ielem;
 			int jelem = m->gintfac(ied,1); int rel = jelem;
 
-            // NOTE: Only for 1 Gauss point per face
+            // TODO: correct for multiple gauss points
             //cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
             for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
             {
@@ -196,9 +149,109 @@ public:
     			}
             }
 		}
+		//cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - boundary\n";
+		//Now calculate ghost states at boundary faces using the ufl and ufr of cells
+		// (b) boundary faces
+        //Matrix<double> deltam(nvars,1,ROWMAJOR);
+		for(int ied = 0; ied < m->gnbface(); ied++)
+		{
+			int ielem = m->gintfac(ied,0); int lel = ielem;
+			double nx = m->ggallfa(ied,0);
+			double ny = m->ggallfa(ied,1);
+
+            for(int ig = 0; ig < ng; ig++)
+            {
+
+                for(int i = 0; i < nvars; i++)
+                {
+                    deltam(i) = 2 * ( dudx->get(lel,i)*(xb->get(ied)-xi->get(lel)) + dudy->get(lel,i)*(yb->get(ied)-yi->get(lel)) ) - (ug->get(ied,i) - u->get(lel,i));
+
+    				(*ufl)(ied,i) = u->get(ielem,i) + phi_l->get(ied,i)/4.0*( (1-k*phi_l->get(ied,i))*deltam(i) + (1+k*phi_l->get(ied,i))*(ug->get(ied,i) - u->get(lel,i)) );
+    			}
+
+    			double vni = (ufl->get(ied,1)*nx + ufl->get(ied,2)*ny)/ufl->get(ied,0);
+    			double pi = (g-1)*(ufl->get(ied,3) - 0.5*(pow(ufl->get(ied,1),2)+pow(ufl->get(ied,2),2))/ufl->get(ied,0));
+    			double ci = sqrt(g*pi/ufl->get(ied,0));
+
+    			if(m->ggallfa(ied,3) == 2)		// solid wall
+    			{
+    				(*ufr)(ied,0) = ufl->get(ied,0);
+    				(*ufr)(ied,1) = ufl->get(ied,1) - 2*vni*nx*ufr->get(ied,0);
+    				(*ufr)(ied,2) = ufl->get(ied,2) - 2*vni*ny*ufr->get(ied,0);
+    				(*ufr)(ied,3) = ufl->get(ied,3);
+    			}
+    			if(m->ggallfa(ied,3) == 4)		// inflow or outflow
+    			{
+    				/*if(Mni < -1.0)
+    				{
+    					for(int i = 0; i < nvars; i++)
+    						ufr(ied,i) = uinf->get(0,i);
+    					pj = (g-1)*(ufr(ied,3) - 0.5*(pow(ufr(ied,1),2)+pow(ufr(ied,2),2))/ufr(ied,0));
+    					cj = sqrt(g*pj/ufr(ied,0));
+    					vnj = (ufr(ied,1)*nx + ufr(ied,2)*ny)/ufr(ied,0);
+    				}
+    				else if(Mni >= -1.0 && Mni < 0.0)
+    				{
+    					double vinfx = uinf->get(0,1)/uinf->get(0,0);
+    					double vinfy = uinf->get(0,2)/uinf->get(0,0);
+    					double vinfn = vinfx*nx + vinfy*ny;
+    					double vbn = ufl(lel,1)/ufl(lel,0)*nx + ufl(lel,2)/ufl(lel,0)*ny;
+    					double pinf = (g-1)*(uinf->get(0,3) - 0.5*(pow(uinf->get(0,1),2)+pow(uinf->get(0,2),2))/uinf->get(0,0));
+    					double pb = (g-1)*(ufl(lel,3) - 0.5*(pow(ufl(lel,1),2)+pow(ufl(lel,2),2))/ufl(lel,0));
+    					double cinf = sqrt(g*pinf/uinf->get(0,0));
+    					double cb = sqrt(g*pb/ufl(lel,0));
+
+    					double vgx = vinfx*ny*ny - vinfy*nx*ny + (vbn+vinfn)/2.0*nx + (cb - cinf)/(g-1)*nx;
+    					double vgy = vinfy*nx*nx - vinfx*nx*ny + (vbn+vinfn)/2.0*ny + (cb - cinf)/(g-1)*ny;
+    					vnj = vgx*nx + vgy*ny;	// = vgn
+    					cj = (g-1)/2*(vnj-vinfn)+cinf;
+    					ufr(ied,0) = pow( pinf/pow(uinf->get(0,0),g) * 1.0/cj*cj , 1/(1-g));	// density
+    					pj = ufr(ied,0)/g*cj*cj;
+
+    					ufr(ied,3) = pj/(g-1) + 0.5*ufr(ied,0)*(vgx*vgx+vgy*vgy);
+    					ufr(ied,1) = ufr(ied,0)*vgx;
+    					ufr(ied,2) = ufr(ied,0)*vgy;
+    				}
+    				else if(Mni >= 0.0 && Mni < 1.0)
+    				{
+    					double vbx = ufl(lel,1)/ufl(lel,0);
+    					double vby = ufl(lel,2)/ufl(lel,0);
+    					double vbn = vbx*nx + vby*ny;
+    					double vinfn = uinf->get(0,1)/uinf->get(0,0)*nx + uinf->get(0,2)/uinf->get(0,0)*ny;
+    					double pinf = (g-1)*(uinf->get(0,3) - 0.5*(pow(uinf->get(0,1),2)+pow(uinf->get(0,2),2))/uinf->get(0,0));
+    					double pb = (g-1)*(ufl(lel,3) - 0.5*(pow(ufl(lel,1),2)+pow(ufl(lel,2),2))/ufl(lel,0));
+    					double cinf = sqrt(g*pinf/uinf->get(0,0));
+    					double cb = sqrt(g*pb/ufl(lel,0));
+
+    					double vgx = vbx*ny*ny - vby*nx*ny + (vbn+vinfn)/2.0*nx + (cb - cinf)/(g-1)*nx;
+    					double vgy = vby*nx*nx - vbx*nx*ny + (vbn+vinfn)/2.0*ny + (cb - cinf)/(g-1)*ny;
+    					vnj = vgx*nx + vgy*ny;	// = vgn
+    					cj = (g-1)/2*(vnj-vinfn)+cinf;
+    					ufr(ied,0) = pow( pb/pow(ufl(lel,0),g) * 1.0/cj*cj , 1/(1-g));	// density
+    					pj = ufr(ied,0)/g*cj*cj;
+
+    					ufr(ied,3) = pj/(g-1) + 0.5*ufr(ied,0)*(vgx*vgx+vgy*vgy);
+    					ufr(ied,1) = ufr(ied,0)*vgx;
+    					ufr(ied,2) = ufr(ied,0)*vgy;
+    				}
+    				else
+    				{
+    					for(int i = 0; i < nvars; i++)
+    						ufr(ied,i) = ufl(lel,i);
+    					pj = (g-1)*(ufr(ied,3) - 0.5*(pow(ufr(ied,1),2)+pow(ufr(ied,2),2))/ufr(ied,0));
+    					cj = sqrt(g*pj/ufr(ied,0));
+    					vnj = (ufr(ied,1)*nx + ufr(ied,2)*ny)/ufr(ied,0);
+    				} */
+
+    				// Naive way
+    				for(int i = 0; i < nvars; i++)
+    					(*ufr)(ied,i) = uinf->get(0,i);
+    			}
+            }
+		}
     }
 
-    void compute_reg_face_values()
+    void compute_reg_interface_values()
     {
         // Calculate values of variables at left and right sides of each face based on computed derivatives
 		// (a) internal faces
@@ -231,7 +284,7 @@ public:
 
             for(int ig = 0; ig < ng; ig++)
             {
-                amat::Matrix<amat_real> deltam(nvars,1,ROWMAJOR);
+                Matrix<double> deltam(nvars,1,ROWMAJOR);
 
                 for(int i = 0; i < nvars; i++)
                 {
@@ -320,6 +373,127 @@ public:
 		}
     }
 
+    /// Calculate values of variables at left and right sides of each face based on computed derivatives but without limiter.
+	void compute_unlimited_interface_values()
+    {
+		// (a) internal faces
+        //cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
+		for(int ied = m->gnbface(); ied < m->gnaface(); ied++)
+		{
+			int ielem = m->gintfac(ied,0); int lel = ielem;
+			int jelem = m->gintfac(ied,1); int rel = jelem;
+
+            // TODO: correct for multiple gauss points
+            //cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
+            for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
+            {
+    			for(int i = 0; i < nvars; i++)
+                {
+
+                    (*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
+    				(*ufr)(ied,i) = u->get(jelem,i) + dudx->get(jelem,i)*(gx->get(ied,0)-xi->get(jelem)) + dudy->get(jelem,i)*(gy->get(ied,0)-yi->get(jelem));
+    			}
+            }
+		}
+		//cout << "VanAlbadaLimiter: compute_unlimited_interface_values(): Computing values at faces - boundary\n";
+		//Now calculate ghost states at boundary faces using the ufl and ufr of cells
+		// (b) boundary faces
+		for(int ied = 0; ied < m->gnbface(); ied++)
+		{
+			int ielem = m->gintfac(ied,0); int lel = ielem;
+			double nx = m->ggallfa(ied,0);
+			double ny = m->ggallfa(ied,1);
+
+            for(int ig = 0; ig < ng; ig++)
+            {
+                Matrix<double> deltam(nvars,1,ROWMAJOR);
+
+                for(int i = 0; i < nvars; i++)
+                {
+
+                    (*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
+    			}
+
+    			double vni = (ufl->get(ied,1)*nx + ufl->get(ied,2)*ny)/ufl->get(ied,0);
+    			double pi = (g-1)*(ufl->get(ied,3) - 0.5*(pow(ufl->get(ied,1),2)+pow(ufl->get(ied,2),2))/ufl->get(ied,0));
+    			double ci = sqrt(g*pi/ufl->get(ied,0));
+    			if(m->ggallfa(ied,3) == 2)		// solid wall
+    			{
+    				(*ufr)(ied,0) = ufl->get(ied,0);
+    				(*ufr)(ied,1) = ufl->get(ied,1) - 2*vni*nx*ufr->get(ied,0);
+    				(*ufr)(ied,2) = ufl->get(ied,2) - 2*vni*ny*ufr->get(ied,0);
+    				(*ufr)(ied,3) = ufl->get(ied,3);
+    			}
+    			if(m->ggallfa(ied,3) == 4)		// inflow or outflow
+    			{
+    				/*if(Mni < -1.0)        // characteristic boundary conditions
+    				{
+    					for(int i = 0; i < nvars; i++)
+    						ufr(ied,i) = uinf->get(0,i);
+    					pj = (g-1)*(ufr(ied,3) - 0.5*(pow(ufr(ied,1),2)+pow(ufr(ied,2),2))/ufr(ied,0));
+    					cj = sqrt(g*pj/ufr(ied,0));
+    					vnj = (ufr(ied,1)*nx + ufr(ied,2)*ny)/ufr(ied,0);
+    				}
+    				else if(Mni >= -1.0 && Mni < 0.0)
+    				{
+    					double vinfx = uinf->get(0,1)/uinf->get(0,0);
+    					double vinfy = uinf->get(0,2)/uinf->get(0,0);
+    					double vinfn = vinfx*nx + vinfy*ny;
+    					double vbn = ufl(lel,1)/ufl(lel,0)*nx + ufl(lel,2)/ufl(lel,0)*ny;
+    					double pinf = (g-1)*(uinf->get(0,3) - 0.5*(pow(uinf->get(0,1),2)+pow(uinf->get(0,2),2))/uinf->get(0,0));
+    					double pb = (g-1)*(ufl(lel,3) - 0.5*(pow(ufl(lel,1),2)+pow(ufl(lel,2),2))/ufl(lel,0));
+    					double cinf = sqrt(g*pinf/uinf->get(0,0));
+    					double cb = sqrt(g*pb/ufl(lel,0));
+
+    					double vgx = vinfx*ny*ny - vinfy*nx*ny + (vbn+vinfn)/2.0*nx + (cb - cinf)/(g-1)*nx;
+    					double vgy = vinfy*nx*nx - vinfx*nx*ny + (vbn+vinfn)/2.0*ny + (cb - cinf)/(g-1)*ny;
+    					vnj = vgx*nx + vgy*ny;	// = vgn
+    					cj = (g-1)/2*(vnj-vinfn)+cinf;
+    					ufr(ied,0) = pow( pinf/pow(uinf->get(0,0),g) * 1.0/cj*cj , 1/(1-g));	// density
+    					pj = ufr(ied,0)/g*cj*cj;
+
+    					ufr(ied,3) = pj/(g-1) + 0.5*ufr(ied,0)*(vgx*vgx+vgy*vgy);
+    					ufr(ied,1) = ufr(ied,0)*vgx;
+    					ufr(ied,2) = ufr(ied,0)*vgy;
+    				}
+    				else if(Mni >= 0.0 && Mni < 1.0)
+    				{
+    					double vbx = ufl(lel,1)/ufl(lel,0);
+    					double vby = ufl(lel,2)/ufl(lel,0);
+    					double vbn = vbx*nx + vby*ny;
+    					double vinfn = uinf->get(0,1)/uinf->get(0,0)*nx + uinf->get(0,2)/uinf->get(0,0)*ny;
+    					double pinf = (g-1)*(uinf->get(0,3) - 0.5*(pow(uinf->get(0,1),2)+pow(uinf->get(0,2),2))/uinf->get(0,0));
+    					double pb = (g-1)*(ufl(lel,3) - 0.5*(pow(ufl(lel,1),2)+pow(ufl(lel,2),2))/ufl(lel,0));
+    					double cinf = sqrt(g*pinf/uinf->get(0,0));
+    					double cb = sqrt(g*pb/ufl(lel,0));
+
+    					double vgx = vbx*ny*ny - vby*nx*ny + (vbn+vinfn)/2.0*nx + (cb - cinf)/(g-1)*nx;
+    					double vgy = vby*nx*nx - vbx*nx*ny + (vbn+vinfn)/2.0*ny + (cb - cinf)/(g-1)*ny;
+    					vnj = vgx*nx + vgy*ny;	// = vgn
+    					cj = (g-1)/2*(vnj-vinfn)+cinf;
+    					ufr(ied,0) = pow( pb/pow(ufl(lel,0),g) * 1.0/cj*cj , 1/(1-g));	// density
+    					pj = ufr(ied,0)/g*cj*cj;
+
+    					ufr(ied,3) = pj/(g-1) + 0.5*ufr(ied,0)*(vgx*vgx+vgy*vgy);
+    					ufr(ied,1) = ufr(ied,0)*vgx;
+    					ufr(ied,2) = ufr(ied,0)*vgy;
+    				}
+    				else
+    				{
+    					for(int i = 0; i < nvars; i++)
+    						ufr(ied,i) = ufl(lel,i);
+    					pj = (g-1)*(ufr(ied,3) - 0.5*(pow(ufr(ied,1),2)+pow(ufr(ied,2),2))/ufr(ied,0));
+    					cj = sqrt(g*pj/ufr(ied,0));
+    					vnj = (ufr(ied,1)*nx + ufr(ied,2)*ny)/ufr(ied,0);
+    				} */
+
+    				// Naive way
+    				for(int i = 0; i < nvars; i++)
+    					(*ufr)(ied,i) = uinf->get(0,i);
+    			}
+            }
+		}
+    }
 };
 
 /*class BarthJaspersonLimiter

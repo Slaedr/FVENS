@@ -27,18 +27,20 @@
 
 namespace acfd {
 
+
 /// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
+/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of this class.
+ */
 class ExplicitSolver
 {
-	UTriMesh* m;
-	Matrix<double> m_inverse;		///< Left hand side (just the volume of the element for FV)
-	Matrix<double> r_domain;		///< Domain integral in the RHS, zero for FV
-	Matrix<double> r_boundary;		///< Boundary integral in the RHS, the only contributor to RHS in case of FV
-	int nvars;						///< number of conserved variables
-	Matrix<double> uinf;			///< Free-stream/reference condition
+	const UTriMesh* m;
+	amat::Matrix<acfd_real> m_inverse;		///< Left hand side (just the volume of the element for FV)
+	amat::Matrix<acfd_real> residual;			///< Right hand side for boundary integrals and source terms
+	int nvars;							///< number of conserved variables
+	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
 
 	/// stores \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face
-	Matrix<double> integ;
+	amat::Matrix<acfd_real> integ;
 
 	/// Flux (boundary integral) calculation context
 	InviscidFlux* inviflux;
@@ -46,65 +48,95 @@ class ExplicitSolver
 	/// Reconstruction context
 	Reconstruction* rec;
 
+	/// Limiter context
+	FaceDataComputation* lim;
+
 	/// Cell centers
-	Matrix<double> xc;
+	amat::Matrix<acfd_real> xc;
 	/// Cell centers
-	Matrix<double> yc;
+	amat::Matrix<acfd_real> yc;
 
 	/// Ghost cell centers
-	Matrix<double> xcg;
+	amat::Matrix<acfd_real> xcg;
 	/// Ghost cell centers
-	Matrix<double> ycg;
+	amat::Matrix<acfd_real> ycg;
 	/// Ghost cell flow quantities
-	Matrix<double> ug;
+	amat::Matrix<acfd_real> ug;
 
 	/// Number of Guass points per face
 	int ngaussf;
 	/// Faces' Gauss points - x coords
-	Matrix<double> gx;
+	amat::Matrix<acfd_real> gx;
 	/// Faces' Gauss points - y coords
-	Matrix<double> gy;
+	amat::Matrix<acfd_real> gy;
 
 	/// Left state at each face (assuming 1 Gauss point per face)
-	Matrix<double> uleft;
+	amat::Matrix<acfd_real> uleft;
 	/// Rigt state at each face (assuming 1 Gauss point per face)
-	Matrix<double> uright;
+	amat::Matrix<acfd_real> uright;
 	
 	/// vector of unknowns
-	Matrix<double> u;
+	amat::Matrix<acfd_real> u;
 	/// x-slopes
-	Matrix<double> dudx;
+	amat::Matrix<acfd_real> dudx;
 	/// y-slopes
-	Matrix<double> dudy;
+	amat::Matrix<acfd_real> dudy;
+
+	int order;					///< Formal order of accuracy of the scheme (1 or 2)
+
+	int solid_wall_id;			///< Boundary marker corresponding to solid wall
+	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 
 public:
 	ExplicitSolver();
 	~ExplicitSolver();
-	void loaddata(double Minf, double vinf, double a, double rhoinf);
-	void compute_ghostcell_states();
+	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
+
+	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the inteior state provided
+	/** \param[in] instates provides the left (interior state) for each boundary face
+	 * \param[out] bounstates will contain the right state of boundary faces
+	 *
+	 * Currently does not use characteristic BCs.
+	 * \todo Implement and test characteristic BCs
+	 */
+	void compute_boundary_states(const amat::Matrix<acfd_real>& instates, amat::Matrix<acfd_real>& bounstates);
+
+	/// Calls functions to assemble the [right hand side](@ref residual)
+	void compute_RHS();
+	
+	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects
+	void ExplicitSolver::compute_face_states()
+
+	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
+	void solve_rk1_steady(const acfd_real tol, const acfd_real cfl);
+
+	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);
 };
 
-ExplicitSolver::ExplicitSolver(UTriMesh* mesh)
+ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
 {
 	m = mesh;
-	cout << "EulerFV: Computing required mesh data...\n";
-	m->compute_jacobians();
-	m->compute_face_data();
-	cout << "EulerFV: Mesh data computed.\n";
+	order = _order;
+
+	std::cout << "ExplicitSolver: Setting up explicit solver for spatial order " << order << std::endl;
 
 	// for 2D Euler equations, we have 4 variables
 	nvars = 4;
 	// for upto second-order finite volume, we only need 1 Guass point per face
 	ngaussf = 1;
 
-	m_inverse.setup(m->gnelem(),1,ROWMAJOR);		// just a vector for FVM. For DG, this will be an array of Matrices
-	r_domain.setup(m->gnelem(),nvars,ROWMAJOR);
-	r_boundary.setup(m->gnelem(),nvars,ROWMAJOR);
-	u.setup(m->gnelem(), nvars, ROWMAJOR);
-	uinf.setup(1, nvars, ROWMAJOR);
-	integ.setup(m->gnelem(), 1,ROWMAJOR);
-	dudx.setup(m->gnelem(), nvars, ROWMAJOR);
-	dudy.setup(m->gnelem(), nvars, ROWMAJOR);
+	solid_wall_id = 2;
+	inflow_outflow_id = 4;
+
+	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
+	residual.setup(m->gnelem(),nvars);
+	u.setup(m->gnelem(), nvars);
+	uinf.setup(1, nvars);
+	integ.setup(m->gnelem(), 1);
+	dudx.setup(m->gnelem(), nvars);
+	dudy.setup(m->gnelem(), nvars);
+	uleft.setup(m->gnaface(), nvars);
+	uright.setup(m->gnaface(), nvars);
 
 	xc.setup(m->gnelem(),1);
 	yc.setup(m->gnelem(),1);
@@ -118,16 +150,20 @@ ExplicitSolver::ExplicitSolver(UTriMesh* mesh)
 		m_inverse(i) = 2.0/mesh->jacobians(i);
 
 	inviflux = new VanLeerFlux();
-	inviflux->setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &r_boundary, &integ, ngaussf);	// 1 gauss point
+	inviflux->setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &residual, &integ, ngaussf);	// 1 gauss point
 
 	rec = new GreenGaussReconstruction();
 	rec->setup(m, &u, &ug, &dudx, &dudy, &xc, &yc, &xcg, &ycg);
+
+	lim = new NoLimiter();
+	lim->setup(m, &u, &ug, &dudx, &dudy, &xcg, &ycg, &xc, &yc, &gx, &gy, &uleft, &uright);
 }
 
 ExplicitSolver::~ExplicitSolver()
 {
 	delete rec;
 	delete inviflux;
+	delete lim;
 }
 
 /// Function to feed needed data, and compute cell-centers
@@ -136,13 +172,13 @@ ExplicitSolver::~ExplicitSolver()
  * \param a Angle of attack (radians)
  * \param rhoinf Free stream density
  */
-void ExplicitSolver::loaddata(double Minf, double vinf, double a, double rhoinf)
+void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//cout << "EulerFV: loaddata(): Calculating initial data...\n";
-	double vx = vinf*cos(a);
-	double vy = vinf*sin(a);
-	double p = rhoinf*vinf*vinf/(g*Minf*Minf);
+	acfd_real vx = vinf*cos(a);
+	acfd_real vy = vinf*sin(a);
+	acfd_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
 	uinf(0,0) = rhoinf;		// should be 1
 	uinf(0,1) = rhoinf*vx;
 	uinf(0,2) = rhoinf*vy;
@@ -164,14 +200,14 @@ void ExplicitSolver::loaddata(double Minf, double vinf, double a, double rhoinf)
 	}
 
 	int ied, ig, ielem;
-	double x1, y1, x2, y2, xs, ys, xi, yi;
+	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
 
 	for(ied = 0; ied < m->gnbface(); ied++)
 	{
 		ielem = m->gintfac(ied,0); //int lel = ielem;
 		//jelem = m->gintfac(ied,1); //int rel = jelem;
-		double nx = m->ggallfa(ied,0);
-		double ny = m->ggallfa(ied,1);
+		acfd_real nx = m->ggallfa(ied,0);
+		acfd_real ny = m->ggallfa(ied,1);
 
 		xi = xc.get(ielem);
 		yi = yc.get(ielem);
@@ -212,40 +248,38 @@ void ExplicitSolver::loaddata(double Minf, double vinf, double a, double rhoinf)
 		y2 = m->gcoords(m->gintfac(ied,3),1);
 		for(ig = 0; ig < ngaussf; ig++)
 		{
-			gx(ied,ig) = x1 + (double)(ig+1)/(double)(ngaussf+1) * (x2-x1);
-			gy(ied,ig) = y1 + (double)(ig+1)/(double)(ngaussf+1) * (y2-y1);
+			gx(ied,ig) = x1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (x2-x1);
+			gy(ied,ig) = y1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (y2-y1);
 		}
 	}
 
 	cout << "ExplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
-/// Computes flow variables in ghost cells using characteristic boundary conditions
-void ExplicitSolver::compute_ghostcell_states()
+void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
 {
-	//cout << "EulerFV: compute_ghostcell_states()\n";
 	int lel, rel;
-	double nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
+	acfd_real nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
 		lel = m->gintfac(ied,0);
 		nx = m->ggallfa(ied,0);
 		ny = m->ggallfa(ied,1);
 
-		vni = (u.get(lel,1)*nx + u.get(lel,2)*ny)/u.get(lel,0);
-		pi = (g-1)*(u.get(lel,3) - 0.5*(pow(u.get(lel,1),2)+pow(u.get(lel,2),2))/u.get(lel,0));
-		ci = sqrt(g*pi/u.get(lel,0));
+		vni = (ins.get(lel,1)*nx + ins.get(lel,2)*ny)/ins.get(lel,0);
+		pi = (g-1)*(ins.get(lel,3) - 0.5*(pow(ins.get(lel,1),2)+pow(ins.get(lel,2),2))/ins.get(lel,0));
+		ci = sqrt(g*pi/ins.get(lel,0));
 		Mni = vni/ci;
 
-		if(m->ggallfa(ied,3) == 2)		// solid wall
+		if(m->ggallfa(ied,3) == solid_wall_id)
 		{
-			ug(ied,0) = u.get(lel,0);
-			ug(ied,1) = u.get(lel,1) - 2*vni*nx*ug(ied,0);
-			ug(ied,2) = u.get(lel,2) - 2*vni*ny*ug(ied,0);
-			ug(ied,3) = u.get(lel,3);
+			bs(ied,0) = ins.get(lel,0);
+			bs(ied,1) = ins.get(lel,1) - 2*vni*nx*bs(ied,0);
+			bs(ied,2) = ins.get(lel,2) - 2*vni*ny*bs(ied,0);
+			bs(ied,3) = ins.get(lel,3);
 		}
 
-		if(m->ggallfa(ied,3) == 4)		// inflow or outflow
+		if(m->ggallfa(ied,3) == inflow_outflow_id)
 		{
 			/*if(Mni < -1.0)
 			{
@@ -310,8 +344,134 @@ void ExplicitSolver::compute_ghostcell_states()
 
 			// Naive way
 			for(int i = 0; i < nvars; i++)
-				ug(ied,i) = uinf.get(0,i);
+				bs(ied,i) = uinf.get(0,i);
 		}
 	}
 }
+
+acfd_real ExplicitSolver::l2norm(const amat::Matrix<amat_real>* const v)
+{
+	acfd_real norm = 0;
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		norm += v->get(iel)*v->get(iel)*m->jacobians(iel)/2.0;
+	}
+	norm = sqrt(norm);
+	return norm;
 }
+
+void ExplicitSolver::compute_RHS()
+{
+	residual.zeros();
+	
+	if(order == 2)
+	{
+		rec->compute_gradients();
+		lim->compute_face_values();
+	}
+	else
+	{
+		// if order is 1, set the face data same as cell-centred data
+		
+		int ied, ielem, jelem, ivar;
+		for(ied = 0; ied < m->gnbface(); ied++)
+		{
+			ielem = m->gintfac(ied,0);
+			for(ivar = 0; ivar < nvars; ivar++)
+				uleft(ied,ivar) = u.get(ielem,ivar);
+		}
+		for(ied = m->gnbface(), ied < m->gnaface(); ied++)
+		{
+			ielem = m->gintfac(ied,0);
+			jelem = m->gintfac(ied,1);
+			for(ivar = 0; ivar < nvars; ivar++)
+			{
+				uleft(ied,ivar) = u.get(ielem,ivar);
+				uright(ied,ivar) = u.get(jelem,ivar);
+			}
+		}
+	}
+
+	compute_boundary_states(uleft,uright);
+
+	flux->compute_fluxes();
+}
+
+void ExplicitSolver::compute_face_states()
+{
+	int iface, ivar;
+}
+
+void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
+{
+	int step = 0;
+	double resi = 1.0;
+	double initres = 1.0;
+	amat::Matrix<amat_real>* err;
+	err = new amat::Matrix<amat_real>[nvars];
+	for(int i = 0; i<nvars; i++)
+		err[i].setup(m->gnelem(),1);
+	amat::Matrix<amat_real> res(nvars,1);
+	res.ones();
+	amat::Matrix<amat_real> dtm(m->gnelem(), 1);		// for local time-stepping
+	amat::Matrix<amat_real> uold(u.rows(), u.cols());
+
+	while(resi/initres > tol)// || step <= 10)
+	{
+		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
+		// reset fluxes
+		integ.zeros();		// reset CFL data
+
+		//calculate fluxes
+		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
+
+		/*if(step==0) {
+			//dudx.mprint(); dudy.mprint();
+			break;
+		}*/
+
+		//calculate dt based on CFL
+
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			dtm(iel) = cfl*(0.5*m->gjacobians(iel)/integ(iel));
+		}
+
+		uold = u;
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int i = 0; i < nvars; i++)
+			{
+				u(iel,i) += dtm(iel)*m_inverse.get(iel)*residual.get(iel,i);
+			}
+		}
+
+		//if(step == 0) { dudx.mprint();  break; }
+
+		for(int i = 0; i < nvars; i++)
+		{
+			err[i] = (u-uold).col(i);
+			res(i) = l2norm(&err[i]);
+		}
+		resi = res.max();
+
+		if(step == 0)
+			initres = resi;
+
+		if(step % 10 == 0)
+			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
+
+		step++;
+		/*double totalenergy = 0;
+		for(int i = 0; i < m->gnelem(); i++)
+			totalenergy += u(i,3)*m->jacobians(i);
+		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+		//if(step == 10000) break;
+	}
+
+	//calculate gradients
+	rec->compute_gradients();
+	delete [] err;
+}
+
+}	// end namespace

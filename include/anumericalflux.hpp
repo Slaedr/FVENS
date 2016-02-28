@@ -36,12 +36,12 @@ const double g = 1.4;
  */
 class InviscidFlux
 {
-	UTriMesh* m;
+	const UTriMesh* m;
 	int nvars;
 	/// left-side state for each face
-	amat::Matrix<double>* ul;
+	const amat::Matrix<double>* ul;
 	/// right-side state for each face
-	amat::Matrix<double>* ur;
+	const amat::Matrix<double>* ur;
 	/// Stores total integral of flux for each element
 	amat::Matrix<double>* rhsel;
 	/// stores int_{\partial \Omega_I} ( |v_n| + c) d \Gamma, where v_n and c are average values for each element, needed for computation of CFL number
@@ -57,13 +57,13 @@ public:
 	 * \param[out] rhs_ele is the vector containing the RHS for each element. The computed fluxes are summed into this vector.
 	 * \param[out] cfl_denom contains the denominator of the eigenvalue magnitude estimation for the purpose of computing CFL number.
 	 */
-	virtual void setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
+	virtual void setup(const UTriMesh* mesh, const amat::Matrix<double>* uleft, const amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
 
 	/// Actually carries out the flux computation
 	virtual void compute_fluxes() = 0;
 };
 
-void InviscidFlux::setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom)
+void InviscidFlux::setup(const UTriMesh* mesh, const amat::Matrix<double>* uleft, const amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom)
 {
 	m = mesh;
 	ul = uleft;
@@ -81,11 +81,11 @@ class VanLeerFlux : public InviscidFlux
 	amat::Matrix<double> fjminus;
 
 public:
-	void setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
+	void setup(const UTriMesh* mesh, const amat::Matrix<double>* uleft, const amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom);
 	void compute_fluxes();
 };
 
-VanLeerFlux::setup(UTriMesh* mesh, amat::Matrix<double>* uleft, amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom)
+VanLeerFlux::setup(const UTriMesh* mesh, const amat::Matrix<double>* uleft, const amat::Matrix<double>* uright, amat::Matrix<double>* rhs_ele, amat::Matrix<double>* cfl_denom)
 {
 	InviscidFlux::setup(mesh, uleft, uright, rhs_ele, cfl_denom);
 	fiplus.setup(ul->cols(), 1);
