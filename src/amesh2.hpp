@@ -454,19 +454,19 @@ public:
 
 	// Returns x or y coordinate (depending on dim) of node number pointno. Numbering of points begins
 	// from 0. Numbering of dimensions begins from 0.
-	double gcoords(int pointno, int dim)
+	double gcoords(int pointno, int dim) const
 	{
 		return coords.get(pointno,dim);
 	}
 
 	// Returns global node number of locnode th local node of element number elemno. Numberings for both
 	// begins from 0
-	int ginpoel(int elemno, int locnode)
+	int ginpoel(int elemno, int locnode) const
 	{
 		return inpoel.get(elemno, locnode);
 	}
 
-	int gbface(int faceno, int val)
+	int gbface(int faceno, int val) const
 	{
 		return bface.get(faceno, val);
 	}
@@ -483,23 +483,24 @@ public:
 	Matrix<double>* getcoords()
 	{ return &coords; }
 
-	int gesup(int i) { return esup.get(i); }
-	int gesup_p(int i) { return esup_p.get(i); }
-	int gpsup(int i) { return psup.get(i); }
-	int gpsup_p(int i) { return psup_p.get(i); }
-	int gesuel(int ielem, int jnode) { return esuel.get(ielem, jnode); }		//returns element number at face opposite to node number jnode
-	double gjacobians(int ielem) { return jacobians(ielem,0); }
+	int gesup(int i) const { return esup.get(i); }
+	int gesup_p(int i) const { return esup_p.get(i); }
+	int gpsup(int i) const { return psup.get(i); }
+	int gpsup_p(int i) const { return psup_p.get(i); }
+	/// returns element number at face opposite to node number jnode
+	int gesuel(int ielem, int jnode) const { return esuel.get(ielem, jnode); }
+	double gjacobians(int ielem) const { return jacobians.get(ielem,0); }
 
-	int gnpoin() { return npoin; }
-	int gnelem() { return nelem; }
-	int gnface() { return nface; }
-	int gnbface() { return nbface; }
-	int gnnode() { return nnode; }
-	int gndim() { return ndim; }
-	int gnaface() {return naface; }
-	int gnfael() { return nfael; }
-	int gnnofa() { return nnofa; }
-	int gnbpoin() { cout << "UTriMesh: ! Invalid access to 'gnbpoin()'!!" << endl; return nbpoin; }
+	int gnpoin() const { return npoin; }
+	int gnelem() const { return nelem; }
+	int gnface() const { return nface; }
+	int gnbface() const { return nbface; }
+	int gnnode() const { return nnode; }
+	int gndim() const { return ndim; }
+	int gnaface() const {return naface; }
+	int gnfael() const { return nfael; }
+	int gnnofa() const { return nnofa; }
+	int gnbpoin() const { cout << "UTriMesh: ! Invalid access to 'gnbpoin()'!!" << endl; return nbpoin; }
 
 	void compute_jacobians()
 	{
@@ -517,13 +518,13 @@ public:
 		}
 	}
 
-	void detect_negative_jacobians(ofstream& out)
+	void detect_negative_jacobians(ofstream& out) const
 	{
 		bool flagj = false;
 		for(int i = 0; i < nelem; i++)
 		{
-			if(jacobians(i,0) <= 1e-15) {
-				out << i << " " << jacobians(i,0) << '\n';
+			if(jacobians.get(i,0) <= 1e-15) {
+				out << i << " " << jacobians.get(i,0) << '\n';
 				flagj = true;
 			}
 		}
@@ -690,11 +691,11 @@ public:
 		}
 	}
 
-	int gintfac(int face, int i) { return intfac.get(face,i); }
-	double ggallfa(int elem, int i) {return gallfa.get(elem,i); }
+	int gintfac(int face, int i) const { return intfac.get(face,i); }
+	double ggallfa(int elem, int i) const {return gallfa.get(elem,i); }
 
 	// Returns an array whose ith element is 1 if the ith node is a boundary node
-	Matrix<int> bflags()
+	Matrix<int> bflags() const
 	{
 		Matrix<int> flags(npoin, 1);
 		flags.zeros();
@@ -702,8 +703,8 @@ public:
 
 		for(int b = 0; b < nface; b++)
 		{
-			ip[0] = bface(b,0);
-			ip[1] = bface(b,1);
+			ip[0] = bface.get(b,0);
+			ip[1] = bface.get(b,1);
 			flags(ip[0],0) = 1;
 			flags(ip[1],0) = 1;
 		}
@@ -760,7 +761,7 @@ public:
 	}
 
 	/// Writes mesh to file in Gmsh2 format
-	void writeGmsh2(string mfile)
+	void writeGmsh2(string mfile) const
 	{
 		ofstream outf(mfile);
 
@@ -768,7 +769,7 @@ public:
 		outf << "$Nodes\n" << npoin << '\n';
 		for(int ip = 0; ip < npoin; ip++)
 		{
-			outf << ip+1 << " " << coords(ip,0) << " " << coords(ip,1) << " " << 0 << '\n';
+			outf << ip+1 << " " << coords.get(ip,0) << " " << coords.get(ip,1) << " " << 0 << '\n';
 		}
 		outf << "$Elements\n" << nelem+nface << '\n';
 		// boundary faces first
@@ -776,14 +777,14 @@ public:
 		{
 			outf << iface+1 << " 1 2 0 1";
 			for(int i = 0; i < nnofa; i++)
-				outf << " " << bface(iface,i)+1;
+				outf << " " << bface.get(iface,i)+1;
 			outf << '\n';
 		}
 		for(int iel = 0; iel < nelem; iel++)
 		{
 			outf << nface+iel+1 << " 2 2 0 2";
 			for(int i = 0; i < nnode; i++)
-				outf << " " << inpoel(iel,i)+1;
+				outf << " " << inpoel.get(iel,i)+1;
 			outf << '\n';
 		}
 		outf << "$EndElements\n";

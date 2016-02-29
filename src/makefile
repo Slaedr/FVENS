@@ -1,13 +1,14 @@
+PREFIX = ../testcases/
 #GPP = g++
-INC_DIR = ../include/
+INC_DIR = .
 OPTIONS = -std=c++11 -ggdb
 	
 euler:
-	$(GPP) eulerdr.cpp -o euler.out -std=c++11 -ggdb -I$(INC_DIR)
+	$(GPP) eulerdr.cpp -o $(PREFIX)euler.out $(OPTIONS) -I$(INC_DIR)
 
-eulerm:
-	$(GPP) euler-muscl-dr.cpp -o eulerm.out $(OPTIONS) -I$(INC_DIR)
+fvens:
+	$(GPP) $(OPTIONS) -I$(INC_DIR) explicitsolver.cpp -o $(PREFIX)fvens.out
 
-eulermp:
-	$(GPP) euler-muscl-dr.cpp -o eulermp.out -fopenmp $(OPTIONS) -I$(INC_DIR)
+fvensp:
+	$(GPP) -fopenmp $(OPTIONS) -I$(INC_DIR) explicitsolver.cpp -o $(PREFIX)fvensp.out
 

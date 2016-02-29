@@ -8,41 +8,57 @@
 #include <vector>
 #endif
 
+#ifndef __ACONSTANTS_H
+#include <aconstants.hpp>
+#endif
+
+#ifndef __AMATRIX2_H
+#include <amatrix2.hpp>
+#endif
+
+#ifndef __AMESH2D_H
+#include <amesh2.hpp>
+#endif
+
 #define __ARECONSTRUCTION_H 1
 
 namespace acfd
 {
 
 /// Abstract class for variable gradient reconstruction schemes
+/** For this, we need ghost cell-centered values of flow variables.
+ */
 class Reconstruction
 {
 protected:
-	UTriMesh* m;
+	const UTriMesh* m;
 	/// Cell centers' x-coords
-	amat::Matrix<double>* xc;
+	const amat::Matrix<double>* xc;
 	/// Cell centers' y-coords
-	amat::Matrix<double>* yc;
+	const amat::Matrix<double>* yc;
 	/// Ghost cell centers' x-coords
-	amat::Matrix<double>* xcg;
+	const amat::Matrix<double>* xcg;
 	/// Ghost cell centers' y-coords
-	amat::Matrix<double>* ycg;
+	const amat::Matrix<double>* ycg;
 	/// Number of converved variables
 	int nvars;
 	/// Cell-centered flow vaiables
-	amat::Matrix<double>* u;
+	const amat::Matrix<double>* u;
 	/// flow variables at ghost cells
-	amat::Matrix<double>* ug;
+	const amat::Matrix<double>* ug;
 	/// Cell-centred x-gradients
 	amat::Matrix<double>* dudx;
 	/// Cell-centred y-gradients
 	amat::Matrix<double>* dudy;
 
 public:
-	virtual void setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg);
+	virtual void setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, 
+			const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg);
 	virtual void compute_gradients() = 0;
 };
 
-void Reconstruction::setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg)
+void Reconstruction::setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, 
+		const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg)
 {
 	m = mesh;
 	u = unk;

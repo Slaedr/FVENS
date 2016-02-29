@@ -3,6 +3,10 @@
  * @date Feb 24, 2016
  */
 
+#ifndef __ACONSTANTS_H
+#include <aconstants.hpp>
+#endif
+
 #ifndef __AMATRIX2_H
 #include <amatrix2.hpp>
 #endif
@@ -39,7 +43,7 @@ class ExplicitSolver
 	int nvars;							///< number of conserved variables
 	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
 
-	/// stores \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face
+	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
 	amat::Matrix<acfd_real> integ;
 
 	/// Flux (boundary integral) calculation context
@@ -82,17 +86,20 @@ class ExplicitSolver
 	/// y-slopes
 	amat::Matrix<acfd_real> dudy;
 
+	amat::Matrix<acfd_real> scalars;		///< Holds density, Mach number and pressure for each cell
+	amat::Matrix<acfd_real> velocities;		///< Holds velocity components for each cell
+
 	int order;					///< Formal order of accuracy of the scheme (1 or 2)
 
 	int solid_wall_id;			///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 
 public:
-	ExplicitSolver();
+	ExplicitSolver(const UTriMesh* mesh, const int _order);
 	~ExplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
-	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the inteior state provided
+	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
 	 * \param[out] bounstates will contain the right state of boundary faces
 	 *
@@ -105,12 +112,22 @@ public:
 	void compute_RHS();
 	
 	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects
-	void ExplicitSolver::compute_face_states()
+	void compute_face_states();
 
 	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
 	void solve_rk1_steady(const acfd_real tol, const acfd_real cfl);
 
 	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);
+	
+	/// Compute cell-centred quantities to export
+	void postprocess_cell();
+
+	/// Compute norm of cell-centered entropy production
+	/// Call aftr computing pressure etc \sa postprocess_cell
+	acfd_real compute_entropy_cell();
+
+	amat::Matrix<acfd_real> getscalars() const;
+	amat::Matrix<acfd_real> getvelocities() const;
 };
 
 ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
@@ -147,10 +164,10 @@ ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
 	gy.setup(m->gnaface(), ngaussf);
 
 	for(int i = 0; i < m->gnelem(); i++)
-		m_inverse(i) = 2.0/mesh->jacobians(i);
+		m_inverse(i) = 2.0/mesh->gjacobians(i);
 
 	inviflux = new VanLeerFlux();
-	inviflux->setup(m, &u, &dudx, &dudy, &w2x2, &w2y2, &w2xy, &uinf, &residual, &integ, ngaussf);	// 1 gauss point
+	inviflux->setup(m, &uleft, &uright, &residual, &integ);	// 1 gauss point
 
 	rec = new GreenGaussReconstruction();
 	rec->setup(m, &u, &ug, &dudx, &dudy, &xc, &yc, &xcg, &ycg);
@@ -349,12 +366,12 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 	}
 }
 
-acfd_real ExplicitSolver::l2norm(const amat::Matrix<amat_real>* const v)
+acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
 {
 	acfd_real norm = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
-		norm += v->get(iel)*v->get(iel)*m->jacobians(iel)/2.0;
+		norm += v->get(iel)*v->get(iel)*m->gjacobians(iel)/2.0;
 	}
 	norm = sqrt(norm);
 	return norm;
@@ -364,23 +381,27 @@ void ExplicitSolver::compute_RHS()
 {
 	residual.zeros();
 	
+	int ied, ielem, jelem, ivar;
+
+	// first, set cell-centered values of boundary cells as left-side values of boundary faces
+	for(ied = 0; ied < m->gnbface(); ied++)
+	{
+		ielem = m->gintfac(ied,0);
+		for(ivar = 0; ivar < nvars; ivar++)
+			uleft(ied,ivar) = u.get(ielem,ivar);
+	}
+
 	if(order == 2)
 	{
+		compute_boundary_states(uleft, ug);
 		rec->compute_gradients();
 		lim->compute_face_values();
 	}
 	else
 	{
-		// if order is 1, set the face data same as cell-centred data
+		// if order is 1, set the face data same as cell-centred data for all faces
 		
-		int ied, ielem, jelem, ivar;
-		for(ied = 0; ied < m->gnbface(); ied++)
-		{
-			ielem = m->gintfac(ied,0);
-			for(ivar = 0; ivar < nvars; ivar++)
-				uleft(ied,ivar) = u.get(ielem,ivar);
-		}
-		for(ied = m->gnbface(), ied < m->gnaface(); ied++)
+		for(ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
 			ielem = m->gintfac(ied,0);
 			jelem = m->gintfac(ied,1);
@@ -394,27 +415,22 @@ void ExplicitSolver::compute_RHS()
 
 	compute_boundary_states(uleft,uright);
 
-	flux->compute_fluxes();
-}
-
-void ExplicitSolver::compute_face_states()
-{
-	int iface, ivar;
+	inviflux->compute_fluxes();
 }
 
 void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 {
 	int step = 0;
-	double resi = 1.0;
-	double initres = 1.0;
-	amat::Matrix<amat_real>* err;
-	err = new amat::Matrix<amat_real>[nvars];
+	acfd_real resi = 1.0;
+	acfd_real initres = 1.0;
+	amat::Matrix<acfd_real>* err;
+	err = new amat::Matrix<acfd_real>[nvars];
 	for(int i = 0; i<nvars; i++)
 		err[i].setup(m->gnelem(),1);
-	amat::Matrix<amat_real> res(nvars,1);
+	amat::Matrix<acfd_real> res(nvars,1);
 	res.ones();
-	amat::Matrix<amat_real> dtm(m->gnelem(), 1);		// for local time-stepping
-	amat::Matrix<amat_real> uold(u.rows(), u.cols());
+	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
+	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
 
 	while(resi/initres > tol)// || step <= 10)
 	{
@@ -462,7 +478,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		/*double totalenergy = 0;
+		/*acfd_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
 		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
@@ -470,8 +486,65 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 	}
 
 	//calculate gradients
-	rec->compute_gradients();
+	//rec->compute_gradients();
 	delete [] err;
+}
+
+void ExplicitSolver::postprocess_cell()
+{
+	cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
+	scalars.setup(m->gnelem(), 3, amat::COLMAJOR);
+	velocities.setup(m->gnelem(), 2, amat::ROWMAJOR);
+	amat::Matrix<acfd_real> c(m->gnelem(), 1, amat::ROWMAJOR);
+
+	amat::Matrix<acfd_real> d = u.col(0);
+	scalars.replacecol(0, d);		// populate density data
+	//cout << "EulerFV: postprocess(): Written density\n";
+
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		velocities(iel,0) = u.get(iel,1)/u.get(iel,0);
+		velocities(iel,1) = u.get(iel,2)/u.get(iel,0);
+		//velocities(iel,0) = dudx(iel,1);
+		//velocities(iel,1) = dudy(iel,1);
+		acfd_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
+		scalars(iel,2) = d(iel)*(g-1) * (u.get(iel,3)/d(iel) - 0.5*vmag2);		// pressure
+		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
+		scalars(iel,1) = sqrt(vmag2)/c(iel);
+	}
+	cout << "EulerFV: postprocess_cell(): Done.\n";
+}
+
+acfd_real ExplicitSolver::compute_entropy_cell()		// call after postprocess_cell
+{
+	acfd_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
+	acfd_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
+
+	amat::Matrix<acfd_real> s_err(m->gnelem(),1);
+	acfd_real error = 0;
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		s_err(iel) = (scalars(iel,2)/pow(scalars(iel,0),g) - sinf)/sinf;
+		error += s_err(iel)*s_err(iel)*m->gjacobians(iel)/2.0;
+	}
+	error = sqrt(error);
+
+	//acfd_real h = (m->jacobians()).min();
+	acfd_real h = 1/sqrt(m->gnelem());
+
+	cout << "EulerFV:   " << log(h) << "  " << log(error) << endl;
+
+	return error;
+}
+
+amat::Matrix<acfd_real> ExplicitSolver::getscalars() const
+{
+	return scalars;
+}
+
+amat::Matrix<acfd_real> ExplicitSolver::getvelocities() const
+{
+	return velocities;
 }
 
 }	// end namespace

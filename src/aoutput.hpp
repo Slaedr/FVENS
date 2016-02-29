@@ -241,7 +241,7 @@ void writeScalarsVectorToVtu_CellData(string fname, UTriMesh m, Matrix<double> x
 	cout << "Vtu file written to file " << fname << ".\n";
 }
 
-void writeScalarsVectorToVtu(string fname, UTriMesh m, Matrix<double> x, string scaname[], Matrix<double> y, string vecname)
+void writeScalarsVectorToVtu(string fname, const UTriMesh& m, Matrix<double>& x, string scaname[], Matrix<double>& y, string vecname)
 {
 	cout << "aoutput: Writing vtu output...\n";
 	ofstream out(fname);
