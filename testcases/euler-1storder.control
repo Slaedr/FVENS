@@ -1,11 +1,11 @@
 -mesh_file
-../data/feflo.domn.cylinder.vfine
+../data/feflo.domn.cylinder.coarse
 -output_file
-../data/vfine-m.vtu
+../data/coarse.vtu
 -CFL
-0.5
+0.75
 -Total_time
-0.1
+0.5
 -Tolerance
 1e-6
 -M_infinity
@@ -17,7 +17,7 @@
 -rho_infinity
 1.0
 -formal-spatial-order
-2
+1
 
 smallmesh.domn
 feflo.domn.naca0012w

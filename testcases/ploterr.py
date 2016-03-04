@@ -25,6 +25,7 @@ sigx2 = (data[:,0]*data[:,0]).sum()
 psigxy = (data[:,1]*data[:,0]).sum()
 
 pslope = (n*psigxy-sigx*psigy)/(n*sigx2-sigx**2)
+print("Slope is " + str(pslope))
 
 plt.plot(data[:,0],data[:,1],'o-')
 plt.title("Grid-refinement Study- " + fname + ", slope = "+str(pslope))

@@ -279,26 +279,28 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 	acfd_real nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
-		lel = m->gintfac(ied,0);
+		//lel = m->gintfac(ied,0);
 		nx = m->ggallfa(ied,0);
 		ny = m->ggallfa(ied,1);
 
-		vni = (ins.get(lel,1)*nx + ins.get(lel,2)*ny)/ins.get(lel,0);
-		pi = (g-1)*(ins.get(lel,3) - 0.5*(pow(ins.get(lel,1),2)+pow(ins.get(lel,2),2))/ins.get(lel,0));
-		ci = sqrt(g*pi/ins.get(lel,0));
+		vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
+		pi = (g-1)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
+		ci = sqrt(g*pi/ins.get(ied,0));
 		Mni = vni/ci;
 
 		if(m->ggallfa(ied,3) == solid_wall_id)
 		{
-			bs(ied,0) = ins.get(lel,0);
-			bs(ied,1) = ins.get(lel,1) - 2*vni*nx*bs(ied,0);
-			bs(ied,2) = ins.get(lel,2) - 2*vni*ny*bs(ied,0);
-			bs(ied,3) = ins.get(lel,3);
+			bs(ied,0) = ins.get(ied,0);
+			bs(ied,1) = ins.get(ied,1) - 2*vni*nx*bs(ied,0);
+			bs(ied,2) = ins.get(ied,2) - 2*vni*ny*bs(ied,0);
+			bs(ied,3) = ins.get(ied,3);
 		}
 
 		if(m->ggallfa(ied,3) == inflow_outflow_id)
 		{
-			/*if(Mni < -1.0)
+			/*
+			 * here, make sure u(lel) etc are replaced by ins(ied) !! *********
+			if(Mni < -1.0)
 			{
 				for(int i = 0; i < nvars; i++)
 					ug(0,i) = uinf.get(0,i);
@@ -458,7 +460,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 		{
 			for(int i = 0; i < nvars; i++)
 			{
-				u(iel,i) += dtm(iel)*m_inverse.get(iel)*residual.get(iel,i);
+				u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
 			}
 		}
 
@@ -530,7 +532,7 @@ acfd_real ExplicitSolver::compute_entropy_cell()		// call after postprocess_cell
 	error = sqrt(error);
 
 	//acfd_real h = (m->jacobians()).min();
-	acfd_real h = 1/sqrt(m->gnelem());
+	acfd_real h = 1.0/sqrt(m->gnelem());
 
 	cout << "EulerFV:   " << log(h) << "  " << log(error) << endl;
 

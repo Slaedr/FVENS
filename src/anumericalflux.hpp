@@ -97,10 +97,10 @@ void VanLeerFlux::setup(const UTriMesh* mesh, const amat::Matrix<double>* uleft,
 
 void VanLeerFlux::compute_fluxes()
 {
-	double nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
+	acfd_real nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
 	int lel, rel, ied;
 
-	for(int ied = 0; ied < m->gnaface(); ied++)
+	for(ied = 0; ied < m->gnaface(); ied++)
 	{
 		nx = m->ggallfa(ied,0);
 		ny = m->ggallfa(ied,1);
@@ -158,7 +158,7 @@ void VanLeerFlux::compute_fluxes()
 		}
 
 		//Update the flux vector
-		for(int i = 0; i < 4; i++)
+		for(int i = 0; i < nvars; i++)
 			fluxes(ied, i) = (fiplus(i) + fjminus(i));
 
 		//TODO: Integrate the fluxes here using Quadrature2D class; not needed in case of FVM.
@@ -168,9 +168,7 @@ void VanLeerFlux::compute_fluxes()
 		// scatter the flux to elements' boundary integrands
 		for(int i = 0; i < nvars; i++)
 		{
-			//rhsel->operator()(lel,i) -= fluxes(ied,i);
 			(*rhsel)(lel,i) -= fluxes(ied,i);
-			//rhsel->operator()(rel,i) += fluxes(ied,i);
 			if(rel >= 0 && rel < m->gnelem())
 				(*rhsel)(rel,i) += fluxes(ied,i);
 		}
