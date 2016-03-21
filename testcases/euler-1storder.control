@@ -1,7 +1,7 @@
 -mesh_file
-../data/feflo.domn.cylinder.coarse
+../data/feflo.domn.cylinder.medium
 -output_file
-../data/coarse.vtu
+../data/medium.vtu
 -CFL
 0.75
 -Total_time

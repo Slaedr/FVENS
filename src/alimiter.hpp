@@ -25,12 +25,9 @@ protected:
 	const amat::Matrix<acfd_real>* ug;			///< Cell-centered ghost cell flow data
 	const amat::Matrix<acfd_real>* dudx;
 	const amat::Matrix<acfd_real>* dudy;
-	const amat::Matrix<acfd_real>* xb;
-	const amat::Matrix<acfd_real>* yb;
-	const amat::Matrix<acfd_real>* xi;
-	const amat::Matrix<acfd_real>* yi;
-	const amat::Matrix<acfd_real>* gx;		/// x-coords of gauss points of each face
-	const amat::Matrix<acfd_real>* gy;		/// y-coordinates of gauss points of each face
+	const amat::Matrix<acfd_real>* rb;			///< coords of cell centers of ghost cells
+	const amat::Matrix<acfd_real>* ri;			///< coords of cell centers of real cells
+	const amat::Matrix<acfd_real>* gr;		/// coords of gauss points of each face
 	amat::Matrix<acfd_real>* ufl;			///< left face flow data
 	amat::Matrix<acfd_real>* ufr;			///< right face flow data
 	int nvars;								///< Number of flow variables
@@ -45,15 +42,15 @@ protected:
 
 public:
     void setup(const UTriMesh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-			const amat::Matrix<acfd_real>* x_ghost_centres, const amat::Matrix<acfd_real>* y_ghost_centres, const amat::Matrix<acfd_real>* x_centres, const amat::Matrix<acfd_real>* y_centres, 
-			const amat::Matrix<acfd_real>* gauss_x, const amat::Matrix<acfd_real>* gauss_y, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
+			const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
+			const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
 	virtual void compute_face_values() = 0;
 };
 
 void FaceDataComputation::setup(const UTriMesh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
 		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-		const amat::Matrix<acfd_real>* x_ghost_centres, const amat::Matrix<acfd_real>* y_ghost_centres, const amat::Matrix<acfd_real>* x_centres, const amat::Matrix<acfd_real>* y_centres, 
-		const amat::Matrix<acfd_real>* gauss_x, const amat::Matrix<acfd_real>* gauss_y, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres,
+		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
 {
 	m = mesh;
 	u = unknowns;
@@ -61,15 +58,12 @@ void FaceDataComputation::setup(const UTriMesh* mesh, const amat::Matrix<acfd_re
 	nvars = u->cols();
 	dudx = x_deriv;
 	dudy = y_deriv;
-	xi = x_centres;
-	yi = y_centres;
-	xb = x_ghost_centres;       // contains x-coord of right "cell centroid" of each boundary edge
-	yb = y_ghost_centres;       // contains y-coord of right "cell centroid" of each boundary edge
-	gx = gauss_x;
-	gy = gauss_y;
+	ri = c_centres;
+	rb = ghost_centres;       // contains x-coord of right "cell centroid" of each boundary edge
+	gr = gauss_r;
 	ufl = uface_left;
 	ufr = uface_right;
-	ng = gx->cols();
+	ng = gr[0].rows();
 }
 
 /// Calculate values of variables at left and right sides of each face based on computed derivatives but without limiter.
@@ -96,8 +90,8 @@ void NoLimiter::compute_face_values()
 			for(int i = 0; i < nvars; i++)
 			{
 
-				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
-				(*ufr)(ied,i) = u->get(jelem,i) + dudx->get(jelem,i)*(gx->get(ied,0)-xi->get(jelem)) + dudy->get(jelem,i)*(gy->get(ied,0)-yi->get(jelem));
+				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+				(*ufr)(ied,i) = u->get(jelem,i) + dudx->get(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) + dudy->get(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
 			}
 		}
 	}
@@ -112,7 +106,7 @@ void NoLimiter::compute_face_values()
 		for(int ig = 0; ig < ng; ig++)
 		{
 			for(int i = 0; i < nvars; i++)
-				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
+				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
 		}
 	}
 }
@@ -128,22 +122,21 @@ class VanAlbadaLimiter : public FaceDataComputation
 public:
 	void setup(const UTriMesh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
 		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-		const amat::Matrix<acfd_real>* x_ghost_centres, const amat::Matrix<acfd_real>* y_ghost_centres, const amat::Matrix<acfd_real>* x_centres, const amat::Matrix<acfd_real>* y_centres, 
-		const amat::Matrix<acfd_real>* gauss_x, const amat::Matrix<acfd_real>* gauss_y, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
+		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* r_centres,
+		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
     void compute_limiters();
     /// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
 	void compute_face_values();
-	/// Computes face values using my own simplistic limiting (probably bogus)
-    void compute_reg_face_values();
+	// Computes face values using my own simplistic limiting (probably bogus)
+    //void compute_reg_face_values();
 };
 
 void VanAlbadaLimiter::setup(const UTriMesh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
 	const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-	const amat::Matrix<acfd_real>* x_ghost_centres, const amat::Matrix<acfd_real>* y_ghost_centres, const amat::Matrix<acfd_real>* x_centres, const amat::Matrix<acfd_real>* y_centres, 
-	const amat::Matrix<acfd_real>* gauss_x, const amat::Matrix<acfd_real>* gauss_y, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+	const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* r_centres, 
+	const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
 {
-	FaceDataComputation::setup(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, x_ghost_centres, y_ghost_centres, x_centres, y_centres, 
-		gauss_x, gauss_y, uface_left, uface_right);
+	FaceDataComputation::setup(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, r_centres, gauss_r, uface_left, uface_right);
 	eps = 1e-8;
 	k = 1.0/3.0;
 	phi_l.setup(m->gnaface(), nvars);
@@ -159,7 +152,7 @@ void VanAlbadaLimiter::compute_limiters()
 		amat::Matrix<acfd_real> deltam(nvars,1);
 		for(i = 0; i < nvars; i++)
 		{
-			deltam(i) = 2 * ( dudx->get(lel,i)*(xb->get(ied)-xi->get(lel)) + dudy->get(lel,i)*(yb->get(ied)-yi->get(lel)) ) - (ug->get(ied,i) - u->get(lel,i));
+			deltam(i) = 2 * ( dudx->get(lel,i)*(rb->get(ied,0)-ri->get(lel,0)) + dudy->get(lel,i)*(rb->get(ied,1)-ri->get(lel,1)) ) - (ug->get(ied,i) - u->get(lel,i));
 			phi_l(ied,i) = (2*deltam(i) * (ug->get(ied,i) - u->get(lel,i)) + eps) / (deltam(i)*deltam(i) + (ug->get(ied,i) - u->get(lel,i))*(ug->get(ied,i) - u->get(lel,i)) + eps);
 			if( phi_l(ied,i) < 0.0) phi_l(ied,i) = 0.0;
 		}
@@ -173,8 +166,8 @@ void VanAlbadaLimiter::compute_limiters()
 		amat::Matrix<acfd_real> deltap(nvars,1);
 		for(i = 0; i < nvars; i++)
 		{
-			deltam(i) = 2 * ( dudx->get(lel,i)*(xi->get(rel)-xi->get(lel)) + dudy->get(lel,i)*(yi->get(rel)-yi->get(lel)) ) - (u->get(rel,i) - u->get(lel,i));
-			deltap(i) = 2 * ( dudx->get(rel,i)*(xi->get(rel)-xi->get(lel)) + dudy->get(rel,i)*(yi->get(rel)-yi->get(lel)) ) - (u->get(rel,i) - u->get(lel,i));
+			deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
+			deltap(i) = 2 * ( dudx->get(rel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(rel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
 
 			phi_l(ied,i) = (2*deltam(i) * (u->get(rel,i) - u->get(lel,i)) + eps) / (deltam(i)*deltam(i) + (u->get(rel,i) - u->get(lel,i))*(u->get(rel,i) - u->get(lel,i)) + eps);
 			if( phi_l(ied,i) < 0.0) phi_l(ied,i) = 0.0;
@@ -205,8 +198,8 @@ void VanAlbadaLimiter::compute_face_values()
 		{
 			for(i = 0; i < nvars; i++)
 			{
-				deltam(i) = 2 * ( dudx->get(lel,i)*(xi->get(rel)-xi->get(lel)) + dudy->get(lel,i)*(yi->get(rel)-yi->get(lel)) ) - (u->get(rel,i) - u->get(lel,i));
-				deltap(i) = 2 * ( dudx->get(rel,i)*(xi->get(rel)-xi->get(lel)) + dudy->get(rel,i)*(yi->get(rel)-yi->get(lel)) ) - (u->get(rel,i) - u->get(lel,i));
+				deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
+				deltap(i) = 2 * ( dudx->get(rel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(rel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
 
 				(*ufl)(ied,i) = u->get(ielem,i) + phi_l.get(ied,i)/4.0*( (1-k*phi_l.get(ied,i))*deltam.get(i) + (1+k*phi_l.get(ied,i))*(u->get(rel,i) - u->get(lel,i)) );
 				(*ufr)(ied,i) = u->get(jelem,i) + phi_r.get(ied,i)/4.0*( (1-k*phi_r.get(ied,i))*deltap(i) + (1+k*phi_r.get(ied,i))*(u->get(rel,i) - u->get(lel,i)) );
@@ -215,7 +208,7 @@ void VanAlbadaLimiter::compute_face_values()
 	}
 }
 
-void VanAlbadaLimiter::compute_reg_face_values()
+/*void VanAlbadaLimiter::compute_reg_face_values()
 {
 	// Calculate values of variables at left and right sides of each face based on computed derivatives
 	// (a) internal faces
@@ -253,7 +246,7 @@ void VanAlbadaLimiter::compute_reg_face_values()
 
 		}
 	}
-}
+}*/
 
 /*class BarthJaspersonLimiter
 {

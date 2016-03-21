@@ -42,6 +42,7 @@ class ExplicitSolver
 	amat::Matrix<acfd_real> residual;			///< Right hand side for boundary integrals and source terms
 	int nvars;							///< number of conserved variables
 	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
+	acfd_real g;							///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
 	amat::Matrix<acfd_real> integ;
@@ -56,23 +57,17 @@ class ExplicitSolver
 	FaceDataComputation* lim;
 
 	/// Cell centers
-	amat::Matrix<acfd_real> xc;
-	/// Cell centers
-	amat::Matrix<acfd_real> yc;
+	amat::Matrix<acfd_real> rc;
 
 	/// Ghost cell centers
-	amat::Matrix<acfd_real> xcg;
-	/// Ghost cell centers
-	amat::Matrix<acfd_real> ycg;
+	amat::Matrix<acfd_real> rcg;
 	/// Ghost cell flow quantities
 	amat::Matrix<acfd_real> ug;
 
 	/// Number of Guass points per face
 	int ngaussf;
-	/// Faces' Gauss points - x coords
-	amat::Matrix<acfd_real> gx;
-	/// Faces' Gauss points - y coords
-	amat::Matrix<acfd_real> gy;
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguassf x ndim (in that order)
+	amat::Matrix<acfd_real>* gr;
 
 	/// Left state at each face (assuming 1 Gauss point per face)
 	amat::Matrix<acfd_real> uleft;
@@ -128,12 +123,19 @@ public:
 
 	amat::Matrix<acfd_real> getscalars() const;
 	amat::Matrix<acfd_real> getvelocities() const;
+
+	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
+	void compute_ghost_cell_coords_about_midpoint();
+
+	/// computes ghost cell centers assuming symmetry about the face
+	void compute_ghost_cell_coords_about_face();
 };
 
 ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
 {
 	m = mesh;
 	order = _order;
+	g = 1.4;
 
 	std::cout << "ExplicitSolver: Setting up explicit solver for spatial order " << order << std::endl;
 
@@ -155,25 +157,23 @@ ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
 	uleft.setup(m->gnaface(), nvars);
 	uright.setup(m->gnaface(), nvars);
 
-	xc.setup(m->gnelem(),1);
-	yc.setup(m->gnelem(),1);
-	xcg.setup(m->gnface(),1);
-	ycg.setup(m->gnface(),1);
+	rc.setup(m->gnelem(),m->gndim());
+	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),nvars);
-	gx.setup(m->gnaface(), ngaussf);
-	gy.setup(m->gnaface(), ngaussf);
+	gr = new amat::Matrix<acfd_real>[m->gnaface()];
+	for(int i = 0; i <  m->gnaface(); i++)
+		gr[i].setup(ngaussf, m->gndim());
 
 	for(int i = 0; i < m->gnelem(); i++)
 		m_inverse(i) = 2.0/mesh->gjacobians(i);
 
-	inviflux = new VanLeerFlux();
-	inviflux->setup(m, &uleft, &uright, &residual, &integ);	// 1 gauss point
+	inviflux = new VanLeerFlux(nvars, m->gndim(), g);
 
 	rec = new GreenGaussReconstruction();
-	rec->setup(m, &u, &ug, &dudx, &dudy, &xc, &yc, &xcg, &ycg);
+	rec->setup(m, &u, &ug, &dudx, &dudy, &rc);
 
 	lim = new NoLimiter();
-	lim->setup(m, &u, &ug, &dudx, &dudy, &xcg, &ycg, &xc, &yc, &gx, &gy, &uleft, &uright);
+	lim->setup(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
 }
 
 ExplicitSolver::~ExplicitSolver()
@@ -181,6 +181,69 @@ ExplicitSolver::~ExplicitSolver()
 	delete rec;
 	delete inviflux;
 	delete lim;
+	delete [] gr;
+}
+
+void ExplicitSolver::compute_ghost_cell_coords_about_midpoint()
+{
+	int iface, ielem, idim, ip1, ip2;
+	std::vector<acfd_real> midpoint(m->gndim());
+	for(iface = 0; iface < m->gnbface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		ip1 = m->gintfac(iface,2);
+		ip2 = m->gintfac(iface,3);
+
+		for(idim = 0; idim < m->gndim(); idim++)
+		{
+			midpoint[idim] = 0.5 * (m->gcoords(ip1,idim) + m->gcoords(ip2,idim));
+		}
+
+		for(idim = 0; idim < m->gndim(); idim++)
+			rcg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
+	}
+}
+
+void ExplicitSolver::compute_ghost_cell_coords_about_face()
+{
+	int ied, ig, ielem;
+	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
+
+	for(ied = 0; ied < m->gnbface(); ied++)
+	{
+		ielem = m->gintfac(ied,0); //int lel = ielem;
+		//jelem = m->gintfac(ied,1); //int rel = jelem;
+		acfd_real nx = m->ggallfa(ied,0);
+		acfd_real ny = m->ggallfa(ied,1);
+
+		xi = rc.get(ielem,0);
+		yi = rc.get(ielem,1);
+
+		// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
+		//       It is NOT the reflection about the midpoint of the boundary-face
+		x1 = m->gcoords(m->gintfac(ied,2),0);
+		x2 = m->gcoords(m->gintfac(ied,3),0);
+		y1 = m->gcoords(m->gintfac(ied,2),1);
+		y2 = m->gcoords(m->gintfac(ied,3),1);
+
+		if(dabs(nx)>A_SMALL_NUMBER && dabs(ny)>A_SMALL_NUMBER)		// check if nx != 0 and ny != 0
+		{
+			xs = ( yi-y1 - ny/nx*xi + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
+			ys = ny/nx*xs + yi - ny/nx*xi;
+		}
+		else if(dabs(nx)<=A_SMALL_NUMBER)
+		{
+			xs = xi;
+			ys = y1;
+		}
+		else
+		{
+			xs = x1;
+			ys = yi;
+		}
+		rcg(ied,0) = 2*xs-xi;
+		rcg(ied,1) = 2*ys-yi;
+	}
 }
 
 /// Function to feed needed data, and compute cell-centers
@@ -208,53 +271,24 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 
 	// Next, get cell centers (real and ghost)
 	
+	int idim, inode;
+
 	for(int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		xc(ielem) = m->gcoords(m->ginpoel(ielem, 0), 0) + m->gcoords(m->ginpoel(ielem, 1), 0) + m->gcoords(m->ginpoel(ielem, 2), 0);
-		xc(ielem) = xc(ielem) / 3.0;
-		yc(ielem) = m->gcoords(m->ginpoel(ielem, 0), 1) + m->gcoords(m->ginpoel(ielem, 1), 1) + m->gcoords(m->ginpoel(ielem, 2), 1);
-		yc(ielem) = yc(ielem) / 3.0;
+		for(idim = 0; idim < m->gndim(); idim++)
+		{
+			rc(ielem,idim) = 0;
+			for(inode = 0; inode < m->gnnode(); inode++)
+				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
+			rc(ielem,idim) = rc(ielem,idim) / m->gnnode();
+		}
 	}
 
 	int ied, ig, ielem;
 	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
 
-	for(ied = 0; ied < m->gnbface(); ied++)
-	{
-		ielem = m->gintfac(ied,0); //int lel = ielem;
-		//jelem = m->gintfac(ied,1); //int rel = jelem;
-		acfd_real nx = m->ggallfa(ied,0);
-		acfd_real ny = m->ggallfa(ied,1);
+	compute_ghost_cell_coords_about_midpoint();
 
-		xi = xc.get(ielem);
-		yi = yc.get(ielem);
-
-		// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
-		//       It is NOT the reflection about the midpoint of the boundary-face
-		x1 = m->gcoords(m->gintfac(ied,2),0);
-		x2 = m->gcoords(m->gintfac(ied,3),0);
-		y1 = m->gcoords(m->gintfac(ied,2),1);
-		y2 = m->gcoords(m->gintfac(ied,3),1);
-
-		if(dabs(nx)>A_SMALL_NUMBER && dabs(ny)>A_SMALL_NUMBER)		// check if nx != 0 and ny != 0
-		{
-			xs = ( yi-y1 - ny/nx*xi + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
-			ys = ny/nx*xs + yi - ny/nx*xi;
-		}
-		else if(dabs(nx)<=A_SMALL_NUMBER)
-		{
-			xs = xi;
-			ys = y1;
-		}
-		else
-		{
-			xs = x1;
-			ys = yi;
-		}
-		xcg(ied) = 2*xs-xi;
-		ycg(ied) = 2*ys-yi;
-	}
-	
 	//Calculate and store coordinates of Gauss points (general implementation)
 	// Gauss points are uniformly distributed along the face.
 	for(ied = 0; ied < m->gnaface(); ied++)
@@ -265,8 +299,8 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 		y2 = m->gcoords(m->gintfac(ied,3),1);
 		for(ig = 0; ig < ngaussf; ig++)
 		{
-			gx(ied,ig) = x1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (x2-x1);
-			gy(ied,ig) = y1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (y2-y1);
+			gr[ied](ig,0) = x1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (x2-x1);
+			gr[ied](ig,1) = y1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (y2-y1);
 		}
 	}
 
@@ -275,16 +309,16 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 
 void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
 {
-	int lel, rel;
+	int lel, rel, i;
 	acfd_real nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
-		//lel = m->gintfac(ied,0);
 		nx = m->ggallfa(ied,0);
 		ny = m->ggallfa(ied,1);
 
 		vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
-		pi = (g-1)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
+		pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
+		pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
 		ci = sqrt(g*pi/ins.get(ied,0));
 		Mni = vni/ci;
 
@@ -298,72 +332,28 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 
 		if(m->ggallfa(ied,3) == inflow_outflow_id)
 		{
-			/*
-			 * here, make sure u(lel) etc are replaced by ins(ied) !! *********
-			if(Mni < -1.0)
+			if(Mni <= -1.0)
 			{
-				for(int i = 0; i < nvars; i++)
-					ug(0,i) = uinf.get(0,i);
-				pj = (g-1)*(ug(0,3) - 0.5*(pow(ug(0,1),2)+pow(ug(0,2),2))/ug(0,0));
-				cj = sqrt(g*pj/ug(0,0));
-				vnj = (ug(0,1)*nx + ug(0,2)*ny)/ug(0,0);
+				for(i = 0; i < nvars; i++)
+					bs(ied,i) = uinf(0,i);
 			}
-			else if(Mni >= -1.0 && Mni < 0.0)
+			else if(Mni > -1.0 && Mni < 0)
 			{
-				vinfx = uinf.get(0,1)/uinf.get(0,0);
-				vinfy = uinf.get(0,2)/uinf.get(0,0);
-				vinfn = vinfx*nx + vinfy*ny;
-				vbn = u.get(lel,1)/u.get(lel,0)*nx + u.get(lel,2)/u.get(lel,0)*ny;
-				pinf = (g-1)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
-				pb = (g-1)*(u.get(lel,3) - 0.5*(pow(u.get(lel,1),2)+pow(u.get(lel,2),2))/u.get(lel,0));
-				cinf = sqrt(g*pinf/uinf.get(0,0));
-				cb = sqrt(g*pb/u.get(lel,0));
-
-				vgx = vinfx*ny*ny - vinfy*nx*ny + (vbn+vinfn)/2.0*nx + (cb - cinf)/(g-1)*nx;
-				vgy = vinfy*nx*nx - vinfx*nx*ny + (vbn+vinfn)/2.0*ny + (cb - cinf)/(g-1)*ny;
-				vnj = vgx*nx + vgy*ny;	// = vgn
-				cj = (g-1)/2*(vnj-vinfn)+cinf;
-				ug(0,0) = pow( pinf/pow(uinf.get(0,0),g) * 1.0/cj*cj , 1/(1-g));	// density
-				pj = ug.get(0,0)/g*cj*cj;
-
-				ug(0,3) = pj/(g-1) + 0.5*ug.get(0,0)*(vgx*vgx+vgy*vgy);
-				ug(0,1) = ug.get(0,0)*vgx;
-				ug(0,2) = ug.get(0,0)*vgy;
+				// subsonic inflow, specify rho and u according to FUN3D BCs paper
+				for(i = 0; i < nvars-1; i++)
+					bs(ied,i) = uinf.get(0,i);
+				bs(ied,3) = pi/(g-1.0) + 0.5*( uinf.get(0,1)*uinf.get(0,1) + uinf.get(0,2)*uinf.get(0,2) )/uinf.get(0,0);
 			}
-			else if(Mni >= 0.0 && Mni < 1.0)
+			else if(Mni >= 0 && Mni < 1.0)
 			{
-				vbx = u.get(lel,1)/u.get(lel,0);
-				vby = u.get(lel,2)/u.get(lel,0);
-				vbn = vbx*nx + vby*ny;
-				vinfn = uinf.get(0,1)/uinf.get(0,0)*nx + uinf.get(0,2)/uinf.get(0,0)*ny;
-				pinf = (g-1)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
-				pb = (g-1)*(u.get(lel,3) - 0.5*(pow(u.get(lel,1),2)+pow(u.get(lel,2),2))/u.get(lel,0));
-				cinf = sqrt(g*pinf/uinf.get(0,0));
-				cb = sqrt(g*pb/u.get(lel,0));
-
-				vgx = vbx*ny*ny - vby*nx*ny + (vbn+vinfn)/2.0*nx + (cb - cinf)/(g-1)*nx;
-				vgy = vby*nx*nx - vbx*nx*ny + (vbn+vinfn)/2.0*ny + (cb - cinf)/(g-1)*ny;
-				vnj = vgx*nx + vgy*ny;	// = vgn
-				cj = (g-1)/2*(vnj-vinfn)+cinf;
-				ug(0,0) = pow( pb/pow(u.get(lel,0),g) * 1.0/cj*cj , 1/(1-g));	// density
-				pj = ug(0,0)/g*cj*cj;
-
-				ug(0,3) = pj/(g-1) + 0.5*ug(0,0)*(vgx*vgx+vgy*vgy);
-				ug(0,1) = ug(0,0)*vgx;
-				ug(0,2) = ug(0,0)*vgy;
+				// subsonic ourflow, specify p accoording FUN3D BCs paper
+				for(i = 0; i < nvars-1; i++)
+					bs(ied,i) = ins.get(ied,i);
+				bs(ied,3) = pinf/(g-1.0) + 0.5*( ins.get(ied,1)*ins.get(ied,1) + ins.get(ied,2)*ins.get(ied,2) )/ins.get(ied,0);
 			}
 			else
-			{
-				for(int i = 0; i < nvars; i++)
-					ug(0,i) = u.get(lel,i);
-				pj = (g-1)*(ug(0,3) - 0.5*(pow(ug(0,1),2)+pow(ug(0,2),2))/ug(0,0));
-				cj = sqrt(g*pj/ug(0,0));
-				vnj = (ug(0,1)*nx + ug(0,2)*ny)/ug(0,0);
-			} */
-
-			// Naive way
-			for(int i = 0; i < nvars; i++)
-				bs(ied,i) = uinf.get(0,i);
+				for(i = 0; i < nvars; i++)
+					bs(ied,i) = ins.get(ied,i);
 		}
 	}
 }
@@ -417,7 +407,64 @@ void ExplicitSolver::compute_RHS()
 
 	compute_boundary_states(uleft,uright);
 
-	inviflux->compute_fluxes();
+	/** Compute fluxes.
+	 * The integral of the maximum magnitude of eigenvalue over each face is also computed:
+	 * \f[
+	 * \int_{f_i} (|v_n| + c) \mathrm{d}l
+	 * \f]
+	 * so that time steps can be calculated for explicit time stepping.
+	 */
+	acfd_real *n, nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
+	int lel, rel;
+	n = new acfd_real[m->gndim()];
+	amat::Matrix<acfd_real> ul(nvars,1), ur(nvars,1), flux(nvars,1);
+
+	for(ied = 0; ied < m->gnaface(); ied++)
+	{
+		len = m->ggallfa(ied,2);
+		lel = m->gintfac(ied,0);	// left element
+		rel = m->gintfac(ied,1);	// right element
+
+		n[0] = m->ggallfa(ied,0);
+		n[1] = m->ggallfa(ied,1);
+
+		for(ivar = 0; ivar < nvars; ivar++)
+		{
+			ul(ivar) = uleft.get(ied,ivar);
+			ur(ivar) = uright.get(ied,ivar);
+		}
+
+		// compute flux
+		inviflux->get_flux(&ul, &ur, n, &flux);
+
+		// integrate over the face
+		for(ivar = 0; ivar < nvars; ivar++)
+				flux(ivar) *= len;
+
+		// scatter the flux to elements' residuals
+		for(ivar = 0; ivar < nvars; ivar++)
+		{
+			residual(lel,ivar) -= flux(ivar);
+			if(rel >= 0 && rel < m->gnelem())
+				residual(rel,ivar) += flux(ivar);
+		}
+
+		//calculate presures from u
+		pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
+		pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
+		//calculate speeds of sound
+		ci = sqrt(g*pi/uleft.get(ied,0));
+		cj = sqrt(g*pj/uright.get(ied,0));
+		//calculate normal velocities
+		vni = (uleft.get(ied,1)*n[0] +uleft.get(ied,2)*n[1])/uleft.get(ied,0);
+		vnj = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
+
+		// calculate integ for CFL purposes
+		integ(lel,0) += (dabs(vni) + ci)*len;
+		if(rel >= 0 && rel < m->gnelem())
+			integ(rel,0) += (dabs(vnj) + cj)*len;
+	}
+	delete [] n;
 }
 
 void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)

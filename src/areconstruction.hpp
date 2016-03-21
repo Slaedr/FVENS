@@ -32,14 +32,8 @@ class Reconstruction
 {
 protected:
 	const UTriMesh* m;
-	/// Cell centers' x-coords
-	const amat::Matrix<double>* xc;
-	/// Cell centers' y-coords
-	const amat::Matrix<double>* yc;
-	/// Ghost cell centers' x-coords
-	const amat::Matrix<double>* xcg;
-	/// Ghost cell centers' y-coords
-	const amat::Matrix<double>* ycg;
+	/// Cell centers' coords
+	const amat::Matrix<double>* rc;
 	/// Number of converved variables
 	int nvars;
 	/// Cell-centered flow vaiables
@@ -53,22 +47,19 @@ protected:
 
 public:
 	virtual void setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, 
-			const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg);
+			const amat::Matrix<double>* _rc);
 	virtual void compute_gradients() = 0;
 };
 
 void Reconstruction::setup(const UTriMesh* mesh, const amat::Matrix<double>* unk, const amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, 
-		const amat::Matrix<double>* _xc, const amat::Matrix<double>* _yc, const amat::Matrix<double>* _xcg, const amat::Matrix<double>* _ycg)
+		const amat::Matrix<double>* _rc)
 {
 	m = mesh;
 	u = unk;
 	ug = unkg;
 	dudx = gradx;
 	dudy = grady;
-	xc = _xc;
-	yc = _yc;
-	xcg = _xcg;
-	ycg = _ycg;
+	rc = _rc;
 	nvars = u->cols();
 }
 
@@ -132,13 +123,13 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 	amat::Matrix<double> w2yu;
 
 public:
-	void setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg);
+	void setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _rc);
 	void compute_gradients();
 };
 
-void WeightedLeastSquaresReconstruction::setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _xc, amat::Matrix<double>* _yc, amat::Matrix<double>* _xcg, amat::Matrix<double>* _ycg)
+void WeightedLeastSquaresReconstruction::setup(UTriMesh* mesh, amat::Matrix<double>* unk, amat::Matrix<double>* unkg, amat::Matrix<double>* gradx, amat::Matrix<double>* grady, amat::Matrix<double>* _rc)
 {
-	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _xc, _yc, _xcg, _ycg);
+	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _rc);
 
 	// compute LHS of least-squares problem
 }
