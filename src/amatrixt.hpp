@@ -90,24 +90,10 @@ public:
 			std::cout << "\nError: Number of rows is zero. Setting it to 1.";
 			nr=1;
 		}
-		nrows = nr; ncols = nc; storage = st;
+		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
 		isalloc = true;
-	}
-
-	Matrix(const Matrix<T>& other)
-	{
-		nrows = other.nrows;
-		ncols = other.ncols;
-		storage = other.storage;
-		size = nrows*ncols;
-		elems = new T[nrows*ncols];
-		isalloc = true;
-		for(int i = 0; i < nrows*ncols; i++)
-		{
-			elems[i] = other.elems[i];
-		}
 	}
 
 	~Matrix()
@@ -115,26 +101,6 @@ public:
 		if(isalloc == true)	
 			delete [] elems;
 		isalloc = false;
-	}
-
-	Matrix<T>& operator=(Matrix<T> rhs)
-	{
-#ifdef DEBUG
-		if(this==&rhs) return *this;		// check for self-assignment
-#endif
-		nrows = rhs.nrows;
-		ncols = rhs.ncols;
-		storage = rhs.storage;
-		size = nrows*ncols;
-		if(isalloc == true)
-			delete [] elems;
-		elems = new T[nrows*ncols];
-		isalloc = true;
-		for(int i = 0; i < nrows*ncols; i++)
-		{
-			elems[i] = rhs.elems[i];
-		}
-		return *this;
 	}
 };
 
@@ -249,7 +215,7 @@ public:
 	}
 
 	//Separate setup function in case no-arg constructor has to be used
-	void setup(int nr, int nc, MStype st=ROWMAJOR)
+	void setup(int nr, int nc)
 	{
 		if(nc==0)
 		{
@@ -261,7 +227,7 @@ public:
 			std::cout << "Matrix(): setup(): Error: Number of rows is zero. Setting it to 1.\n";
 			nr=1;
 		}
-		nrows = nr; ncols = nc; storage = st;
+		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		if(isalloc == true)
 			delete [] elems;
@@ -270,7 +236,7 @@ public:
 	}
 
 	// no deleting earlier allocation: use in case of Matrix<t>* (pointer to Matrix<t>)
-	void setupraw(int nr, int nc, MStype st)
+	void setupraw(int nr, int nc)
 	{
 		//std::cout << "\nEntered setupraw";
 		if(nc==0)
@@ -283,7 +249,7 @@ public:
 			std::cout << "\nError: Number of rows is zero. Setting it to 1.";
 			nr=1;
 		}
-		nrows = nr; ncols = nc; storage = st;
+		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
 		isalloc = true;
@@ -311,7 +277,7 @@ public:
 				else operator()(i,j) = zero;
 	}
 
-	// function to set matrix elements from a ROW-MAJOR std::vector
+	// function to set matrix elements from a ROW-MAJOR array
 	void setdata(const T* A, int sz)
 	{
 #ifdef DEBUG
@@ -330,8 +296,8 @@ public:
 	{
 #ifdef DEBUG
 		if(i>=nrows || j>=ncols) { std::cout << "Matrix: get(): Index beyond array size(s)\n"; return 0; }
+		if(i < 0 || j < 0) {std::cout << "Matrix: get(): Negative index!\n"; return 0; }
 #endif
-		//if(i < 0 || j < 0) {std::cout << "Matrix: get(): Negative index!\n"; return 0; }
 		return elems[i*ncols + j];
 	}
 
@@ -339,8 +305,8 @@ public:
 	{
 #ifdef DEBUG
 		if(i>=nrows || j>=ncols) { std::cout << "Matrix: set(): Index beyond array size(s)\n"; return; }
+		if(i < 0 || j < 0) {std::cout << "Matrix: set(): Negative index!\n"; return 0; }
 #endif
-		//if(i < 0 || j < 0) {std::cout << "Matrix: get(): Negative index!\n"; return 0; }
 		elems[i*ncols + j] = data;
 	}
 
@@ -614,7 +580,7 @@ public:
 		#endif
 		int i;
 		double ans = 0;
-		#pragma omp parallel for if(size >= 4) default(none) private(i) shared(elems,elemsA,size) reduction(+: ans) num_threads(nthreads_m)
+		#pragma omp parallel for if(size >= 1024) default(none) private(i) shared(elems,elemsA,size) reduction(+: ans) num_threads(nthreads_m)
 		for(i = 0; i < size; i++)
 		{
 			T temp = elems[i]*elemsA[i];
@@ -656,7 +622,7 @@ public:
 			std::cout << "\nError: Number of rows is zero. Setting it to 1.";
 			nr=1;
 		}
-		nrows = nr; ncols = nc; storage = st;
+		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
 		isalloc = true;
@@ -666,7 +632,6 @@ public:
 	{
 		nrows = other.nrows;
 		ncols = other.ncols;
-		storage = other.storage;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
 		isalloc = true;
@@ -680,7 +645,6 @@ public:
 	{
 		nrows = other.nrows;
 		ncols = other.ncols;
-		storage = other.storage;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
 		isalloc = true;
@@ -703,16 +667,13 @@ public:
 #endif
 		nrows = rhs.nrows;
 		ncols = rhs.ncols;
-		storage = rhs.storage;
 		size = nrows*ncols;
 		if(isalloc == true)
 			delete [] elems;
 		elems = new T[nrows*ncols];
 		isalloc = true;
 		for(int i = 0; i < nrows*ncols; i++)
-		{
 			elems[i] = rhs.elems[i];
-		}
 		return *this;
 	}
 	
@@ -723,7 +684,6 @@ public:
 #endif
 		nrows = rhs.nrows;
 		ncols = rhs.ncols;
-		storage = rhs.storage;
 		size = nrows*ncols;
 		if(isalloc == true)
 			delete [] elems;
@@ -748,7 +708,7 @@ public:
 			std::cout << "Matrix(): setup(): Error: Number of rows is zero. Setting it to 1.\n";
 			nr=1;
 		}
-		nrows = nr; ncols = nc; storage = st;
+		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		if(isalloc == true)
 			delete [] elems;
@@ -770,7 +730,7 @@ public:
 			std::cout << "\nError: Number of rows is zero. Setting it to 1.";
 			nr=1;
 		}
-		nrows = nr; ncols = nc; storage = st;
+		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
 		isalloc = true;
@@ -826,7 +786,7 @@ public:
 	{
 #ifdef DEBUG
 		if(i>=nrows || j>=ncols) { std::cout << "Matrix: set(): Index beyond array size(s)\n"; return; }
-		if(i < 0 || j < 0) {std::cout << "Matrix: get(): Negative index!\n"; return 0; }
+		if(i < 0 || j < 0) {std::cout << "Matrix: set(): Negative index!\n"; return 0; }
 #endif
 		elems[j*nrows + i] = data;
 	}

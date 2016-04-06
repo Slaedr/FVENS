@@ -135,4 +135,51 @@ void VanLeerFlux::get_flux(const amat::Matrix<acfd_real>* ul, const amat::Matrix
 		(*flux)(i) = (fiplus(i) + fjminus(i));
 }
 
+/// Roe flux-difference splitting Riemann solver for the Euler equations
+class RoeFlux : public InviscidFlux
+{
+public:
+	void get_flux(const amat::Matrix<acfd_real>* const uleft, const amat::Matrix<acfd_real>* const uright, const acfd_real* const n, amat::Matrix<acfd_real>* const flux);
+};
+
+void RoeFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matrix<acfd_real>* const ur, const acfd_real* const n, amat::Matrix<acfd_real>* const flux)
+{
+	acfd_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
+
+	vxi = ul->get(1)/ul->get(0); vyi = ul->get(2)/ul->get(0);
+	vxj = ur->get(1)/ur->get(0); vyj = ur->get(2)/ur->get(0);
+	vni = vxi*n[0] + vyi*n[1];
+	vnj = vxj*n[0] + vyj*n[1];
+	vmag2i = vxi*vxi + vyi*vyi;
+	vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	pi = (g-1.0)*(ul->get(3) - 0.5*ul-get(0)*vmag2i);
+	pj = (g-1.0)*(ur->get(3) - 0.5*ur-get(0)*vmag2j);
+	// speeds of sound
+	ci = sqrt(g*pi/ul->get(0));
+	cj = sqrt(g*pj/ur->get(0));
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0)
+	Hi = (ul->get(3) + pi)/ul->get(0);
+	Hj = (ur->get(3) + pj)/ur->get(0);
+
+	// compute Roe-averages
+	
+	acfd_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	Rij = sqrt(ur->get(0)/ul->get(0));
+	rhoij = Rij*ul->get(0);
+	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	vm2ij = vxij*vxij + vyij*vyij;
+	vnij = vxij*n[0] + vyij*n[1];
+	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+
+	// eigenvalues
+	acfd_real l[4];
+	l[0] = vnij; l[1] = vnij; l[2] = vnij + cij; l[3] = vnij - cij;
+
+	// eigenvectors
+	amat::Matrix<acfd_real> r(4,4);
+}
+
 } // end namespace acfd
