@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf; double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance;
+	string dum, meshfile, outf, invflux; double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance;
 	int order;
 
 	control >> dum;
@@ -40,6 +40,7 @@ int main(int argc, char* argv[])
 	control >> dum;
 	control >> rho_inf;
 	control >> dum; control >> order;
+	control >> dum; control >> invflux;
 
 	// Set up mesh
 
@@ -51,7 +52,7 @@ int main(int argc, char* argv[])
 
 	// Now start computation
 
-	ExplicitSolver prob(&m, order);
+	ExplicitSolver prob(&m, order, invflux);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
 	//All hell breaks loose

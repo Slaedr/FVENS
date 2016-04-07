@@ -90,7 +90,7 @@ class ExplicitSolver
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 
 public:
-	ExplicitSolver(const UTriMesh* mesh, const int _order);
+	ExplicitSolver(const UTriMesh* mesh, const int _order, std::string invflux);
 	~ExplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -131,7 +131,7 @@ public:
 	void compute_ghost_cell_coords_about_face();
 };
 
-ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
+ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order, std::string invflux)
 {
 	m = mesh;
 	order = _order;
@@ -167,7 +167,15 @@ ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order)
 	for(int i = 0; i < m->gnelem(); i++)
 		m_inverse(i) = 2.0/mesh->gjacobians(i);
 
-	inviflux = new VanLeerFlux(nvars, m->gndim(), g);
+	if(invflux == "VANLEER")
+		inviflux = new VanLeerFlux(nvars, m->gndim(), g);
+	else if(invflux == "ROE")
+	{
+		inviflux = new RoeFlux(nvars, m->gndim(), g);
+		std::cout << "ExplicitSolver: Using Roe fluxes." << std::endl;
+	}
+	else
+		std::cout << "ExplicitSolver: ! Flux scheme not available!" << std::endl;
 
 	rec = new GreenGaussReconstruction();
 	rec->setup(m, &u, &ug, &dudx, &dudy, &rc);
