@@ -429,12 +429,12 @@ void ExplicitSolver::compute_RHS()
 
 	for(ied = 0; ied < m->gnaface(); ied++)
 	{
-		len = m->ggallfa(ied,2);
 		lel = m->gintfac(ied,0);	// left element
 		rel = m->gintfac(ied,1);	// right element
 
 		n[0] = m->ggallfa(ied,0);
 		n[1] = m->ggallfa(ied,1);
+		len = m->ggallfa(ied,2);
 
 		for(ivar = 0; ivar < nvars; ivar++)
 		{
@@ -523,7 +523,8 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 
 		for(int i = 0; i < nvars; i++)
 		{
-			err[i] = (u-uold).col(i);
+			//err[i] = (u-uold).col(i);
+			err[i] = residual.col(i);
 			res(i) = l2norm(&err[i]);
 		}
 		resi = res.max();
@@ -531,7 +532,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 		if(step == 0)
 			initres = resi;
 
-		if(step % 10 == 0)
+		if(step % 20 == 0)
 			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
@@ -586,8 +587,8 @@ acfd_real ExplicitSolver::compute_entropy_cell()		// call after postprocess_cell
 	}
 	error = sqrt(error);
 
-	//acfd_real h = (m->jacobians()).min();
-	acfd_real h = 1.0/sqrt(m->gnelem());
+	acfd_real h = sqrt((m->jacobians).max());
+	//acfd_real h = 1.0/sqrt(m->gnelem());
 
 	cout << "EulerFV:   " << log(h) << "  " << log(error) << endl;
 

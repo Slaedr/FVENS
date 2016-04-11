@@ -1,9 +1,9 @@
 -mesh_file
-../data/feflo.domn.cylinder.fine
+../data/feflo.domn.cylinder.medium
 -output_file
-../data/fine-m-roe.vtu
+../data/medium-m.vtu
 -CFL
-0.5
+0.7
 -Total_time
 0.1
 -Tolerance
@@ -19,7 +19,7 @@
 -formal-spatial-order
 2
 -inviscid-flux
-ROE
+VANLEER
 
 smallmesh.domn
 feflo.domn.naca0012w

@@ -1,7 +1,7 @@
 -mesh_file
-../data/feflo.domn.cylinder.medium
+../data/feflo.domn.cylinder.fine
 -output_file
-../data/medium-roe.vtu
+../data/fine.vtu
 -CFL
 0.75
 -Total_time
@@ -19,7 +19,7 @@
 -formal-spatial-order
 1
 -inviscid-flux
-ROE
+VANLEER
 
 smallmesh.domn
 feflo.domn.naca0012w

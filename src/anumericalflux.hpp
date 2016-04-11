@@ -198,12 +198,25 @@ void RoeFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matr
 
 	// eigenvectors (column vectors of r below)
 	amat::Matrix<acfd_real> r(4,4, amat::ROWMAJOR);
-
+	
+	// according to Dr Luo's notes
 	r(0,0) = 1.0;		r(0,1) = 0;							r(0,2) = 1.0;				r(0,3) = 1.0;
 	r(1,0) = vxij;		r(1,1) = cij*n[1];					r(1,2) = vxij + cij*n[0];	r(1,3) = vxij - cij*n[0];
 	r(2,0) = vyij;		r(2,1) = -cij*n[0];					r(2,2) = vyij + cij*n[1];	r(2,3) = vyij - cij*n[1];
 	r(3,0)= vm2ij*0.5;	r(3,1) = cij*(vxij*n[1]-vyij*n[0]);	r(3,2) = Hij + cij*vnij;	r(3,3) = Hij - cij*vnij;
 
+	// according to Fink (just a hack to make the overall flux equal the Roe flux in Fink's paper;
+	// the second eigenvector is obviously not what is given below
+	/*r(0,0) = 1.0;		r(0,2) = 1.0;				r(0,3) = 1.0;
+	r(1,0) = vxij;		r(1,2) = vxij + cij*n[0];	r(1,3) = vxij - cij*n[0];
+	r(2,0) = vyij;		r(2,2) = vyij + cij*n[1];	r(2,3) = vyij - cij*n[1];
+	r(3,0)= vm2ij*0.5;	r(3,2) = Hij + cij*vnij;	r(3,3) = Hij - cij*vnij;
+	
+	r(0,1) = 0.0;
+	r(1,1) = (vxj-vxi) - n[0]*(vnj-vni);
+	r(2,1) = (vyj-vyi) - n[1]*(vnj-vni);
+	r(3,1) = vxij*(vxj-vxi) + vyij*(vyj-vyi) - vnij*(vnj-vni);*/
+	
 	for(ivar = 0; ivar < 4; ivar++)
 	{
 		r(ivar,2) *= rhoij/(2.0*cij);
@@ -213,7 +226,8 @@ void RoeFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matr
 	// R^(-1)(qR-qL)
 	amat::Matrix<acfd_real> dw(4,1);
 	dw(0) = (ur->get(0)-ul->get(0)) - (pj-pi)/(cij*cij);
-	dw(1) = (vxj-vxi)*n[1] - (vyj-vyi)*n[0];
+	dw(1) = (vxj-vxi)*n[1] - (vyj-vyi)*n[0];			// Dr Luo
+	//dw(1) = rhoij;										// hack for conformance with Fink
 	dw(2) = vnj-vni + (pj-pi)/(rhoij*cij);
 	dw(3) = -(vnj-vni) + (pj-pi)/(rhoij*cij);
 
