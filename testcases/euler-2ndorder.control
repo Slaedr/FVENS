@@ -1,9 +1,9 @@
 -mesh_file
-../data/feflo.domn.cylinder.medium
+../data/feflo.domn.cylinder.vfine
 -output_file
-../data/medium-m.vtu
+../data/vfine-m.vtu
 -CFL
-0.7
+0.5
 -Total_time
 0.1
 -Tolerance

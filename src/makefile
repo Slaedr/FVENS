@@ -1,7 +1,7 @@
 PREFIX = ../testcases/
 #GPP = g++
 INC_DIR = .
-OPTIONS = -std=c++11 -ggdb
+OPTIONS = -std=c++11 -ggdb -O3
 	
 euler:
 	$(GPP) eulerdr.cpp -o $(PREFIX)euler.out $(OPTIONS) -I$(INC_DIR)

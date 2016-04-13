@@ -178,7 +178,7 @@ ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order, std::stri
 		std::cout << "ExplicitSolver: ! Flux scheme not available!" << std::endl;
 
 	rec = new GreenGaussReconstruction();
-	rec->setup(m, &u, &ug, &dudx, &dudy, &rc);
+	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
 
 	lim = new NoLimiter();
 	lim->setup(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
