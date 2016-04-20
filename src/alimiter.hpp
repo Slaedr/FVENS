@@ -100,8 +100,6 @@ void NoLimiter::compute_face_values()
 	for(ied = 0; ied < m->gnbface(); ied++)
 	{
 		ielem = m->gintfac(ied,0);
-		nx = m->ggallfa(ied,0);
-		ny = m->ggallfa(ied,1);
 
 		for(int ig = 0; ig < ng; ig++)
 		{

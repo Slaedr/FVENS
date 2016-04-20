@@ -512,8 +512,6 @@ public:
 
 		for(int i = 0; i < gnelem(); i++)
 		{
-			// geoel(i,0) = D(i) = a1*b2 - a2*b1 :
-
 			jacobians(i,0) = gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) - gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)-gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1);
 		}
 	}

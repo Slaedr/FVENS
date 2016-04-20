@@ -1,9 +1,9 @@
 -mesh_file
-../data/feflo.domn.cylinder.vfine
+../data/feflo.domn.cylinder.medium
 -output_file
-../data/vfine-m.vtu
+../data/medium-m.vtu
 -CFL
-0.5
+0.2
 -Total_time
 0.1
 -Tolerance
@@ -20,6 +20,8 @@
 2
 -inviscid-flux
 VANLEER
+-reconstruction-scheme
+GREENGAUSS
 
 smallmesh.domn
 feflo.domn.naca0012w

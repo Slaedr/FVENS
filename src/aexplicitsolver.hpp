@@ -90,7 +90,7 @@ class ExplicitSolver
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 
 public:
-	ExplicitSolver(const UTriMesh* mesh, const int _order, std::string invflux);
+	ExplicitSolver(const UTriMesh* mesh, const int _order, std::string invflux, std::string reconst);
 	~ExplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -112,6 +112,7 @@ public:
 	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
 	void solve_rk1_steady(const acfd_real tol, const acfd_real cfl);
 
+	/// Computes the L2 norm of a cell-centered quantity
 	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);
 	
 	/// Compute cell-centred quantities to export
@@ -131,7 +132,7 @@ public:
 	void compute_ghost_cell_coords_about_face();
 };
 
-ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order, std::string invflux)
+ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order, std::string invflux, std::string reconst)
 {
 	m = mesh;
 	order = _order;
@@ -177,8 +178,17 @@ ExplicitSolver::ExplicitSolver(const UTriMesh* mesh, const int _order, std::stri
 	else
 		std::cout << "ExplicitSolver: ! Flux scheme not available!" << std::endl;
 
-	rec = new GreenGaussReconstruction();
-	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
+	std::cout << "ExplicitSolver: Reconstruction scheme is " << reconst << std::endl;
+	if(reconst == "GREENGAUSS")
+	{
+		rec = new GreenGaussReconstruction();
+		//rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
+	}
+	else 
+	{
+		rec = new WeightedLeastSquaresReconstruction();
+	}
+	if(order == 1) std::cout << "ExplicitSolver: No reconstruction" << std::endl;
 
 	lim = new NoLimiter();
 	lim->setup(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
@@ -288,7 +298,7 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 			rc(ielem,idim) = 0;
 			for(inode = 0; inode < m->gnnode(); inode++)
 				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / m->gnnode();
+			rc(ielem,idim) = rc(ielem,idim) / (acfd_real)(m->gnnode());
 		}
 	}
 
@@ -296,6 +306,7 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
 
 	compute_ghost_cell_coords_about_midpoint();
+	//compute_ghost_cell_coords_about_face();
 
 	//Calculate and store coordinates of Gauss points (general implementation)
 	// Gauss points are uniformly distributed along the face.
@@ -307,11 +318,12 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 		y2 = m->gcoords(m->gintfac(ied,3),1);
 		for(ig = 0; ig < ngaussf; ig++)
 		{
-			gr[ied](ig,0) = x1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (x2-x1);
-			gr[ied](ig,1) = y1 + (acfd_real)(ig+1)/(acfd_real)(ngaussf+1) * (y2-y1);
+			gr[ied](ig,0) = x1 + (acfd_real)(ig+1.0)/(acfd_real)(ngaussf+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (acfd_real)(ig+1.0)/(acfd_real)(ngaussf+1.0) * (y2-y1);
 		}
 	}
 
+	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
 	cout << "ExplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
@@ -340,12 +352,12 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 
 		if(m->ggallfa(ied,3) == inflow_outflow_id)
 		{
-			if(Mni <= -1.0)
+			//if(Mni <= -1.0)
 			{
 				for(i = 0; i < nvars; i++)
 					bs(ied,i) = uinf(0,i);
 			}
-			else if(Mni > -1.0 && Mni < 0)
+			/*else if(Mni > -1.0 && Mni < 0)
 			{
 				// subsonic inflow, specify rho and u according to FUN3D BCs paper
 				for(i = 0; i < nvars-1; i++)
@@ -361,7 +373,7 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 			}
 			else
 				for(i = 0; i < nvars; i++)
-					bs(ied,i) = ins.get(ied,i);
+					bs(ied,i) = ins.get(ied,i);*/
 		}
 	}
 }
@@ -393,7 +405,9 @@ void ExplicitSolver::compute_RHS()
 
 	if(order == 2)
 	{
+		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
+
 		rec->compute_gradients();
 		lim->compute_face_values();
 	}
@@ -401,6 +415,7 @@ void ExplicitSolver::compute_RHS()
 	{
 		// if order is 1, set the face data same as cell-centred data for all faces
 		
+		// set both left and right states for all interior faces
 		for(ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
 			ielem = m->gintfac(ied,0);
@@ -413,6 +428,7 @@ void ExplicitSolver::compute_RHS()
 		}
 	}
 
+	// set right (ghost) state for boundary faces
 	compute_boundary_states(uleft,uright);
 
 	/** Compute fluxes.
@@ -523,8 +539,8 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 
 		for(int i = 0; i < nvars; i++)
 		{
-			//err[i] = (u-uold).col(i);
-			err[i] = residual.col(i);
+			err[i] = (u-uold).col(i);
+			//err[i] = residual.col(i);
 			res(i) = l2norm(&err[i]);
 		}
 		resi = res.max();
@@ -587,8 +603,8 @@ acfd_real ExplicitSolver::compute_entropy_cell()		// call after postprocess_cell
 	}
 	error = sqrt(error);
 
-	acfd_real h = sqrt((m->jacobians).max());
-	//acfd_real h = 1.0/sqrt(m->gnelem());
+	//acfd_real h = sqrt((m->jacobians).max());
+	acfd_real h = 1.0/sqrt(m->gnelem());
 
 	cout << "EulerFV:   " << log(h) << "  " << log(error) << endl;
 

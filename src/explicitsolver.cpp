@@ -18,7 +18,8 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, invflux; double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance;
+	string dum, meshfile, outf, invflux, reconst;
+	double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance;
 	int order;
 
 	control >> dum;
@@ -41,6 +42,8 @@ int main(int argc, char* argv[])
 	control >> rho_inf;
 	control >> dum; control >> order;
 	control >> dum; control >> invflux;
+	control >> dum; control >> reconst;
+	control.close(); 
 
 	// Set up mesh
 
@@ -52,7 +55,7 @@ int main(int argc, char* argv[])
 
 	// Now start computation
 
-	ExplicitSolver prob(&m, order, invflux);
+	ExplicitSolver prob(&m, order, invflux, reconst);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
 	//All hell breaks loose
@@ -69,7 +72,7 @@ int main(int argc, char* argv[])
 	//writeScalarsVectorToVtu(outf, m, prob.scalars, scalarnames, prob.velocities, "velocity");
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
 
-	control.close(); meshs.close();
+	meshs.close();
 	cout << "\n--------------- End --------------------- \n";
 	return 0;
 }
