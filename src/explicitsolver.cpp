@@ -4,6 +4,7 @@
 #include <aoutput.hpp>
 #include <aexplicitsolver.hpp>
 
+using namespace amat;
 using namespace std;
 using namespace acfd;
 
@@ -47,9 +48,11 @@ int main(int argc, char* argv[])
 
 	// Set up mesh
 
-	ifstream meshs(meshfile);
+	//ifstream meshs(meshfile);
 
-	UTriMesh m(meshs);
+	UMesh2dh m;
+	m.readGmsh2(meshfile,2);
+	m.compute_topological();
 	m.compute_jacobians();
 	m.compute_face_data();
 
@@ -72,7 +75,8 @@ int main(int argc, char* argv[])
 	//writeScalarsVectorToVtu(outf, m, prob.scalars, scalarnames, prob.velocities, "velocity");
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
 
-	meshs.close();
+	//meshs.close();
+	
 	cout << "\n--------------- End --------------------- \n";
 	return 0;
 }

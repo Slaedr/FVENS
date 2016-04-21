@@ -2,8 +2,8 @@
  -------------------
 title line
  -------------------
- ndimn ntype
-    2    3
+ ndimn ntype  nfael  nnofa
+    2    3      3      2
  nelem npoin nface        time 
    128    80    32   0.000000E+00
  interdependency matrix intmat 

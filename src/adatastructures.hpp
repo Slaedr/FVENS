@@ -1,3 +1,5 @@
+#ifndef __ADATASTRUCTURES_H
+
 #ifndef _GLIBCXX_IOSTREAM
 #include <iostream>
 #endif
@@ -109,22 +111,10 @@ public:
 	}
 };
 
-// This function is a cyclic permutation of consecutive integers from 'start' to 'end' (inclusive). It returns the integer (between 'start' and 'end') that is 'off' integers away from 'n' in the cyclic order.
-int perm(int start, int end, int n, int off)
-{
-	if(n > end) { cout << "Permutation point error!\n"; return 0; }
-	if(off == 0) return n;
-
-	CircList<int> list(start);
-	for(int i = start+1; i <= end; i++)
-		list.push(i);
-
-	Node<int>* nn = list.find(n);
-	Node<int>* cur = nn;
-	for(int i = 0; i < off; i++)
-		cur = cur->next;
-	return cur->data;
-}
+/// This function is a cyclic permutation of consecutive integers from 'start' to 'end' (inclusive). 
+/** It returns the integer (between 'start' and 'end') that is 'off' integers away from 'n' in the cyclic order.
+ */
+int perm(int start, int end, int n, int off);
 
 template <class T>
 class MergeSort
@@ -147,3 +137,5 @@ public:
 	{
 	}
 };
+
+#endif

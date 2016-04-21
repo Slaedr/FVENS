@@ -1,5 +1,5 @@
 -mesh_file
-../data/feflo.domn.cylinder.fine
+../../data/feflo.domn.cylinder.fine
 -output_file
 ../data/fine.vtu
 -CFL

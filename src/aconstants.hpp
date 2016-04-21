@@ -11,9 +11,14 @@
 	/// A small number likely smaller than most convergence tolerances
 	#define A_SMALL_NUMBER 1e-12
 	
+	#ifndef MESHDATA_DOUBLE_PRECISION
+	#define MESHDATA_DOUBLE_PRECISION 20
+	#endif
+	
 namespace acfd
 {
 	typedef double acfd_real;
+	typedef int acfd_int;
 }
 
 #endif

@@ -1,0 +1,8 @@
+-input-file
+../data/feflo.domn.cylinder.vfine
+-input-format
+domn
+-output-file
+../data/2dcylinder-vfine.msh
+-output-format
+msh

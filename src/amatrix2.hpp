@@ -11,8 +11,7 @@ TODO: Make 'storage' a template parameter rather than class member, OR, eliminat
 TODO: (Not really needed) Make a Vector class, maybe as a sub-class of Matrix
 */
 
-// Comment out the following line for removing array index-range checks and thus improving performance
-#define DEBUG 1
+#ifndef __AMATRIX2_H
 
 #ifndef _GLIBCXX_IOSTREAM
 #include <iostream>
@@ -41,6 +40,10 @@ TODO: (Not really needed) Make a Vector class, maybe as a sub-class of Matrix
 #endif
 #endif
 
+#ifndef __ACONSTANTS_H
+#include <aconstants.hpp>
+#endif
+
 #define __AMATRIX2_H
 
 //using namespace std;
@@ -49,17 +52,16 @@ const int WIDTH = 12;		// width of field for printing matrices
 
 namespace amat {
 
-double dabs(double x)
-{
-	if(x < 0) return (-1.0)*x;
-	else return x;
-}
-double minmod(double a, double b)
-{
-	if(a*b>0 && dabs(a) <= dabs(b)) return a;
-	else if (a*b>0 && dabs(b) < dabs(a)) return b;
-	else return 0.0;
-}
+/// Real type
+using acfd::acfd_real;
+
+/// Integer type
+using acfd::acfd_int;
+
+double dabs(double x);
+
+double minmod(double a, double b);
+
 
 enum MStype {ROWMAJOR, COLMAJOR};
 
@@ -583,3 +585,5 @@ public:
 };
 
 } //end namespace amat
+
+#endif
