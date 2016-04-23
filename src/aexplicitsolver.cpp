@@ -443,9 +443,9 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 void ExplicitSolver::postprocess_cell()
 {
 	cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
-	scalars.setup(m->gnelem(), 3, amat::COLMAJOR);
-	velocities.setup(m->gnelem(), 2, amat::ROWMAJOR);
-	amat::Matrix<acfd_real> c(m->gnelem(), 1, amat::ROWMAJOR);
+	scalars.setup(m->gnelem(), 3);
+	velocities.setup(m->gnelem(), 2);
+	amat::Matrix<acfd_real> c(m->gnelem(), 1);
 
 	amat::Matrix<acfd_real> d = u.col(0);
 	scalars.replacecol(0, d);		// populate density data

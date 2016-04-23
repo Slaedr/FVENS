@@ -1,15 +1,15 @@
 -mesh_file
-../data/feflo.domn.naca0012w
+../data/naca0012-inviscid.msh
 -output_file
-../data/naca0012_new.vtu
+../data/naca0012_1.vtu
 -CFL
-0.75
+0.24
 -Total_time
 0.5
 -Tolerance
 1e-6
 -M_infinity
-0.5
+0.85
 -velocity_infinity
 1.0
 -angle_of_attack
@@ -18,6 +18,10 @@
 1.0
 -formal-spatial-order
 1
+-inviscid-flux
+VANLEER
+-reconstruction
+GREENGAUSS
 
 smallmesh.domn
 feflo.domn.naca0012w

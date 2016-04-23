@@ -32,7 +32,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
 
-add_library(fvens areconstruction.cpp alimiter.cpp anumericalflux.cpp aexplicitsolver.cpp amesh2dh.cpp aoutput.cpp amatrix2.cpp adatastructures.cpp)
+add_library(fvens areconstruction.cpp alimiter.cpp anumericalflux.cpp aexplicitsolver.cpp amesh2dh.cpp aoutput.cpp amatrix.cpp adatastructures.cpp)
 
 # add_library(alinalg alinalg.cpp)
 # 

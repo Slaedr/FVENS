@@ -142,7 +142,7 @@ void RoeFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matr
 	if(fabs(l[3]) < eps) l[3] = eps;
 
 	// eigenvectors (column vectors of r below)
-	amat::Matrix<acfd_real> r(4,4, amat::ROWMAJOR);
+	amat::Matrix<acfd_real> r(4,4);
 	
 	// according to Dr Luo's notes
 	r(0,0) = 1.0;		r(0,1) = 0;							r(0,2) = 1.0;				r(0,3) = 1.0;

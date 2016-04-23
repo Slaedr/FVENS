@@ -1,7 +1,7 @@
 -mesh_file
-../../data/2dcylinder-coarse.msh
+../data/2dcylinder-medium.msh
 -output_file
-../data/coarse-m.vtu
+../data/medium-m.vtu
 -CFL
 0.2
 -Total_time

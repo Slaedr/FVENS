@@ -4,8 +4,8 @@
 #include <aconstants.hpp>
 #endif
 
-#ifndef __AMATRIX2_H
-#include <amatrix2.hpp>
+#ifndef __AMATRIX_H
+#include <amatrix.hpp>
 #endif
 
 #ifndef __AMESH2DH_H

@@ -2,8 +2,8 @@
  ------------------------------------------------
 flow past a naca0012 airfoil                                                    
  ------------------------------------------------
- ndimn ntype
-     2     3
+ ndimn ntype  nfael	  nnofa
+     2     3    3       2
  nelem npoin nface           time
   2857  1485   113     0.0000E+00
  intmat: nodal points corresponding to each element 
