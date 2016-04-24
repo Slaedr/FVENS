@@ -91,7 +91,7 @@ class ExplicitSolver
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 
 public:
-	ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst);
+	ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter);
 	~ExplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -111,7 +111,7 @@ public:
 	void compute_face_states();
 
 	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
-	void solve_rk1_steady(const acfd_real tol, const acfd_real cfl);
+	void solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl);
 
 	/// Computes the L2 norm of a cell-centered quantity
 	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);

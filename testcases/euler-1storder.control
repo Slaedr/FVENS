@@ -22,6 +22,8 @@
 VANLEER
 -reconstruction
 NONE
+-limiter
+NONE
 
 smallmesh.domn
 feflo.domn.naca0012w

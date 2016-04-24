@@ -43,6 +43,11 @@ protected:
 	acfd_real ny;
 
 public:
+	FaceDataComputation();
+    FaceDataComputation (const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
+			const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
+			const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
+			const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
     void setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
 			const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
 			const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
@@ -56,7 +61,34 @@ public:
 class NoLimiter : public FaceDataComputation
 {
 public:
+	/// Constructs the NoLimiter object. \sa FaceDataComputation::FaceDataComputation.
+	NoLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
+			const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
+			const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
+			const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
 	void compute_face_values();
+};
+
+/// Computes state at left and right sides if each face based on WENO-limited derivatives at each cell
+/** References:
+ * - Y. Xia, X. Liu and H. Luo. "A finite volume method based on a WENO reconstruction for compressible flows on hybrid grids", 52nd AIAA Aerospace Sciences Meeting, AIAA-2014-0939.
+ * - M. Dumbser and M. Kaeser. "Arbitrary high order non-oscillatory finite volume schemes on unsttructured meshes for linear hyperbolic systems", J. Comput. Phys. 221 pp 693--723, 2007.
+ *
+ * Note that we do not take the 'oscillation indicator' as the square of the magnitude of the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
+ */
+class WENOLimiter : public FaceDataComputation
+{
+	amat::Matrix<acfd_real>* ldudx;
+	amat::Matrix<acfd_real>* ldudy;
+	acfd_real gamma;
+	acfd_real lambda;
+	acfd_real epsilon;
+public:
+    WENOLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
+			const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, const amat::Matrix<acfd_real>* gauss_r, 
+			amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
+	void compute_face_values();
+	~WENOLimiter();
 };
 
 /// Computes face values using the Van-Albada limiter

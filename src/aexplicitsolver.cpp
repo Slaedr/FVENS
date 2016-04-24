@@ -8,7 +8,7 @@
 
 namespace acfd {
 
-ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst)
+ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter)
 {
 	m = mesh;
 	order = _order;
@@ -24,6 +24,7 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	solid_wall_id = 2;
 	inflow_outflow_id = 4;
 
+	// allocation
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
 	residual.setup(m->gnelem(),nvars);
 	u.setup(m->gnelem(), nvars);
@@ -33,7 +34,6 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	dudy.setup(m->gnelem(), nvars);
 	uleft.setup(m->gnaface(), nvars);
 	uright.setup(m->gnaface(), nvars);
-
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),nvars);
@@ -44,6 +44,7 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	for(int i = 0; i < m->gnelem(); i++)
 		m_inverse(i) = 2.0/mesh->gjacobians(i);
 
+	// set inviscid flux scheme
 	if(invflux == "VANLEER")
 		inviflux = new VanLeerFlux(nvars, m->gndim(), g);
 	else if(invflux == "ROE")
@@ -51,9 +52,15 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 		inviflux = new RoeFlux(nvars, m->gndim(), g);
 		std::cout << "ExplicitSolver: Using Roe fluxes." << std::endl;
 	}
+	else if(invflux == "HLLC")
+	{
+		inviflux = new HLLCFlux(nvars, m->gndim(), g);
+		std::cout << "ExplicitSolver: Using HLLC fluxes." << std::endl;
+	}
 	else
 		std::cout << "ExplicitSolver: ! Flux scheme not available!" << std::endl;
 
+	// set reconstruction scheme
 	std::cout << "ExplicitSolver: Reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "GREENGAUSS")
 	{
@@ -66,8 +73,17 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	}
 	if(order == 1) std::cout << "ExplicitSolver: No reconstruction" << std::endl;
 
-	lim = new NoLimiter();
-	lim->setup(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
+	// set limiter
+	if(limiter == "NONE")
+	{
+		lim = new NoLimiter(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
+		std::cout << "ExplicitSolver: No limiter will be used." << std::endl;
+	}
+	else if(limiter == "WENO")
+	{
+		lim = new WENOLimiter(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
+		std::cout << "ExplicitSolver: WENO limiter selected.\n";
+	}
 }
 
 ExplicitSolver::~ExplicitSolver()
@@ -367,7 +383,7 @@ void ExplicitSolver::compute_RHS()
 	delete [] n;
 }
 
-void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
+void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl)
 {
 	int step = 0;
 	acfd_real resi = 1.0;
@@ -381,7 +397,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
 	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
 
-	while(resi/initres > tol)// || step <= 10)
+	while(resi/initres > tol && step < maxiter)
 	{
 		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
 		// reset fluxes
@@ -435,6 +451,8 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const acfd_real cfl)
 		//if(step == 10000) break;
 	}
 
+	if(step == maxiter)
+		std::cout << "ExplicitSolver: solve_rk1_steady(): Exceeded max iterations!" << std::endl;
 	//calculate gradients
 	//rec->compute_gradients();
 	delete [] err;
@@ -481,8 +499,8 @@ acfd_real ExplicitSolver::compute_entropy_cell()		// call after postprocess_cell
 
 	//acfd_real h = sqrt((m->jacobians).max());
 	acfd_real h = 1.0/sqrt(m->gnelem());
-
-	cout << "EulerFV:   " << log(h) << "  " << log(error) << endl;
+ 
+	cout << "EulerFV:   " << log(h) << "  " << setprecision(10) << log(error) << endl;
 
 	return error;
 }

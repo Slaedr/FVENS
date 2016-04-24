@@ -2,6 +2,28 @@
 
 namespace acfd {
 
+FaceDataComputation::FaceDataComputation()
+{ }
+
+FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
+		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
+		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
+		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+	:
+	m(mesh),
+	u (unknowns),
+	ug (unknow_ghost),          // contains ghost cell states according to BCs for each boundary edge
+	nvars (u->cols()),
+	dudx (x_deriv),
+	dudy (y_deriv),
+	ri (c_centres),
+	rb (ghost_centres),       // contains coords of right "cell centroid" of each boundary edge
+	gr (gauss_r),
+	ufl (uface_left),
+	ufr (uface_right),
+	ng (gauss_r[0].rows())
+{ }
+
 FaceDataComputation::~FaceDataComputation()
 { }
 
@@ -23,6 +45,13 @@ void FaceDataComputation::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_re
 	ufr = uface_right;
 	ng = gr[0].rows();
 }
+
+NoLimiter::NoLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
+		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
+		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
+		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
+{ }
 
 void NoLimiter::compute_face_values()
 {
@@ -58,6 +87,99 @@ void NoLimiter::compute_face_values()
 	}
 }
 
+WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
+		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
+		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, const amat::Matrix<acfd_real>* gauss_r, 
+		amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
+{
+	ldudx = new amat::Matrix<acfd_real>(m->gnelem(),nvars);
+	ldudy = new amat::Matrix<acfd_real>(m->gnelem(),nvars);
+	// values below chosen from second reference (Dumbser and Kaeser)
+	gamma = 4.0;
+	lambda = 1e3;
+	epsilon = 1e-5;
+}
+
+WENOLimiter::~WENOLimiter()
+{
+	delete ldudx;
+	delete ldudy;
+}
+
+void WENOLimiter::compute_face_values()
+{
+	// first compute limited dericatives at each cell
+	acfd_real w, wsum, denom;
+	acfd_int jelem;
+	int jel, ivar;
+
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(ivar = 0; ivar < nvars; ivar++)
+		{
+			wsum = 0;
+			(*ldudx)(ielem,ivar) = 0;
+			(*ldudy)(ielem,ivar) = 0;
+
+			// Central stencil
+			denom = pow( dudx->get(ielem,ivar)*dudx->get(ielem,ivar) + dudy->get(ielem,ivar)*dudy->get(ielem,ivar) + epsilon, gamma);
+			w = lambda / denom;
+			wsum += w;
+			(*ldudx)(ielem,ivar) += w*dudx->get(ielem,ivar);
+			(*ldudy)(ielem,ivar) += w*dudy->get(ielem,ivar);
+
+			// Biased stencils
+			for(jel = 0; jel < m->gnfael(ielem); jel++)
+			{
+				jelem = m->gesuel(ielem,jel);
+
+				// ignore ghost cells
+				if(jelem >= m->gnelem())
+					continue;
+
+				denom = pow( dudx->get(jelem,ivar)*dudx->get(jelem,ivar) + dudy->get(jelem,ivar)*dudy->get(jelem,ivar) + epsilon, gamma);
+				w = 1.0 / denom;
+				wsum += w;
+				(*ldudx)(ielem,ivar) += w*dudx->get(jelem,ivar);
+				(*ldudy)(ielem,ivar) += w*dudy->get(jelem,ivar);
+			}
+
+			(*ldudx)(ielem,ivar) /= wsum;
+			(*ldudy)(ielem,ivar) /= wsum;
+		}
+	}
+	
+	// (a) internal faces
+	for(ied = m->gnbface(); ied < m->gnaface(); ied++)
+	{
+		ielem = m->gintfac(ied,0);
+		jelem = m->gintfac(ied,1);
+
+		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
+		for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
+		{
+			for(int i = 0; i < nvars; i++)
+			{
+
+				(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+				(*ufr)(ied,i) = u->get(jelem,i) + ldudx->get(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) + ldudy->get(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
+			}
+		}
+	}
+	
+	//Now calculate ghost states at boundary faces using the ufl and ufr of cells
+	for(ied = 0; ied < m->gnbface(); ied++)
+	{
+		ielem = m->gintfac(ied,0);
+
+		for(int ig = 0; ig < ng; ig++)
+		{
+			for(int i = 0; i < nvars; i++)
+				(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+		}
+	}
+}
 
 void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
 	const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 

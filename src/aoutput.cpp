@@ -11,7 +11,7 @@
 void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, const amat::Matrix<double>& x, std::string scaname[], const amat::Matrix<double>& y, std::string vecname)
 {
 	int elemcode;
-	std::cout << "aoutput: Writing vtu output...\n";
+	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
 	std::ofstream out(fname);
 
 	int nscalars = x.cols();

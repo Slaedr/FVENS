@@ -1,8 +1,8 @@
 -input-file
-../data/feflo.domn.naca0012w
+../data/naca0012-4.domn
 -input-format
 domn
 -output-file
-../data/naca0012-inviscid.msh
+../data/naca0012-4.msh
 -output-format
 msh

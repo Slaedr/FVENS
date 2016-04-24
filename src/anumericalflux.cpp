@@ -194,4 +194,103 @@ void RoeFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matr
 	}
 }
 
+HLLCFlux::HLLCFlux(int num_vars, int num_dims, acfd_real gamma) : InviscidFlux(num_vars, num_dims, gamma)
+{
+	utemp.setup(num_vars,1);
+}
+
+/** Currently, the estimated signal speeds are the classical estimates, not the corrected ones given by Remaki et. al.
+ */
+void HLLCFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matrix<acfd_real>* const ur, const acfd_real* const n, amat::Matrix<acfd_real>* const flux)
+{
+	acfd_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj, pstar;
+	int ivar;
+
+	vxi = ul->get(1)/ul->get(0); vyi = ul->get(2)/ul->get(0);
+	vxj = ur->get(1)/ur->get(0); vyj = ur->get(2)/ur->get(0);
+	vni = vxi*n[0] + vyi*n[1];
+	vnj = vxj*n[0] + vyj*n[1];
+	vmag2i = vxi*vxi + vyi*vyi;
+	vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	pi = (g-1.0)*(ul->get(3) - 0.5*ul->get(0)*vmag2i);
+	pj = (g-1.0)*(ur->get(3) - 0.5*ur->get(0)*vmag2j);
+	// speeds of sound
+	ci = sqrt(g*pi/ul->get(0));
+	cj = sqrt(g*pj/ur->get(0));
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+	Hi = (ul->get(3) + pi)/ul->get(0);
+	Hj = (ur->get(3) + pj)/ur->get(0);
+
+	// compute Roe-averages
+	acfd_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	Rij = sqrt(ur->get(0)/ul->get(0));
+	rhoij = Rij*ul->get(0);
+	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	vm2ij = vxij*vxij + vyij*vyij;
+	vnij = vxij*n[0] + vyij*n[1];
+	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+
+	// estimate signal speeds (classical; not Remaki corrected)
+	acfd_real sr, sl, sm;
+	sl = vni - ci;
+	if (sl > vnij-cij)
+		sl = vnij-cij;
+	sr = vnj+cj;
+	if(sr < vnij+cij)
+		sr = vnij+cij;
+	sm = ( ur->get(0)*vnj*(sr-vnj) - ul->get(0)*vni*(sl-vni) + pi-pj ) / ( ur->get(0)*(sr-vnj) - ul->get(0)*(sl-vni) );
+
+	// compute fluxes
+	
+	if(sl > 0)
+	{
+		(*flux)(0) = vni*ul->get(0);
+		(*flux)(1) = vni*ul->get(1) + pi*n[0];
+		(*flux)(2) = vni*ul->get(2) + pi*n[1];
+		(*flux)(3) = vni*(ul->get(3) + pi);
+	}
+	else if(sl <= 0 && sm > 0)
+	{
+		(*flux)(0) = vni*ul->get(0);
+		(*flux)(1) = vni*ul->get(1) + pi*n[0];
+		(*flux)(2) = vni*ul->get(2) + pi*n[1];
+		(*flux)(3) = vni*(ul->get(3) + pi);
+
+		pstar = ul->get(0)*(vni-sl)*(vni-sm) + pi;
+		utemp(0) = ul->get(0) * (sl - vni)/(sl-sm);
+		utemp(1) = ( (sl-vni)*ul->get(1) + (pstar-pi)*n[0] )/(sl-sm);
+		utemp(2) = ( (sl-vni)*ul->get(2) + (pstar-pi)*n[1] )/(sl-sm);
+		utemp(3) = ( (sl-vni)*ul->get(3) - pi*vni + pstar*sm )/(sl-sm);
+
+		for(ivar = 0; ivar < nvars; ivar++)
+			(*flux)(ivar) += sl * ( utemp.get(ivar) - ul->get(ivar));
+	}
+	else if(sm <= 0 && sr >= 0)
+	{
+		(*flux)(0) = vnj*ur->get(0);
+		(*flux)(1) = vnj*ur->get(1) + pj*n[0];
+		(*flux)(2) = vnj*ur->get(2) + pj*n[1];
+		(*flux)(3) = vnj*(ur->get(3) + pj);
+
+		pstar = ur->get(0)*(vnj-sr)*(vnj-sm) + pj;
+		utemp(0) = ur->get(0) * (sr - vnj)/(sr-sm);
+		utemp(1) = ( (sr-vnj)*ur->get(1) + (pstar-pj)*n[0] )/(sr-sm);
+		utemp(2) = ( (sr-vnj)*ur->get(2) + (pstar-pj)*n[1] )/(sr-sm);
+		utemp(3) = ( (sr-vnj)*ur->get(3) - pj*vnj + pstar*sm )/(sr-sm);
+
+		for(ivar = 0; ivar < nvars; ivar++)
+			(*flux)(ivar) += sr * ( utemp.get(ivar) - ur->get(ivar));
+	}
+	else
+	{
+		(*flux)(0) = vnj*ur->get(0);
+		(*flux)(1) = vnj*ur->get(1) + pj*n[0];
+		(*flux)(2) = vnj*ur->get(2) + pj*n[1];
+		(*flux)(3) = vnj*(ur->get(3) + pj);
+	}
+}
+
 } // end namespace acfd

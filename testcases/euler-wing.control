@@ -1,13 +1,15 @@
 -mesh_file
 ../data/naca0012-inviscid.msh
 -output_file
-../data/naca0012_1.vtu
+../data/naca0012_2-weno.vtu
 -CFL
 0.24
 -Total_time
 0.5
 -Tolerance
-1e-6
+1e-5
+-Max-iterations
+200000
 -M_infinity
 0.85
 -velocity_infinity
@@ -17,11 +19,13 @@
 -rho_infinity
 1.0
 -formal-spatial-order
-1
+2
 -inviscid-flux
 VANLEER
 -reconstruction
 GREENGAUSS
+-limiter
+WENO
 
 smallmesh.domn
 feflo.domn.naca0012w

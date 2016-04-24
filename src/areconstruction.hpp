@@ -61,7 +61,7 @@ public:
 /**
  * @brief Implements linear reconstruction using the Green-Gauss theorem over elements.
  * 
- * The scheme is compact.
+ * An inverse-distance weighted average is used to obtain the conserved variables at the faces.
  */
 class GreenGaussReconstruction : public Reconstruction
 {

@@ -64,6 +64,17 @@ public:
 	void get_flux(const amat::Matrix<acfd_real>* const uleft, const amat::Matrix<acfd_real>* const uright, const acfd_real* const n, amat::Matrix<acfd_real>* const flux);
 };
 
+/// Harten Lax Van-Leer numerical flux with contact restoration by Toro
+/** From Remaki et. al., "Aerodynamic computations using FVM and HLLC".
+ */
+class HLLCFlux : public InviscidFlux
+{
+	amat::Matrix<acfd_real> utemp;
+public:
+	HLLCFlux(int num_vars, int num_dims, acfd_real gamma);
+	void get_flux(const amat::Matrix<acfd_real>* const uleft, const amat::Matrix<acfd_real>* const uright, const acfd_real* const n, amat::Matrix<acfd_real>* const flux);
+};
+
 } // end namespace acfd
 
 #endif
