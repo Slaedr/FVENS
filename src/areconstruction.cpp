@@ -50,7 +50,8 @@ void GreenGaussReconstruction::compute_gradients()
 		}
 		dL = sqrt(dL);
 		dR = sqrt(dR);
-		areainv1 = 2.0/m->gjacobians(ielem);
+		//areainv1 = 2.0/m->gjacobians(ielem);
+		areainv1 = 1.0/m->garea(ielem);
 		
 		for(ivar = 0; ivar < nvars; ivar++)
 		{
@@ -75,8 +76,10 @@ void GreenGaussReconstruction::compute_gradients()
 		}
 		dL = sqrt(dL);
 		dR = sqrt(dR);
-		areainv1 = 2.0/m->gjacobians(ielem);
-		areainv2 = 2.0/m->gjacobians(jelem);
+		//areainv1 = 2.0/m->gjacobians(ielem);
+		//areainv2 = 2.0/m->gjacobians(jelem);
+		areainv1 = 1.0/m->garea(ielem);
+		areainv2 = 1.0/m->garea(jelem);
 		
 		for(ivar = 0; ivar < nvars; ivar++)
 		{

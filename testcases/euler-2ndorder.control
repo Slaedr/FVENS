@@ -1,7 +1,7 @@
 -mesh_file
-../data/2dcylinder-fine.msh
+../data/2dcylinder-coarse.msh
 -output_file
-../data/fine-m.vtu
+../data/coarse-m-vl.vtu
 -CFL
 0.24
 -Total_time
@@ -9,7 +9,7 @@
 -Tolerance
 1e-5
 -Max-iterations
-400000
+900000
 -M_infinity
 0.38
 -velocity_infinity
@@ -21,7 +21,7 @@
 -formal-spatial-order
 2
 -inviscid-flux
-HLLC
+VANLEER
 -reconstruction-scheme
 GREENGAUSS
 -limiter

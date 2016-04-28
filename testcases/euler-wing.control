@@ -1,13 +1,13 @@
 -mesh_file
 ../data/naca0012-inviscid.msh
 -output_file
-../data/naca0012_2-weno.vtu
+../data/naca0012_2-p.vtu
 -CFL
 0.24
 -Total_time
 0.5
 -Tolerance
-1e-5
+1e-4
 -Max-iterations
 200000
 -M_infinity
@@ -25,7 +25,7 @@ VANLEER
 -reconstruction
 GREENGAUSS
 -limiter
-WENO
+NONE
 
 smallmesh.domn
 feflo.domn.naca0012w

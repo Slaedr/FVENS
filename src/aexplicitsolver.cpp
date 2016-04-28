@@ -458,6 +458,63 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 	delete [] err;
 }
 
+void ExplicitSolver::postprocess_point()
+{
+	cout << "ExplicitSolver: postprocess_point(): Creating output arrays...\n";
+	scalars.setup(m->gnpoin(),3);
+	velocities.setup(m->gnpoin(),2);
+	amat::Matrix<acfd_real> c(m->gnpoin(),1);
+	
+	amat::Matrix<acfd_real> areasum(m->gnpoin(),1);
+	amat::Matrix<acfd_real> up(m->gnpoin(), nvars);
+	up.zeros();
+	areasum.zeros();
+
+	int inode, ivar;
+	acfd_int ielem, iface, ip1, ip2, ipoin;
+
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(inode = 0; inode < m->gnnode(ielem); inode++)
+			for(ivar = 0; ivar < nvars; ivar++)
+			{
+				up(m->ginpoel(ielem,inode),ivar) += u.get(ielem,ivar)*m->garea(ielem);
+				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
+			}
+	}
+	for(iface = 0; iface < m->gnbface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		ip1 = m->gintfac(iface,2);
+		ip2 = m->gintfac(iface,3);
+		for(ivar = 0; ivar < nvars; ivar++)
+		{
+			up(ip1,ivar) += ug.get(iface,ivar)*m->garea(ielem);
+			up(ip2,ivar) += ug.get(iface,ivar)*m->garea(ielem);
+			areasum(ip1) += m->garea(ielem);
+			areasum(ip2) += m->garea(ielem);
+		}
+	}
+
+	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(ivar = 0; ivar < nvars; ivar++)
+			up(ipoin,ivar) /= areasum(ipoin);
+	
+	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	{
+		scalars(ipoin,0) = up.get(ipoin,0);
+		velocities(ipoin,0) = up.get(ipoin,1)/up.get(ipoin,0);
+		velocities(ipoin,1) = up.get(ipoin,2)/up.get(ipoin,0);
+		//velocities(ipoin,0) = dudx(ipoin,1);
+		//velocities(ipoin,1) = dudy(ipoin,1);
+		acfd_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
+		scalars(ipoin,2) = up.get(ipoin,0)*(g-1) * (up.get(ipoin,3)/up.get(ipoin,0) - 0.5*vmag2);		// pressure
+		c(ipoin) = sqrt(g*scalars(ipoin,2)/up.get(ipoin,0));
+		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
+	}
+	cout << "EulerFV: postprocess_point(): Done.\n";
+}
+
 void ExplicitSolver::postprocess_cell()
 {
 	cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
@@ -483,8 +540,9 @@ void ExplicitSolver::postprocess_cell()
 	cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
-acfd_real ExplicitSolver::compute_entropy_cell()		// call after postprocess_cell
+acfd_real ExplicitSolver::compute_entropy_cell()
 {
+	postprocess_cell();
 	acfd_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
 	acfd_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
 

@@ -49,11 +49,10 @@ int main(int argc, char* argv[])
 
 	// Set up mesh
 
-	//ifstream meshs(meshfile);
-
 	UMesh2dh m;
 	m.readGmsh2(meshfile,2);
 	m.compute_topological();
+	m.compute_areas();
 	m.compute_jacobians();
 	m.compute_face_data();
 
@@ -62,22 +61,17 @@ int main(int argc, char* argv[])
 	ExplicitSolver prob(&m, order, invflux, reconst, limiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
-	//All hell breaks loose
 	prob.solve_rk1_steady(tolerance, maxiter, cfl);
-
-	prob.postprocess_cell();
 
 	double err = prob.compute_entropy_cell();
 
+	//prob.postprocess_point();
 	Matrix<acfd_real> scalars = prob.getscalars();
 	Matrix<acfd_real> velocities = prob.getvelocities();
 
 	string scalarnames[] = {"density", "mach-number", "pressure"};
-	//writeScalarsVectorToVtu(outf, m, prob.scalars, scalarnames, prob.velocities, "velocity");
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
 
-	//meshs.close();
-	
 	cout << "\n--------------- End --------------------- \n";
 	return 0;
 }

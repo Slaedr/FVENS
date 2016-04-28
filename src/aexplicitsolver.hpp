@@ -118,6 +118,9 @@ public:
 	
 	/// Compute cell-centred quantities to export
 	void postprocess_cell();
+	
+	/// Compute nodal quantities to export, based on area-weighted averaging (which takes into account ghost cells as well)
+	void postprocess_point();
 
 	/// Compute norm of cell-centered entropy production
 	/// Call aftr computing pressure etc \sa postprocess_cell

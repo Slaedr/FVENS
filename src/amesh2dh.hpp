@@ -105,7 +105,8 @@ private:
 	bool isBoundaryMaps;			///< Specifies whether bface-intfac maps have been created
 
 	bool alloc_jacobians;			///< Flag indicating whether space has been allocated for jacobians
-	amat::Matrix<double > jacobians;		///< Contains jacobians of each (linear) element
+	amat::Matrix<double > jacobians;		///< Contains jacobians of each (linear triangular) element
+	amat::Matrix<acfd_real> area;			///< Contains area of each element (either triangle or quad)
 	amat::Matrix<acfd_real> gallfa;			///< Stores lengths and normals for linear mesh faces
 	
 	/// Contains Knupp's node-local areas for each node of each element. 
@@ -157,6 +158,7 @@ public:
 	int gbifmap(int intfacno) const { return bifmap.get(intfacno); }
 	int gifbmap(int bfaceno) const { return ifbmap.get(bfaceno); }
 	double gjacobians(int ielem) const { return jacobians.get(ielem,0); }
+	acfd_real garea(acfd_int ielem) const { return area.get(ielem,0); }
 	acfd_real ggallfa(acfd_int iface, int index) const { return gallfa.get(iface,index); }
 	int gflag_bpoin(const acfd_int pointno) const { return flag_bpoin.get(pointno); }
 
@@ -209,6 +211,9 @@ public:
 
 	void compute_jacobians();
 	void detect_negative_jacobians(std::ofstream& out);
+	
+	/// computes areas of linear triangles and quads
+	void compute_areas();
 	
 	/** Computes data structures for 
 	 * elements surrounding point (esup), 
