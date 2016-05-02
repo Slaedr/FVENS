@@ -86,6 +86,8 @@ private:
 	amat::Matrix<int > intfac;
 	/// Holds boundary tags (markers) corresponding to intfac
 	amat::Matrix<int > intfacbtags;
+	/// Holds face numbers of faces making up an element
+	amat::Matrix<int> elemface;
 	
 	/** @brief Boundary points list
 	 * 
@@ -150,6 +152,7 @@ public:
 	int gpsup(int i) const { return psup.get(i); }
 	int gpsup_p(int i) const { return psup_p.get(i); }
 	int gesuel(int ielem, int jnode) const { return esuel.get(ielem, jnode); }
+	acfd_int gelemface(acfd_int ielem, int inode) { return elemface.get(ielem,inode); }
 	int gintfac(int face, int i) const { return intfac.get(face,i); }
 	int gintfacbtags(int face, int i) const { return intfacbtags.get(face,i); }
 	int gbpoints(int poin, int i) const { return bpoints.get(poin,i); }

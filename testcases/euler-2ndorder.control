@@ -1,7 +1,7 @@
 -mesh_file
-../data/2dcylinder-coarse.msh
+../data/2dcylinder-medium.msh
 -output_file
-../data/coarse-m-vl.vtu
+../data/medium-m-roe.vtu
 -CFL
 0.24
 -Total_time
@@ -21,7 +21,7 @@
 -formal-spatial-order
 2
 -inviscid-flux
-VANLEER
+ROE
 -reconstruction-scheme
 GREENGAUSS
 -limiter

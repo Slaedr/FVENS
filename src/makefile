@@ -1,3 +1,5 @@
+# not used anymore. Use the CMakeLists.txt file
+
 PREFIX = ../testcases/
 #GPP = g++
 INC_DIR = .
