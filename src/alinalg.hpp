@@ -20,14 +20,14 @@ void gausselim(Matrix<acfd_real>& A, Matrix<acfd_real>& b, Matrix<acfd_real>& x)
 class IterativeSolver
 {
 protected:
-	const int nvars;
-	const UMesh2dh* const m;
-	const Matrix<acfd_real>* const diag;
-	const Matrix<acfd_real>* const res;
-	Matrix<acfd_real>* const du;
+	const int nvars;						///< Number of conserved variables
+	const UMesh2dh* const m;				///< mesh
+	const Matrix<acfd_real>* const diag;	///< Diagonal blocks
+	const Matrix<acfd_real>* const res;		///< Vector of residuals at previous iteration
+	Matrix<acfd_real>* const u;				///< Vector of unknowns
 public:
-	IterativeSolver(const int num_vars, const UMesh2dh* const mesh, const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const delta_u) 
-		: nvars(num_vars), m(mesh), diag(diagonal_blocks), res(residual), du(delta_u)
+	IterativeSolver(const int num_vars, const UMesh2dh* const mesh, const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const unk) 
+		: nvars(num_vars), m(mesh), diag(diagonal_blocks), res(residual), u(unk)
 	{ }
 
 	/// Supposed to carry a single step of the corresponding AF solver
@@ -58,17 +58,21 @@ public:
  */
 class LUSGS_Solver : public MatrixFreeIterativeSolver
 {
-	Matrix<acfd_real>* dutemp;
+	Matrix<acfd_real>* du;
 	Matrix<acfd_real> f1;
 	Matrix<acfd_real> f2;
+	Matrix<acfd_real> uel;
+	Matrix<acfd_real> uelpdu;
 	acfd_int ielem, jelem, iface;
 	acfd_real s, sum;
-	acfd_real n[2];
-	int jel;
+	acfd_real n[NDIM];
+	int jfa;
+	int ivar;
+	int ip1[NDIM], ip2[NDIM];
 public:
 
 	LUSGS_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
-			const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const delta_u);
+			const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const u);
 
 	~LUSGS_Solver();
 	

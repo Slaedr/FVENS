@@ -75,12 +75,14 @@ void gausselim(Matrix<acfd_real>& A, Matrix<acfd_real>& b, Matrix<acfd_real>& x)
 }
 
 LUSGS_Solver::LUSGS_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
-		const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const delta_u) 
-	: MatrixFreeIterativeSolver(num_vars, mesh, diagonal_blocks, residual, delta_u), invf(inviscid_flux)
+		const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const unk) 
+	: MatrixFreeIterativeSolver(num_vars, mesh, diagonal_blocks, residual, unk), invf(inviscid_flux)
 {
-	dutemp = new Matrix<acfd_real>();
+	du = new Matrix<acfd_real>();
 	f1.setup(nvars,1);
 	f2.setup(nvars,1);
+	uelpdu.setup(nvars,1);
+	uel.setup(nvars,1);
 }
 
 LUSGS_Solver::LUSGS_Solver()
@@ -90,20 +92,40 @@ LUSGS_Solver::LUSGS_Solver()
 
 LUSGS_Solver::update()
 {
-	dutemp.zeros();
+	du.zeros();
 	// forward sweep
 	// first compute R - L*du
-	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
-	{
-		ielem = m->gintfac(iface,0);
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		s = m->ggallfa(iface,2);
-
-		invf->evaluate(u, ielem, n, &f1);
-	}
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
+		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
+		{
+			jelem = m->gesuel(ielem,jfa);
+			if(jelem > ielem) continue;
+
+			for(idim = 0; idim < NDIM; idim++)
+			{
+				ip1[idim] = m->gcoords(m->ginpoel(ielem,jfa),idim);
+				ip2[idim] = m->gcoords(m->ginpoel(ielem, (jfa+1)%m->gnnode(ielem) ),idim);
+			}
+			// get normals pointing out of jelem, and *into* ielem
+			n[0] = -1.0*(ip2[1]-ip1[1]);
+			n[1] = ip2[0]-ip1[0];
+			s = sqrt(n[0]*n[0] + n[1]*n[1]);
+
+			for(ivar = 0; ivar < nvars; ivar++)
+			{
+				uel(ivar) = u->get(jelem,ivar);
+				uelpdu(ivar) = uel.get(ivar) + du.get(jelem,ivar);
+			}
+
+			// compute F(u+du*) in store in f2
+			invf->compute_flux(uelpdu,n,&f2);
+			// compute F(u) and store in f1
+			invf->compute_flux(uel,n,&f1);
+			// get F(u+du*) - F(u), which is dF/du(u_jelem) du*
+			for(ivar = 0; ivar < nvars; ivar++)
+				f1(ivar) = f2(ivar) - f1(ivar);
+		}
 	}
 }
 

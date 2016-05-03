@@ -11,6 +11,8 @@
 	/// A small number likely smaller than most convergence tolerances
 	#define A_SMALL_NUMBER 1e-12
 	
+	#define NDIM 2
+	
 	#ifndef MESHDATA_DOUBLE_PRECISION
 	#define MESHDATA_DOUBLE_PRECISION 20
 	#endif
