@@ -1,2 +1,0 @@
-/usr/bin/ar cr lib/libfvens.a  CMakeFiles/fvens.dir/areconstruction.cpp.o CMakeFiles/fvens.dir/alimiter.cpp.o CMakeFiles/fvens.dir/anumericalflux.cpp.o CMakeFiles/fvens.dir/aexplicitsolver.cpp.o CMakeFiles/fvens.dir/amesh2dh.cpp.o CMakeFiles/fvens.dir/aoutput.cpp.o CMakeFiles/fvens.dir/amatrix.cpp.o CMakeFiles/fvens.dir/adatastructures.cpp.o
-/usr/bin/ranlib lib/libfvens.a

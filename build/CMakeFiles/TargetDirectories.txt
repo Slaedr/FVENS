@@ -1,3 +1,0 @@
-/home/aditya/Myprojects/FVENS/build/utilities/CMakeFiles/convertformat.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/fvens.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/fvense.dir

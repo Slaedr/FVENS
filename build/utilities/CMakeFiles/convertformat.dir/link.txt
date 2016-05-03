@@ -1,1 +1,0 @@
-/home/aditya/gcc-5.2.0-build/bin/g++-5.2    -std=c++11 -ggdb -g -Wall -DDEBUG=1    CMakeFiles/convertformat.dir/convertformat.cpp.o  -o ../bin/convertformat -rdynamic ../lib/libfvens.a 
