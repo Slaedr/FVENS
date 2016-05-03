@@ -858,9 +858,12 @@ void UMesh2dh::compute_topological()
 		}
 	}
 
-	/** Computes, for each face, the elements on either side, the starting node and the ending node of the face. This is stored in intfac. Also computes unit normals to, and lengths of, each face as well as boundary flags of boundary faces, in gallfa.
-	The orientation of the face is such that the element with smaller index is always to the left of the face, while the element with greater index is always to the right of the face.
-	\note After the following portion, esuel holds (nelem + face no.) for each ghost cell, instead of -1 as before.*/
+	/** Computes, for each face, the elements on either side, the starting node and the ending node of the face. This is stored in intfac. 
+	 * Also computes unit normals to, and lengths of, each face as well as boundary flags of boundary faces, in gallfa.
+	 * The orientation of the face is such that the element with smaller index is always to the left of the face, while the element with greater index is always to the right of the face.
+	 * Also computes element-face connectivity array elemface in the same loop which computes intfac.
+	 * \note After the following portion, esuel holds (nelem + face no.) for each ghost cell, instead of -1 as before.
+	 */
 
 	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
 	nbface = naface = 0;
@@ -890,13 +893,14 @@ void UMesh2dh::compute_topological()
 	}
 	std::cout << "UMesh2dh: compute_topological(): Number of all faces = " << naface << std::endl;
 
-	//allocate intfac
+	//allocate intfac and elemface
 	intfac.setup(naface,nnofa+2);
+	elemface.setup(nelem,maxnfael);
 
 	//reset face totals
 	nbface = naface = 0;
 
-	int in1, je;
+	int in1, je, jnode, jlocnode;
 
 	//second run: populate intfac
 	for(int ie = 0; ie < nelem; ie++)
@@ -912,6 +916,7 @@ void UMesh2dh::compute_topological()
 				intfac(nbface,1) = nelem+nbface;
 				intfac(nbface,2) = inpoel(ie,in);
 				intfac(nbface,3) = inpoel(ie,in1);
+				elemface(ie,in) = nbface;
 
 				nbface++;
 			}
@@ -928,8 +933,14 @@ void UMesh2dh::compute_topological()
 				in1 = (in+1)%nnode[ie];
 				intfac(naface,0) = ie;
 				intfac(naface,1) = je;
-				intfac(naface,2) = inpoel(ie,in);
-				intfac(naface,3) = inpoel(ie,in1);
+				intfac(naface,2) = inpoel.get(ie,in);
+				intfac(naface,3) = inpoel.get(ie,in1);
+
+				elemface(ie,in) = naface;
+				for(jnode = 0; jnode < nnode[je]; jnode++)
+					if(inpoel.get(ie,in1) == inpoel.get(je,jnode))
+						elemface(je,jnode) = naface;
+
 				naface++;
 			}
 		}

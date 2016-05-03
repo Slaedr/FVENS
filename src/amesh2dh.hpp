@@ -222,7 +222,8 @@ public:
 	 * elements surrounding point (esup), 
 	 * points surrounding point (psup), 
 	 * elements surrounding elements (esuel), 
-	 * elements surrounding faces along with points in faces (intfac), and also 
+	 * elements surrounding faces along with points in faces (intfac),
+	 * element-face connectivity array elemface (for each facet of each element, it stores the intfac face number)
 	 * a list of boundary points with correspong global point numbers and containing boundary faces (according to intfac) (bpoints).
 	 * \note
 	 * - Use only after setup()

@@ -74,9 +74,9 @@ void gausselim(Matrix<acfd_real>& A, Matrix<acfd_real>& b, Matrix<acfd_real>& x)
 	}
 }
 
-LUSGS_Solver::LUSGS_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
-		const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const unk) 
-	: MatrixFreeIterativeSolver(num_vars, mesh, diagonal_blocks, residual, unk), invf(inviscid_flux)
+SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
+		const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const unk, const int omega) 
+	: MatrixFreeIterativeSolver(num_vars, mesh, diagonal_blocks, residual, unk), invf(inviscid_flux), w(omega)
 {
 	du = new Matrix<acfd_real>();
 	f1.setup(nvars,1);
@@ -85,12 +85,12 @@ LUSGS_Solver::LUSGS_Solver(const int num_vars, const UMesh2dh* const mesh, const
 	uel.setup(nvars,1);
 }
 
-LUSGS_Solver::LUSGS_Solver()
+SSOR_Solver::SSOR_Solver()
 {
 	delete [] dutemp;
 }
 
-LUSGS_Solver::update()
+SSOR_Solver::update()
 {
 	du.zeros();
 	// forward sweep

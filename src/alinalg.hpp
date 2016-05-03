@@ -71,17 +71,49 @@ class LUSGS_Solver : public MatrixFreeIterativeSolver
 	int ip1[NDIM], ip2[NDIM];
 public:
 
-	LUSGS_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
-			const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const u);
+	//LUSGS_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
+	//		const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const u);
 
-	~LUSGS_Solver();
+	//~LUSGS_Solver();
 	
 	/// Carries out a single step (one forward followed by one backward sweep) of SGS
 	/** The equation being solved is assumed to be
 	 * \f$ \mathbf{M} \frac{d\mathbf{u}}{dt} = \mathbf{R} \f$
 	 */
-	void update();
+	//void update();
 };
 	
+/// Matrix-free SSOR solver
+/** Adapted from reference: 
+ * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol 14, No 4, pp 253-270. 2001.
+ */
+class SSOR_Solver : public MatrixFreeIterativeSolver
+{
+	Matrix<acfd_real>* du;
+	Matrix<acfd_real> f1;
+	Matrix<acfd_real> f2;
+	Matrix<acfd_real> uel;
+	Matrix<acfd_real> uelpdu;
+	const acfd_real w;				/// Over-relaxation factor
+	acfd_int ielem, jelem, iface;
+	acfd_real s, sum;
+	acfd_real n[NDIM];
+	int jfa;
+	int ivar;
+	int ip1[NDIM], ip2[NDIM];
+public:
+
+	SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const FluxFunction* const inviscid_flux,
+			const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const residual, Matrix<acfd_real>* const u, const acfd_real omega);
+
+	~SSOR_Solver();
+	
+	/// Carries out a single step (one forward followed by one backward sweep) of SSOR
+	/** The equation being solved is assumed to be
+	 * \f$ \mathbf{M} \frac{d\mathbf{u}}{dt} = \mathbf{R} \f$
+	 */
+	void update();
+};
+
 }
 #endif
