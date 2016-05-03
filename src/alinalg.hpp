@@ -89,6 +89,9 @@ public:
  */
 class SSOR_Solver : public MatrixFreeIterativeSolver
 {
+	const Matrix<acfd_real>* const lambdaij;		///< Eigenvalue part of the Jacobian
+	const Matrix<acfd_real>* const elemflux;		///< State of flux at which Jacobian is to be computed
+	
 	Matrix<acfd_real>* du;
 	Matrix<acfd_real> f1;
 	Matrix<acfd_real> f2;
