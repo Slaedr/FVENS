@@ -84,14 +84,13 @@ SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const Matrix<acfd_re
 	f1.setup(nvars,1);
 	f2.setup(nvars,1);
 	uelpdu.setup(nvars,1);
-	elemres.setup(nvars,1);
 }
 
 SSOR_Solver::compute_update(Matrix<acfd_real>* const du)
 {
 	du->zeros();
 	// forward sweep
-	// first compute R - L*du
+	// f1 is used to aggregate contributions from neighboring elements
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		f1.zeros();
@@ -100,26 +99,14 @@ SSOR_Solver::compute_update(Matrix<acfd_real>* const du)
 			jelem = m->gesuel(ielem,jfa);
 			if(jelem > ielem) continue;
 
-			/*for(idim = 0; idim < NDIM; idim++)
-			{
-				ip1[idim] = m->gcoords(m->ginpoel(ielem,jfa),idim);
-				ip2[idim] = m->gcoords(m->ginpoel(ielem, (jfa+1)%m->gnnode(ielem) ),idim);
-			}*/
-			// get normals pointing out of jelem, and *into* ielem
-			/*n[0] = -1.0*(ip2[1]-ip1[1]);
-			n[1] = ip2[0]-ip1[0];
-			s = sqrt(n[0]*n[0] + n[1]*n[1]);*/
-
 			iface = m->gelemface(ielem,jfa);
-			n[0] = -m->ggallfa(iface,0);
-			n[1] = -m->ggallfa(iface,1);
+			n[0] = m->ggallfa(iface,0);
+			n[1] = m->ggallfa(iface,1);
 			s = m->ggallfa(iface,2);
 			lambda = lambdaij->get(iface);
 
 			for(ivar = 0; ivar < nvars; ivar++)
-			{
 				uelpdu(ivar) = u->get(jelem,ivar) + du->get(jelem,ivar);
-			}
 
 			// compute F(u+du*) in store in f2
 			invf->compute_flux(uelpdu,n,&f2);
@@ -132,12 +119,44 @@ SSOR_Solver::compute_update(Matrix<acfd_real>* const du)
 			}
 		}
 		for(ivar = 0; ivar < nvars; ivar++)
-			elemres(ivar) = res->get(ielem,ivar) - f1.get(ivar);
+			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
 
-		gausselim(diag[ielem], elemres, du[ielem]);
+		gausselim(diag[ielem], f2, du[ielem]);
 	}
 
 	// next, compute backward sweep
+	for(ielem = m->gnelem()-1; ielem >= 0; ielem--)
+	{
+		f1.zeros();
+		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
+		{
+			jelem = m->gesuel(ielem,jfa);
+			if(jelem < ielem) continue;
+
+			iface = m->gelemface(ielem,jfa);
+			n[0] = m->ggallfa(iface,0);
+			n[1] = m->ggallfa(iface,1);
+			s = m->ggallfa(iface,2);
+			lambda = lambdaij->get(iface);
+			
+			for(ivar = 0; ivar < nvars; ivar++)
+				uelpdu(ivar) = u->get(jelem,ivar) + du->get(jelem,ivar);
+
+			// compute F(u+du*) in store in f2
+			invf->compute_flux(uelpdu,n,&f2);
+			// get F(u+du*) - F(u) - lambda * du
+			for(ivar = 0; ivar < nvars; ivar++)
+			{
+				f2(ivar) = f2(ivar) - elemflux->get(jelem,ivar) - lambda*du->get(jelem);
+				f2(ivar) *= s*0.5;
+				f1(ivar) += f2(ivar);
+			}
+		}
+
+		gausselim(diag[ielem], f1, f2);
+		for(ivar = 0; ivar < nvars; ivar++)
+			du(ielem,ivar) -= w*f2.get(ivar);
+	}
 }
 
 }
