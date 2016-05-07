@@ -1,9 +1,9 @@
-/** @file aexplicitsolver.hpp
- * @brief Implements a driver class for explicit solution of Euler/Navier-Stokes equations.
+/** @file aimplicitsolver.hpp
+ * @brief Implicit solution of Euler/Navier-Stokes equations
  * @author Aditya Kashi
- * @date Feb 24, 2016
+ * @date May 6, 2016
  */
-#ifndef __AEXPLICITSOLVER_H
+#ifndef __AIMPLICITSOLVER_H
 
 #ifndef __ACONSTANTS_H
 #include <aconstants.hpp>
@@ -29,24 +29,43 @@
 #include <areconstruction.hpp>
 #endif
 
-#define __AEXPLICITSOLVER_H 1
+#ifndef __ALINALG_H
+#include <alinalg.hpp>
+#endif
+
+#define __AIMPLICITSOLVER_H 1
 
 namespace acfd {
 
-/// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
-/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of this class.
- */
-class ExplicitSolver
+/// Computation of the single-phase ideal gas Euler flux corresponding to any given state and along any given direction
+class FluxFunction
 {
-	const UMesh2dh* m;
-	amat::Matrix<acfd_real> m_inverse;		///< Left hand side (just the volume of the element for FV)
+protected:
+	const acfd_real gamma;
+public:
+	FluxFunction (acfd_real _gamma) : gamma(_gamma)
+	{ }
+	void evaluate_flux(const amat::Matrix<acfd_real>& state, const acfd_real* const n, amat::Matrix<acfd_real>& flux) const;
+};
+
+/// A driver class to control the implicit time-stepping solution process
+/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of (a child class of) this class.
+ */
+class ImplicitSolver
+{
+protected:
+	const UMesh2dh* const m;
+	amat::Matrix<acfd_real> m_inverse;			///< mass matrix (just the volume of the element for FV)
 	amat::Matrix<acfd_real> residual;			///< Right hand side for boundary integrals and source terms
-	int nvars;							///< number of conserved variables
+	int nvars;									///< number of conserved variables
 	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
-	acfd_real g;							///< adiabatic index
+	acfd_real g;								///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
 	amat::Matrix<acfd_real> integ;
+
+	/// Euler flux
+	FluxFunction* eulerflux;
 
 	/// Flux (boundary integral) calculation context
 	InviscidFlux* inviflux;
@@ -82,6 +101,12 @@ class ExplicitSolver
 	/// y-slopes
 	amat::Matrix<acfd_real> dudy;
 
+	/// Diagonal blocks of the residual Jacobian
+	amat::Matrix<acfd_real>* diag;
+
+	/// Linear solver to use
+	IterativeSolver* solver;
+
 	amat::Matrix<acfd_real> scalars;		///< Holds density, Mach number and pressure for each cell
 	amat::Matrix<acfd_real> velocities;		///< Holds velocity components for each cell
 
@@ -89,10 +114,11 @@ class ExplicitSolver
 
 	int solid_wall_id;			///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
+	const acfd_real cfl;
 
 public:
-	ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter);
-	~ExplicitSolver();
+	ImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl);
+	~ImplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
@@ -110,8 +136,7 @@ public:
 	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects
 	void compute_face_states();
 
-	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
-	void solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl);
+	virtual void solve() = 0;
 
 	/// Computes the L2 norm of a cell-centered quantity
 	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);
@@ -134,6 +159,47 @@ public:
 
 	/// computes ghost cell centers assuming symmetry about the face
 	void compute_ghost_cell_coords_about_face();
+};
+
+/// Solves for a steady-state solution by a first-order implicit scheme
+/** The ODE system is linearized at each time step; equivalent to a single Newton iteration at each time step.
+ */
+class SteadyStateImplicitSolver : public ImplicitSolver
+{
+	const acfd_real lintol;
+	const acfd_real steadytol;
+	const int linmaxiter;
+	const int steadymaxiter;
+public:
+	SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+			const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter);
+
+	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
+	void solve();
+};
+
+class UnsteadyImplicitSolver : public ImplicitSolver
+{
+	const acfd_real lintol;
+	const acfd_real newtontol;
+	const int linmaxiter;
+	const int newtonmaxiter;
+public:
+	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+			const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+
+	/// Solves unsteady problem
+	virtual void solve() = 0;
+};
+
+/// Solves an unsteady problem using first-order implicit time-stepping
+class BackwardEulerSolver : public UnsteadyImplicitSolver
+{
+public:
+	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+			const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+
+	void solve();
 };
 
 }	// end namespace

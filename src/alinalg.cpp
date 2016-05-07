@@ -108,8 +108,8 @@ SSOR_Solver::compute_update(Matrix<acfd_real>* const du)
 			for(ivar = 0; ivar < nvars; ivar++)
 				uelpdu(ivar) = u->get(jelem,ivar) + du->get(jelem,ivar);
 
-			// compute F(u+du*) in store in f2
-			invf->compute_flux(uelpdu,n,&f2);
+			// compute F(u+du*) and store in f2
+			invf->evaluate_flux(uelpdu,n,f2);
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{
@@ -143,7 +143,7 @@ SSOR_Solver::compute_update(Matrix<acfd_real>* const du)
 				uelpdu(ivar) = u->get(jelem,ivar) + du->get(jelem,ivar);
 
 			// compute F(u+du*) in store in f2
-			invf->compute_flux(uelpdu,n,&f2);
+			invf->evaluate_flux(uelpdu,n,f2);
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{

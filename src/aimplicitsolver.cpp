@@ -1,20 +1,19 @@
-/** @file aexplicitsolver.cpp
- * @brief Implements a driver class for explicit solution of Euler/Navier-Stokes equations.
+/** @file aimplicitsolver.cpp
+ * @brief Implements classes for implicit solution of Euler/Navier-Stokes equations.
  * @author Aditya Kashi
- * @date Feb 24, 2016
+ * @date May 6, 2016
  */
 
-#include <aexplicitsolver.hpp>
+#include <aimplicitsolver.hpp>
 
 namespace acfd {
 
-ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter)
+ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl_num)
+	: cfl(cfl_num), order(_order), m(mesh)
 {
-	m = mesh;
-	order = _order;
 	g = 1.4;
 
-	std::cout << "ExplicitSolver: Setting up explicit solver for spatial order " << order << std::endl;
+	std::cout << "ImplicitSolver: Setting up implicit solver for spatial order " << order << std::endl;
 
 	// for 2D Euler equations, we have 4 variables
 	nvars = 4;
@@ -26,6 +25,7 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 
 	// allocation
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
+	diag = new amat::Matrix<acfd_real>[m->gnelem()];
 	residual.setup(m->gnelem(),nvars);
 	u.setup(m->gnelem(), nvars);
 	uinf.setup(1, nvars);
@@ -42,7 +42,12 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 		gr[i].setup(ngaussf, m->gndim());
 
 	for(int i = 0; i < m->gnelem(); i++)
+	{
 		m_inverse(i) = 2.0/mesh->gjacobians(i);
+		diag[i].setup(nvars,nvars);
+	}
+
+	eulerflux = new FluxFunction(g);
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER")
@@ -50,18 +55,18 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	else if(invflux == "ROE")
 	{
 		inviflux = new RoeFlux(nvars, m->gndim(), g);
-		std::cout << "ExplicitSolver: Using Roe fluxes." << std::endl;
+		std::cout << "ImplicitSolver: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
 		inviflux = new HLLCFlux(nvars, m->gndim(), g);
-		std::cout << "ExplicitSolver: Using HLLC fluxes." << std::endl;
+		std::cout << "ImplicitSolver: Using HLLC fluxes." << std::endl;
 	}
 	else
-		std::cout << "ExplicitSolver: ! Flux scheme not available!" << std::endl;
+		std::cout << "ImplicitSolver: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
-	std::cout << "ExplicitSolver: Reconstruction scheme is " << reconst << std::endl;
+	std::cout << "ImplicitSolver: Reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "GREENGAUSS")
 	{
 		rec = new GreenGaussReconstruction();
@@ -71,30 +76,41 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	{
 		rec = new WeightedLeastSquaresReconstruction();
 	}
-	if(order == 1) std::cout << "ExplicitSolver: No reconstruction" << std::endl;
+	if(order == 1) std::cout << "ImplicitSolver: No reconstruction" << std::endl;
 
 	// set limiter
 	if(limiter == "NONE")
 	{
 		lim = new NoLimiter(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
-		std::cout << "ExplicitSolver: No limiter will be used." << std::endl;
+		std::cout << "ImplicitSolver: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
 		lim = new WENOLimiter(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
-		std::cout << "ExplicitSolver: WENO limiter selected.\n";
+		std::cout << "ImplicitSolver: WENO limiter selected.\n";
+	}
+
+	// set solver
+	if(linear_solver == "SSOR")
+	{
+		solver = new SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+			const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const lambda_ij, const Matrix<acfd_real>* const unk, const Matrix<acfd_real>* const elem_flux,
+			const acfd_real omega);
+		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
 	}
 }
 
-ExplicitSolver::~ExplicitSolver()
+ImplicitSolver::~ImplicitSolver()
 {
+	delete eulerflux;
 	delete rec;
 	delete inviflux;
 	delete lim;
 	delete [] gr;
+	delete [] diag;
 }
 
-void ExplicitSolver::compute_ghost_cell_coords_about_midpoint()
+void ImplicitSolver::compute_ghost_cell_coords_about_midpoint()
 {
 	int iface, ielem, idim, ip1, ip2;
 	std::vector<acfd_real> midpoint(m->gndim());
@@ -114,7 +130,7 @@ void ExplicitSolver::compute_ghost_cell_coords_about_midpoint()
 	}
 }
 
-void ExplicitSolver::compute_ghost_cell_coords_about_face()
+void ImplicitSolver::compute_ghost_cell_coords_about_face()
 {
 	int ied, ig, ielem;
 	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
@@ -162,7 +178,7 @@ void ExplicitSolver::compute_ghost_cell_coords_about_face()
  * \param a Angle of attack (radians)
  * \param rhoinf Free stream density
  */
-void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf)
+void ImplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//cout << "EulerFV: loaddata(): Calculating initial data...\n";
@@ -216,10 +232,10 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 	}
 
 	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
-	cout << "ExplicitSolver: loaddata(): Initial data calculated.\n";
+	cout << "ImplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
-void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
+void ImplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
 {
 	int lel, rel, i;
 	acfd_real nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
@@ -270,7 +286,7 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 	}
 }
 
-acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
+acfd_real ImplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
 {
 	acfd_real norm = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
@@ -281,7 +297,7 @@ acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
 	return norm;
 }
 
-void ExplicitSolver::compute_RHS()
+void ImplicitSolver::compute_RHS()
 {
 	residual.zeros();
 	
@@ -383,84 +399,10 @@ void ExplicitSolver::compute_RHS()
 	delete [] n;
 }
 
-void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl)
+
+void ImplicitSolver::postprocess_point()
 {
-	int step = 0;
-	acfd_real resi = 1.0;
-	acfd_real initres = 1.0;
-	amat::Matrix<acfd_real>* err;
-	err = new amat::Matrix<acfd_real>[nvars];
-	for(int i = 0; i<nvars; i++)
-		err[i].setup(m->gnelem(),1);
-	amat::Matrix<acfd_real> res(nvars,1);
-	res.ones();
-	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
-	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
-
-	while(resi/initres > tol && step < maxiter)
-	{
-		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
-		// reset fluxes
-		integ.zeros();		// reset CFL data
-
-		//calculate fluxes
-		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
-
-		/*if(step==0) {
-			//dudx.mprint(); dudy.mprint();
-			break;
-		}*/
-
-		//calculate dt based on CFL
-
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			dtm(iel) = cfl*(0.5*m->gjacobians(iel)/integ(iel));
-		}
-
-		uold = u;
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			for(int i = 0; i < nvars; i++)
-			{
-				u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
-			}
-		}
-
-		//if(step == 0) { dudx.mprint();  break; }
-
-		for(int i = 0; i < nvars; i++)
-		{
-			err[i] = (u-uold).col(i);
-			//err[i] = residual.col(i);
-			res(i) = l2norm(&err[i]);
-		}
-		resi = res.max();
-
-		if(step == 0)
-			initres = resi;
-
-		if(step % 20 == 0)
-			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
-
-		step++;
-		/*acfd_real totalenergy = 0;
-		for(int i = 0; i < m->gnelem(); i++)
-			totalenergy += u(i,3)*m->jacobians(i);
-		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
-		//if(step == 10000) break;
-	}
-
-	if(step == maxiter)
-		std::cout << "ExplicitSolver: solve_rk1_steady(): Exceeded max iterations!" << std::endl;
-	//calculate gradients
-	//rec->compute_gradients();
-	delete [] err;
-}
-
-void ExplicitSolver::postprocess_point()
-{
-	cout << "ExplicitSolver: postprocess_point(): Creating output arrays...\n";
+	cout << "ImplicitSolver: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
 	amat::Matrix<acfd_real> c(m->gnpoin(),1);
@@ -515,9 +457,9 @@ void ExplicitSolver::postprocess_point()
 	cout << "EulerFV: postprocess_point(): Done.\n";
 }
 
-void ExplicitSolver::postprocess_cell()
+void ImplicitSolver::postprocess_cell()
 {
-	cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
+	cout << "ImplicitSolver: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
 	amat::Matrix<acfd_real> c(m->gnelem(), 1);
@@ -540,7 +482,7 @@ void ExplicitSolver::postprocess_cell()
 	cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
-acfd_real ExplicitSolver::compute_entropy_cell()
+acfd_real ImplicitSolver::compute_entropy_cell()
 {
 	postprocess_cell();
 	acfd_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
@@ -563,14 +505,93 @@ acfd_real ExplicitSolver::compute_entropy_cell()
 	return error;
 }
 
-amat::Matrix<acfd_real> ExplicitSolver::getscalars() const
+amat::Matrix<acfd_real> ImplicitSolver::getscalars() const
 {
 	return scalars;
 }
 
-amat::Matrix<acfd_real> ExplicitSolver::getvelocities() const
+amat::Matrix<acfd_real> ImplicitSolver::getvelocities() const
 {
 	return velocities;
 }
 
+SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+		const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter)
+	: ImplicitSolver(mesh, invflux, reconst, limiter, linear_solver, cfl), lintol(lin_tol), linmaxiter(lin_maxiter), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+{ }
+
+void SteadyStateImplicitSolver::solve()
+{
+	int step = 0;
+	acfd_real resi = 1.0;
+	acfd_real initres = 1.0;
+	amat::Matrix<acfd_real>* err;
+	err = new amat::Matrix<acfd_real>[nvars];
+	for(int i = 0; i<nvars; i++)
+		err[i].setup(m->gnelem(),1);
+	amat::Matrix<acfd_real> res(nvars,1);
+	res.ones();
+	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
+	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
+
+	while(resi/initres > steadytol && step < steadymaxiter)
+	{
+		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
+		// reset fluxes
+		integ.zeros();		// reset CFL data
+
+		//calculate fluxes
+		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
+
+		/*if(step==0) {
+			//dudx.mprint(); dudy.mprint();
+			break;
+		}*/
+
+		//calculate dt based on CFL
+
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			dtm(iel) = cfl*(0.5*m->gjacobians(iel)/integ(iel));
+		}
+
+		uold = u;
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int i = 0; i < nvars; i++)
+			{
+				u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
+			}
+		}
+
+		//if(step == 0) { dudx.mprint();  break; }
+
+		for(int i = 0; i < nvars; i++)
+		{
+			err[i] = (u-uold).col(i);
+			//err[i] = residual.col(i);
+			res(i) = l2norm(&err[i]);
+		}
+		resi = res.max();
+
+		if(step == 0)
+			initres = resi;
+
+		if(step % 20 == 0)
+			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
+
+		step++;
+		/*acfd_real totalenergy = 0;
+		for(int i = 0; i < m->gnelem(); i++)
+			totalenergy += u(i,3)*m->jacobians(i);
+		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+		//if(step == 10000) break;
+	}
+
+	if(step == maxiter)
+		std::cout << "ImplicitSolver: solve_rk1_steady(): Exceeded max iterations!" << std::endl;
+	//calculate gradients
+	//rec->compute_gradients();
+	delete [] err;
+}
 }	// end namespace

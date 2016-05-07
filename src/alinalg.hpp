@@ -92,8 +92,8 @@ public:
 	void compute_update(Matrix<acfd_real>* const deltau);
 };
 
-/// Matrix-free LU-SGS solver
-/** Reference: 
+// Matrix-free LU-SGS solver
+/* Reference: 
  * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol 14, No 4, pp 253-270. 2001.
  */
 /*class LUSGS_Solver : public MatrixFreeIterativeSolver
