@@ -8,8 +8,9 @@
 
 namespace acfd {
 
-ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl_num)
-	: cfl(cfl_num), order(_order), m(mesh)
+ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+		const double cfl_num, const double relaxation_factor)
+	: cfl(cfl_num), w(relaxation_fator), order(_order), m(mesh)
 {
 	g = 1.4;
 
@@ -26,6 +27,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// allocation
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
+	lambdaij.setup(m->gnaface(),1);
 	residual.setup(m->gnelem(),nvars);
 	u.setup(m->gnelem(), nvars);
 	uinf.setup(1, nvars);
@@ -399,6 +401,10 @@ void ImplicitSolver::compute_RHS()
 	delete [] n;
 }
 
+void ImplicitSolver::compute_LHS()
+{
+	// compute diagonal blocks
+}
 
 void ImplicitSolver::postprocess_point()
 {
@@ -515,9 +521,9 @@ amat::Matrix<acfd_real> ImplicitSolver::getvelocities() const
 	return velocities;
 }
 
-SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
 		const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter)
-	: ImplicitSolver(mesh, invflux, reconst, limiter, linear_solver, cfl), lintol(lin_tol), linmaxiter(lin_maxiter), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+	: ImplicitSolver(mesh, invflux, reconst, limiter, linear_solver, cfl, omega), lintol(lin_tol), linmaxiter(lin_maxiter), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
 void SteadyStateImplicitSolver::solve()

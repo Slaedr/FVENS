@@ -104,6 +104,9 @@ protected:
 	/// Diagonal blocks of the residual Jacobian
 	amat::Matrix<acfd_real>* diag;
 
+	/// `Eigenvalues' of flux for LHS
+	amat::Matix<acfd_real> lambdaij;
+
 	/// Linear solver to use
 	IterativeSolver* solver;
 
@@ -114,10 +117,11 @@ protected:
 
 	int solid_wall_id;			///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
-	const acfd_real cfl;
+	const double cfl;
+	const double w;
 
 public:
-	ImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl);
+	ImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double relaxation_factor);
 	~ImplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -132,6 +136,9 @@ public:
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	void compute_RHS();
+
+	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS
+	virtual void compute_LHS();
 	
 	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects
 	void compute_face_states();
@@ -171,7 +178,7 @@ class SteadyStateImplicitSolver : public ImplicitSolver
 	const int linmaxiter;
 	const int steadymaxiter;
 public:
-	SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+	SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
 			const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
@@ -185,7 +192,7 @@ class UnsteadyImplicitSolver : public ImplicitSolver
 	const int linmaxiter;
 	const int newtonmaxiter;
 public:
-	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
 			const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
 
 	/// Solves unsteady problem
@@ -196,7 +203,7 @@ public:
 class BackwardEulerSolver : public UnsteadyImplicitSolver
 {
 public:
-	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const acfd_real cfl,
+	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
 			const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
 
 	void solve();

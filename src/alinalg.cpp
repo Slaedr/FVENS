@@ -131,7 +131,7 @@ SSOR_Solver::compute_update(Matrix<acfd_real>* const du)
 		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
 		{
 			jelem = m->gesuel(ielem,jfa);
-			if(jelem < ielem) continue;
+			if(jelem < ielem || jelem >= m->gnelem()) continue;
 
 			iface = m->gelemface(ielem,jfa);
 			n[0] = m->ggallfa(iface,0);
