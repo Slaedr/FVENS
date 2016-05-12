@@ -1,7 +1,7 @@
 -mesh_file
 ../data/2dcylinder-medium.msh
 -output_file
-../data/medium-m-roe.vtu
+../data/medium-m-hllc.vtu
 -CFL
 0.24
 -Total_time
@@ -21,7 +21,7 @@
 -formal-spatial-order
 2
 -inviscid-flux
-ROE
+HLLC
 -reconstruction-scheme
 GREENGAUSS
 -limiter

@@ -104,9 +104,9 @@ void RoeFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Matr
 	// speeds of sound
 	ci = sqrt(g*pi/ul->get(0));
 	cj = sqrt(g*pj/ur->get(0));
-	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0)
-	Hi = (ul->get(3) + pi)/ul->get(0);
-	Hj = (ur->get(3) + pj)/ur->get(0);
+	// enthalpies  ( NOT E + p/rho = u(3)/u(0) + p/u(0) )
+	Hi = g/(g-1.0)* pi/ul->get(0) + 0.5*vmag2i;
+	Hj = g/(g-1.0)* pj/ur->get(0) + 0.5*vmag2j;
 
 	// compute Roe-averages
 	

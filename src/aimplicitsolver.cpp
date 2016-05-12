@@ -403,7 +403,46 @@ void ImplicitSolver::compute_RHS()
 
 void ImplicitSolver::compute_LHS()
 {
+	// compute `eigenvalues' across faces
+	acfd_int iface, ielem, jelem, face;
+	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, n[2], len;
+	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		jelem = m->gintfac(iface,1);
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		len = m->ggallfa(iface,2);
+
+		pi = (g-1.0)*(u.get(ielem,3) - 0.5*(u.get(ielem,1)*u.get(ielem,1) + u.get(ielem,2)*u.get(ielem,2))/u.get(ielem,0));
+		pj = (g-1.0)*(u.get(jelem,3) - 0.5*(u.get(jelem,1)*u.get(jelem,1) + u.get(jelem,2)*u.get(jelem,2))/u.get(jelem,0));
+		hi = (u.get(ielem,3) + pi)/u.get(ielem,0);
+		hj = (u.get(jelem,3) + pj)/u.get(jelem,0);
+
+		// get Roe-averages
+		Rij = sqrt(u.get(jelem,0)/u.get(ielem,0));
+		rhoij = Rij*u.get(ielem,0);
+		uij = ( Rij * u.get(jelem,1)/u.get(jelem,0) + u.get(ielem,1)/u.get(ielem,0) ) / (Rij + 1.0);
+		vij = ( Rij * u.get(jelem,2)/u.get(jelem,0) + u.get(ielem,2)/u.get(ielem,0) ) / (Rij + 1.0);
+		vnij = uij*n[0] + vij*n[1];
+		hij = (Rij*hj + hi)/(Rij+1.0);
+		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
+
+		lambdaij(iface) = fabs(vnij) + cij;
+	}
+
 	// compute diagonal blocks
+	acfd_int ifael;
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(ifael = 0; ifael < m->gnfael(ielem); ifael++)
+		{
+			face = m->gelemface(ielem,ifael);
+			n[0] = m->ggallfa(face,0);
+			n[1] = m->ggallfa(face,1);
+			len = m->ggallfa(face,2);
+		}
+	}
 }
 
 void ImplicitSolver::postprocess_point()
