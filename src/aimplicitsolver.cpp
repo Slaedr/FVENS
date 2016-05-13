@@ -433,7 +433,7 @@ void ImplicitSolver::compute_LHS()
 
 	// compute diagonal blocks
 	acfd_int ifael;
-	acfd_real u02;
+	acfd_real u02, vn;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		diag[ielem].zeros();
@@ -457,6 +457,9 @@ void ImplicitSolver::compute_LHS()
 			diag[ielem](2,1) += u.get(ielem,2)/u.get(ielem,0)*n[0] - (g-1.0)*u.get(ielem,1)/u.get(ielem,0)*n[1];
 			diag[ielem](2,2) += u.get(ielem,1)/u.get(ielem,0)*n[0] + n[1]*(3.0-g)*u.get(ielem,2)/u.get(ielem,0);
 			diag[ielem](2,3) += (g-1.0)*n[1];
+
+			vn = (u.get(ielem,1)*n[0] + u.get(ielem,2)*n[1])/u.get(ielem,0);
+			diag[ielem](3,0) += vn*((g-1.0)*
 		}
 	}
 }
