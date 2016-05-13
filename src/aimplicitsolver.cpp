@@ -433,14 +433,30 @@ void ImplicitSolver::compute_LHS()
 
 	// compute diagonal blocks
 	acfd_int ifael;
+	acfd_real u02;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
+		diag[ielem].zeros();
+		u02 = u.get(ielem,0)*u.get(ielem,0);
+
 		for(ifael = 0; ifael < m->gnfael(ielem); ifael++)
 		{
 			face = m->gelemface(ielem,ifael);
 			n[0] = m->ggallfa(face,0);
 			n[1] = m->ggallfa(face,1);
 			len = m->ggallfa(face,2);
+
+			diag[ielem](0,1) += n[0]; diag[ielem](0,2) += n[1];
+
+			diag[ielem](1,0) += n[0] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,1)*u.get(ielem,1)/u02) - u.get(ielem,1)*u.get(ielem,2)*n[1]/u02;
+			diag[ielem](1,1) += n[0]*u.get(ielem,1)/u.get(ielem,0)*(3.0-g) + u.get(ielem,2)/u.get(0)*n[1];
+			diag[ielem](1,2) += u.get(ielem,1)/u.get(ielem,0)*n[1] - (g-1.0)*u.get(ielem,2)/u.get(ielem,0)*n[0];
+			diag[ielem](1,3) += (g-1.0)*n[0];
+
+			diag[ielem](2,0) += -u.get(ielem,1)*u.get(ielem,2)/u02*n[0] + n[1] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,2)*u.get(ielem,2)/u02);
+			diag[ielem](2,1) += u.get(ielem,2)/u.get(ielem,0)*n[0] - (g-1.0)*u.get(ielem,1)/u.get(ielem,0)*n[1];
+			diag[ielem](2,2) += u.get(ielem,1)/u.get(ielem,0)*n[0] + n[1]*(3.0-g)*u.get(ielem,2)/u.get(ielem,0);
+			diag[ielem](2,3) += (g-1.0)*n[1];
 		}
 	}
 }
