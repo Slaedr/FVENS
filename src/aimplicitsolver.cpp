@@ -28,10 +28,12 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
 	lambdaij.setup(m->gnaface(),1);
+	elemflux.setup(m->gnelem(),nvars);
 	residual.setup(m->gnelem(),nvars);
 	u.setup(m->gnelem(), nvars);
 	uinf.setup(1, nvars);
 	integ.setup(m->gnelem(), 1);
+	dtl.setup(m->gnelem(),1);
 	dudx.setup(m->gnelem(), nvars);
 	dudy.setup(m->gnelem(), nvars);
 	uleft.setup(m->gnaface(), nvars);
@@ -95,9 +97,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-			const Matrix<acfd_real>* const diagonal_blocks, const Matrix<acfd_real>* const lambda_ij, const Matrix<acfd_real>* const unk, const Matrix<acfd_real>* const elem_flux,
-			const acfd_real omega);
+		solver = new SSOR_Solver(nvars, m, &residual, &eulerflux, &diag, &lambdaij, &u, &elemflux, w);
 		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
 	}
 }
@@ -446,20 +446,29 @@ void ImplicitSolver::compute_LHS()
 			n[1] = m->ggallfa(face,1);
 			len = m->ggallfa(face,2);
 
-			diag[ielem](0,1) += n[0]; diag[ielem](0,2) += n[1];
+			diag[ielem](0,0) += 0.5*lambdaij.get(face)*len;
+			diag[ielem](0,1) += 0.5*n[0]*len; 
+			diag[ielem](0,2) += 0.5*n[1]*len;
 
-			diag[ielem](1,0) += n[0] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,1)*u.get(ielem,1)/u02) - u.get(ielem,1)*u.get(ielem,2)*n[1]/u02;
-			diag[ielem](1,1) += n[0]*u.get(ielem,1)/u.get(ielem,0)*(3.0-g) + u.get(ielem,2)/u.get(0)*n[1];
-			diag[ielem](1,2) += u.get(ielem,1)/u.get(ielem,0)*n[1] - (g-1.0)*u.get(ielem,2)/u.get(ielem,0)*n[0];
-			diag[ielem](1,3) += (g-1.0)*n[0];
+			diag[ielem](1,0) += 0.5*( n[0] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,1)*u.get(ielem,1)/u02) 
+					- u.get(ielem,1)*u.get(ielem,2)*n[1]/u02 )*len;
+			diag[ielem](1,1) += 0.5* (n[0]*u.get(ielem,1)/u.get(ielem,0)*(3.0-g) + u.get(ielem,2)/u.get(0)*n[1] + lambdaij.get(face))*len;
+			diag[ielem](1,2) += 0.5* (u.get(ielem,1)/u.get(ielem,0)*n[1] - (g-1.0)*u.get(ielem,2)/u.get(ielem,0)*n[0])*len;
+			diag[ielem](1,3) += 0.5*(g-1.0)*n[0]*len;
 
-			diag[ielem](2,0) += -u.get(ielem,1)*u.get(ielem,2)/u02*n[0] + n[1] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,2)*u.get(ielem,2)/u02);
-			diag[ielem](2,1) += u.get(ielem,2)/u.get(ielem,0)*n[0] - (g-1.0)*u.get(ielem,1)/u.get(ielem,0)*n[1];
-			diag[ielem](2,2) += u.get(ielem,1)/u.get(ielem,0)*n[0] + n[1]*(3.0-g)*u.get(ielem,2)/u.get(ielem,0);
-			diag[ielem](2,3) += (g-1.0)*n[1];
+			diag[ielem](2,0) += 0.5*(-u.get(ielem,1)*u.get(ielem,2)/u02*n[0] + 
+					n[1] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,2)*u.get(ielem,2)/u02))*len;
+			diag[ielem](2,1) += 0.5*(u.get(ielem,2)/u.get(ielem,0)*n[0] - (g-1.0)*u.get(ielem,1)/u.get(ielem,0)*n[1])*len;
+			diag[ielem](2,2) += 0.5*(u.get(ielem,1)/u.get(ielem,0)*n[0] + n[1]*(3.0-g)*u.get(ielem,2)/u.get(ielem,0) + lambdaij.get(face))*len;
+			diag[ielem](2,3) += 0.5*(g-1.0)*n[1]*len;
 
 			vn = (u.get(ielem,1)*n[0] + u.get(ielem,2)*n[1])/u.get(ielem,0);
-			diag[ielem](3,0) += vn*((g-1.0)*
+			diag[ielem](3,0) += 0.5*(vn*((g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))/u02 - g*u.get(ielem,3)/u.get(ielem,0)))*len;
+			diag[ielem](3,1) += 0.5*(g*u.get(ielem,3)/u.get(ielem,0)*n[0] - 
+				(g-1.0)/u02*(1.5*u.get(ielem,1)*u.get(ielem,1)*n[0]+0.5*u.get(ielem,2)*u.get(ielem,2)*n[0]+u.get(ielem,1)*u.get(ielem,2)*n[1]))*len;
+			diag[ielem](3,2) += 0.5*(g*u.get(ielem,3)/u.get(ielem,0)*n[1] -
+				(g-1.0)/u02*(u.get(ielem,1)*u.get(ielem,2)*n[0]+1.5*u.get(ielem,2)*u.get(ielem,2)*n[1]+0.5*u.get(ielem,1)*u.get(ielem,1)*n[1]))*len;
+			diag[ielem](3,3) += 0.5*(g*vn + lambdaij.get(face))*len;
 		}
 	}
 }
@@ -579,14 +588,16 @@ amat::Matrix<acfd_real> ImplicitSolver::getvelocities() const
 	return velocities;
 }
 
-SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
+LUSSORSteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double omega,
 		const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter)
-	: ImplicitSolver(mesh, invflux, reconst, limiter, linear_solver, cfl, omega), lintol(lin_tol), linmaxiter(lin_maxiter), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+	: ImplicitSolver(mesh, invflux, reconst, limiter, "SSOR", cfl, omega), lintol(lin_tol), linmaxiter(lin_maxiter), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
-void SteadyStateImplicitSolver::solve()
+void LUSSORSteadyStateImplicitSolver::solve()
 {
 	int step = 0;
+	acfd_int iel;
+	int i;
 	acfd_real resi = 1.0;
 	acfd_real initres = 1.0;
 	amat::Matrix<acfd_real>* err;
@@ -595,44 +606,43 @@ void SteadyStateImplicitSolver::solve()
 		err[i].setup(m->gnelem(),1);
 	amat::Matrix<acfd_real> res(nvars,1);
 	res.ones();
-	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
-	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
+	amat::Matrix<acfd_real> du(u.rows(), u.cols());
 
 	while(resi/initres > steadytol && step < steadymaxiter)
 	{
 		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
+
 		// reset fluxes
 		integ.zeros();		// reset CFL data
 
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
 
-		/*if(step==0) {
-			//dudx.mprint(); dudy.mprint();
-			break;
-		}*/
-
 		//calculate dt based on CFL
-
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(iel = 0; iel < m->gnelem(); iel++)
 		{
-			dtm(iel) = cfl*(0.5*m->gjacobians(iel)/integ(iel));
+			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
+		}
+		
+		compute_LHS();
+		for(iel = 0; iel < m->gnelem(); iel++)
+		{
+			diag[iel](0,0) += m->garea(iel)/dtl.get(iel);
+			diag[iel](1,1) += m->garea(iel)/dtl.get(iel);
+			diag[iel](2,2) += m->garea(iel)/dtl.get(iel);
+			diag[iel](3,3) += m->garea(iel)/dtl.get(iel);
 		}
 
-		uold = u;
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			for(int i = 0; i < nvars; i++)
-			{
-				u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
-			}
-		}
+		// carry out LU-SSOR
+		solver->compute_update(&du);
+		for(iel = 0; iel < m->gnelem(); iel++)
+			for(i = 0; i < nvars; i++)
+				u(iel,i) += du.get(iel,i);
 
-		//if(step == 0) { dudx.mprint();  break; }
-
-		for(int i = 0; i < nvars; i++)
+		// compute ||u_n - u_(n-1)||
+		for(i = 0; i < nvars; i++)
 		{
-			err[i] = (u-uold).col(i);
+			err[i] = du.col(i);
 			//err[i] = residual.col(i);
 			res(i) = l2norm(&err[i]);
 		}
@@ -642,7 +652,7 @@ void SteadyStateImplicitSolver::solve()
 			initres = resi;
 
 		if(step % 20 == 0)
-			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
+			std::cout << "LUSSORSteadyStateImplicitSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
 		/*acfd_real totalenergy = 0;
@@ -652,10 +662,9 @@ void SteadyStateImplicitSolver::solve()
 		//if(step == 10000) break;
 	}
 
-	if(step == maxiter)
-		std::cout << "ImplicitSolver: solve_rk1_steady(): Exceeded max iterations!" << std::endl;
-	//calculate gradients
-	//rec->compute_gradients();
+	if(step == steadymaxiter)
+		std::cout << "LUSSORSteadyStateImplicitSolver: solve(): Exceeded max iterations!" << std::endl;
+
 	delete [] err;
 }
 }	// end namespace

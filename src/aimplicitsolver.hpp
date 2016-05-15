@@ -72,6 +72,9 @@ protected:
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
 	amat::Matrix<acfd_real> integ;
+	
+	/// Local time steps
+	amat::Matrix<acfd_real> dtl;
 
 	/// Euler flux
 	FluxFunction* eulerflux;
@@ -115,6 +118,9 @@ protected:
 
 	/// `Eigenvalues' of flux for LHS
 	amat::Matix<acfd_real> lambdaij;
+
+	/// Flux evaluation for LHS
+	amat::Matrix<acfd_real> elemflux;
 
 	/// Linear solver to use
 	IterativeSolver* solver;
@@ -175,6 +181,22 @@ public:
 
 	/// computes ghost cell centers assuming symmetry about the face
 	void compute_ghost_cell_coords_about_face();
+};
+
+/// Solves for a steady-state solution by a first-order implicit scheme
+/** The ODE system is linearized at each time step; equivalent to a single Newton iteration at each time step.
+ * Only one SSOR iteration is carried out per time step.
+ */
+class LUSSORSteadyStateImplicitSolver : public ImplicitSolver
+{
+	const acfd_real steadytol;
+	const int steadymaxiter;
+public:
+	SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double omega,
+			const acfd_real steady_tol, const int steady_maxiter);
+
+	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
+	void solve();
 };
 
 /// Solves for a steady-state solution by a first-order implicit scheme
