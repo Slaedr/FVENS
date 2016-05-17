@@ -31,23 +31,20 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
+add_library(fvens_base areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp amatrix.cpp adatastructures.cpp)
 
-add_library(fvens areconstruction.cpp alimiter.cpp anumericalflux.cpp aexplicitsolver.cpp amesh2dh.cpp aoutput.cpp amatrix.cpp adatastructures.cpp)
+add_library(fvens_explicit aexplicitsolver.cpp)
+target_link_libraries(fvens_explicit fvens_base)
 
-# add_library(alinalg alinalg.cpp)
-# 
-# add_library(aoutput aoutput.cpp)
-# target_link_libraries(aoutput amesh2dh)
-# 
-# add_library(amesh2dh amesh2dh.cpp)
-# target_link_libraries(amesh2dh adatastructures)
-# 
-# add_library(amatrix amatrix.cpp)
-# 
-# add_library(adatastructures adatastructures.cpp)
+add_library(fvens_implicit aimplicitsolver.cpp alinalg.cpp)
+target_link_libraries(fvens_implicit fvens_base)
 
 # for the final executable(s)
+
 add_subdirectory(utilities)
 
 add_executable(fvense explicitsolver.cpp)
-target_link_libraries(fvense fvens)
+target_link_libraries(fvense fvens_explicit)
+
+add_executable(steadyfvensi steadyimplicitsolver.cpp)
+target_link_libraries(steadyfvensi fvens_implicit)

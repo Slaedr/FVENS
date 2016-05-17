@@ -37,26 +37,6 @@
 
 namespace acfd {
 
-/// Computation of the single-phase ideal gas Euler flux corresponding to any given state and along any given face-normal
-class FluxFunction
-{
-protected:
-	const acfd_real gamma;
-public:
-	FluxFunction (acfd_real _gamma) : gamma(_gamma)
-	{ }
-
-	void evaluate_flux(const amat::Matrix<acfd_real>& state, const acfd_real* const n, amat::Matrix<acfd_real>& flux) const
-	{
-		acfd_real vn = (state.get(1)*n[0] + state.get(2)*n[1])/state.get(0);
-		acfd_real p = (gamma-1.0)*(state.get(3) - 0.5*(state.get(1)*state.get(1) + state.get(2)*state.get(2))/state.get(0));
-		flux(0) = state.get(0) * vn;
-		flux(1) = vn*state.get(1) + p*n[0];
-		flux(2) = vn*state.get(2) + p*n[1];
-		flux(3) = vn*(state.get(3) + p);
-	}
-};
-
 /// A driver class to control the implicit time-stepping solution process
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of (a child class of) this class.
  */
@@ -117,7 +97,7 @@ protected:
 	amat::Matrix<acfd_real>* diag;
 
 	/// `Eigenvalues' of flux for LHS
-	amat::Matix<acfd_real> lambdaij;
+	amat::Matrix<acfd_real> lambdaij;
 
 	/// Flux evaluation for LHS
 	amat::Matrix<acfd_real> elemflux;
@@ -133,10 +113,10 @@ protected:
 	int solid_wall_id;			///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 	const double cfl;
-	const double w;
+	const double w;				///< Relaxation factor
 
 public:
-	ImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double relaxation_factor);
+	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double relaxation_factor);
 	~ImplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -192,7 +172,7 @@ class LUSSORSteadyStateImplicitSolver : public ImplicitSolver
 	const acfd_real steadytol;
 	const int steadymaxiter;
 public:
-	SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double omega,
+	LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double omega,
 			const acfd_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
@@ -209,7 +189,7 @@ class SteadyStateImplicitSolver : public ImplicitSolver
 	const int linmaxiter;
 	const int steadymaxiter;
 public:
-	SteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
+	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
 			const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping

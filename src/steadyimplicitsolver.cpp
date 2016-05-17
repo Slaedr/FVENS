@@ -20,31 +20,23 @@ int main(int argc, char* argv[])
 	ifstream control(argv[1]);
 
 	string dum, meshfile, outf, invflux, reconst, limiter;
-	double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance;
+	double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance, omega;
 	int order, maxiter;
 
-	control >> dum;
-	control >> meshfile;
-	control >> dum;
-	control >> outf;
-	control >> dum;
-	control >> cfl;
-	control >> dum;
-	control >> ttime;
+	control >> dum; control >> meshfile;
+	control >> dum; control >> outf;
+	control >> dum; control >> cfl;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
-	control >> dum;
-	control >> M_inf;
-	control >> dum;
-	control >> vinf;
-	control >> dum;
-	control >> alpha;
-	control >> dum;
-	control >> rho_inf;
+	control >> dum; control >> M_inf;
+	control >> dum; control >> vinf;
+	control >> dum; control >> alpha;
+	control >> dum; control >> rho_inf;
 	control >> dum; control >> order;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
+	control >> dum; control >> omega;
 	control.close(); 
 
 	// Set up mesh
@@ -58,10 +50,10 @@ int main(int argc, char* argv[])
 
 	// Now start computation
 
-	ExplicitSolver prob(&m, order, invflux, reconst, limiter);
+	LUSSORSteadyStateImplicitSolver prob(&m, order, invflux, reconst, limiter, cfl, omega, tolerance, maxiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
-	prob.solve_rk1_steady(tolerance, maxiter, cfl);
+	prob.solve();
 
 	double err = prob.compute_entropy_cell();
 

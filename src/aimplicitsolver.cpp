@@ -10,7 +10,7 @@ namespace acfd {
 
 ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
 		const double cfl_num, const double relaxation_factor)
-	: cfl(cfl_num), w(relaxation_fator), order(_order), m(mesh)
+	: cfl(cfl_num), w(relaxation_factor), order(_order), m(mesh)
 {
 	g = 1.4;
 
@@ -97,7 +97,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(nvars, m, &residual, &eulerflux, &diag, &lambdaij, &u, &elemflux, w);
+		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, &lambdaij, &u, &elemflux, w);
 		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
 	}
 }
@@ -405,7 +405,7 @@ void ImplicitSolver::compute_LHS()
 {
 	// compute `eigenvalues' across faces
 	acfd_int iface, ielem, jelem, face;
-	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, n[2], len;
+	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
 	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		ielem = m->gintfac(iface,0);
@@ -588,9 +588,9 @@ amat::Matrix<acfd_real> ImplicitSolver::getvelocities() const
 	return velocities;
 }
 
-LUSSORSteadyStateImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double omega,
-		const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter)
-	: ImplicitSolver(mesh, invflux, reconst, limiter, "SSOR", cfl, omega), lintol(lin_tol), linmaxiter(lin_maxiter), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+LUSSORSteadyStateImplicitSolver::LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 
+		const double omega, const acfd_real steady_tol, const int steady_maxiter)
+	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
 void LUSSORSteadyStateImplicitSolver::solve()
@@ -606,7 +606,10 @@ void LUSSORSteadyStateImplicitSolver::solve()
 		err[i].setup(m->gnelem(),1);
 	amat::Matrix<acfd_real> res(nvars,1);
 	res.ones();
-	amat::Matrix<acfd_real> du(u.rows(), u.cols());
+	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
+	for(iel = 0; iel < m->gnelem(); ielem++)
+		du[iel].setup(nvars,1);
+	std::cout << "LUSSORSteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
 
 	while(resi/initres > steadytol && step < steadymaxiter)
 	{
@@ -634,15 +637,15 @@ void LUSSORSteadyStateImplicitSolver::solve()
 		}
 
 		// carry out LU-SSOR
-		solver->compute_update(&du);
+		solver->compute_update(du);
 		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
-				u(iel,i) += du.get(iel,i);
+				u(iel,i) += du[iel].get(i);
 
 		// compute ||u_n - u_(n-1)||
 		for(i = 0; i < nvars; i++)
 		{
-			err[i] = du.col(i);
+			err[i] = du.col(i); correct this!
 			//err[i] = residual.col(i);
 			res(i) = l2norm(&err[i]);
 		}
