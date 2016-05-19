@@ -49,13 +49,13 @@ class MatrixFreeIterativeSolver : public IterativeSolver
 {
 protected:
 	const FluxFunction* const invf;
-	const amat::Matrix<acfd_real>* const diag;			///< Diagonal blocks
+	amat::Matrix<acfd_real>* const diag;			///< Diagonal blocks
 	const amat::Matrix<acfd_real>* const lambdaij;		///< Eigenvalue part of the Jacobian
 	const amat::Matrix<acfd_real>* const elemflux;		///< Flux corresponding to the state at which Jacobian is to be computed
 	const amat::Matrix<acfd_real>* const u;				///< state at which Jacobian is to be computed
 public:
 	MatrixFreeIterativeSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-			const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux)
+			amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux)
 		: IterativeSolver(num_vars, mesh, residual), invf(inviscid_flux), diag(diagonal_blocks), lambdaij(lambda_ij), u(unk), elemflux(elem_flux)
 	{ }
 	
@@ -69,7 +69,6 @@ public:
 class SSOR_Solver : public MatrixFreeIterativeSolver
 {
 	
-	amat::Matrix<acfd_real>* du;
 	amat::Matrix<acfd_real> f1;
 	amat::Matrix<acfd_real> f2;
 	amat::Matrix<acfd_real> uelpdu;
@@ -85,11 +84,9 @@ class SSOR_Solver : public MatrixFreeIterativeSolver
 public:
 
 	SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-			const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux,
+			amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux,
 			const double omega);
 
-	~SSOR_Solver();
-	
 	/// Carries out a single step (one forward followed by one backward sweep) of SSOR and stores the correction in the argument.
 	/** \note NOTE: Make sure deltau is an array of length nelem of type Matrix<acfd_real>(nvars,1).
 	 */

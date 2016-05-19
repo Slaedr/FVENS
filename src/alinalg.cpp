@@ -77,7 +77,7 @@ void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Mat
 }
 
 SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux,
+		amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux,
 		const double omega)
 	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, lambda_ij, unk, elem_flux), w(omega)
 {
@@ -138,7 +138,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			n[1] = m->ggallfa(iface,1);
 			s = m->ggallfa(iface,2);
 			lambda = lambdaij->get(iface);
-			
+
 			for(ivar = 0; ivar < nvars; ivar++)
 				uelpdu(ivar) = u->get(jelem,ivar) + du[jelem].get(ivar);
 
@@ -147,7 +147,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{
-				f2(ivar) = f2(ivar) - elemflux->get(jelem,ivar) - lambda*du->get(jelem);
+				f2(ivar) = f2(ivar) - elemflux->get(jelem,ivar) - lambda*du[jelem].get(ivar);
 				f2(ivar) *= s*0.5;
 				f1(ivar) += f2(ivar);
 			}

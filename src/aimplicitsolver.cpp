@@ -404,6 +404,7 @@ void ImplicitSolver::compute_RHS()
 void ImplicitSolver::compute_LHS()
 {
 	// compute `eigenvalues' across faces
+	std::cout << "  computing eigs for LHS" << std::endl;
 	acfd_int iface, ielem, jelem, face;
 	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
 	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
@@ -432,6 +433,7 @@ void ImplicitSolver::compute_LHS()
 	}
 
 	// compute diagonal blocks
+	std::cout << "  Computing diagonal blocks" << std::endl;
 	acfd_int ifael;
 	acfd_real u02, vn;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
@@ -607,7 +609,7 @@ void LUSSORSteadyStateImplicitSolver::solve()
 	amat::Matrix<acfd_real> res(nvars,1);
 	res.ones();
 	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
-	for(iel = 0; iel < m->gnelem(); ielem++)
+	for(iel = 0; iel < m->gnelem(); iel++)
 		du[iel].setup(nvars,1);
 	std::cout << "LUSSORSteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
 
@@ -627,6 +629,8 @@ void LUSSORSteadyStateImplicitSolver::solve()
 			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
 		}
 		
+		std::cout << "Going to compute LHS" << std::endl;
+
 		compute_LHS();
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
@@ -636,20 +640,29 @@ void LUSSORSteadyStateImplicitSolver::solve()
 			diag[iel](3,3) += m->garea(iel)/dtl.get(iel);
 		}
 
+		std::cout << "Going into solver" << std::endl;
+
 		// carry out LU-SSOR
 		solver->compute_update(du);
+		std::cout << "Solved" << std::endl;
 		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
 				u(iel,i) += du[iel].get(i);
 
 		// compute ||u_n - u_(n-1)||
-		for(i = 0; i < nvars; i++)
+		/*for(i = 0; i < nvars; i++)
 		{
-			err[i] = du.col(i); correct this!
+			err[i] = du.col(i);
 			//err[i] = residual.col(i);
 			res(i) = l2norm(&err[i]);
 		}
-		resi = res.max();
+		resi = res.max();*/
+
+		// mass residual
+		resi = 0;
+		for(iel = 0; iel < m->gnelem(); iel++)
+			resi += du[iel].get(0)*du[iel].get(0)*m->garea(iel);
+		resi = sqrt(resi);
 
 		if(step == 0)
 			initres = resi;

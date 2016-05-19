@@ -1,2 +1,2 @@
 add_executable(convertformat convertformat.cpp)
-target_link_libraries(convertformat fvens)
+target_link_libraries(convertformat fvens_base)

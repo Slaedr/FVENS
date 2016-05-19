@@ -1,13 +1,13 @@
 -mesh_file
-/media/Data/CFD-euler_fv/data/2dcylinder-medium.msh
+../../data/2dcylinder-coarse.msh
 -output_file
-/media/Data/CFD-euler_fv/data/2dcylinder-medium-i-hllc.vtu
+../../data/2dcylinder-coarse-i-hllc.vtu
 -CFL
 10
 -Tolerance
 1e-5
 -Max-iterations
-500000
+5
 -M_infinity
 0.38
 -velocity_infinity
