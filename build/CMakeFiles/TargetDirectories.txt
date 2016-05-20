@@ -1,6 +1,0 @@
-/home/aditya/Myprojects/FVENS/build/utilities/CMakeFiles/convertformat.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/fvens_base.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/fvens_explicit.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/fvens_implicit.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/fvense.dir
-/home/aditya/Myprojects/FVENS/build/CMakeFiles/steadyfvensi.dir
