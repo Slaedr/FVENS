@@ -20,6 +20,17 @@ namespace acfd {
 /// Solves Ax=b for dense A by Gaussian elimination
 void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Matrix<acfd_real>& x);
 
+/// Factors A into unit lower triangular matrix and upper triangular matrix in place, with partial pivoting
+void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p);
+
+/// Solve LUx = b
+/** \param A contains L and U
+ * \param p is the permutation array
+ * \param b is the RHS
+ * \param x will contain the solution
+ */
+void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const amat::Matrix<acfd_real>& b, amat::Matrix<acfd_real>& x);
+
 /// Base class for AF (approximate factorization)-type iterative linear solver
 class IterativeSolver
 {

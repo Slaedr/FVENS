@@ -76,6 +76,55 @@ void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Mat
 	}
 }
 
+void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
+{
+	int N = A.rows();
+#ifdef DEBUG
+	if(N != A.cols() || N != p.rows())
+	{
+		std::cout << "LUfactor: ! Dimension mismatch!" << std::endl;
+		return;
+	}
+#endif
+	int k,i,j,maxrow;
+	acfd_real maxentry;
+
+	// set initial permutation array
+	for(k = 0; k < N; k++)
+		p(k) = k;
+
+	// start
+	for(k = 0; k < N-1; k++)
+	{
+		maxentry = fabs(A.get(p(k),k));
+		maxrow = p(k);
+		for(i = k; i < N; i++)
+			if(fabs(A.get(p(i),k)) > maxentry)
+			{
+				maxentry = fabs(A.get(p(i),k));
+				maxrow = p(i);
+			}
+
+		if(maxentry < ZERO_TOL)
+		{
+			std::cout << "LUfactor: ! Encountered zero pivot! Exiting." << std::endl;
+			return;
+		}
+
+		// interchange rows k and maxrow
+		temp = p(k);
+		p(k) = p(maxrow);
+		p(maxrow) = temp;
+
+		for(j = k+1; j < N; j++)
+		{
+			A(p(j),k) = A.get(p(j),k)/A.get(p(k),k);
+			for(l = k+1; l < N; l++)
+				A(p(j),l) -= A(p(j),k)*A.get(p(k),l);
+		}
+	}
+}
+
 SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
 		amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux,
 		const double omega)
