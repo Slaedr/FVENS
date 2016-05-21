@@ -95,6 +95,8 @@ protected:
 
 	/// Diagonal blocks of the residual Jacobian
 	amat::Matrix<acfd_real>* diag;
+	/// Permuation arrays of the diagonal blocks after LU factorization
+	amat::Matrix<int>* diagp;
 
 	/// `Eigenvalues' of flux for LHS
 	amat::Matrix<acfd_real> lambdaij;
@@ -132,7 +134,7 @@ public:
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	void compute_RHS();
 
-	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS
+	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS; note that only the flux jacobian is computed. V/dt terms are not added.
 	virtual void compute_LHS();
 	
 	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects

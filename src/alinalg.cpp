@@ -86,8 +86,8 @@ void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
 		return;
 	}
 #endif
-	int k,i,j,maxrow;
-	acfd_real maxentry;
+	int l,k,i,j,maxrow;
+	acfd_real maxentry, temp;
 
 	// set initial permutation array
 	for(k = 0; k < N; k++)
@@ -125,10 +125,39 @@ void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
 	}
 }
 
+void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const amat::Matrix<acfd_real>& b, amat::Matrix<acfd_real>& x)
+{
+	int N = A.rows();
+
+	amat::Matrix<acfd_real> y(N,1);
+	acfd_real sum;
+	int i,j;
+	
+	// solve Ly = Pb for y
+	y(0) = b.get(p(0));
+	for(i = 1; i < N; i++)
+	{
+		sum=0;
+		for(j = 0; j < i; j++)
+			sum += A.get(p(i),j)*y.get(j);
+		y(i) = b.get(p(i)) - sum;
+	}
+
+	// solve Ux = y
+	x(N-1) = y(N-1)/A.get(p(N-1),N-1);
+	for(i = N-2; i >= 0; i--)
+	{
+		sum = 0;
+		for(j = i+1; j < N; j++)
+			sum += A.get(p(i),j)*x.get(j);
+		x(i) = (y.get(i) - sum)/A.get(p(i),i);
+	}
+}
+
 SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-		amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const unk, const amat::Matrix<acfd_real>* const elem_flux,
-		const double omega)
-	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, lambda_ij, unk, elem_flux), w(omega)
+		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
+		const amat::Matrix<acfd_real>* const unk, const double omega)
+	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, unk, elem_flux), w(omega)
 {
 	f1.setup(nvars,1);
 	f2.setup(nvars,1);
@@ -170,7 +199,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 		for(ivar = 0; ivar < nvars; ivar++)
 			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
 
-		gausselim(diag[ielem], f2, du[ielem]);
+		LUsolve(diag[ielem], pa[ielem], f2, du[ielem]);
 	}
 
 	// next, compute backward sweep
@@ -202,7 +231,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			}
 		}
 
-		gausselim(diag[ielem], f1, f2);
+		LUsolve(diag[ielem], pa[ielem], f1, f2);
 		for(ivar = 0; ivar < nvars; ivar++)
 			du[ielem](ivar) -= w*f2.get(ivar);
 	}

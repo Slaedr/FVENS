@@ -27,6 +27,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// allocation
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
+	diagp = new amat::Matrix<int>[m->gnelem()];
 	lambdaij.setup(m->gnaface(),1);
 	elemflux.setup(m->gnelem(),nvars);
 	residual.setup(m->gnelem(),nvars);
@@ -49,6 +50,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	{
 		m_inverse(i) = 2.0/mesh->gjacobians(i);
 		diag[i].setup(nvars,nvars);
+		diagp[i].setup(nvars,1);
 	}
 
 	eulerflux = new FluxFunction(g);
@@ -97,7 +99,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, &lambdaij, &u, &elemflux, w);
+		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, &elemflux, &u, w);
 		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
 	}
 }
@@ -638,6 +640,8 @@ void LUSSORSteadyStateImplicitSolver::solve()
 			diag[iel](1,1) += m->garea(iel)/dtl.get(iel);
 			diag[iel](2,2) += m->garea(iel)/dtl.get(iel);
 			diag[iel](3,3) += m->garea(iel)/dtl.get(iel);
+
+			LUfactor(diag[iel], diagp[iel]);
 		}
 
 		std::cout << "Going into solver" << std::endl;
