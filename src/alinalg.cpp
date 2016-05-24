@@ -145,8 +145,16 @@ void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const
 
 	// solve Ux = y
 	x(N-1) = y(N-1)/A.get(p(N-1),N-1);
+#ifdef DEBUG
+	if(fabs(A.get(p(N-1),N-1)) < ZERO_TOL)
+		std::cout << "LUsolve: Zero diagonal element!!" << std::endl;
+#endif
 	for(i = N-2; i >= 0; i--)
 	{
+#ifdef DEBUG
+		if(fabs(A.get(p(i),i)) < ZERO_TOL)
+			std::cout << "LUsolve: Zero diagonal element!!" << std::endl;
+#endif
 		sum = 0;
 		for(j = i+1; j < N; j++)
 			sum += A.get(p(i),j)*x.get(j);
@@ -157,7 +165,7 @@ void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const
 SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
 		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
 		const amat::Matrix<acfd_real>* const unk, const double omega)
-	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, unk, elem_flux), w(omega)
+	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
 {
 	f1.setup(nvars,1);
 	f2.setup(nvars,1);
@@ -186,14 +194,14 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			lambda = lambdaij->get(iface);
 
 			for(ivar = 0; ivar < nvars; ivar++)
-				uelpdu(ivar) = u->get(ielem,ivar) + du[jelem].get(ivar);
+				uelpdu(ivar) = u->get(jelem,ivar) + du[jelem].get(ivar);
 
 			// compute F(u+du*) and store in f2
 			invf->evaluate_flux(uelpdu,n,f2);
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{
-				f2(ivar) = -(f2(ivar) - elemflux->get(ielem,ivar)) - lambda*du[jelem].get(ivar);
+				f2(ivar) = -(f2(ivar) - elemflux[iface].get(1,ivar)) - lambda*du[jelem].get(ivar);
 				f2(ivar) *= s*0.5;
 				f1(ivar) += f2(ivar);
 			}
@@ -202,7 +210,6 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
 
 		LUsolve(diag[ielem], pa[ielem], f2, du[ielem]);
-		du[ielem].mprint();
 	}
 
 	// next, compute backward sweep
@@ -228,7 +235,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{
-				f2(ivar) = f2(ivar) - elemflux->get(jelem,ivar) - lambda*du[jelem].get(ivar);
+				f2(ivar) = f2(ivar) - elemflux[iface].get(1,ivar) - lambda*du[jelem].get(ivar);
 				f2(ivar) *= s*0.5;
 				f1(ivar) += f2(ivar);
 			}

@@ -70,7 +70,8 @@ public:
 			const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const elem_flux,
 			const amat::Matrix<acfd_real>* const unk)
 		: IterativeSolver(num_vars, mesh, residual), invf(inviscid_flux), diag(diagonal_blocks), lambdaij(lambda_ij), pa(perm), u(unk), elemflux(elem_flux)
-	{ }
+	{
+	}
 	
 	virtual void compute_update(amat::Matrix<acfd_real>* const deltau) = 0;
 };

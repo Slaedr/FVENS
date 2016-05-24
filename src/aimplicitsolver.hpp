@@ -101,8 +101,8 @@ protected:
 	/// `Eigenvalues' of flux for LHS
 	amat::Matrix<acfd_real> lambdaij;
 
-	/// Flux evaluation for LHS
-	amat::Matrix<acfd_real> elemflux;
+	/// Flux evaluation for LHS; stores Euler flux for either cell for each face
+	amat::Matrix<acfd_real>* elemfaceflux;
 
 	/// Linear solver to use
 	IterativeSolver* solver;

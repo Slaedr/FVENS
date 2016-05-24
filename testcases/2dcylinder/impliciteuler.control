@@ -1,13 +1,13 @@
 -mesh_file
-../../data/2dcylinder-coarse.msh
+../../data/2dcylinder-medium.msh
 -output_file
-../../data/2dcylinder-coarse-i-hllc.vtu
+../../data/2dcylinder-medium-hllc-lusgs.vtu
 -CFL
-1.0
+0.5
 -Tolerance
 1e-5
 -Max-iterations
-5
+300000
 -M_infinity
 0.38
 -velocity_infinity

@@ -29,7 +29,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
 	diagp = new amat::Matrix<int>[m->gnelem()];
 	lambdaij.setup(m->gnaface(),1);
-	elemflux.setup(m->gnelem(),nvars);
+	elemfaceflux = new amat::Matrix<acfd_real>[m->gnaface()];
 	residual.setup(m->gnelem(),nvars);
 	u.setup(m->gnelem(), nvars);
 	uinf.setup(1, nvars);
@@ -44,7 +44,10 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	ug.setup(m->gnface(),nvars);
 	gr = new amat::Matrix<acfd_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
+	{
 		gr[i].setup(ngaussf, m->gndim());
+		elemfaceflux[i].setup(2,nvars);
+	}
 
 	for(int i = 0; i < m->gnelem(); i++)
 	{
@@ -99,7 +102,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, &elemflux, &u, w);
+		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
 		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
 	}
 }
@@ -112,6 +115,7 @@ ImplicitSolver::~ImplicitSolver()
 	delete lim;
 	delete [] gr;
 	delete [] diag;
+	delete [] elemfaceflux;
 }
 
 void ImplicitSolver::compute_ghost_cell_coords_about_midpoint()
@@ -320,8 +324,8 @@ void ImplicitSolver::compute_RHS()
 
 	if(order == 2)
 	{
-		// compute states at faces' quadrature points. For boundary faces, only uleft is computed
 		rec->compute_gradients();
+		// compute states at faces' quadrature points. For boundary faces, only uleft is computed
 		lim->compute_face_values();
 	}
 	else
@@ -407,9 +411,8 @@ void ImplicitSolver::compute_RHS()
 // make sure this function is called after the previous one (compute_RHS) as ug is needed
 void ImplicitSolver::compute_LHS()
 {
-	// compute `eigenvalues' across faces
+	// compute `eigenvalues' across faces and Euler fluxes
 	
-	std::cout << "  computing eigs for LHS" << std::endl;
 	acfd_int iface, ielem, jelem, face;
 	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
 
@@ -436,6 +439,9 @@ void ImplicitSolver::compute_LHS()
 		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
 
 		lambdaij(iface) = fabs(vnij) + cij;
+
+		// get Euler flux
+		eulerflux->evaluate_flux_2(u, ielem, n, elemfaceflux[iface], 0);
 	}
 	// interior faces
 	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
@@ -461,10 +467,13 @@ void ImplicitSolver::compute_LHS()
 		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
 
 		lambdaij(iface) = fabs(vnij) + cij;
+		
+		// get Euler flux
+		eulerflux->evaluate_flux_2(u, ielem, n, elemfaceflux[iface], 0);
+		eulerflux->evaluate_flux_2(u, jelem, n, elemfaceflux[iface], 1);
 	}
 
 	// compute diagonal blocks
-	std::cout << "  Computing diagonal blocks" << std::endl;
 	acfd_int ifael;
 	acfd_real u02, vn;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
@@ -660,8 +669,6 @@ void LUSSORSteadyStateImplicitSolver::solve()
 			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
 		}
 		
-		std::cout << "Going to compute LHS" << std::endl;
-
 		compute_LHS();
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
@@ -673,11 +680,9 @@ void LUSSORSteadyStateImplicitSolver::solve()
 			LUfactor(diag[iel], diagp[iel]);
 		}
 
-		std::cout << "Going into solver" << std::endl;
-
 		// carry out LU-SSOR
 		solver->compute_update(du);
-		std::cout << "Solved" << std::endl;
+
 		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
 				u(iel,i) += du[iel].get(i);

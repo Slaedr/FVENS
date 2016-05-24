@@ -25,6 +25,16 @@ public:
 		flux(2) = vn*state.get(2) + p*n[1];
 		flux(3) = vn*(state.get(3) + p);
 	}
+	
+	void evaluate_flux_2(const amat::Matrix<acfd_real>& state, const int ielem, const acfd_real* const n, amat::Matrix<acfd_real>& flux, const int iside) const
+	{
+		acfd_real vn = (state.get(ielem,1)*n[0] + state.get(ielem,2)*n[1])/state.get(ielem,0);
+		acfd_real p = (gamma-1.0)*(state.get(ielem,3) - 0.5*(state.get(ielem,1)*state.get(ielem,1) + state.get(ielem,2)*state.get(ielem,2))/state.get(ielem,0));
+		flux(iside,0) = state.get(ielem,0) * vn;
+		flux(iside,1) = vn*state.get(ielem,1) + p*n[0];
+		flux(iside,2) = vn*state.get(ielem,2) + p*n[1];
+		flux(iside,3) = vn*(state.get(ielem,3) + p);
+	}
 };
 
 }
