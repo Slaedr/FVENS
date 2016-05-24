@@ -315,11 +315,12 @@ void ImplicitSolver::compute_RHS()
 			uleft(ied,ivar) = u.get(ielem,ivar);
 	}
 
+	// get cell average values at ghost cells using BCs
+	compute_boundary_states(uleft, ug);
+
 	if(order == 2)
 	{
-		// get cell average values at ghost cells using BCs
-		compute_boundary_states(uleft, ug);
-
+		// compute states at faces' quadrature points. For boundary faces, only uleft is computed
 		rec->compute_gradients();
 		lim->compute_face_values();
 	}
@@ -403,12 +404,40 @@ void ImplicitSolver::compute_RHS()
 	delete [] n;
 }
 
+// make sure this function is called after the previous one (compute_RHS) as ug is needed
 void ImplicitSolver::compute_LHS()
 {
 	// compute `eigenvalues' across faces
+	
 	std::cout << "  computing eigs for LHS" << std::endl;
 	acfd_int iface, ielem, jelem, face;
 	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
+
+	// boundary faces
+	for(iface = 0; iface < m->gnbface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		len = m->ggallfa(iface,2);
+
+		pi = (g-1.0)*(u.get(ielem,3) - 0.5*(u.get(ielem,1)*u.get(ielem,1) + u.get(ielem,2)*u.get(ielem,2))/u.get(ielem,0));
+		pj = (g-1.0)*(ug.get(3) - 0.5*(ug.get(1)*ug.get(1) + ug.get(2)*ug.get(2))/ug.get(0));
+		hi = (u.get(ielem,3) + pi)/u.get(ielem,0);
+		hj = (ug.get(3) + pj)/ug.get(0);
+
+		// get Roe-averages
+		Rij = sqrt(ug.get(0)/u.get(ielem,0));
+		rhoij = Rij*u.get(ielem,0);
+		uij = ( Rij * ug.get(1)/ug.get(0) + u.get(ielem,1)/u.get(ielem,0) ) / (Rij + 1.0);
+		vij = ( Rij * ug.get(2)/ug.get(0) + u.get(ielem,2)/u.get(ielem,0) ) / (Rij + 1.0);
+		vnij = uij*n[0] + vij*n[1];
+		hij = (Rij*hj + hi)/(Rij+1.0);
+		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
+
+		lambdaij(iface) = fabs(vnij) + cij;
+	}
+	// interior faces
 	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		ielem = m->gintfac(iface,0);

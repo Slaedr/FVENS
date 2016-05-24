@@ -73,7 +73,7 @@ protected:
 
 	/// Ghost cell centers
 	amat::Matrix<acfd_real> rcg;
-	/// Ghost cell flow quantities
+	/// Ghost cell-center flow quantities
 	amat::Matrix<acfd_real> ug;
 
 	/// Number of Guass points per face
@@ -135,6 +135,9 @@ public:
 	void compute_RHS();
 
 	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS; note that only the flux jacobian is computed. V/dt terms are not added.
+	/** Boundary conditions need to be taken into account for the diagonal blocks
+	 * so make sure this function is called after the previous one (compute_RHS) as ug is needed.
+	 */
 	virtual void compute_LHS();
 	
 	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects

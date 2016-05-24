@@ -97,12 +97,12 @@ void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
 	for(k = 0; k < N-1; k++)
 	{
 		maxentry = fabs(A.get(p(k),k));
-		maxrow = p(k);
+		maxrow = k;
 		for(i = k; i < N; i++)
 			if(fabs(A.get(p(i),k)) > maxentry)
 			{
 				maxentry = fabs(A.get(p(i),k));
-				maxrow = p(i);
+				maxrow = i;
 			}
 
 		if(maxentry < ZERO_TOL)
@@ -177,6 +177,8 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			jelem = m->gesuel(ielem,jfa);
 			if(jelem > ielem) continue;
 
+			// now, since jelem < ielem, we need to negate the normal vector of the face for computing flux vectors
+
 			iface = m->gelemface(ielem,jfa);
 			n[0] = m->ggallfa(iface,0);
 			n[1] = m->ggallfa(iface,1);
@@ -184,14 +186,14 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			lambda = lambdaij->get(iface);
 
 			for(ivar = 0; ivar < nvars; ivar++)
-				uelpdu(ivar) = u->get(jelem,ivar) + du[jelem].get(ivar);
+				uelpdu(ivar) = u->get(ielem,ivar) + du[jelem].get(ivar);
 
 			// compute F(u+du*) and store in f2
 			invf->evaluate_flux(uelpdu,n,f2);
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{
-				f2(ivar) = f2(ivar) - elemflux->get(jelem,ivar) - lambda*du[jelem].get(ivar);
+				f2(ivar) = -(f2(ivar) - elemflux->get(ielem,ivar)) - lambda*du[jelem].get(ivar);
 				f2(ivar) *= s*0.5;
 				f1(ivar) += f2(ivar);
 			}
