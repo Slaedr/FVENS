@@ -46,5 +46,8 @@ add_subdirectory(utilities)
 add_executable(fvense explicitsolver.cpp)
 target_link_libraries(fvense fvens_explicit)
 
+add_executable(steadylufvensi steadyLUimplicitsolver.cpp)
+target_link_libraries(steadylufvensi fvens_implicit)
+
 add_executable(steadyfvensi steadyimplicitsolver.cpp)
 target_link_libraries(steadyfvensi fvens_implicit)

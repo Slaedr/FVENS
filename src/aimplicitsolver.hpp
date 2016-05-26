@@ -132,6 +132,9 @@ public:
 	void compute_boundary_states(const amat::Matrix<acfd_real>& instates, amat::Matrix<acfd_real>& bounstates);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
+	/** Note that the residual corresponds to R in the equation
+	 * dU/dt = R(u)
+	 */
 	void compute_RHS();
 
 	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS; note that only the flux jacobian is computed. V/dt terms are not added.
@@ -195,7 +198,7 @@ class SteadyStateImplicitSolver : public ImplicitSolver
 	const int steadymaxiter;
 public:
 	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
-			const acfd_real lin_tol, const int lin_maxiter, const acfd_real steady_tol, const int steady_maxiter);
+			const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();

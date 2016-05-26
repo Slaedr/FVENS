@@ -1,1 +1,1 @@
-/home/aditya/gcc-5.2.0-build/bin/g++-5.2    -std=c++11 -ggdb -g -Wall -DDEBUG=1    CMakeFiles/steadyfvensi.dir/steadyimplicitsolver.cpp.o  -o bin/steadyfvensi -rdynamic lib/libfvens_implicit.a lib/libfvens_base.a 
+/home/aditya/gcc-5.2.0-build/bin/g++-5.2    -std=c++11 -ggdb -O3 -DNDEBUG -O3 -UDEBUG    CMakeFiles/steadyfvensi.dir/steadyimplicitsolver.cpp.o  -o bin/steadyfvensi -rdynamic lib/libfvens_implicit.a lib/libfvens_base.a 

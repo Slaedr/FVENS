@@ -107,6 +107,34 @@ public:
 	void compute_update(amat::Matrix<acfd_real>* const deltau);
 };
 
+/// Block Jacobi solver
+class BJ_Solver : public MatrixFreeIterativeSolver
+{
+	
+	amat::Matrix<acfd_real> f1;
+	amat::Matrix<acfd_real> f2;
+	amat::Matrix<acfd_real> uelpdu;
+	amat::Matrix<acfd_real> elemres;
+	const double w;								///< Over-relaxation factor
+	acfd_int ielem, jelem, iface;
+	acfd_real s, sum;
+	acfd_real n[NDIM];
+	int jfa;
+	int ivar;
+	acfd_real lambda;
+	
+public:
+
+	BJ_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+			const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const elem_flux,
+			const amat::Matrix<acfd_real>* const unk, const double omega);
+
+	/// Carries out a single step (one forward followed by one backward sweep) of SSOR and stores the correction in the argument.
+	/** \note NOTE: Make sure deltau is an array of length nelem of type Matrix<acfd_real>(nvars,1).
+	 */
+	void compute_update(amat::Matrix<acfd_real>* const deltau);
+};
+
 // Matrix-free LU-SGS solver
 /* Reference: 
  * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol 14, No 4, pp 253-270. 2001.

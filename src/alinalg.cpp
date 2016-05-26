@@ -247,4 +247,27 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
+BJ_Solver::BJ_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
+		const amat::Matrix<acfd_real>* const unk, const double omega)
+	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
+{
+	f1.setup(nvars,1);
+	uelpdu.setup(nvars,1);
+}
+
+void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+{
+	acfd_int ielem;
+	int ivar;
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		du[ielem].zeros();
+
+		for(ivar = 0; ivar < nvars; ivar++)
+			f1(ivar) = res->get(ielem,ivar);
+		LUsolve(diag[ielem], pa[ielem], f1, du[ielem]);
+	}
+}
+
 }

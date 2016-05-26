@@ -1,7 +1,7 @@
 -mesh_file
-/media/Data/CFD-euler_fv/data/2dcylinder-medium.msh
+../../data/2dcylinder-medium.msh
 -output_file
-/media/Data/CFD-euler_fv/data/medium-m-hllc.vtu
+../../data/2dcylinder-medium-hllc-tvdrk.vtu
 -CFL
 0.24
 -Total_time

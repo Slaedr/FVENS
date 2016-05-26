@@ -105,6 +105,11 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
 		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
 	}
+	else if(linear_solver == "BJ")
+	{
+		solver = new BJ_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
+	}
 }
 
 ImplicitSolver::~ImplicitSolver()
@@ -655,8 +660,6 @@ void LUSSORSteadyStateImplicitSolver::solve()
 
 	while(resi/initres > steadytol && step < steadymaxiter)
 	{
-		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
-
 		// reset fluxes
 		integ.zeros();		// reset CFL data
 
@@ -669,7 +672,7 @@ void LUSSORSteadyStateImplicitSolver::solve()
 			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
 		}
 		
-		compute_LHS();
+		compute_LHS();			// this zeros diag before computing the LHS
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
 			diag[iel](0,0) += m->garea(iel)/dtl.get(iel);
@@ -721,4 +724,155 @@ void LUSSORSteadyStateImplicitSolver::solve()
 
 	delete [] err;
 }
+
+SteadyStateImplicitSolver::SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string lsolver, const double cfl, 
+		const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
+	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
+{ }
+
+void SteadyStateImplicitSolver::solve()
+{
+	int step = 0, linstep;
+	acfd_int iel;
+	int i;
+	acfd_real resi = 1.0, linresi;
+	acfd_real initres = 1.0, lininitres;
+	amat::Matrix<acfd_real> res(nvars,1);
+	//amat::Matrix<acfd_real> prevresidual(m->gnelem(), nvars);
+	res.ones();
+	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
+	amat::Matrix<acfd_real>* ddu = new amat::Matrix<acfd_real>[m->gnelem()];
+	for(iel = 0; iel < m->gnelem(); iel++)
+	{
+		du[iel].setup(nvars,1);
+		ddu[iel].setup(nvars,1);
+	}
+
+	acfd_real epsilon = 1.4e-8;
+	std::vector<acfd_real> dunorm(nvars), eps(nvars);
+
+	std::cout << "SteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
+
+	while(resi/initres > steadytol && step < steadymaxiter)
+	{
+		integ.zeros();		// reset CFL data
+		// reset time update vector
+		for(iel = 0; iel < m->gnelem(); iel++)
+			du[iel].zeros();
+
+		//calculate fluxes
+		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
+		/*for(iel = 0; iel < m->gnelem(); iel++)
+			for(i = 0; i < nvars; i++)
+				prevresidual(iel,i) = residual.get(iel,i);*/
+
+		//calculate dt based on CFL
+		for(iel = 0; iel < m->gnelem(); iel++)
+		{
+			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
+		}
+		
+		compute_LHS();			// this zeros diag before computing the LHS
+		for(iel = 0; iel < m->gnelem(); iel++)
+		{
+			diag[iel](0,0) += m->garea(iel)/dtl.get(iel);
+			diag[iel](1,1) += m->garea(iel)/dtl.get(iel);
+			diag[iel](2,2) += m->garea(iel)/dtl.get(iel);
+			diag[iel](3,3) += m->garea(iel)/dtl.get(iel);
+
+			LUfactor(diag[iel], diagp[iel]);
+		}
+
+		// solve linear system
+
+		linresi = 1.0;
+		lininitres = 1.0;
+		linstep = 0;
+		while(linresi/lininitres > lintol && linstep < linmaxiter)
+		{
+			solver->compute_update(ddu);
+
+			// compute norm of change
+			linresi = 0;
+			for(iel = 0; iel < m->gnelem(); iel++)
+				linresi += ddu[iel].get(0)*ddu[iel].get(0)*m->garea(iel);
+			linresi = sqrt(linresi);
+
+			if(linstep == 0)
+				lininitres = linresi;
+
+			if((linstep % 10 == 0 || linstep == linmaxiter-1) && step%10 == 0)
+				std::cout << "SteadyStateImplicitSolver: solve():   Lin step " << linstep << ", rel lin residual " << linresi/lininitres << std::endl;
+
+			linstep++;
+
+			// update solution
+			for(iel = 0; iel < m->gnelem(); iel++)
+				for(i = 0; i < nvars; i++)
+				{
+					du[iel](i) += ddu[iel].get(i);
+					u(iel,i) += ddu[iel].get(i);
+				}
+			
+			// compute ODE residual
+			compute_RHS();
+
+			// compute linear system residual
+
+			// get the finite difference increments eps
+			/*for(i = 0; i < nvars; i++)
+			{
+				dunorm[i] = 0;
+				for(iel = 0; iel < m->gnelem; iel++)
+					dunorm[i] += du[iel].get(i)*du[iel].get(i)*m->garea(iel);
+				dunorm[i] = sqrt(dunorm[i]);
+				eps[i] = epsilon/dunorm[i];
+			}
+			
+			// set u := u + (eps)*du
+			for(iel = 0; iel < m->gnelem(); iel++)
+				for(i = 0; i < nvars; i++)
+					u(iel,i) += eps[i]*du[iel].get(i);
+			
+			// compute ODE residual
+			compute_RHS();
+			
+			// get new u, ie, u := u + du
+			for(iel = 0; iel < m->gnelem(); iel++)
+				for(i = 0; i < nvars; i++)
+				{
+					u(iel,i) -= (eps[i]-1.0)*du[iel].get(i);
+				}*/
+
+			// get residual
+			for(iel = 0; iel < m->gnelem(); iel++)
+				for(i = 0; i < nvars; i++)
+					residual(iel,i) -= m->garea(iel)/dtl.get(iel)*du[iel].get(i);
+		}
+
+		// compute ||u_n - u_(n-1)||
+		// mass residual
+		resi = 0;
+		for(iel = 0; iel < m->gnelem(); iel++)
+			resi += du[iel].get(0)*du[iel].get(0)*m->garea(iel);
+		resi = sqrt(resi);
+
+		if(step == 0)
+			initres = resi;
+
+		if(step % 10 == 0)
+			std::cout << "SteadyStateImplicitSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+
+		step++;
+		/*acfd_real totalenergy = 0;
+		for(int i = 0; i < m->gnelem(); i++)
+			totalenergy += u(i,3)*m->jacobians(i);
+		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+		//if(step == 10000) break;
+	}
+
+	if(step == steadymaxiter)
+		std::cout << "SteadyStateImplicitSolver: solve(): Exceeded max iterations!" << std::endl;
+}
+
 }	// end namespace
