@@ -1,9 +1,9 @@
 -mesh_file
-../../data/2dcylinder-fine.msh
+../../data/2dcylinder-coarse.msh
 -output_file
-../../data/2dcylinder-fine-hllc-bj.vtu
+../../data/2dcylinder-coarse-hllc-bj.vtu
 -CFL
-3.0
+5.0
 -Tolerance
 1e-5
 -Max-iterations

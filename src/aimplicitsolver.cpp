@@ -738,7 +738,7 @@ void SteadyStateImplicitSolver::solve()
 	acfd_real resi = 1.0, linresi;
 	acfd_real initres = 1.0, lininitres;
 	amat::Matrix<acfd_real> res(nvars,1);
-	//amat::Matrix<acfd_real> prevresidual(m->gnelem(), nvars);
+	amat::Matrix<acfd_real> prevresidual(m->gnelem(), nvars);
 	res.ones();
 	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
 	amat::Matrix<acfd_real>* ddu = new amat::Matrix<acfd_real>[m->gnelem()];
@@ -748,7 +748,7 @@ void SteadyStateImplicitSolver::solve()
 		ddu[iel].setup(nvars,1);
 	}
 
-	acfd_real epsilon = 1.4e-8;
+	acfd_real epsilon = 1.0;
 	std::vector<acfd_real> dunorm(nvars), eps(nvars);
 
 	std::cout << "SteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
@@ -762,9 +762,9 @@ void SteadyStateImplicitSolver::solve()
 
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
-		/*for(iel = 0; iel < m->gnelem(); iel++)
+		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
-				prevresidual(iel,i) = residual.get(iel,i);*/
+				prevresidual(iel,i) = residual.get(iel,i);
 
 		//calculate dt based on CFL
 		for(iel = 0; iel < m->gnelem(); iel++)
@@ -811,22 +811,21 @@ void SteadyStateImplicitSolver::solve()
 				for(i = 0; i < nvars; i++)
 				{
 					du[iel](i) += ddu[iel].get(i);
-					u(iel,i) += ddu[iel].get(i);
+					//u(iel,i) += ddu[iel].get(i);
 				}
 			
 			// compute ODE residual
-			compute_RHS();
+			//compute_RHS();
 
-			// compute linear system residual
-
-			// get the finite difference increments eps
-			/*for(i = 0; i < nvars; i++)
+			// get the finite difference increment eps
+			for(i = 0; i < nvars; i++)
 			{
 				dunorm[i] = 0;
-				for(iel = 0; iel < m->gnelem; iel++)
-					dunorm[i] += du[iel].get(i)*du[iel].get(i)*m->garea(iel);
+				for(iel = 0; iel < m->gnelem(); iel++)
+					dunorm[i] += du[iel].get(i)*du[iel].get(i);
 				dunorm[i] = sqrt(dunorm[i]);
 				eps[i] = epsilon/dunorm[i];
+				std::cout << eps[i] << std::endl;
 			}
 			
 			// set u := u + (eps)*du
@@ -837,18 +836,27 @@ void SteadyStateImplicitSolver::solve()
 			// compute ODE residual
 			compute_RHS();
 			
-			// get new u, ie, u := u + du
+			// get back original u
 			for(iel = 0; iel < m->gnelem(); iel++)
 				for(i = 0; i < nvars; i++)
-				{
-					u(iel,i) -= (eps[i]-1.0)*du[iel].get(i);
-				}*/
-
+					u(iel,i) -= eps[i]*du[iel].get(i);
+			
 			// get residual
 			for(iel = 0; iel < m->gnelem(); iel++)
 				for(i = 0; i < nvars; i++)
-					residual(iel,i) -= m->garea(iel)/dtl.get(iel)*du[iel].get(i);
+				{
+					residual(iel,i) -= m->garea(iel)*eps[i]/dtl.get(iel)*du[iel].get(i);
+					residual(iel,i) += (eps[i]-1.0)*prevresidual.get(iel,i);
+					residual(iel,i) /= eps[i];
+				}
 		}
+		
+		// get new u, ie, u := u + du
+		for(iel = 0; iel < m->gnelem(); iel++)
+			for(i = 0; i < nvars; i++)
+			{
+				u(iel,i) += du[iel].get(i);
+			}
 
 		// compute ||u_n - u_(n-1)||
 		// mass residual

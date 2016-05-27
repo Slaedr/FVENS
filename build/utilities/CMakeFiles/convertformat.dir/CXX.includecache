@@ -6,13 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/home/aditya/Myprojects/FVENS/src/aconstants.hpp
+/media/Data/CFD-euler_fv/src/aconstants.hpp
 
-/home/aditya/Myprojects/FVENS/src/adatastructures.hpp
+/media/Data/CFD-euler_fv/src/adatastructures.hpp
 iostream
 -
 
-/home/aditya/Myprojects/FVENS/src/amatrix.hpp
+/media/Data/CFD-euler_fv/src/amatrix.hpp
 iostream
 -
 iomanip
@@ -26,7 +26,7 @@ omp.h
 aconstants.hpp
 -
 
-/home/aditya/Myprojects/FVENS/src/amesh2dh.hpp
+/media/Data/CFD-euler_fv/src/amesh2dh.hpp
 iostream
 -
 iomanip
@@ -48,7 +48,7 @@ adatastructures.hpp
 aconstants.hpp
 -
 
-/home/aditya/Myprojects/FVENS/src/aoutput.hpp
+/media/Data/CFD-euler_fv/src/aoutput.hpp
 amatrix.hpp
 -
 amesh2dh.hpp
@@ -58,7 +58,7 @@ fstream
 string
 -
 
-/home/aditya/Myprojects/FVENS/src/utilities/convertformat.cpp
+/media/Data/CFD-euler_fv/src/utilities/convertformat.cpp
 amesh2dh.hpp
 -
 aoutput.hpp

@@ -1,4 +1,4 @@
-FILE(REMOVE_RECURSE
+file(REMOVE_RECURSE
   "CMakeFiles/fvens_base.dir/areconstruction.cpp.o"
   "CMakeFiles/fvens_base.dir/alimiter.cpp.o"
   "CMakeFiles/fvens_base.dir/anumericalflux.cpp.o"
@@ -11,6 +11,6 @@ FILE(REMOVE_RECURSE
 )
 
 # Per-language clean rules from dependency scanning.
-FOREACH(lang CXX)
-  INCLUDE(CMakeFiles/fvens_base.dir/cmake_clean_${lang}.cmake OPTIONAL)
-ENDFOREACH(lang)
+foreach(lang CXX)
+  include(CMakeFiles/fvens_base.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
