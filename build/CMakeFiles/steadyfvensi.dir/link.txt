@@ -1,1 +1,0 @@
-/usr/bin/g++-5    -std=c++11 -ggdb -O3 -DNDEBUG -O3 -UDEBUG   CMakeFiles/steadyfvensi.dir/steadyimplicitsolver.cpp.o  -o bin/steadyfvensi -rdynamic lib/libfvens_implicit.a lib/libfvens_base.a 

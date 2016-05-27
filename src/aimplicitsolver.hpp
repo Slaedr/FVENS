@@ -114,11 +114,14 @@ protected:
 
 	int solid_wall_id;			///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
-	const double cfl;
+	const double cfl_init;		///< Starting CFL number
+	const double cfl;			///< Final CFL number
+	const int switchstep;		///< Time step at which to switch from lower CFL number to higher CFL number
 	const double w;				///< Relaxation factor
 
 public:
-	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double relaxation_factor);
+	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
 	~ImplicitSolver();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -180,8 +183,8 @@ class LUSSORSteadyStateImplicitSolver : public ImplicitSolver
 	const acfd_real steadytol;
 	const int steadymaxiter;
 public:
-	LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double omega,
-			const acfd_real steady_tol, const int steady_maxiter);
+	LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double icfl, const int swtchstp,
+			const double omega, const acfd_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();
@@ -197,8 +200,8 @@ class SteadyStateImplicitSolver : public ImplicitSolver
 	const int linmaxiter;
 	const int steadymaxiter;
 public:
-	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
-			const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
+	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();

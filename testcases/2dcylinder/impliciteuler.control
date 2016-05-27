@@ -3,7 +3,11 @@
 -output_file
 ../../data/2dcylinder-coarse-hllc-bj.vtu
 -CFL
-5.0
+6.0
+-Initial-CFL
+2.0
+-CFL-switch-step
+500
 -Tolerance
 1e-5
 -Max-iterations
@@ -31,4 +35,4 @@ BJ
 -Linear-solver-tolerance
 1e-2
 -Linear-solver-max-iterations
-20
+50

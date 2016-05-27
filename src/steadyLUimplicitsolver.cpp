@@ -20,12 +20,14 @@ int main(int argc, char* argv[])
 	ifstream control(argv[1]);
 
 	string dum, meshfile, outf, invflux, reconst, limiter;
-	double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance, omega;
-	int order, maxiter;
+	double cfl, initcfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance, omega;
+	int order, maxiter, swtchstp;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
 	control >> dum; control >> cfl;
+	control >> dum; control >> initcfl;
+	control >> dum; control >> swtchstp;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
 	control >> dum; control >> M_inf;
@@ -50,7 +52,7 @@ int main(int argc, char* argv[])
 
 	// Now start computation
 
-	LUSSORSteadyStateImplicitSolver prob(&m, order, invflux, reconst, limiter, cfl, omega, tolerance, maxiter);
+	LUSSORSteadyStateImplicitSolver prob(&m, order, invflux, reconst, limiter, cfl, initcfl, swtchstp, omega, tolerance, maxiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
 	prob.solve();

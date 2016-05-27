@@ -1,7 +1,0 @@
-/media/Data/CFD-euler_fv/build/CMakeFiles/steadyfvensi.dir
-/media/Data/CFD-euler_fv/build/utilities/CMakeFiles/convertformat.dir
-/media/Data/CFD-euler_fv/build/CMakeFiles/steadylufvensi.dir
-/media/Data/CFD-euler_fv/build/CMakeFiles/fvens_implicit.dir
-/media/Data/CFD-euler_fv/build/CMakeFiles/fvens_explicit.dir
-/media/Data/CFD-euler_fv/build/CMakeFiles/fvense.dir
-/media/Data/CFD-euler_fv/build/CMakeFiles/fvens_base.dir

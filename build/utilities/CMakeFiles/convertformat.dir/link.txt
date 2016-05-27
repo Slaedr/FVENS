@@ -1,1 +1,0 @@
-/usr/bin/g++-5    -std=c++11 -ggdb -O3 -DNDEBUG -O3 -UDEBUG   CMakeFiles/convertformat.dir/convertformat.cpp.o  -o ../bin/convertformat -rdynamic ../lib/libfvens_base.a 

@@ -9,8 +9,8 @@
 namespace acfd {
 
 ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-		const double cfl_num, const double relaxation_factor)
-	: cfl(cfl_num), w(relaxation_factor), order(_order), m(mesh)
+		const double cfl_num, const double init_cfl, const int switch_step, const double relaxation_factor)
+	: cfl(cfl_num), cfl_init(init_cfl), switchstep(switch_step), w(relaxation_factor), order(_order), m(mesh)
 {
 	g = 1.4;
 
@@ -636,8 +636,8 @@ amat::Matrix<acfd_real> ImplicitSolver::getvelocities() const
 }
 
 LUSSORSteadyStateImplicitSolver::LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 
-		const double omega, const acfd_real steady_tol, const int steady_maxiter)
-	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+		const double init_cfl, const int switch_step, const double omega, const acfd_real steady_tol, const int steady_maxiter)
+	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, init_cfl, switch_step, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
 void LUSSORSteadyStateImplicitSolver::solve()
@@ -645,7 +645,7 @@ void LUSSORSteadyStateImplicitSolver::solve()
 	int step = 0;
 	acfd_int iel;
 	int i;
-	acfd_real resi = 1.0;
+	acfd_real resi = 1.0, curCFL;
 	acfd_real initres = 1.0;
 	amat::Matrix<acfd_real>* err;
 	err = new amat::Matrix<acfd_real>[nvars];
@@ -666,10 +666,15 @@ void LUSSORSteadyStateImplicitSolver::solve()
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
 
+		if(step < switchstep)
+			curCFL = cfl_init;
+		else
+			curCFL = cfl;
+
 		//calculate dt based on CFL
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
-			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
+			dtl(iel) = curCFL*(m->garea(iel)/integ(iel));
 		}
 		
 		compute_LHS();			// this zeros diag before computing the LHS
@@ -726,8 +731,8 @@ void LUSSORSteadyStateImplicitSolver::solve()
 }
 
 SteadyStateImplicitSolver::SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string lsolver, const double cfl, 
-		const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
-	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
+		const double initcfl, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
+	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
 { }
 
 void SteadyStateImplicitSolver::solve()
@@ -735,7 +740,7 @@ void SteadyStateImplicitSolver::solve()
 	int step = 0, linstep;
 	acfd_int iel;
 	int i;
-	acfd_real resi = 1.0, linresi;
+	acfd_real resi = 1.0, linresi, curCFL;
 	acfd_real initres = 1.0, lininitres;
 	amat::Matrix<acfd_real> res(nvars,1);
 	amat::Matrix<acfd_real> prevresidual(m->gnelem(), nvars);
@@ -748,7 +753,7 @@ void SteadyStateImplicitSolver::solve()
 		ddu[iel].setup(nvars,1);
 	}
 
-	acfd_real epsilon = 1.0;
+	acfd_real epsilon = 1.0e-2;
 	std::vector<acfd_real> dunorm(nvars), eps(nvars);
 
 	std::cout << "SteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
@@ -766,10 +771,15 @@ void SteadyStateImplicitSolver::solve()
 			for(i = 0; i < nvars; i++)
 				prevresidual(iel,i) = residual.get(iel,i);
 
+		if(step < switchstep)
+			curCFL = cfl_init;
+		else
+			curCFL = cfl;
+
 		//calculate dt based on CFL
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
-			dtl(iel) = cfl*(m->garea(iel)/integ(iel));
+			dtl(iel) = curCFL*(m->garea(iel)/integ(iel));
 		}
 		
 		compute_LHS();			// this zeros diag before computing the LHS
@@ -811,14 +821,20 @@ void SteadyStateImplicitSolver::solve()
 				for(i = 0; i < nvars; i++)
 				{
 					du[iel](i) += ddu[iel].get(i);
-					//u(iel,i) += ddu[iel].get(i);
+					u(iel,i) += ddu[iel].get(i);
 				}
 			
 			// compute ODE residual
-			//compute_RHS();
+			compute_RHS();
+			
+			for(iel = 0; iel < m->gnelem(); iel++)
+				for(i = 0; i < nvars; i++)
+				{
+					residual(iel,i) -= m->garea(iel)/dtl.get(iel)*du[iel].get(i);
+				}
 
 			// get the finite difference increment eps
-			for(i = 0; i < nvars; i++)
+			/*for(i = 0; i < nvars; i++)
 			{
 				dunorm[i] = 0;
 				for(iel = 0; iel < m->gnelem(); iel++)
@@ -848,15 +864,15 @@ void SteadyStateImplicitSolver::solve()
 					residual(iel,i) -= m->garea(iel)*eps[i]/dtl.get(iel)*du[iel].get(i);
 					residual(iel,i) += (eps[i]-1.0)*prevresidual.get(iel,i);
 					residual(iel,i) /= eps[i];
-				}
+				}*/
 		}
 		
 		// get new u, ie, u := u + du
-		for(iel = 0; iel < m->gnelem(); iel++)
+		/*for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
 			{
 				u(iel,i) += du[iel].get(i);
-			}
+			}*/
 
 		// compute ||u_n - u_(n-1)||
 		// mass residual

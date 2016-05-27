@@ -3,11 +3,15 @@
 -output_file
 ../../data/2dcylinder-coarse-hllc-lusgs.vtu
 -CFL
-2.5
+3.0
+-Initial-CFL
+1.0
+-Time-step-for-CFL-switch
+100
 -Tolerance
 1e-5
 -Max-iterations
-300000
+30000
 -M_infinity
 0.38
 -velocity_infinity

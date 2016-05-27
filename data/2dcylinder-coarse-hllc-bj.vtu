@@ -5,31 +5,58 @@
 			<DataArray type="Float64" Name="density" Format="ascii">
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
+				nan
+				nan
+				6.63811e+94
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
@@ -40,25 +67,43 @@
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
@@ -84,82 +129,64 @@
 				-nan
 				-nan
 				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
+				nan
 				-nan
 			</DataArray>
 			<DataArray type="Float64" Name="mach-number" Format="ascii">
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
+				nan
+				nan
+				1.75676
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
@@ -170,25 +197,43 @@
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
@@ -214,82 +259,64 @@
 				-nan
 				-nan
 				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
+				nan
 				-nan
 			</DataArray>
 			<DataArray type="Float64" Name="pressure" Format="ascii">
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
+				nan
+				nan
+				3.22079e+96
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
@@ -300,25 +327,43 @@
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
+				nan
+				nan
 				-nan
 				-nan
 				-nan
 				-nan
+				nan
 				-nan
 				-nan
 				-nan
@@ -344,82 +389,64 @@
 				-nan
 				-nan
 				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
-				-nan
+				nan
 				-nan
 			</DataArray>
 			<DataArray type="Float64" Name="velocity" NumberOfComponents="3" Format="ascii">
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				6.58722 -12.8937 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
@@ -430,25 +457,43 @@
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
@@ -474,52 +519,7 @@
 				-nan -nan 0.0 
 				-nan -nan 0.0 
 				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
-				-nan -nan 0.0 
+				nan nan 0.0 
 				-nan -nan 0.0 
 			</DataArray>
 		</CellData>
