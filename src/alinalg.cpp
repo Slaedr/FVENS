@@ -268,4 +268,70 @@ void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
+SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
+		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<acfd_real>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+		const double omega)
+	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
+{
+	f1.setup(nvars,1);
+	f2.setup(nvars,1);
+}
+
+void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+{
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		du[ielem].zeros();
+		f1.zeros();
+		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
+		{
+			jelem = m->gesuel(ielem,jfa);
+			if(jelem > ielem) continue;
+
+			iface = m->gelemface(ielem,jfa);
+			
+			// compute L*du
+			f2.zeros();
+			for(i = 0; i < nvars; i++)
+			{
+				for(j = 0; j < nvars; j++)
+					f2(i) += L[iface].get(i,j)*du[jelem].get(j);
+				f1(i) += f2.get(i);
+			}
+		}
+		for(ivar = 0; ivar < nvars; ivar++)
+			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
+
+		LUsolve(diag[ielem], pa[ielem], f2, du[ielem]);
+	}
+
+	// next, compute backward sweep
+	for(ielem = m->gnelem()-1; ielem >= 0; ielem--)
+	{
+		f1.zeros();
+		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
+		{
+			jelem = m->gesuel(ielem,jfa);
+			if(jelem < ielem || jelem >= m->gnelem()) continue;
+
+			iface = m->gelemface(ielem,jfa);
+
+			// compute U*du
+			f2.zeros();
+			for(i = 0; i < nvars; i++)
+			{
+				for(j = 0; j < nvars; j++)
+					f2(i) += U[iface].get(i,j)*du[jelem].get(j);
+				f1(i) += f2.get(i);
+			}
+		}
+
+		LUsolve(diag[ielem], pa[ielem], f1, f2);
+		for(ivar = 0; ivar < nvars; ivar++)
+			du[ielem](ivar) -= w*f2.get(ivar);
+	}
+}
+
+}
+
 }

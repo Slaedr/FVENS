@@ -26,10 +26,6 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 
 	// allocation
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
-	diag = new amat::Matrix<acfd_real>[m->gnelem()];
-	diagp = new amat::Matrix<int>[m->gnelem()];
-	lambdaij.setup(m->gnaface(),1);
-	elemfaceflux = new amat::Matrix<acfd_real>[m->gnaface()];
 	residual.setup(m->gnelem(),nvars);
 	u.setup(m->gnelem(), nvars);
 	uinf.setup(1, nvars);
@@ -46,17 +42,12 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	for(int i = 0; i <  m->gnaface(); i++)
 	{
 		gr[i].setup(ngaussf, m->gndim());
-		elemfaceflux[i].setup(2,nvars);
 	}
 
 	for(int i = 0; i < m->gnelem(); i++)
 	{
 		m_inverse(i) = 2.0/mesh->gjacobians(i);
-		diag[i].setup(nvars,nvars);
-		diagp[i].setup(nvars,1);
 	}
-
-	eulerflux = new FluxFunction(g);
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER")
@@ -99,28 +90,14 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 		std::cout << "ImplicitSolver: WENO limiter selected.\n";
 	}
 
-	// set solver
-	if(linear_solver == "SSOR")
-	{
-		solver = new SSOR_MFSolver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
-		std::cout << "ImplicitSolver: Matrix-free SSOR solver will be used." << std::endl;
-	}
-	else if(linear_solver == "BJ")
-	{
-		solver = new BJ_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
-		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
-	}
 }
 
 ImplicitSolver::~ImplicitSolver()
 {
-	delete eulerflux;
 	delete rec;
 	delete inviflux;
 	delete lim;
 	delete [] gr;
-	delete [] diag;
-	delete [] elemfaceflux;
 }
 
 void ImplicitSolver::compute_ghost_cell_coords_about_midpoint()
@@ -413,113 +390,6 @@ void ImplicitSolver::compute_RHS()
 	delete [] n;
 }
 
-// make sure this function is called after the previous one (compute_RHS) as ug is needed
-void ImplicitSolver::compute_LHS()
-{
-	// compute `eigenvalues' across faces and Euler fluxes
-	
-	acfd_int iface, ielem, jelem, face;
-	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
-
-	// boundary faces
-	for(iface = 0; iface < m->gnbface(); iface++)
-	{
-		ielem = m->gintfac(iface,0);
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		len = m->ggallfa(iface,2);
-
-		pi = (g-1.0)*(u.get(ielem,3) - 0.5*(u.get(ielem,1)*u.get(ielem,1) + u.get(ielem,2)*u.get(ielem,2))/u.get(ielem,0));
-		pj = (g-1.0)*(ug.get(3) - 0.5*(ug.get(1)*ug.get(1) + ug.get(2)*ug.get(2))/ug.get(0));
-		hi = (u.get(ielem,3) + pi)/u.get(ielem,0);
-		hj = (ug.get(3) + pj)/ug.get(0);
-
-		// get Roe-averages
-		Rij = sqrt(ug.get(0)/u.get(ielem,0));
-		rhoij = Rij*u.get(ielem,0);
-		uij = ( Rij * ug.get(1)/ug.get(0) + u.get(ielem,1)/u.get(ielem,0) ) / (Rij + 1.0);
-		vij = ( Rij * ug.get(2)/ug.get(0) + u.get(ielem,2)/u.get(ielem,0) ) / (Rij + 1.0);
-		vnij = uij*n[0] + vij*n[1];
-		hij = (Rij*hj + hi)/(Rij+1.0);
-		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
-
-		lambdaij(iface) = fabs(vnij) + cij;
-
-		// get Euler flux
-		eulerflux->evaluate_flux_2(u, ielem, n, elemfaceflux[iface], 0);
-	}
-	// interior faces
-	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
-	{
-		ielem = m->gintfac(iface,0);
-		jelem = m->gintfac(iface,1);
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		len = m->ggallfa(iface,2);
-
-		pi = (g-1.0)*(u.get(ielem,3) - 0.5*(u.get(ielem,1)*u.get(ielem,1) + u.get(ielem,2)*u.get(ielem,2))/u.get(ielem,0));
-		pj = (g-1.0)*(u.get(jelem,3) - 0.5*(u.get(jelem,1)*u.get(jelem,1) + u.get(jelem,2)*u.get(jelem,2))/u.get(jelem,0));
-		hi = (u.get(ielem,3) + pi)/u.get(ielem,0);
-		hj = (u.get(jelem,3) + pj)/u.get(jelem,0);
-
-		// get Roe-averages
-		Rij = sqrt(u.get(jelem,0)/u.get(ielem,0));
-		rhoij = Rij*u.get(ielem,0);
-		uij = ( Rij * u.get(jelem,1)/u.get(jelem,0) + u.get(ielem,1)/u.get(ielem,0) ) / (Rij + 1.0);
-		vij = ( Rij * u.get(jelem,2)/u.get(jelem,0) + u.get(ielem,2)/u.get(ielem,0) ) / (Rij + 1.0);
-		vnij = uij*n[0] + vij*n[1];
-		hij = (Rij*hj + hi)/(Rij+1.0);
-		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
-
-		lambdaij(iface) = fabs(vnij) + cij;
-		
-		// get Euler flux
-		eulerflux->evaluate_flux_2(u, ielem, n, elemfaceflux[iface], 0);
-		eulerflux->evaluate_flux_2(u, jelem, n, elemfaceflux[iface], 1);
-	}
-
-	// compute diagonal blocks
-	acfd_int ifael;
-	acfd_real u02, vn;
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		diag[ielem].zeros();
-		u02 = u.get(ielem,0)*u.get(ielem,0);
-
-		for(ifael = 0; ifael < m->gnfael(ielem); ifael++)
-		{
-			face = m->gelemface(ielem,ifael);
-			n[0] = m->ggallfa(face,0);
-			n[1] = m->ggallfa(face,1);
-			len = m->ggallfa(face,2);
-
-			diag[ielem](0,0) += 0.5*lambdaij.get(face)*len;
-			diag[ielem](0,1) += 0.5*n[0]*len; 
-			diag[ielem](0,2) += 0.5*n[1]*len;
-
-			diag[ielem](1,0) += 0.5*( n[0] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,1)*u.get(ielem,1)/u02) 
-					- u.get(ielem,1)*u.get(ielem,2)*n[1]/u02 )*len;
-			diag[ielem](1,1) += 0.5* (n[0]*u.get(ielem,1)/u.get(ielem,0)*(3.0-g) + u.get(ielem,2)/u.get(0)*n[1] + lambdaij.get(face))*len;
-			diag[ielem](1,2) += 0.5* (u.get(ielem,1)/u.get(ielem,0)*n[1] - (g-1.0)*u.get(ielem,2)/u.get(ielem,0)*n[0])*len;
-			diag[ielem](1,3) += 0.5*(g-1.0)*n[0]*len;
-
-			diag[ielem](2,0) += 0.5*(-u.get(ielem,1)*u.get(ielem,2)/u02*n[0] + 
-					n[1] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,2)*u.get(ielem,2)/u02))*len;
-			diag[ielem](2,1) += 0.5*(u.get(ielem,2)/u.get(ielem,0)*n[0] - (g-1.0)*u.get(ielem,1)/u.get(ielem,0)*n[1])*len;
-			diag[ielem](2,2) += 0.5*(u.get(ielem,1)/u.get(ielem,0)*n[0] + n[1]*(3.0-g)*u.get(ielem,2)/u.get(ielem,0) + lambdaij.get(face))*len;
-			diag[ielem](2,3) += 0.5*(g-1.0)*n[1]*len;
-
-			vn = (u.get(ielem,1)*n[0] + u.get(ielem,2)*n[1])/u.get(ielem,0);
-			diag[ielem](3,0) += 0.5*(vn*((g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))/u02 - g*u.get(ielem,3)/u.get(ielem,0)))*len;
-			diag[ielem](3,1) += 0.5*(g*u.get(ielem,3)/u.get(ielem,0)*n[0] - 
-				(g-1.0)/u02*(1.5*u.get(ielem,1)*u.get(ielem,1)*n[0]+0.5*u.get(ielem,2)*u.get(ielem,2)*n[0]+u.get(ielem,1)*u.get(ielem,2)*n[1]))*len;
-			diag[ielem](3,2) += 0.5*(g*u.get(ielem,3)/u.get(ielem,0)*n[1] -
-				(g-1.0)/u02*(u.get(ielem,1)*u.get(ielem,2)*n[0]+1.5*u.get(ielem,2)*u.get(ielem,2)*n[1]+0.5*u.get(ielem,1)*u.get(ielem,1)*n[1]))*len;
-			diag[ielem](3,3) += 0.5*(g*vn + lambdaij.get(face))*len;
-		}
-	}
-}
-
 void ImplicitSolver::postprocess_point()
 {
 	cout << "ImplicitSolver: postprocess_point(): Creating output arrays...\n";
@@ -633,6 +503,203 @@ amat::Matrix<acfd_real> ImplicitSolver::getscalars() const
 amat::Matrix<acfd_real> ImplicitSolver::getvelocities() const
 {
 	return velocities;
+}
+
+//------------------- end of implicit solver base class ------------------------------------------------//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+		const double cfl_num, const double init_cfl, const int switch_step, const double relaxation_factor)
+	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_step, relaxation_factor)
+{
+	diag = new amat::Matrix<acfd_real>[m->gnelem()];
+	diagp = new amat::Matrix<int>[m->gnelem()];
+	lower = new amat::Matrix<acfd_real>[m->gnelem()];
+	upper = new amat::Matrix<acfd_real>[m->gnelem()];
+	for(int i = 0; i < m->gnelem(); i++)
+	{
+		diag[i].setup(nvars,nvars);
+		diagp[i].setup(nvars,1);
+		lower[i].setup(nvars,nvars);
+		upper[i].setup(nvars,nvars);
+	}
+	// set solver
+	if(linear_solver == "SSOR")
+	{
+		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		std::cout << "ImplicitSolver: Full-matrix SSOR solver will be used." << std::endl;
+	}
+	else if(linear_solver == "BJ")
+	{
+		solver = new BJ_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
+	}
+}
+
+ImplicitSolver::~ImplicitSolver()
+{
+	ImplicitSolverBase::~ImplicitSolverBase();
+	delete eulerflux;
+	delete [] diag;
+	delete [] diagp;
+	delete [] lower;
+	delete [] upper;
+}
+
+// TODO: add class for LUSSOR solution here
+
+// ----------------------------------- end of full matrix storage implicit solver classes ------------------------------- //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+ImplicitSolverMF::ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+		const double cfl_num, const double init_cfl, const int switch_step, const double relaxation_factor)
+	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_step, relaxation_factor)
+{
+	diag = new amat::Matrix<acfd_real>[m->gnelem()];
+	diagp = new amat::Matrix<int>[m->gnelem()];
+	lambdaij.setup(m->gnaface(),1);
+	elemfaceflux = new amat::Matrix<acfd_real>[m->gnaface()];
+	for(int i = 0; i <  m->gnaface(); i++)
+	{
+		elemfaceflux[i].setup(2,nvars);
+	}
+
+	for(int i = 0; i < m->gnelem(); i++)
+	{
+		diag[i].setup(nvars,nvars);
+		diagp[i].setup(nvars,1);
+	}
+
+	eulerflux = new FluxFunction(g);
+	
+	// set solver
+	if(linear_solver == "SSOR")
+	{
+		solver = new SSOR_MFSolver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		std::cout << "ImplicitSolver: Matrix-free SSOR solver will be used." << std::endl;
+	}
+	else if(linear_solver == "BJ")
+	{
+		solver = new BJ_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
+	}
+}
+
+ImplicitSolverMF::~ImplicitSolverMF()
+{
+	ImplicitSolverBase::~ImplicitSolverBase();
+	delete eulerflux;
+	delete [] diag;
+	delete [] diagp;
+	delete [] elemfaceflux;
+}
+
+// make sure this function is called after the previous one (compute_RHS) as ug is needed
+void ImplicitSolverMF::compute_LHS()
+{
+	// compute `eigenvalues' across faces and Euler fluxes
+	
+	acfd_int iface, ielem, jelem, face;
+	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
+
+	// boundary faces
+	for(iface = 0; iface < m->gnbface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		len = m->ggallfa(iface,2);
+
+		pi = (g-1.0)*(u.get(ielem,3) - 0.5*(u.get(ielem,1)*u.get(ielem,1) + u.get(ielem,2)*u.get(ielem,2))/u.get(ielem,0));
+		pj = (g-1.0)*(ug.get(3) - 0.5*(ug.get(1)*ug.get(1) + ug.get(2)*ug.get(2))/ug.get(0));
+		hi = (u.get(ielem,3) + pi)/u.get(ielem,0);
+		hj = (ug.get(3) + pj)/ug.get(0);
+
+		// get Roe-averages
+		Rij = sqrt(ug.get(0)/u.get(ielem,0));
+		rhoij = Rij*u.get(ielem,0);
+		uij = ( Rij * ug.get(1)/ug.get(0) + u.get(ielem,1)/u.get(ielem,0) ) / (Rij + 1.0);
+		vij = ( Rij * ug.get(2)/ug.get(0) + u.get(ielem,2)/u.get(ielem,0) ) / (Rij + 1.0);
+		vnij = uij*n[0] + vij*n[1];
+		hij = (Rij*hj + hi)/(Rij+1.0);
+		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
+
+		lambdaij(iface) = fabs(vnij) + cij;
+
+		// get Euler flux
+		eulerflux->evaluate_flux_2(u, ielem, n, elemfaceflux[iface], 0);
+	}
+	// interior faces
+	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		ielem = m->gintfac(iface,0);
+		jelem = m->gintfac(iface,1);
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		len = m->ggallfa(iface,2);
+
+		pi = (g-1.0)*(u.get(ielem,3) - 0.5*(u.get(ielem,1)*u.get(ielem,1) + u.get(ielem,2)*u.get(ielem,2))/u.get(ielem,0));
+		pj = (g-1.0)*(u.get(jelem,3) - 0.5*(u.get(jelem,1)*u.get(jelem,1) + u.get(jelem,2)*u.get(jelem,2))/u.get(jelem,0));
+		hi = (u.get(ielem,3) + pi)/u.get(ielem,0);
+		hj = (u.get(jelem,3) + pj)/u.get(jelem,0);
+
+		// get Roe-averages
+		Rij = sqrt(u.get(jelem,0)/u.get(ielem,0));
+		rhoij = Rij*u.get(ielem,0);
+		uij = ( Rij * u.get(jelem,1)/u.get(jelem,0) + u.get(ielem,1)/u.get(ielem,0) ) / (Rij + 1.0);
+		vij = ( Rij * u.get(jelem,2)/u.get(jelem,0) + u.get(ielem,2)/u.get(ielem,0) ) / (Rij + 1.0);
+		vnij = uij*n[0] + vij*n[1];
+		hij = (Rij*hj + hi)/(Rij+1.0);
+		cij = sqrt( (g-1.0)*(hij - 0.5*(uij*uij+vij*vij)) );
+
+		lambdaij(iface) = fabs(vnij) + cij;
+		
+		// get Euler flux
+		eulerflux->evaluate_flux_2(u, ielem, n, elemfaceflux[iface], 0);
+		eulerflux->evaluate_flux_2(u, jelem, n, elemfaceflux[iface], 1);
+	}
+
+	// compute diagonal blocks
+	acfd_int ifael;
+	acfd_real u02, vn;
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		diag[ielem].zeros();
+		u02 = u.get(ielem,0)*u.get(ielem,0);
+
+		for(ifael = 0; ifael < m->gnfael(ielem); ifael++)
+		{
+			face = m->gelemface(ielem,ifael);
+			n[0] = m->ggallfa(face,0);
+			n[1] = m->ggallfa(face,1);
+			len = m->ggallfa(face,2);
+
+			diag[ielem](0,0) += 0.5*lambdaij.get(face)*len;
+			diag[ielem](0,1) += 0.5*n[0]*len; 
+			diag[ielem](0,2) += 0.5*n[1]*len;
+
+			diag[ielem](1,0) += 0.5*( n[0] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,1)*u.get(ielem,1)/u02) 
+					- u.get(ielem,1)*u.get(ielem,2)*n[1]/u02 )*len;
+			diag[ielem](1,1) += 0.5* (n[0]*u.get(ielem,1)/u.get(ielem,0)*(3.0-g) + u.get(ielem,2)/u.get(0)*n[1] + lambdaij.get(face))*len;
+			diag[ielem](1,2) += 0.5* (u.get(ielem,1)/u.get(ielem,0)*n[1] - (g-1.0)*u.get(ielem,2)/u.get(ielem,0)*n[0])*len;
+			diag[ielem](1,3) += 0.5*(g-1.0)*n[0]*len;
+
+			diag[ielem](2,0) += 0.5*(-u.get(ielem,1)*u.get(ielem,2)/u02*n[0] + 
+					n[1] * ( (g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))*0.5/u02 - u.get(ielem,2)*u.get(ielem,2)/u02))*len;
+			diag[ielem](2,1) += 0.5*(u.get(ielem,2)/u.get(ielem,0)*n[0] - (g-1.0)*u.get(ielem,1)/u.get(ielem,0)*n[1])*len;
+			diag[ielem](2,2) += 0.5*(u.get(ielem,1)/u.get(ielem,0)*n[0] + n[1]*(3.0-g)*u.get(ielem,2)/u.get(ielem,0) + lambdaij.get(face))*len;
+			diag[ielem](2,3) += 0.5*(g-1.0)*n[1]*len;
+
+			vn = (u.get(ielem,1)*n[0] + u.get(ielem,2)*n[1])/u.get(ielem,0);
+			diag[ielem](3,0) += 0.5*(vn*((g-1.0)*(u.get(ielem,1)*u.get(ielem,1)+u.get(ielem,2)*u.get(ielem,2))/u02 - g*u.get(ielem,3)/u.get(ielem,0)))*len;
+			diag[ielem](3,1) += 0.5*(g*u.get(ielem,3)/u.get(ielem,0)*n[0] - 
+				(g-1.0)/u02*(1.5*u.get(ielem,1)*u.get(ielem,1)*n[0]+0.5*u.get(ielem,2)*u.get(ielem,2)*n[0]+u.get(ielem,1)*u.get(ielem,2)*n[1]))*len;
+			diag[ielem](3,2) += 0.5*(g*u.get(ielem,3)/u.get(ielem,0)*n[1] -
+				(g-1.0)/u02*(u.get(ielem,1)*u.get(ielem,2)*n[0]+1.5*u.get(ielem,2)*u.get(ielem,2)*n[1]+0.5*u.get(ielem,1)*u.get(ielem,1)*n[1]))*len;
+			diag[ielem](3,3) += 0.5*(g*vn + lambdaij.get(face))*len;
+		}
+	}
 }
 
 LUSSORSteadyStateImplicitSolver::LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 

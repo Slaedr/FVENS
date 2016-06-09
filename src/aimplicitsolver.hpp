@@ -37,10 +37,10 @@
 
 namespace acfd {
 
-/// A driver class to control the implicit time-stepping solution process
+/// A base class to control the implicit time-stepping solution process
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of (a child class of) this class.
  */
-class ImplicitSolver
+class ImplicitSolverBase
 {
 protected:
 	const UMesh2dh* const m;
@@ -55,9 +55,6 @@ protected:
 	
 	/// Local time steps
 	amat::Matrix<acfd_real> dtl;
-
-	/// Euler flux
-	FluxFunction* eulerflux;
 
 	/// Flux (boundary integral) calculation context
 	InviscidFlux* inviflux;
@@ -93,17 +90,6 @@ protected:
 	/// y-slopes
 	amat::Matrix<acfd_real> dudy;
 
-	/// Diagonal blocks of the residual Jacobian
-	amat::Matrix<acfd_real>* diag;
-	/// Permuation arrays of the diagonal blocks after LU factorization
-	amat::Matrix<int>* diagp;
-
-	/// `Eigenvalues' of flux for LHS
-	amat::Matrix<acfd_real> lambdaij;
-
-	/// Flux evaluation for LHS; stores Euler flux for either cell for each face
-	amat::Matrix<acfd_real>* elemfaceflux;
-
 	/// Linear solver to use
 	IterativeSolver* solver;
 
@@ -120,9 +106,9 @@ protected:
 	const double w;				///< Relaxation factor
 
 public:
-	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+	ImplicitSolverBase(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
 			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
-	~ImplicitSolver();
+	virtual ~ImplicitSolverBase();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
@@ -140,11 +126,11 @@ public:
 	 */
 	void compute_RHS();
 
-	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS; note that only the flux jacobian is computed. V/dt terms are not added.
+	/// Compute diagonal blocks and eigenvalues of simplified for LHS; note that only the flux jacobian is computed. V/dt terms are not added.
 	/** Boundary conditions need to be taken into account for the diagonal blocks
 	 * so make sure this function is called after the previous one (compute_RHS) as ug is needed.
 	 */
-	virtual void compute_LHS();
+	virtual void compute_LHS() = 0;
 	
 	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects
 	void compute_face_states();
@@ -174,16 +160,76 @@ public:
 	void compute_ghost_cell_coords_about_face();
 };
 
+/// A driver class to control a full matrix storage implicit time-stepping process
+class ImplicitSolver : public ImplicitSolverBase
+{
+protected:
+	/// Diagonal blocks of the residual Jacobian
+	amat::Matrix<acfd_real>* diag;
+	/// Permuation arrays of the diagonal blocks after LU factorization
+	amat::Matrix<int>* diagp;
+	/// Blocks in the lower triangular part
+	amat::Matrix<acfd_real>* lower;
+	/// Blocks in the  upper triangular part
+	amat::Matrix<acfd_real>* upper;
+
+public:
+	ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
+
+	~ImplicitSolverMF();
+
+	virtual void compute_LHS();
+
+	virtual void solve() = 0;
+};
+
+
+/// A driver class to control a matrix-free implicit time-stepping solution process
+/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of (a child class of) this class.
+ */
+class ImplicitSolverMF : public ImplicitSolverBase
+{
+protected:
+	/// Euler flux
+	FluxFunction* eulerflux;
+
+	/// Diagonal blocks of the residual Jacobian
+	amat::Matrix<acfd_real>* diag;
+	/// Permuation arrays of the diagonal blocks after LU factorization
+	amat::Matrix<int>* diagp;
+
+	/// `Eigenvalues' of flux for LHS
+	amat::Matrix<acfd_real> lambdaij;
+
+	/// Flux evaluation for LHS; stores Euler flux for either cell for each face
+	amat::Matrix<acfd_real>* elemfaceflux;
+
+public:
+	ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
+
+	~ImplicitSolverMF();
+
+	/// Compute diagonal blocks and eigenvalues of simplified flux for LHS; note that only the flux jacobian is computed. V/dt terms are not added.
+	/** Boundary conditions need to be taken into account for the diagonal blocks
+	 * so make sure this function is called after the previous one (compute_RHS) as ug is needed.
+	 */
+	virtual void compute_LHS();
+	
+	virtual void solve() = 0;
+};
+
 /// Solves for a steady-state solution by a first-order implicit scheme
 /** The ODE system is linearized at each time step; equivalent to a single Newton iteration at each time step.
  * Only one SSOR iteration is carried out per time step.
  */
-class LUSSORSteadyStateImplicitSolver : public ImplicitSolver
+class LUSSORSteadyStateImplicitSolverMF : public ImplicitSolverMF
 {
 	const acfd_real steadytol;
 	const int steadymaxiter;
 public:
-	LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double icfl, const int swtchstp,
+	LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double icfl, const int swtchstp,
 			const double omega, const acfd_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
@@ -193,14 +239,14 @@ public:
 /// Solves for a steady-state solution by a first-order implicit scheme
 /** The ODE system is linearized at each time step; equivalent to a single Newton iteration at each time step.
  */
-class SteadyStateImplicitSolver : public ImplicitSolver
+class SteadyStateImplicitSolverMF : public ImplicitSolverMF
 {
 	const acfd_real lintol;
 	const acfd_real steadytol;
 	const int linmaxiter;
 	const int steadymaxiter;
 public:
-	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+	SteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
 			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping

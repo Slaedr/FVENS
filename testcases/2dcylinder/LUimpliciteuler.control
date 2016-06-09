@@ -1,11 +1,11 @@
 -mesh_file
-../../data/2dcylinder-vfine.msh
+../../data/2dcylinder-coarse.msh
 -output_file
-../../data/2dcylinder-vfine-hllc-lusgs.vtu
+../../data/2dcylinder-coarse-hllc-lusgs.vtu
 -CFL
-4.0
+10.0
 -Initial-CFL
-2.0
+5.0
 -Time-step-for-CFL-switch
 10000
 -Tolerance
