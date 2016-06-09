@@ -214,8 +214,8 @@ class UnsteadyImplicitSolver : public ImplicitSolver
 	const int linmaxiter;
 	const int newtonmaxiter;
 public:
-	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
-			const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
 
 	/// Solves unsteady problem
 	virtual void solve() = 0;
@@ -225,8 +225,8 @@ public:
 class BackwardEulerSolver : public UnsteadyImplicitSolver
 {
 public:
-	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, const double cfl, const double omega,
-			const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
 
 	void solve();
 };

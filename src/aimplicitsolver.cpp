@@ -102,8 +102,8 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
-		std::cout << "ImplicitSolver: SSOR solver will be used." << std::endl;
+		solver = new SSOR_MFSolver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		std::cout << "ImplicitSolver: Matrix-free SSOR solver will be used." << std::endl;
 	}
 	else if(linear_solver == "BJ")
 	{
@@ -645,7 +645,7 @@ void LUSSORSteadyStateImplicitSolver::solve()
 	int step = 0;
 	acfd_int iel;
 	int i;
-	acfd_real resi = 1.0, curCFL;
+	acfd_real resi = 1.0, curCFL, dt;
 	acfd_real initres = 1.0;
 	amat::Matrix<acfd_real>* err;
 	err = new amat::Matrix<acfd_real>[nvars];
@@ -671,19 +671,25 @@ void LUSSORSteadyStateImplicitSolver::solve()
 		else
 			curCFL = cfl;
 
-		//calculate dt based on CFL
+		//calculate dt based on CFL, and get global dt
+		dt = 0.1;
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
 			dtl(iel) = curCFL*(m->garea(iel)/integ(iel));
+			if(dtl.get(iel) < dt) dt = dtl.get(iel);
 		}
 		
 		compute_LHS();			// this zeros diag before computing the LHS
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
-			diag[iel](0,0) += m->garea(iel)/dtl.get(iel);
+			/*diag[iel](0,0) += m->garea(iel)/dtl.get(iel);
 			diag[iel](1,1) += m->garea(iel)/dtl.get(iel);
 			diag[iel](2,2) += m->garea(iel)/dtl.get(iel);
-			diag[iel](3,3) += m->garea(iel)/dtl.get(iel);
+			diag[iel](3,3) += m->garea(iel)/dtl.get(iel);*/
+			diag[iel](0,0) += m->garea(iel)/dt;
+			diag[iel](1,1) += m->garea(iel)/dt;
+			diag[iel](2,2) += m->garea(iel)/dt;
+			diag[iel](3,3) += m->garea(iel)/dt;
 
 			LUfactor(diag[iel], diagp[iel]);
 		}

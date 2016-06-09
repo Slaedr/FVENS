@@ -162,7 +162,7 @@ void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const
 	}
 }
 
-SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+SSOR_MFSolver::SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
 		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
 		const amat::Matrix<acfd_real>* const unk, const double omega)
 	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
@@ -172,7 +172,7 @@ SSOR_Solver::SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const a
 	uelpdu.setup(nvars,1);
 }
 
-void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+void SSOR_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
 {
 	// forward sweep
 	// f1 is used to aggregate contributions from neighboring elements
@@ -184,8 +184,6 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 		{
 			jelem = m->gesuel(ielem,jfa);
 			if(jelem > ielem) continue;
-
-			// now, since jelem < ielem, we need to negate the normal vector of the face for computing flux vectors
 
 			iface = m->gelemface(ielem,jfa);
 			n[0] = m->ggallfa(iface,0);
@@ -201,7 +199,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			// get F(u+du*) - F(u) - lambda * du
 			for(ivar = 0; ivar < nvars; ivar++)
 			{
-				f2(ivar) = -(f2(ivar) - elemflux[iface].get(1,ivar)) - lambda*du[jelem].get(ivar);
+				f2(ivar) = -1.0*(f2(ivar) - elemflux[iface].get(1,ivar)) - lambda*du[jelem].get(ivar);
 				f2(ivar) *= s*0.5;
 				f1(ivar) += f2(ivar);
 			}

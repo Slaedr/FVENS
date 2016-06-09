@@ -80,7 +80,7 @@ public:
 /** Adapted from reference: 
  * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol 14, No 4, pp 253-270. 2001.
  */
-class SSOR_Solver : public MatrixFreeIterativeSolver
+class SSOR_MFSolver : public MatrixFreeIterativeSolver
 {
 	
 	amat::Matrix<acfd_real> f1;
@@ -97,7 +97,7 @@ class SSOR_Solver : public MatrixFreeIterativeSolver
 	
 public:
 
-	SSOR_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+	SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
 			const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const elem_flux,
 			const amat::Matrix<acfd_real>* const unk, const double omega);
 
