@@ -184,6 +184,20 @@ public:
 	virtual void solve() = 0;
 };
 
+class SteadyStateImplicitSolver : public ImplicitSolver
+{
+	const acfd_real lintol;
+	const acfd_real steadytol;
+	const int linmaxiter;
+	const int steadymaxiter;
+public:
+	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
+
+	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
+	void solve();
+};
+
 
 /// A driver class to control a matrix-free implicit time-stepping solution process
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of (a child class of) this class.
