@@ -166,6 +166,8 @@ class ImplicitSolver : public ImplicitSolverBase
 protected:
 	/// Diagonal blocks of the residual Jacobian
 	amat::Matrix<acfd_real>* diag;
+	/// LU-factorized diagonal blocks
+	amat::Matrix<acfd_real>* ludiag;
 	/// Permuation arrays of the diagonal blocks after LU factorization
 	amat::Matrix<int>* diagp;
 	/// Blocks in the lower triangular part
