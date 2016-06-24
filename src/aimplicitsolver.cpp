@@ -524,15 +524,17 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 		lower[i].setup(nvars,nvars);
 		upper[i].setup(nvars,nvars);
 	}
+	afresidual.setup(m->gnelem(),nvars);	// to store the full residual of linear system to be solved
+
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		solver = new SSOR_Solver(nvars, m, &afresidual, eulerflux, ludiag, diagp, &lambdaij, elemfaceflux, &u, w);
 		std::cout << "ImplicitSolver: Full-matrix SSOR solver will be used." << std::endl;
 	}
 	else if(linear_solver == "BJ")
 	{
-		solver = new BJ_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		solver = new BJ_Solver(nvars, m, &afresidual, eulerflux, ludiag, diagp, &lambdaij, elemfaceflux, &u, w);
 		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
 	}
 }
@@ -712,7 +714,7 @@ void ImplicitSolver::compute_LHS()
 	}
 }
 
-void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>& du, amat::Matrix<acfd_real>& ans)
+void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>* const du, amat::Matrix<acfd_real>& ans)
 {
 	int ielem, jelem, iface, i,j;
 	ans.zeros();
@@ -721,7 +723,7 @@ void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>& du, am
 	{
 		for(i = 0; i < nvars; i++)
 			for(j = 0; j < nvars; j++)
-				ans(ielem,i) += diag[ielem].get(i,j)*du.get(ielem,j);
+				ans(ielem,i) += diag[ielem].get(i,j)*du[ielem].get(j);
 	}
 
 	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
@@ -731,8 +733,8 @@ void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>& du, am
 		for(i = 0; i < nvars; i++)
 			for(j = 0; j < nvars; j++)
 			{
-				ans(jelem,i) += lower[iface].get(i,j)*du.get(ielem,j);
-				ans(ielem,i) += upper[iface].get(i,j)*du.get(jelem,j);
+				ans(jelem,i) += lower[iface].get(i,j)*du[ielem].get(j);
+				ans(ielem,i) += upper[iface].get(i,j)*du[jelem].get(j);
 			}
 	}
 }
@@ -750,11 +752,10 @@ void SteadyStateImplicitSolver::solve()
 	acfd_real resi = 1.0, linresi, curCFL;
 	acfd_real initres = 1.0, lininitres;
 	amat::Matrix<acfd_real> res(nvars,1);
-	amat::Matrix<acfd_real> prevresidual(m->gnelem(), nvars);
+	amat::Matrix<acfd_real> afresidual(m->gnelem(), nvars);
 	res.ones();
 	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
 	amat::Matrix<acfd_real>* ddu = new amat::Matrix<acfd_real>[m->gnelem()];
-	amat::Matrix<acfd_real>* D = new amat::Matrix<acfd_real>[m->gnelem()];
 	for(iel = 0; iel < m->gnelem(); iel++)
 	{
 		du[iel].setup(nvars,1);
@@ -777,7 +778,7 @@ void SteadyStateImplicitSolver::solve()
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
 		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
-				prevresidual(iel,i) = residual.get(iel,i);
+				afresidual(iel,i) = residual.get(iel,i);
 
 		if(step < switchstep)
 			curCFL = cfl_init;
@@ -833,60 +834,27 @@ void SteadyStateImplicitSolver::solve()
 				for(i = 0; i < nvars; i++)
 				{
 					du[iel](i) += ddu[iel].get(i);
-					u(iel,i) += ddu[iel].get(i);
+					//u(iel,i) += ddu[iel].get(i);
 				}
 			
 			// compute ODE residual
-			compute_RHS();
-			
-			for(iel = 0; iel < m->gnelem(); iel++)
-				for(i = 0; i < nvars; i++)
-				{
-					residual(iel,i) -= m->garea(iel)/dtl.get(iel)*du[iel].get(i);
-				}
 
 			// compute the matrix-vector product (dR/du) * du
+			jacobianVectorProduct(du, afresidual);
 			
-			// get the finite difference increment eps
-			/*for(i = 0; i < nvars; i++)
-			{
-				dunorm[i] = 0;
-				for(iel = 0; iel < m->gnelem(); iel++)
-					dunorm[i] += du[iel].get(i)*du[iel].get(i);
-				dunorm[i] = sqrt(dunorm[i]);
-				eps[i] = epsilon/dunorm[i];
-				std::cout << eps[i] << std::endl;
-			}
-			
-			// set u := u + (eps)*du
-			for(iel = 0; iel < m->gnelem(); iel++)
-				for(i = 0; i < nvars; i++)
-					u(iel,i) += eps[i]*du[iel].get(i);
-			
-			// compute ODE residual
-			compute_RHS();
-			
-			// get back original u
-			for(iel = 0; iel < m->gnelem(); iel++)
-				for(i = 0; i < nvars; i++)
-					u(iel,i) -= eps[i]*du[iel].get(i);
-			
-			// get residual
 			for(iel = 0; iel < m->gnelem(); iel++)
 				for(i = 0; i < nvars; i++)
 				{
-					residual(iel,i) -= m->garea(iel)*eps[i]/dtl.get(iel)*du[iel].get(i);
-					residual(iel,i) += (eps[i]-1.0)*prevresidual.get(iel,i);
-					residual(iel,i) /= eps[i];
-				}*/
+					afresidual(iel,i) += res.get(iel,i);
+				}
 		}
-		
+
 		// get new u, ie, u := u + du
-		/*for(iel = 0; iel < m->gnelem(); iel++)
+		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
 			{
 				u(iel,i) += du[iel].get(i);
-			}*/
+			}
 
 		// compute ||u_n - u_(n-1)||
 		// mass residual
@@ -914,7 +882,6 @@ void SteadyStateImplicitSolver::solve()
 
 	delete [] du;
 	delete [] ddu;
-	delete [] D;
 }
 // ----------------------------------- end of full matrix storage implicit solver classes ------------------------------- //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

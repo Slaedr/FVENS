@@ -174,14 +174,19 @@ protected:
 	amat::Matrix<acfd_real>* lower;
 	/// Blocks in the  upper triangular part
 	amat::Matrix<acfd_real>* upper;
+	/// Residual corresponding to linear system to be solved (as opposed to that of the ODE to be solved)
+	amat::Matrix<acfd_real> afresidual;
 
 public:
-	ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
+	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
 			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
 
-	~ImplicitSolverMF();
+	~ImplicitSolver();
 
 	virtual void compute_LHS();
+
+	/// Computes the product of a vector with the jacobian (D+L+U) of the system
+	void jacobianVectorProduct(const amat::Matrix<acfd_real>& du, amat::Matrix<acfd_real>& ans);
 
 	virtual void solve() = 0;
 };
