@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 
 	// Now start computation
 
-	LUSSORSteadyStateImplicitSolver prob(&m, order, invflux, reconst, limiter, cfl, initcfl, swtchstp, omega, tolerance, maxiter);
+	LUSSORSteadyStateImplicitSolverMF prob(&m, order, invflux, reconst, limiter, cfl, initcfl, swtchstp, omega, tolerance, maxiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
 	prob.solve();

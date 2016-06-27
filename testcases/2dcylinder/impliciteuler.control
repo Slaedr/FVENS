@@ -1,7 +1,7 @@
 -mesh_file
 ../../data/2dcylinder-coarse.msh
 -output_file
-../../data/2dcylinder-coarse-hllc-bj.vtu
+../../data/2dcylinder-coarse-hllc-ssor.vtu
 -CFL
 6.0
 -Initial-CFL
@@ -29,7 +29,7 @@ GREENGAUSS
 -limiter
 NONE
 -linear-solver
-BJ
+SSOR
 -relaxation-factor
 1.0
 -Linear-solver-tolerance

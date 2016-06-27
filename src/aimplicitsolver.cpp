@@ -513,6 +513,7 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_step, relaxation_factor)
 {
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
+	ludiag = new amat::Matrix<acfd_real>[m->gnelem()];
 	diagp = new amat::Matrix<int>[m->gnelem()];
 	lower = new amat::Matrix<acfd_real>[m->gnelem()];
 	upper = new amat::Matrix<acfd_real>[m->gnelem()];
