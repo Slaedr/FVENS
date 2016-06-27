@@ -529,20 +529,18 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	// set solver
 	if(linear_solver == "SSOR")
 	{
-		solver = new SSOR_Solver(nvars, m, &afresidual, eulerflux, ludiag, diagp, &lambdaij, elemfaceflux, &u, w);
+		solver = new SSOR_Solver(nvars, m, &afresidual, ludiag, diagp, lower, upper, w);
 		std::cout << "ImplicitSolver: Full-matrix SSOR solver will be used." << std::endl;
 	}
-	else if(linear_solver == "BJ")
+	/*else if(linear_solver == "BJ")
 	{
-		solver = new BJ_Solver(nvars, m, &afresidual, eulerflux, ludiag, diagp, &lambdaij, elemfaceflux, &u, w);
+		solver = new BJ_Solver(nvars, m, &afresidual, ludiag, diagp, lower, upper, w);
 		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
-	}
+	}*/
 }
 
 ImplicitSolver::~ImplicitSolver()
 {
-	ImplicitSolverBase::~ImplicitSolverBase();
-	delete eulerflux;
 	delete [] diag;
 	delete [] ludiag;
 	delete [] diagp;
@@ -923,7 +921,6 @@ ImplicitSolverMF::ImplicitSolverMF(const UMesh2dh* const mesh, const int _order,
 
 ImplicitSolverMF::~ImplicitSolverMF()
 {
-	ImplicitSolverBase::~ImplicitSolverBase();
 	delete eulerflux;
 	delete [] diag;
 	delete [] diagp;
@@ -1037,12 +1034,12 @@ void ImplicitSolverMF::compute_LHS()
 	}
 }
 
-LUSSORSteadyStateImplicitSolver::LUSSORSteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 
+LUSSORSteadyStateImplicitSolverMF::LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 
 		const double init_cfl, const int switch_step, const double omega, const acfd_real steady_tol, const int steady_maxiter)
-	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, init_cfl, switch_step, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, init_cfl, switch_step, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
-void LUSSORSteadyStateImplicitSolver::solve()
+void LUSSORSteadyStateImplicitSolverMF::solve()
 {
 	int step = 0;
 	acfd_int iel;

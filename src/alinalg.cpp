@@ -269,7 +269,7 @@ void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 }
 
 SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
-		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<acfd_real>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
 		const double omega)
 	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
 {
@@ -279,6 +279,7 @@ SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat
 
 void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 {
+	int jfa, ivar;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		du[ielem].zeros();
@@ -302,7 +303,7 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 		for(ivar = 0; ivar < nvars; ivar++)
 			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
 
-		LUsolve(diag[ielem], pa[ielem], f2, du[ielem]);
+		LUsolve(D[ielem], Dpa[ielem], f2, du[ielem]);
 	}
 
 	// next, compute backward sweep
@@ -326,12 +327,10 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 			}
 		}
 
-		LUsolve(diag[ielem], pa[ielem], f1, f2);
+		LUsolve(D[ielem], Dpa[ielem], f1, f2);
 		for(ivar = 0; ivar < nvars; ivar++)
 			du[ielem](ivar) -= w*f2.get(ivar);
 	}
-}
-
 }
 
 }

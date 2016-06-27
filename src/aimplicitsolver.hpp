@@ -186,7 +186,7 @@ public:
 	virtual void compute_LHS();
 
 	/// Computes the product of a vector with the jacobian (D+L+U) of the system
-	void jacobianVectorProduct(const amat::Matrix<acfd_real>& du, amat::Matrix<acfd_real>& ans);
+	void jacobianVectorProduct(const amat::Matrix<acfd_real>* const du, amat::Matrix<acfd_real>& ans);
 
 	virtual void solve() = 0;
 };

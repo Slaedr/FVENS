@@ -145,11 +145,11 @@ class SSOR_Solver : public IterativeSolver
 	const double w;
 	amat::Matrix<acfd_real> f1;
 	amat::Matrix<acfd_real> f2;
-	acfd_int i, j, ielem, iface;
+	acfd_int i, j, ielem, jelem, iface;
 
 public:
 	SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
-			const amat::Matrix<acfd_real>* const diag, const amat::Matrix<acfd_real>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+			const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
 			const double omega);
 
 	void compute_update(amat::Matrix<acfd_real>* const deltau);
