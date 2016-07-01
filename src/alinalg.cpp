@@ -303,8 +303,13 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 		for(ivar = 0; ivar < nvars; ivar++)
 			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
 
+		//f2.mprint();
+
 		LUsolve(D[ielem], Dpa[ielem], f2, du[ielem]);
 	}
+
+	/*for(ielem = 0; ielem < m->gnelem(); ielem++)
+		du[ielem].mprint();*/
 
 	// next, compute backward sweep
 	for(ielem = m->gnelem()-1; ielem >= 0; ielem--)

@@ -515,13 +515,18 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
 	ludiag = new amat::Matrix<acfd_real>[m->gnelem()];
 	diagp = new amat::Matrix<int>[m->gnelem()];
-	lower = new amat::Matrix<acfd_real>[m->gnelem()];
-	upper = new amat::Matrix<acfd_real>[m->gnelem()];
+	lower = new amat::Matrix<acfd_real>[m->gnaface()];
+	upper = new amat::Matrix<acfd_real>[m->gnaface()];
+	/** \note Allocation for lower and upper is currently for all faces, whereas what is needed is only interior faces. */
+
 	for(int i = 0; i < m->gnelem(); i++)
 	{
 		diag[i].setup(nvars,nvars);
 		ludiag[i].setup(nvars,nvars);
 		diagp[i].setup(nvars,1);
+	}
+	for(int i = 0; i < m->gnaface(); i++)
+	{
 		lower[i].setup(nvars,nvars);
 		upper[i].setup(nvars,nvars);
 	}
@@ -547,6 +552,7 @@ ImplicitSolver::~ImplicitSolver()
 	delete [] diagp;
 	delete [] lower;
 	delete [] upper;
+	delete solver;
 }
 
 // make sure this function is called after the previous one (compute_RHS) as ug is needed
@@ -751,7 +757,6 @@ void SteadyStateImplicitSolver::solve()
 	acfd_real resi = 1.0, linresi, curCFL;
 	acfd_real initres = 1.0, lininitres;
 	amat::Matrix<acfd_real> res(nvars,1);
-	amat::Matrix<acfd_real> afresidual(m->gnelem(), nvars);
 	res.ones();
 	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
 	amat::Matrix<acfd_real>* ddu = new amat::Matrix<acfd_real>[m->gnelem()];
@@ -817,13 +822,15 @@ void SteadyStateImplicitSolver::solve()
 			// compute norm of change
 			linresi = 0;
 			for(iel = 0; iel < m->gnelem(); iel++)
+			{
 				linresi += ddu[iel].get(0)*ddu[iel].get(0)*m->garea(iel);
+			}
 			linresi = sqrt(linresi);
 
 			if(linstep == 0)
 				lininitres = linresi;
 
-			if((linstep % 10 == 0 || linstep == linmaxiter-1) && step%10 == 0)
+			//if((linstep % 10 == 0 || linstep == linmaxiter-1) && step%10 == 0)
 				std::cout << "SteadyStateImplicitSolver: solve():   Lin step " << linstep << ", rel lin residual " << linresi/lininitres << std::endl;
 
 			linstep++;
@@ -865,7 +872,7 @@ void SteadyStateImplicitSolver::solve()
 		if(step == 0)
 			initres = resi;
 
-		if(step % 10 == 0)
+		//if(step % 10 == 0)
 			std::cout << "SteadyStateImplicitSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
