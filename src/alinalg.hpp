@@ -78,7 +78,8 @@ public:
 
 /// Matrix-free SSOR solver
 /** Adapted from reference: 
- * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol 14, No 4, pp 253-270. 2001.
+ * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol14, No 4, pp 253-270.
+ * 2001.
  */
 class SSOR_MFSolver : public MatrixFreeIterativeSolver
 {
@@ -108,7 +109,7 @@ public:
 };
 
 /// Block Jacobi solver
-class BJ_Solver : public MatrixFreeIterativeSolver
+class BJ_MFSolver : public MatrixFreeIterativeSolver
 {
 	
 	amat::Matrix<acfd_real> f1;
@@ -125,7 +126,7 @@ class BJ_Solver : public MatrixFreeIterativeSolver
 	
 public:
 
-	BJ_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+	BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
 			const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij, const amat::Matrix<acfd_real>* const elem_flux,
 			const amat::Matrix<acfd_real>* const unk, const double omega);
 
@@ -149,6 +150,53 @@ class SSOR_Solver : public IterativeSolver
 
 public:
 	SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
+			const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+			const double omega);
+
+	void compute_update(amat::Matrix<acfd_real>* const deltau);
+};
+
+/// Full matrix storage version of the BJ solver
+class BJ_Solver : public IterativeSolver
+{
+	const amat::Matrix<acfd_real>* const D;
+	const amat::Matrix<int>* const Dpa;
+	const double w;
+	
+	amat::Matrix<acfd_real> f1;
+	amat::Matrix<acfd_real> f2;
+	acfd_int ielem, jelem, iface;
+	acfd_real s, sum;
+	acfd_real n[NDIM];
+	int jfa;
+	int ivar;
+
+public:
+	BJ_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
+			const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+			const double omega);
+
+	void compute_update(amat::Matrix<acfd_real>* const deltau);
+};
+
+class BJ_Relaxation : public IterativeSolver
+{
+	const amat::Matrix<acfd_real>* const D;
+	const amat::Matrix<int>* const Dpa;
+	const amat::Matrix<acfd_real>* const U;
+	const amat::Matrix<acfd_real>* const L;
+	const double w;
+	
+	amat::Matrix<acfd_real> f1;
+	amat::Matrix<acfd_real> f2;
+	acfd_int ielem, jelem, iface;
+	acfd_real s, sum;
+	acfd_real n[NDIM];
+	int jfa;
+	int ivar;
+
+public:
+	BJ_Relaxation(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
 			const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
 			const double omega);
 

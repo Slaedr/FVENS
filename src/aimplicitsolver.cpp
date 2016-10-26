@@ -538,11 +538,11 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 		solver = new SSOR_Solver(nvars, m, &afresidual, ludiag, diagp, lower, upper, w);
 		std::cout << "ImplicitSolver: Full-matrix SSOR solver will be used." << std::endl;
 	}
-	/*else if(linear_solver == "BJ")
+	else if(linear_solver == "BJ")
 	{
 		solver = new BJ_Solver(nvars, m, &afresidual, ludiag, diagp, lower, upper, w);
 		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
-	}*/
+	}
 }
 
 ImplicitSolver::~ImplicitSolver()
@@ -702,7 +702,7 @@ void ImplicitSolver::compute_LHS()
 		for(i = 0; i < nvars; i++)
 		{
 			diag[ielem](i,i) += 0.5*(Ji(i,i) + lambdaij)*len;
-			diag[jelem](i,i) += 0.5*(Jj(i,i) + lambdaij)*len;
+			diag[jelem](i,i) += 0.5*(-Jj(i,i) + lambdaij)*len;
 			lower[iface](i,i) = 0.5*(-Ji(i,i) - lambdaij)*len;
 			upper[iface](i,i) = 0.5*(Jj(i,i) - lambdaij)*len;
 		}
@@ -712,7 +712,7 @@ void ImplicitSolver::compute_LHS()
 			{
 				if(i == j) continue;
 				diag[ielem](i,j) += 0.5*Ji(i,j)*len;
-				diag[jelem](i,j) += 0.5*Jj(i,j)*len;
+				diag[jelem](i,j) += -0.5*Jj(i,j)*len;
 				lower[iface](i,j) = 0.5*(-Ji(i,j))*len;
 				upper[iface](i,j) = 0.5*Jj(i,j)*len;
 			}
@@ -744,7 +744,7 @@ void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>* const 
 	}
 }
 
-SteadyStateImplicitSolver::SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string lsolver, const double cfl, 
+SteadyStateImplicitSolver::SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux,std::string reconst,std::string limiter, std::string lsolver, const double cfl, 
 		const double initcfl, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
 	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
 { }
@@ -789,10 +789,16 @@ void SteadyStateImplicitSolver::solve()
 		else
 			curCFL = cfl;
 
+		double dtmin = 1.0; // for same time-step for all cells
 		//calculate dt based on CFL
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
 			dtl(iel) = curCFL*(m->garea(iel)/integ(iel));
+			if(dtl.get(iel) < dtmin) dtmin = dtl.get(iel);
+		}
+		for(iel = 0; iel < m->gnelem(); iel++)
+		{
+			dtl(iel) = dtmin;
 		}
 		
 		compute_LHS();			// this zeros diag before computing the LHS
@@ -851,7 +857,7 @@ void SteadyStateImplicitSolver::solve()
 			for(iel = 0; iel < m->gnelem(); iel++)
 				for(i = 0; i < nvars; i++)
 				{
-					afresidual(iel,i) += res.get(iel,i);
+					afresidual(iel,i) = res.get(iel,i) - afresidual.get(iel,i);
 				}
 		}
 
@@ -874,6 +880,7 @@ void SteadyStateImplicitSolver::solve()
 
 		//if(step % 10 == 0)
 			std::cout << "SteadyStateImplicitSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+			std::cout << "SteadyStateImplicitSolver: solve(): Step " << step << ",  Mass residual " << resi << std::endl;
 
 		step++;
 		/*acfd_real totalenergy = 0;
@@ -922,7 +929,7 @@ ImplicitSolverMF::ImplicitSolverMF(const UMesh2dh* const mesh, const int _order,
 	}
 	else if(linear_solver == "BJ")
 	{
-		solver = new BJ_Solver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
+		solver = new BJ_MFSolver(nvars, m, &residual, eulerflux, diag, diagp, &lambdaij, elemfaceflux, &u, w);
 		std::cout << "ImplicitSolver: Block Jacobi solver will be used." << std::endl;
 	}
 }

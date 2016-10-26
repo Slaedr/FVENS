@@ -245,7 +245,7 @@ void SSOR_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
-BJ_Solver::BJ_Solver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
+BJ_MFSolver::BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
 		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
 		const amat::Matrix<acfd_real>* const unk, const double omega)
 	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
@@ -254,7 +254,7 @@ BJ_Solver::BJ_Solver(const int num_vars, const UMesh2dh* const mesh, const amat:
 	uelpdu.setup(nvars,1);
 }
 
-void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+void BJ_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
 {
 	acfd_int ielem;
 	int ivar;
@@ -303,13 +303,8 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 		for(ivar = 0; ivar < nvars; ivar++)
 			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
 
-		//f2.mprint();
-
 		LUsolve(D[ielem], Dpa[ielem], f2, du[ielem]);
 	}
-
-	/*for(ielem = 0; ielem < m->gnelem(); ielem++)
-		du[ielem].mprint();*/
 
 	// next, compute backward sweep
 	for(ielem = m->gnelem()-1; ielem >= 0; ielem--)
@@ -335,6 +330,51 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 		LUsolve(D[ielem], Dpa[ielem], f1, f2);
 		for(ivar = 0; ivar < nvars; ivar++)
 			du[ielem](ivar) -= w*f2.get(ivar);
+	}
+}
+
+BJ_Solver::BJ_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
+		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+		const double omega)
+	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), w(omega)
+{
+	f1.setup(nvars,1);
+}
+
+void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+{
+	acfd_int ielem;
+	int ivar;
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		du[ielem].zeros();
+
+		for(ivar = 0; ivar < nvars; ivar++)
+			f1(ivar) = res->get(ielem,ivar);
+		LUsolve(D[ielem], Dpa[ielem], f1, du[ielem]);
+	}
+}
+
+BJ_Relaxation::BJ_Relaxation(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
+		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+		const double omega)
+	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
+{
+	f1.setup(nvars,1);
+}
+
+void BJ_Relaxation::compute_update(amat::Matrix<acfd_real>* const u)
+{
+	// TODO: modify this function to implement block Jacobi relaxation scheme
+	acfd_int ielem;
+	int ivar;
+	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		du[ielem].zeros();
+
+		for(ivar = 0; ivar < nvars; ivar++)
+			f1(ivar) = res->get(ielem,ivar);
+		LUsolve(D[ielem], Dpa[ielem], f1, du[ielem]);
 	}
 }
 
