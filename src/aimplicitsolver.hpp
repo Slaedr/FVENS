@@ -102,12 +102,13 @@ protected:
 	int inflow_outflow_id;		///< Boundary marker corresponding to inflow/outflow
 	const double cfl_init;		///< Starting CFL number
 	const double cfl;			///< Final CFL number
-	const int switchstep;		///< Time step at which to switch from lower CFL number to higher CFL number
+	const int switchstepi;		///< Time step at which to start CFL ramping-up
+	const int switchstep;		///< Time step at which to reach higher CFL number
 	const double w;				///< Relaxation factor
 
 public:
 	ImplicitSolverBase(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
+			const double cfl, const double cfl_init, const int switchstepi, const int switchstep, const double relaxation_factor);
 	virtual ~ImplicitSolverBase();
 	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
 
@@ -179,7 +180,7 @@ protected:
 
 public:
 	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
+			const double cfl, const double cfl_init, const int switchstepi, const int switchstep, const double relaxation_factor);
 
 	~ImplicitSolver();
 
@@ -199,7 +200,7 @@ class SteadyStateImplicitSolver : public ImplicitSolver
 	const int steadymaxiter;
 public:
 	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();
@@ -228,7 +229,7 @@ protected:
 
 public:
 	ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double cfl_init, const int switchstep, const double relaxation_factor);
+			const double cfl, const double cfl_init, const int switchstepi, const int switchstep, const double relaxation_factor);
 
 	~ImplicitSolverMF();
 
@@ -250,7 +251,7 @@ class LUSSORSteadyStateImplicitSolverMF : public ImplicitSolverMF
 	const acfd_real steadytol;
 	const int steadymaxiter;
 public:
-	LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double icfl, const int swtchstp,
+	LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double icfl, const int switchstepi, const int swtchstp,
 			const double omega, const acfd_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
@@ -268,7 +269,7 @@ class SteadyStateImplicitSolverMF : public ImplicitSolverMF
 	const int steadymaxiter;
 public:
 	SteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();
@@ -282,7 +283,7 @@ class UnsteadyImplicitSolver : public ImplicitSolver
 	const int newtonmaxiter;
 public:
 	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
 
 	/// Solves unsteady problem
 	virtual void solve() = 0;
@@ -293,7 +294,7 @@ class BackwardEulerSolver : public UnsteadyImplicitSolver
 {
 public:
 	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
 
 	void solve();
 };

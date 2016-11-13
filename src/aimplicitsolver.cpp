@@ -9,8 +9,8 @@
 namespace acfd {
 
 ImplicitSolverBase::ImplicitSolverBase(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-		const double cfl_num, const double init_cfl, const int switch_step, const double relaxation_factor)
-	: cfl(cfl_num), cfl_init(init_cfl), switchstep(switch_step), w(relaxation_factor), order(_order), m(mesh)
+		const double cfl_num, const double init_cfl, const int switch_stepi, const int switch_step, const double relaxation_factor)
+	: cfl(cfl_num), cfl_init(init_cfl), switchstepi(switch_stepi), switchstep(switch_step), w(relaxation_factor), order(_order), m(mesh)
 {
 	g = 1.4;
 
@@ -509,8 +509,8 @@ amat::Matrix<acfd_real> ImplicitSolverBase::getvelocities() const
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-		const double cfl_num, const double init_cfl, const int switch_step, const double relaxation_factor)
-	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_step, relaxation_factor)
+		const double cfl_num, const double init_cfl, const int switch_stepi, const int switch_step, const double relaxation_factor)
+	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_stepi, switch_step, relaxation_factor)
 {
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
 	ludiag = new amat::Matrix<acfd_real>[m->gnelem()];
@@ -745,8 +745,8 @@ void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>* const 
 }
 
 SteadyStateImplicitSolver::SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux,std::string reconst,std::string limiter, std::string lsolver, const double cfl, 
-		const double initcfl, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
-	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
+		const double initcfl, const int switchstepi, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
+	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstepi, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
 { }
 
 void SteadyStateImplicitSolver::solve()
@@ -780,16 +780,20 @@ void SteadyStateImplicitSolver::solve()
 
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
+		
 		for(iel = 0; iel < m->gnelem(); iel++)
 			for(i = 0; i < nvars; i++)
 				afresidual(iel,i) = residual.get(iel,i);
 
-		if(step < switchstep)
+		if(step < switchstepi)
 			curCFL = cfl_init;
+		else if(step < switchstep)
+			curCFL = cfl_init + (cfl-cfl_init)/(switchstep-switchstepi)*(step-switchstepi);
 		else
 			curCFL = cfl;
 
 		double dtmin = 1.0; // for same time-step for all cells
+		
 		//calculate dt based on CFL
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
@@ -802,6 +806,7 @@ void SteadyStateImplicitSolver::solve()
 		}
 		
 		compute_LHS();			// this zeros diag before computing the LHS
+		
 		for(iel = 0; iel < m->gnelem(); iel++)
 		{
 			diag[iel](0,0) += m->garea(iel)/dtl.get(iel);
@@ -821,6 +826,7 @@ void SteadyStateImplicitSolver::solve()
 		linresi = 1.0;
 		lininitres = 1.0;
 		linstep = 0;
+		
 		while(linresi/lininitres > lintol && linstep < linmaxiter)
 		{
 			solver->compute_update(ddu);
@@ -901,8 +907,8 @@ void SteadyStateImplicitSolver::solve()
 
 
 ImplicitSolverMF::ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-		const double cfl_num, const double init_cfl, const int switch_step, const double relaxation_factor)
-	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_step, relaxation_factor)
+		const double cfl_num, const double init_cfl, const int switchstepi, const int switch_step, const double relaxation_factor)
+	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switchstepi, switch_step, relaxation_factor)
 {
 	diag = new amat::Matrix<acfd_real>[m->gnelem()];
 	diagp = new amat::Matrix<int>[m->gnelem()];
@@ -1050,8 +1056,8 @@ void ImplicitSolverMF::compute_LHS()
 }
 
 LUSSORSteadyStateImplicitSolverMF::LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 
-		const double init_cfl, const int switch_step, const double omega, const acfd_real steady_tol, const int steady_maxiter)
-	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, init_cfl, switch_step, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
+		const double init_cfl, const int switchstepi, const int switch_step, const double omega, const acfd_real steady_tol, const int steady_maxiter)
+	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, init_cfl, switchstepi, switch_step, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
 void LUSSORSteadyStateImplicitSolverMF::solve()
@@ -1080,8 +1086,10 @@ void LUSSORSteadyStateImplicitSolverMF::solve()
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
 
-		if(step < switchstep)
+		if(step < switchstepi)
 			curCFL = cfl_init;
+		else if(step < switchstep)
+			curCFL = cfl_init + (cfl-cfl_init)/(switchstep-switchstepi)*(step-switchstepi);
 		else
 			curCFL = cfl;
 
@@ -1151,8 +1159,8 @@ void LUSSORSteadyStateImplicitSolverMF::solve()
 }
 
 SteadyStateImplicitSolverMF::SteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string lsolver, 
-		const double cfl, const double initcfl, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
-	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
+		const double cfl, const double initcfl, const int switchstepi, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
+	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstepi, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
 { }
 
 void SteadyStateImplicitSolverMF::solve()
@@ -1191,8 +1199,10 @@ void SteadyStateImplicitSolverMF::solve()
 			for(i = 0; i < nvars; i++)
 				prevresidual(iel,i) = residual.get(iel,i);
 
-		if(step < switchstep)
+		if(step < switchstepi)
 			curCFL = cfl_init;
+		else if(step < switchstep)
+			curCFL = cfl_init + (cfl-cfl_init)/(switchstep-switchstepi)*(step-switchstepi);
 		else
 			curCFL = cfl;
 
