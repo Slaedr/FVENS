@@ -21,12 +21,13 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, invflux, reconst, limiter;
 	double cfl, initcfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance, omega;
-	int order, maxiter, swtchstp;
+	int order, maxiter, swtchstp, swtchstpi;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
 	control >> dum; control >> cfl;
 	control >> dum; control >> initcfl;
+	// TODO: Read step at which to start CFL ramping
 	control >> dum; control >> swtchstp;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
@@ -52,7 +53,7 @@ int main(int argc, char* argv[])
 
 	// Now start computation
 
-	LUSSORSteadyStateImplicitSolverMF prob(&m, order, invflux, reconst, limiter, cfl, initcfl, swtchstp, omega, tolerance, maxiter);
+	LUSSORSteadyStateImplicitSolverMF prob(&m, order, invflux, reconst, limiter, cfl, initcfl, swtchstpi, swtchstp, omega, tolerance, maxiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 
 	prob.solve();

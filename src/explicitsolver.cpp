@@ -29,8 +29,6 @@ int main(int argc, char* argv[])
 	control >> outf;
 	control >> dum;
 	control >> cfl;
-	control >> dum;
-	control >> ttime;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
 	control >> dum;

@@ -109,7 +109,7 @@ WENOLimiter::~WENOLimiter()
 
 void WENOLimiter::compute_face_values()
 {
-	// first compute limited dericatives at each cell
+	// first compute limited derivatives at each cell
 	acfd_real w, wsum, denom;
 	acfd_int jelem;
 	int jel, ivar;

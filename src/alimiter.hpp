@@ -69,7 +69,7 @@ public:
 	void compute_face_values();
 };
 
-/// Computes state at left and right sides if each face based on WENO-limited derivatives at each cell
+/// Computes state at left and right sides of each face based on WENO-limited derivatives at each cell
 /** References:
  * - Y. Xia, X. Liu and H. Luo. "A finite volume method based on a WENO reconstruction for compressible flows on hybrid grids", 52nd AIAA Aerospace Sciences Meeting, AIAA-2014-0939.
  * - M. Dumbser and M. Kaeser. "Arbitrary high order non-oscillatory finite volume schemes on unsttructured meshes for linear hyperbolic systems", J. Comput. Phys. 221 pp 693--723, 2007.

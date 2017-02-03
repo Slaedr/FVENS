@@ -1,8 +1,8 @@
 -input-file
-../data/naca0012-4.domn
+../data/feflo.domn.bump.processed
 -input-format
 domn
 -output-file
-../data/naca0012-4.msh
+../data/bumpchannel.msh
 -output-format
 msh

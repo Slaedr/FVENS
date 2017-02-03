@@ -370,11 +370,11 @@ void BJ_Relaxation::compute_update(amat::Matrix<acfd_real>* const u)
 	int ivar;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		du[ielem].zeros();
+		u[ielem].zeros();
 
 		for(ivar = 0; ivar < nvars; ivar++)
 			f1(ivar) = res->get(ielem,ivar);
-		LUsolve(D[ielem], Dpa[ielem], f1, du[ielem]);
+		LUsolve(D[ielem], Dpa[ielem], f1, u[ielem]);
 	}
 }
 

@@ -1,15 +1,15 @@
 -mesh_file
-../../data/2dcylinder-medium.msh
+../../data/bumpchannel.msh
 -output_file
-../../data/2dcylinder-medium-hllc-tvdrk.vtu
+../../data/bumpchannel-hllc-tvdrk.vtu
 -CFL
 0.24
 -Tolerance
-1e-5
+1e-3
 -Max-iterations
 900000
 -M_infinity
-0.38
+1.1
 -velocity_infinity
 1.0
 -angle_of_attack
@@ -23,4 +23,4 @@ HLLC
 -reconstruction-scheme
 GREENGAUSS
 -limiter
-NONE
+WENO

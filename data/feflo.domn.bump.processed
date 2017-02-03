@@ -3364,21 +3364,3 @@ mesh in a channel with a circular bump on the bottom
      115     115     116  4  1  6
      116     116     117  4  1  6
      117     117       1  4  1  6
- ncinf
-       0
-     gamma     csmoo    clapid   ndiff   nsmol   nvisc
-    1.4000    1.0000    1.0000       3       0       0
-          dtmin          csafe          timax   ntime   niter   nloct
-        0.00000        0.45000    0.00000E+00     100       1       1
-   nclip   nlimi   nvali  nzal14
-       1       6       1       0
-   ntspd   timpd   ntspr   timpr
-     101 0.0E+00     100 0.0E+00
-   rmile   nmxre   ctore   ctode   cnois   nuref
-  0.0000       3  0.2500  0.1000  0.2000       1
-   luref
-       1
-   npmon   numon
-       1       2
-   lpmon
-       1
