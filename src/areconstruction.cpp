@@ -33,7 +33,7 @@ void GreenGaussReconstruction::compute_gradients()
 	
 	int iface, idim, ielem, jelem, ivar, ip1, ip2;
 	acfd_real areainv1, areainv2;
-	std::vector<acfd_real> ut(nvars);
+	std::vector<acfd_real> ut(NVARS);
 	acfd_real dL, dR, mid[NDIM];
 	
 	for(iface = 0; iface < m->gnbface(); iface++)
@@ -53,7 +53,7 @@ void GreenGaussReconstruction::compute_gradients()
 		//areainv1 = 2.0/m->gjacobians(ielem);
 		areainv1 = 1.0/m->garea(ielem);
 		
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			ut[ivar] = (u->get(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 			(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
@@ -81,7 +81,7 @@ void GreenGaussReconstruction::compute_gradients()
 		areainv1 = 1.0/m->garea(ielem);
 		areainv2 = 1.0/m->garea(jelem);
 		
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			ut[ivar] = (u->get(ielem,ivar)*dL + u->get(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 			(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
@@ -97,7 +97,7 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat:
 		const amat::Matrix<acfd_real>* _rc, const amat::Matrix<acfd_real>* const _rcg)
 {
 	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _rc, _rcg);
-	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; nvars = " << nvars << std::endl;
+	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; nvars = " << NVARS << std::endl;
 
 	V.resize(m->gnelem());
 	f.resize(m->gnelem());
@@ -105,11 +105,11 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat:
 	{
 		V[i].setup(2,2);
 		V[i].zeros();
-		f[i].setup(2,nvars);
+		f[i].setup(2,NVARS);
 	}
-	d.setup(2,nvars);
+	d.setup(2,NVARS);
 	idets.setup(m->gnelem(),1);
-	du.setup(nvars,1);
+	du.setup(NVARS,1);
 
 	// compute LHS of least-squares problem
 	int iface, ielem, jelem, idim;
@@ -178,10 +178,10 @@ void WeightedLeastSquaresReconstruction::compute_gradients()
 			dr[idim] = rc->get(ielem,idim)-rcg->get(iface,idim);
 		}
 		w2 = 1.0/w2;
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 			du(ivar) = u->get(ielem,ivar) - ug->get(iface,ivar);
 		
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			f[ielem](0,ivar) += w2*dr[0]*du(ivar);
 			f[ielem](1,ivar) += w2*dr[1]*du(ivar);
@@ -198,10 +198,10 @@ void WeightedLeastSquaresReconstruction::compute_gradients()
 			dr[idim] = rc->get(ielem,idim)-rc->get(jelem,idim);
 		}
 		w2 = 1.0/w2;
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 			du(ivar) = u->get(ielem,ivar) - u->get(jelem,ivar);
 
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			f[ielem](0,ivar) += w2*dr[0]*du(ivar);
 			f[ielem](1,ivar) += w2*dr[1]*du(ivar);
@@ -213,7 +213,7 @@ void WeightedLeastSquaresReconstruction::compute_gradients()
 	// solve normal equations by Cramer's rule
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			(*dudx)(ielem,ivar) = (f[ielem].get(0,ivar)*V[ielem].get(1,1) - f[ielem].get(1,ivar)*V[ielem].get(0,1)) * idets.get(ielem);
 			(*dudy)(ielem,ivar) = (V[ielem].get(0,0)*f[ielem].get(1,ivar) - V[ielem].get(1,0)*f[ielem].get(0,ivar)) * idets.get(ielem);

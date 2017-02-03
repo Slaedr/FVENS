@@ -18,8 +18,8 @@ InviscidFlux::~InviscidFlux()
 VanLeerFlux::VanLeerFlux(int num_vars, int num_dims, acfd_real gamma) : InviscidFlux(num_vars, num_dims, gamma)
 {
 	//InviscidFlux::setup(mesh, uleft, uright, rhs_ele, cfl_denom);
-	fiplus.setup(nvars, 1);
-	fjminus.setup(nvars, 1);
+	fiplus.setup(NVARS, 1);
+	fjminus.setup(NVARS, 1);
 }
 
 void VanLeerFlux::get_flux(const amat::Matrix<acfd_real>* ul, const amat::Matrix<acfd_real>* ur, const acfd_real* const n, amat::Matrix<acfd_real>* const flux)
@@ -79,7 +79,7 @@ void VanLeerFlux::get_flux(const amat::Matrix<acfd_real>* ul, const amat::Matrix
 	}
 
 	//Update the flux vector
-	for(int i = 0; i < nvars; i++)
+	for(int i = 0; i < NVARS; i++)
 		(*flux)(i) = (fiplus(i) + fjminus(i));
 }
 
@@ -265,7 +265,7 @@ void HLLCFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Mat
 		utemp(2) = ( (sl-vni)*ul->get(2) + (pstar-pi)*n[1] )/(sl-sm);
 		utemp(3) = ( (sl-vni)*ul->get(3) - pi*vni + pstar*sm )/(sl-sm);
 
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 			(*flux)(ivar) += sl * ( utemp.get(ivar) - ul->get(ivar));
 	}
 	else if(sm <= 0 && sr >= 0)
@@ -281,7 +281,7 @@ void HLLCFlux::get_flux(const amat::Matrix<acfd_real>* const ul, const amat::Mat
 		utemp(2) = ( (sr-vnj)*ur->get(2) + (pstar-pj)*n[1] )/(sr-sm);
 		utemp(3) = ( (sr-vnj)*ur->get(3) - pj*vnj + pstar*sm )/(sr-sm);
 
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 			(*flux)(ivar) += sr * ( utemp.get(ivar) - ur->get(ivar));
 	}
 	else

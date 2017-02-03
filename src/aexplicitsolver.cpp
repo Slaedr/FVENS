@@ -17,26 +17,27 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	std::cout << "ExplicitSolver: Setting up explicit solver for spatial order " << order << std::endl;
 
 	// for 2D Euler equations, we have 4 variables
-	nvars = 4;
+	NVARS = 4;
 	// for upto second-order finite volume, we only need 1 Guass point per face
 	ngaussf = 1;
 
+	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
 	inflow_outflow_id = 4;
 
 	// allocation
 	m_inverse.setup(m->gnelem(),1);		// just a vector for FVM. For DG, this will be an array of Matrices
-	residual.setup(m->gnelem(),nvars);
-	u.setup(m->gnelem(), nvars);
-	uinf.setup(1, nvars);
+	residual.setup(m->gnelem(),NVARS);
+	u.setup(m->gnelem(), NVARS);
+	uinf.setup(1, NVARS);
 	integ.setup(m->gnelem(), 1);
-	dudx.setup(m->gnelem(), nvars);
-	dudy.setup(m->gnelem(), nvars);
-	uleft.setup(m->gnaface(), nvars);
-	uright.setup(m->gnaface(), nvars);
+	dudx.setup(m->gnelem(), NVARS);
+	dudy.setup(m->gnelem(), NVARS);
+	uleft.setup(m->gnaface(), NVARS);
+	uright.setup(m->gnaface(), NVARS);
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
-	ug.setup(m->gnface(),nvars);
+	ug.setup(m->gnface(),NVARS);
 	gr = new amat::Matrix<acfd_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 		gr[i].setup(ngaussf, m->gndim());
@@ -46,15 +47,15 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER")
-		inviflux = new VanLeerFlux(nvars, m->gndim(), g);
+		inviflux = new VanLeerFlux(NVARS, m->gndim(), g);
 	else if(invflux == "ROE")
 	{
-		inviflux = new RoeFlux(nvars, m->gndim(), g);
+		inviflux = new RoeFlux(NVARS, m->gndim(), g);
 		std::cout << "ExplicitSolver: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
-		inviflux = new HLLCFlux(nvars, m->gndim(), g);
+		inviflux = new HLLCFlux(NVARS, m->gndim(), g);
 		std::cout << "ExplicitSolver: Using HLLC fluxes." << std::endl;
 	}
 	else
@@ -176,7 +177,7 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 
 	//initial values are equal to boundary values
 	for(int i = 0; i < m->gnelem(); i++)
-		for(int j = 0; j < nvars; j++)
+		for(int j = 0; j < NVARS; j++)
 			u(i,j) = uinf(0,j);
 
 	// Next, get cell centers (real and ghost)
@@ -246,25 +247,25 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 		{
 			//if(Mni <= -1.0)
 			{
-				for(i = 0; i < nvars; i++)
+				for(i = 0; i < NVARS; i++)
 					bs(ied,i) = uinf(0,i);
 			}
 			/*else if(Mni > -1.0 && Mni < 0)
 			{
 				// subsonic inflow, specify rho and u according to FUN3D BCs paper
-				for(i = 0; i < nvars-1; i++)
+				for(i = 0; i < NVARS-1; i++)
 					bs(ied,i) = uinf.get(0,i);
 				bs(ied,3) = pi/(g-1.0) + 0.5*( uinf.get(0,1)*uinf.get(0,1) + uinf.get(0,2)*uinf.get(0,2) )/uinf.get(0,0);
 			}
 			else if(Mni >= 0 && Mni < 1.0)
 			{
 				// subsonic ourflow, specify p accoording FUN3D BCs paper
-				for(i = 0; i < nvars-1; i++)
+				for(i = 0; i < NVARS-1; i++)
 					bs(ied,i) = ins.get(ied,i);
 				bs(ied,3) = pinf/(g-1.0) + 0.5*( ins.get(ied,1)*ins.get(ied,1) + ins.get(ied,2)*ins.get(ied,2) )/ins.get(ied,0);
 			}
 			else
-				for(i = 0; i < nvars; i++)
+				for(i = 0; i < NVARS; i++)
 					bs(ied,i) = ins.get(ied,i);*/
 		}
 	}
@@ -291,7 +292,7 @@ void ExplicitSolver::compute_RHS()
 	for(ied = 0; ied < m->gnbface(); ied++)
 	{
 		ielem = m->gintfac(ied,0);
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 			uleft(ied,ivar) = u.get(ielem,ivar);
 	}
 
@@ -312,7 +313,7 @@ void ExplicitSolver::compute_RHS()
 		{
 			ielem = m->gintfac(ied,0);
 			jelem = m->gintfac(ied,1);
-			for(ivar = 0; ivar < nvars; ivar++)
+			for(ivar = 0; ivar < NVARS; ivar++)
 			{
 				uleft(ied,ivar) = u.get(ielem,ivar);
 				uright(ied,ivar) = u.get(jelem,ivar);
@@ -330,10 +331,9 @@ void ExplicitSolver::compute_RHS()
 	 * \f]
 	 * so that time steps can be calculated for explicit time stepping.
 	 */
-	acfd_real *n, nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
+	acfd_real n[NDIM], nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
 	int lel, rel;
-	n = new acfd_real[m->gndim()];
-	amat::Matrix<acfd_real> ul(nvars,1), ur(nvars,1), flux(nvars,1);
+	amat::Matrix<acfd_real> ul(NVARS,1), ur(nvars,1), flux(nvars,1);
 
 	for(ied = 0; ied < m->gnaface(); ied++)
 	{
@@ -344,7 +344,7 @@ void ExplicitSolver::compute_RHS()
 		n[1] = m->ggallfa(ied,1);
 		len = m->ggallfa(ied,2);
 
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			ul(ivar) = uleft.get(ied,ivar);
 			ur(ivar) = uright.get(ied,ivar);
@@ -354,11 +354,11 @@ void ExplicitSolver::compute_RHS()
 		inviflux->get_flux(&ul, &ur, n, &flux);
 
 		// integrate over the face
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 				flux(ivar) *= len;
 
 		// scatter the flux to elements' residuals
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			residual(lel,ivar) -= flux(ivar);
 			if(rel >= 0 && rel < m->gnelem())
@@ -380,7 +380,6 @@ void ExplicitSolver::compute_RHS()
 		if(rel >= 0 && rel < m->gnelem())
 			integ(rel,0) += (fabs(vnj) + cj)*len;
 	}
-	delete [] n;
 }
 
 void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl)
@@ -389,10 +388,10 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 	acfd_real resi = 1.0;
 	acfd_real initres = 1.0;
 	amat::Matrix<acfd_real>* err;
-	err = new amat::Matrix<acfd_real>[nvars];
-	for(int i = 0; i<nvars; i++)
+	err = new amat::Matrix<acfd_real>[NVARS];
+	for(int i = 0; i<NVARS; i++)
 		err[i].setup(m->gnelem(),1);
-	amat::Matrix<acfd_real> res(nvars,1);
+	amat::Matrix<acfd_real> res(NVARS,1);
 	res.ones();
 	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
 	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
@@ -406,11 +405,6 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
 
-		/*if(step==0) {
-			//dudx.mprint(); dudy.mprint();
-			break;
-		}*/
-
 		//calculate dt based on CFL
 
 		for(int iel = 0; iel < m->gnelem(); iel++)
@@ -421,7 +415,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 		uold = u;
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 			{
 				u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
 			}
@@ -429,7 +423,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 
 		//if(step == 0) { dudx.mprint();  break; }
 
-		for(int i = 0; i < nvars; i++)
+		for(int i = 0; i < NVARS; i++)
 		{
 			err[i] = (u-uold).col(i);
 			//err[i] = residual.col(i);
@@ -466,7 +460,7 @@ void ExplicitSolver::postprocess_point()
 	amat::Matrix<acfd_real> c(m->gnpoin(),1);
 	
 	amat::Matrix<acfd_real> areasum(m->gnpoin(),1);
-	amat::Matrix<acfd_real> up(m->gnpoin(), nvars);
+	amat::Matrix<acfd_real> up(m->gnpoin(), NVARS);
 	up.zeros();
 	areasum.zeros();
 
@@ -476,7 +470,7 @@ void ExplicitSolver::postprocess_point()
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(inode = 0; inode < m->gnnode(ielem); inode++)
-			for(ivar = 0; ivar < nvars; ivar++)
+			for(ivar = 0; ivar < NVARS; ivar++)
 			{
 				up(m->ginpoel(ielem,inode),ivar) += u.get(ielem,ivar)*m->garea(ielem);
 				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
@@ -487,7 +481,7 @@ void ExplicitSolver::postprocess_point()
 		ielem = m->gintfac(iface,0);
 		ip1 = m->gintfac(iface,2);
 		ip2 = m->gintfac(iface,3);
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			up(ip1,ivar) += ug.get(iface,ivar)*m->garea(ielem);
 			up(ip2,ivar) += ug.get(iface,ivar)*m->garea(ielem);
@@ -497,7 +491,7 @@ void ExplicitSolver::postprocess_point()
 	}
 
 	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 	
 	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)

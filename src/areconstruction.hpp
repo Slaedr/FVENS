@@ -40,7 +40,7 @@ protected:
 	const amat::Matrix<acfd_real>* rc;
 	/// Ghost cell centers
 	const amat::Matrix<acfd_real>* rcg;
-	/// Number of converved variables
+	/// Number of converved variables ** deprecated, use the preprocessor constant NVARS instead **
 	int nvars;
 	/// Cell-centered flow vaiables
 	const amat::Matrix<acfd_real>* u;

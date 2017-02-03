@@ -39,11 +39,11 @@ namespace acfd {
 class ExplicitSolver
 {
 	const UMesh2dh* m;
-	amat::Matrix<acfd_real> m_inverse;		///< Left hand side (just the volume of the element for FV)
+	amat::Matrix<acfd_real> m_inverse;			///< Left hand side (just the volume of the element for FV)
 	amat::Matrix<acfd_real> residual;			///< Right hand side for boundary integrals and source terms
-	int nvars;							///< number of conserved variables
+	int nvars;									///< number of conserved variables ** deprecated, use the preprocessor constant NVARS instead **
 	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
-	acfd_real g;							///< adiabatic index
+	acfd_real g;								///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
 	amat::Matrix<acfd_real> integ;

@@ -65,7 +65,7 @@ void NoLimiter::compute_face_values()
 		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
 		for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 			{
 
 				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
@@ -81,7 +81,7 @@ void NoLimiter::compute_face_values()
 
 		for(int ig = 0; ig < ng; ig++)
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 				(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
 		}
 	}
@@ -93,8 +93,8 @@ WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* un
 		amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
 	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
 {
-	ldudx = new amat::Matrix<acfd_real>(m->gnelem(),nvars);
-	ldudy = new amat::Matrix<acfd_real>(m->gnelem(),nvars);
+	ldudx = new amat::Matrix<acfd_real>(m->gnelem(),NVARS);
+	ldudy = new amat::Matrix<acfd_real>(m->gnelem(),NVARS);
 	// values below chosen from second reference (Dumbser and Kaeser)
 	gamma = 4.0;
 	lambda = 1e3;
@@ -116,7 +116,7 @@ void WENOLimiter::compute_face_values()
 
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(ivar = 0; ivar < nvars; ivar++)
+		for(ivar = 0; ivar < NVARS; ivar++)
 		{
 			wsum = 0;
 			(*ldudx)(ielem,ivar) = 0;
@@ -159,7 +159,7 @@ void WENOLimiter::compute_face_values()
 		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
 		for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 			{
 
 				(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
@@ -175,7 +175,7 @@ void WENOLimiter::compute_face_values()
 
 		for(int ig = 0; ig < ng; ig++)
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 				(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
 		}
 	}
@@ -189,8 +189,8 @@ void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>
 	FaceDataComputation::setup(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, r_centres, gauss_r, uface_left, uface_right);
 	eps = 1e-8;
 	k = 1.0/3.0;
-	phi_l.setup(m->gnaface(), nvars);
-	phi_r.setup(m->gnaface(), nvars);
+	phi_l.setup(m->gnaface(), NVARS);
+	phi_r.setup(m->gnaface(), NVARS);
 }
 
 void VanAlbadaLimiter::compute_limiters()
@@ -199,8 +199,8 @@ void VanAlbadaLimiter::compute_limiters()
 	for(ied = 0; ied < m->gnbface(); ied++)
 	{
 		int lel = m->gintfac(ied,0);
-		amat::Matrix<acfd_real> deltam(nvars,1);
-		for(i = 0; i < nvars; i++)
+		amat::Matrix<acfd_real> deltam(NVARS,1);
+		for(i = 0; i < NVARS; i++)
 		{
 			deltam(i) = 2 * ( dudx->get(lel,i)*(rb->get(ied,0)-ri->get(lel,0)) + dudy->get(lel,i)*(rb->get(ied,1)-ri->get(lel,1)) ) - (ug->get(ied,i) - u->get(lel,i));
 			phi_l(ied,i) = (2*deltam(i) * (ug->get(ied,i) - u->get(lel,i)) + eps) / (deltam(i)*deltam(i) + (ug->get(ied,i) - u->get(lel,i))*(ug->get(ied,i) - u->get(lel,i)) + eps);
@@ -212,9 +212,9 @@ void VanAlbadaLimiter::compute_limiters()
 	{
 		lel = m->gintfac(ied,0);
 		rel = m->gintfac(ied,1);
-		amat::Matrix<acfd_real> deltam(nvars,1);
-		amat::Matrix<acfd_real> deltap(nvars,1);
-		for(i = 0; i < nvars; i++)
+		amat::Matrix<acfd_real> deltam(NVARS,1);
+		amat::Matrix<acfd_real> deltap(NVARS,1);
+		for(i = 0; i < NVARS; i++)
 		{
 			deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
 			deltap(i) = 2 * ( dudx->get(rel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(rel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
@@ -235,8 +235,8 @@ void VanAlbadaLimiter::compute_face_values()
 
 	int lel, rel, i, ig;
 	//cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
-	amat::Matrix<acfd_real> deltam(nvars,1);
-	amat::Matrix<acfd_real> deltap(nvars,1);
+	amat::Matrix<acfd_real> deltam(NVARS,1);
+	amat::Matrix<acfd_real> deltap(NVARS,1);
 	for(ied = m->gnbface(); ied < m->gnaface(); ied++)
 	{
 		ielem = m->gintfac(ied,0); lel = ielem;
@@ -246,7 +246,7 @@ void VanAlbadaLimiter::compute_face_values()
 		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
 		for(ig = 0; ig < ng; ig++)      // iterate over gauss points
 		{
-			for(i = 0; i < nvars; i++)
+			for(i = 0; i < NVARS; i++)
 			{
 				deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
 				deltap(i) = 2 * ( dudx->get(rel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(rel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
@@ -272,7 +272,7 @@ void VanAlbadaLimiter::compute_face_values()
 		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
 		for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 			{
 
 				(*ufl)(ied,i) = u->get(ielem,i) + phi_l.get(ied,i)*dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + phi_l.get(ied,i)*dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
@@ -291,7 +291,7 @@ void VanAlbadaLimiter::compute_face_values()
 
 		for(int ig = 0; ig < ng; ig++)
 		{
-			for(int i = 0; i < nvars; i++)
+			for(int i = 0; i < NVARS; i++)
 				(*ufl)(ied,i) = u->get(ielem,i) + phi_l.get(ied,i)*dudx->get(ielem,i)*(gx->get(ied,0)-xi->get(ielem)) + phi_l.get(ied,i)*dudy->get(ielem,i)*(gy->get(ied,0)-yi->get(ielem));
 
 		}
@@ -321,7 +321,7 @@ void VanAlbadaLimiter::compute_face_values()
     {
         for(int iel = 0; iel < m->gnelem(); iel++)
         {
-            for(int i = 0; i < nvars; i++)
+            for(int i = 0; i < NVARS; i++)
             {
                 umax(iel,i) = u->get(m->gesuel(iel,0),i);
                 umin(iel,i) = u->get(m->gesuel(iel,0),i);
@@ -329,7 +329,7 @@ void VanAlbadaLimiter::compute_face_values()
 
             for(int iface = 1; iface < m->gnfael(iel); iface++)
             {
-                for(int i = 0; i < nvars; i++)
+                for(int i = 0; i < NVARS; i++)
                 {
                     if(u->get(m->gesuel(iel,iface),i) > umax(iel,i)) umax(iel,i) = u->get(m->gesuel(iel,iface),i);
                     if(u->get(m->gesuel(iel,iface),i) > umin(iel,i)) umin(iel,i) = u->get(m->gesuel(iel,iface),i);
@@ -357,8 +357,8 @@ public:
 
         ngauss = gaussx->cols();
 
-        umax.setup(m->gnelem(), nvars, ROWMAJOR);
-        umin.setup(m->gnelem(), nvars, ROWMAJOR);
+        umax.setup(m->gnelem(), NVARS, ROWMAJOR);
+        umin.setup(m->gnelem(), NVARS, ROWMAJOR);
     }
 
     void compute_limiters()
@@ -368,18 +368,18 @@ public:
         //Matrix<double>* phig;       // one matrix for each element - each matrix stores phi_{i,g} for each gauss point g and for all 4 variables
         //phig = new Matrix<double>[m->gnelem()];
         //for(int iel = 0; iel < m->gnelem(); iel++)
-        //	phig[iel].setup(ngauss,nvars,ROWMAJOR);
+        //	phig[iel].setup(ngauss,NVARS,ROWMAJOR);
 
         for(int ied = 0; ied < m->gnbface(); ied++)
         {
             int lel = m->gintfac(ied,0);
-            Matrix<double> ugminus(ngauss,nvars,ROWMAJOR);
-            Matrix<double> ugplus(ngauss, nvars, ROWMAJOR);
-            Matrix<double> phig_l(ngauss,nvars,ROWMAJOR);
-            Matrix<double> phig_r(ngauss,nvars,ROWMAJOR);
+            Matrix<double> ugminus(ngauss,NVARS,ROWMAJOR);
+            Matrix<double> ugplus(ngauss, NVARS, ROWMAJOR);
+            Matrix<double> phig_l(ngauss,NVARS,ROWMAJOR);
+            Matrix<double> phig_r(ngauss,NVARS,ROWMAJOR);
             for(int g = 0; g < ngauss; g++)
             {
-                for(int i = 0; i < nvars; i++)
+                for(int i = 0; i < NVARS; i++)
                 {
                     ugminus(g,i) = dudx->get(lel,i)*(gaussx->get(ied,g)-xi->get(lel)) + dudy->get(lel,i)*(gaussy->get(ied,g)-yi->get(lel));
                     ugplus(g,i) = (ugminus(g,i) > 0) ? umax(lel,i) - u->get(lel,i) : umin(lel,i) - u->get(lel,i);

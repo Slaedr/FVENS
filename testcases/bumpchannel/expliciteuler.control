@@ -1,11 +1,11 @@
 -mesh_file
-../../data/bumpchannel.msh
+../data/bumpchannel.msh
 -output_file
-../../data/bumpchannel-hllc-tvdrk.vtu
+../data/bumpchannel-hllc-tvdrk.vtu
 -CFL
 0.24
 -Tolerance
-1e-3
+1e-4
 -Max-iterations
 900000
 -M_infinity
