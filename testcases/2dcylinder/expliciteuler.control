@@ -1,11 +1,11 @@
 -mesh_file
-../../data/2dcylinder-medium.msh
+../data/2dcylinder-coarse.msh
 -output_file
-../../data/2dcylinder-medium-hllc-tvdrk.vtu
+../data/2dcylinder-coarse-hllc-tvdrk-weno.vtu
 -CFL
 0.24
 -Tolerance
-1e-5
+1e-4
 -Max-iterations
 900000
 -M_infinity
@@ -23,4 +23,4 @@ HLLC
 -reconstruction-scheme
 GREENGAUSS
 -limiter
-NONE
+WENO

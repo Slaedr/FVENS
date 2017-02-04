@@ -17,7 +17,7 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	std::cout << "ExplicitSolver: Setting up explicit solver for spatial order " << order << std::endl;
 
 	// for 2D Euler equations, we have 4 variables
-	NVARS = 4;
+	nvars = NVARS;
 	// for upto second-order finite volume, we only need 1 Guass point per face
 	ngaussf = 1;
 
@@ -333,7 +333,7 @@ void ExplicitSolver::compute_RHS()
 	 */
 	acfd_real n[NDIM], nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
 	int lel, rel;
-	amat::Matrix<acfd_real> ul(NVARS,1), ur(nvars,1), flux(nvars,1);
+	const acfd_real *ulp, *urp; acfd_real fluxp[NVARS];
 
 	for(ied = 0; ied < m->gnaface(); ied++)
 	{
@@ -344,25 +344,22 @@ void ExplicitSolver::compute_RHS()
 		n[1] = m->ggallfa(ied,1);
 		len = m->ggallfa(ied,2);
 
-		for(ivar = 0; ivar < NVARS; ivar++)
-		{
-			ul(ivar) = uleft.get(ied,ivar);
-			ur(ivar) = uright.get(ied,ivar);
-		}
+		ulp = uleft.row_pointer(ied);
+		urp = uright.row_pointer(ied);
 
 		// compute flux
-		inviflux->get_flux(&ul, &ur, n, &flux);
+		inviflux->get_flux(ulp, urp, n, fluxp);
 
 		// integrate over the face
 		for(ivar = 0; ivar < NVARS; ivar++)
-				flux(ivar) *= len;
+				fluxp[ivar] *= len;
 
 		// scatter the flux to elements' residuals
 		for(ivar = 0; ivar < NVARS; ivar++)
 		{
-			residual(lel,ivar) -= flux(ivar);
+			residual(lel,ivar) -= fluxp[ivar];
 			if(rel >= 0 && rel < m->gnelem())
-				residual(rel,ivar) += flux(ivar);
+				residual(rel,ivar) += fluxp[ivar];
 		}
 
 		//calculate presures from u

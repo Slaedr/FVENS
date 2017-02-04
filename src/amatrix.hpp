@@ -320,6 +320,15 @@ public:
 		return elems[x*ncols + y];
 	}
 
+	/// Returns a pointer-to-const to the beginning of a row
+	const T* row_pointer(const acfd_int r) const
+	{
+#ifdef DEBUG
+		if(t >= nrows) { std::cout << "! Matrix: row_pointer(): Row index beyond array size!\n"; return nullptr;
+#endif
+		return &elems[r*ncols];
+	}
+
 	T maxincol(acfd_int j) const
 	{
 		T max = get(0,j);
