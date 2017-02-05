@@ -321,7 +321,16 @@ public:
 	}
 
 	/// Returns a pointer-to-const to the beginning of a row
-	const T* row_pointer(const acfd_int r) const
+	const T* const_row_pointer(const acfd_int r) const
+	{
+#ifdef DEBUG
+		if(t >= nrows) { std::cout << "! Matrix: const_row_pointer(): Row index beyond array size!\n"; return nullptr;
+#endif
+		return &elems[r*ncols];
+	}
+	
+	/// Returns a pointer to the beginning of a row
+	T* row_pointer(const acfd_int r)
 	{
 #ifdef DEBUG
 		if(t >= nrows) { std::cout << "! Matrix: row_pointer(): Row index beyond array size!\n"; return nullptr;

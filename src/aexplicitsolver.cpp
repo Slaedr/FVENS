@@ -33,6 +33,7 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	integ.setup(m->gnelem(), 1);
 	dudx.setup(m->gnelem(), NVARS);
 	dudy.setup(m->gnelem(), NVARS);
+	fluxes.setup(m->gnaface(), NVARS);
 	uleft.setup(m->gnaface(), NVARS);
 	uright.setup(m->gnaface(), NVARS);
 	rc.setup(m->gnelem(),m->gndim());
@@ -222,18 +223,17 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 
 void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
 {
-	int lel, rel, i;
-	acfd_real nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
+#pragma omp parallel for default(shared)
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
-		nx = m->ggallfa(ied,0);
-		ny = m->ggallfa(ied,1);
+		acfd_real nx = m->ggallfa(ied,0);
+		acfd_real ny = m->ggallfa(ied,1);
 
-		vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
-		pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
-		pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
-		ci = sqrt(g*pi/ins.get(ied,0));
-		Mni = vni/ci;
+		acfd_real vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
+		acfd_real pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
+		acfd_real pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
+		acfd_real ci = sqrt(g*pi/ins.get(ied,0));
+		acfd_real Mni = vni/ci;
 
 		if(m->ggallfa(ied,3) == solid_wall_id)
 		{
@@ -285,13 +285,11 @@ acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
 void ExplicitSolver::compute_RHS()
 {
 	residual.zeros();
-	
-	int ied, ielem, jelem, ivar;
 
 	// first, set cell-centered values of boundary cells as left-side values of boundary faces
-	for(ied = 0; ied < m->gnbface(); ied++)
+	for(acfd_int ied = 0; ied < m->gnbface(); ied++)
 	{
-		ielem = m->gintfac(ied,0);
+		acfd_int ielem = m->gintfac(ied,0);
 		for(ivar = 0; ivar < NVARS; ivar++)
 			uleft(ied,ivar) = u.get(ielem,ivar);
 	}
@@ -309,11 +307,11 @@ void ExplicitSolver::compute_RHS()
 		// if order is 1, set the face data same as cell-centred data for all faces
 		
 		// set both left and right states for all interior faces
-		for(ied = m->gnbface(); ied < m->gnaface(); ied++)
+		for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
-			ielem = m->gintfac(ied,0);
-			jelem = m->gintfac(ied,1);
-			for(ivar = 0; ivar < NVARS; ivar++)
+			acfd_int ielem = m->gintfac(ied,0);
+			acfd_int jelem = m->gintfac(ied,1);
+			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				uleft(ied,ivar) = u.get(ielem,ivar);
 				uright(ied,ivar) = u.get(jelem,ivar);
@@ -331,51 +329,74 @@ void ExplicitSolver::compute_RHS()
 	 * \f]
 	 * so that time steps can be calculated for explicit time stepping.
 	 */
-	acfd_real n[NDIM], nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
-	int lel, rel;
-	const acfd_real *ulp, *urp; acfd_real fluxp[NVARS];
 
-	for(ied = 0; ied < m->gnaface(); ied++)
+	std::vector<acfd_real> ci(m->gnaface()), vni(m->gnaface()), cj(m->gnaface()), vnj(m->gnaface());
+
+	for(acfd_int ied = 0; ied < m->gnaface(); ied++)
 	{
-		lel = m->gintfac(ied,0);	// left element
-		rel = m->gintfac(ied,1);	// right element
+		acfd_int lel = m->gintfac(ied,0);	// left element
+		acfd_int rel = m->gintfac(ied,1);	// right element
 
+		acfd_real n[NDIM];
 		n[0] = m->ggallfa(ied,0);
 		n[1] = m->ggallfa(ied,1);
-		len = m->ggallfa(ied,2);
+		acfd_real len = m->ggallfa(ied,2);
 
-		ulp = uleft.row_pointer(ied);
-		urp = uright.row_pointer(ied);
+		const acfd_real* ulp = uleft.const_row_pointer(ied);
+		const acfd_real* urp = uright.const_row_pointer(ied);
+		acfd_real* fluxp = fluxes.row_pointer(ied);
 
 		// compute flux
 		inviflux->get_flux(ulp, urp, n, fluxp);
 
 		// integrate over the face
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
 				fluxp[ivar] *= len;
 
 		// scatter the flux to elements' residuals
-		for(ivar = 0; ivar < NVARS; ivar++)
+		/*for(int ivar = 0; ivar < NVARS; ivar++)
 		{
 			residual(lel,ivar) -= fluxp[ivar];
 			if(rel >= 0 && rel < m->gnelem())
 				residual(rel,ivar) += fluxp[ivar];
-		}
+		}*/
 
 		//calculate presures from u
-		pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
-		pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
+		acfd_real pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
+		acfd_real pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
 		//calculate speeds of sound
-		ci = sqrt(g*pi/uleft.get(ied,0));
-		cj = sqrt(g*pj/uright.get(ied,0));
+		ci[ied] = sqrt(g*pi/uleft.get(ied,0));
+		cj[ied] = sqrt(g*pj/uright.get(ied,0));
 		//calculate normal velocities
-		vni = (uleft.get(ied,1)*n[0] +uleft.get(ied,2)*n[1])/uleft.get(ied,0);
-		vnj = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
+		vni[ied] = (uleft.get(ied,1)*n[0] +uleft.get(ied,2)*n[1])/uleft.get(ied,0);
+		vnj[ied] = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
 
 		// calculate integ for CFL purposes
-		integ(lel,0) += (fabs(vni) + ci)*len;
+		/*integ(lel,0) += (fabs(vni) + ci)*len;
 		if(rel >= 0 && rel < m->gnelem())
-			integ(rel,0) += (fabs(vnj) + cj)*len;
+			integ(rel,0) += (fabs(vnj) + cj)*len;*/
+	}
+
+	// update residual and integ
+	for(acfd_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+		{
+			acfd_int ied = m->gelemface(iel,ifael);
+			acfd_real len = m->ggallfa(ied,2);
+			acfd_int nbdelem = m->gesuel(iel,ifael);
+
+			if(nbdelem > iel) {
+				for(int ivar = 0; ivar < NVARS; ivar++)
+					residual(iel,ivar) -= fluxes(ied,ivar);
+				integ(iel) += (fabs(vni[ied]) + ci[ied])*len;
+			}
+			else {
+				for(int ivar = 0; ivar < NVARS; ivar++)
+					residual(iel,ivar) += fluxes(ied,ivar);
+				integ(iel) += (fabs(vnj[ied]) + cj[ied])*len;
+			}
+		}
 	}
 }
 

@@ -70,6 +70,8 @@ class ExplicitSolver
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguassf x ndim (in that order)
 	amat::Matrix<acfd_real>* gr;
 
+	/// Flux across each face
+	amat::Matrix<acfd_real> fluxes;
 	/// Left state at each face (assuming 1 Gauss point per face)
 	amat::Matrix<acfd_real> uleft;
 	/// Rigt state at each face (assuming 1 Gauss point per face)
