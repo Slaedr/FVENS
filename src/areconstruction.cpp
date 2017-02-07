@@ -29,67 +29,86 @@ void Reconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* 
  */
 void GreenGaussReconstruction::compute_gradients()
 {
-	dudx->zeros(); dudy->zeros();
-	
-	int iface, idim, ielem, jelem, ivar, ip1, ip2;
-	acfd_real areainv1, areainv2;
-	std::vector<acfd_real> ut(NVARS);
-	acfd_real dL, dR, mid[NDIM];
-	
-	for(iface = 0; iface < m->gnbface(); iface++)
+#pragma omp parallel default(shared)
 	{
-		ielem = m->gintfac(iface,0);
-		ip1 = m->gintfac(iface,2);
-		ip2 = m->gintfac(iface,3);
-		dL = 0; dR = 0;
-		for(idim = 0; idim < NDIM; idim++)
+#pragma omp for simd
+		for(acfd_int iel = 0; iel < m->gnelem(); iel++)
 		{
-			mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-			dL += (mid[idim]-rc->get(ielem,idim))*(mid[idim]-rc->get(ielem,idim));
-			dR += (mid[idim]-rcg->get(iface,idim))*(mid[idim]-rcg->get(iface,idim));
+			for(int i = 0; i < NVARS; i++)
+			{
+				(*dudx)(iel,i) = 0;
+				(*dudy)(iel,i) = 0;
+			}
 		}
-		dL = sqrt(dL);
-		dR = sqrt(dR);
-		//areainv1 = 2.0/m->gjacobians(ielem);
-		areainv1 = 1.0/m->garea(ielem);
 		
-		for(ivar = 0; ivar < NVARS; ivar++)
+#pragma omp for
+		for(acfd_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			ut[ivar] = (u->get(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
-			(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
-			(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
+			acfd_int ielem, jelem, ip1, ip2;
+			acfd_real areainv1, areainv2;
+			acfd_real ut[NVARS];
+			acfd_real dL, dR, mid[NDIM];
+		
+			ielem = m->gintfac(iface,0);
+			ip1 = m->gintfac(iface,2);
+			ip2 = m->gintfac(iface,3);
+			dL = 0; dR = 0;
+			for(int idim = 0; idim < NDIM; idim++)
+			{
+				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
+				dL += (mid[idim]-rc->get(ielem,idim))*(mid[idim]-rc->get(ielem,idim));
+				dR += (mid[idim]-rcg->get(iface,idim))*(mid[idim]-rcg->get(iface,idim));
+			}
+			dL = sqrt(dL);
+			dR = sqrt(dR);
+			areainv1 = 1.0/m->garea(ielem);
+			
+			for(ivar = 0; ivar < NVARS; ivar++)
+			{
+				ut[ivar] = (u->get(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
+				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
+			}
 		}
-	}
 
-	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
-	{
-		ielem = m->gintfac(iface,0);
-		jelem = m->gintfac(iface,1);
-		ip1 = m->gintfac(iface,2);
-		ip2 = m->gintfac(iface,3);
-		dL = 0; dR = 0;
-		for(idim = 0; idim < NDIM; idim++)
+#pragma omp for
+		for(acfd_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 		{
-			mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-			dL += (mid[idim]-rc->get(ielem,idim))*(mid[idim]-rc->get(ielem,idim));
-			dR += (mid[idim]-rc->get(jelem,idim))*(mid[idim]-rc->get(jelem,idim));
-		}
-		dL = sqrt(dL);
-		dR = sqrt(dR);
-		//areainv1 = 2.0/m->gjacobians(ielem);
-		//areainv2 = 2.0/m->gjacobians(jelem);
-		areainv1 = 1.0/m->garea(ielem);
-		areainv2 = 1.0/m->garea(jelem);
+			acfd_int ielem, jelem, ip1, ip2;
+			acfd_real areainv1, areainv2;
+			acfd_real ut[NVARS];
+			acfd_real dL, dR, mid[NDIM];
 		
-		for(ivar = 0; ivar < NVARS; ivar++)
-		{
-			ut[ivar] = (u->get(ielem,ivar)*dL + u->get(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
-			(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
-			(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
-			(*dudx)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,0))*areainv2;
-			(*dudy)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,1))*areainv2;
+			ielem = m->gintfac(iface,0);
+			jelem = m->gintfac(iface,1);
+			ip1 = m->gintfac(iface,2);
+			ip2 = m->gintfac(iface,3);
+			dL = 0; dR = 0;
+			for(int idim = 0; idim < NDIM; idim++)
+			{
+				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
+				dL += (mid[idim]-rc->get(ielem,idim))*(mid[idim]-rc->get(ielem,idim));
+				dR += (mid[idim]-rc->get(jelem,idim))*(mid[idim]-rc->get(jelem,idim));
+			}
+			dL = sqrt(dL);
+			dR = sqrt(dR);
+			areainv1 = 1.0/m->garea(ielem);
+			areainv2 = 1.0/m->garea(jelem);
+			
+			for(int ivar = 0; ivar < NVARS; ivar++)
+			{
+				ut[ivar] = (u->get(ielem,ivar)*dL + u->get(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+#pragma omp atomic update
+				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
+#pragma omp atomic update
+				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
+#pragma omp atomic update
+				(*dudx)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,0))*areainv2;
+#pragma omp atomic update
+				(*dudy)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,1))*areainv2;
+			}
 		}
-	}
+	} // end parallel region
 }
 
 

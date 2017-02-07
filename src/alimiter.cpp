@@ -110,75 +110,78 @@ WENOLimiter::~WENOLimiter()
 void WENOLimiter::compute_face_values()
 {
 	// first compute limited derivatives at each cell
-	acfd_real w, wsum, denom;
-	acfd_int jelem;
-	int jel, ivar;
 
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
+#pragma omp parallel default(shared)
 	{
-		for(ivar = 0; ivar < NVARS; ivar++)
+#pragma omp for
+		for(acfd_int ielem = 0; ielem < m->gnelem(); ielem++)
 		{
-			wsum = 0;
-			(*ldudx)(ielem,ivar) = 0;
-			(*ldudy)(ielem,ivar) = 0;
-
-			// Central stencil
-			denom = pow( dudx->get(ielem,ivar)*dudx->get(ielem,ivar) + dudy->get(ielem,ivar)*dudy->get(ielem,ivar) + epsilon, gamma);
-			w = lambda / denom;
-			wsum += w;
-			(*ldudx)(ielem,ivar) += w*dudx->get(ielem,ivar);
-			(*ldudy)(ielem,ivar) += w*dudy->get(ielem,ivar);
-
-			// Biased stencils
-			for(jel = 0; jel < m->gnfael(ielem); jel++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
-				jelem = m->gesuel(ielem,jel);
+				acfd_real wsum = 0;
+				(*ldudx)(ielem,ivar) = 0;
+				(*ldudy)(ielem,ivar) = 0;
 
-				// ignore ghost cells
-				if(jelem >= m->gnelem())
-					continue;
-
-				denom = pow( dudx->get(jelem,ivar)*dudx->get(jelem,ivar) + dudy->get(jelem,ivar)*dudy->get(jelem,ivar) + epsilon, gamma);
-				w = 1.0 / denom;
+				// Central stencil
+				acfd_real denom = pow( dudx->get(ielem,ivar)*dudx->get(ielem,ivar) + dudy->get(ielem,ivar)*dudy->get(ielem,ivar) + epsilon, gamma);
+				acfd_real w = lambda / denom;
 				wsum += w;
-				(*ldudx)(ielem,ivar) += w*dudx->get(jelem,ivar);
-				(*ldudy)(ielem,ivar) += w*dudy->get(jelem,ivar);
+				(*ldudx)(ielem,ivar) += w*dudx->get(ielem,ivar);
+				(*ldudy)(ielem,ivar) += w*dudy->get(ielem,ivar);
+
+				// Biased stencils
+				for(int jel = 0; jel < m->gnfael(ielem); jel++)
+				{
+					acfd_int jelem = m->gesuel(ielem,jel);
+
+					// ignore ghost cells
+					if(jelem >= m->gnelem())
+						continue;
+
+					denom = pow( dudx->get(jelem,ivar)*dudx->get(jelem,ivar) + dudy->get(jelem,ivar)*dudy->get(jelem,ivar) + epsilon, gamma);
+					w = 1.0 / denom;
+					wsum += w;
+					(*ldudx)(ielem,ivar) += w*dudx->get(jelem,ivar);
+					(*ldudy)(ielem,ivar) += w*dudy->get(jelem,ivar);
+				}
+
+				(*ldudx)(ielem,ivar) /= wsum;
+				(*ldudy)(ielem,ivar) /= wsum;
 			}
-
-			(*ldudx)(ielem,ivar) /= wsum;
-			(*ldudy)(ielem,ivar) /= wsum;
 		}
-	}
-	
-	// (a) internal faces
-	for(ied = m->gnbface(); ied < m->gnaface(); ied++)
-	{
-		ielem = m->gintfac(ied,0);
-		jelem = m->gintfac(ied,1);
-
-		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
-		for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
+		
+		// internal faces
+#pragma omp for
+		for(ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
-			for(int i = 0; i < NVARS; i++)
+			acfd_int ielem = m->gintfac(ied,0);
+			acfd_int jelem = m->gintfac(ied,1);
+
+			//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
+			for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
 			{
+				for(int i = 0; i < NVARS; i++)
+				{
 
-				(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
-				(*ufr)(ied,i) = u->get(jelem,i) + ldudx->get(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) + ldudy->get(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
+					(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+					(*ufr)(ied,i) = u->get(jelem,i) + ldudx->get(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) + ldudy->get(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
+				}
 			}
 		}
-	}
-	
-	//Now calculate ghost states at boundary faces using the ufl and ufr of cells
-	for(ied = 0; ied < m->gnbface(); ied++)
-	{
-		ielem = m->gintfac(ied,0);
-
-		for(int ig = 0; ig < ng; ig++)
+		
+		//Now calculate ghost states at boundary faces using the ufl and ufr of cells
+#pragma omp for
+		for(ied = 0; ied < m->gnbface(); ied++)
 		{
-			for(int i = 0; i < NVARS; i++)
-				(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+			acfd_int ielem = m->gintfac(ied,0);
+
+			for(int ig = 0; ig < ng; ig++)
+			{
+				for(int i = 0; i < NVARS; i++)
+					(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+			}
 		}
-	}
+	} // end parallel region
 }
 
 void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 

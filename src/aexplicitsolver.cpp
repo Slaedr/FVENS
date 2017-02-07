@@ -284,14 +284,26 @@ acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
 
 void ExplicitSolver::compute_RHS()
 {
-	residual.zeros();
-
-	// first, set cell-centered values of boundary cells as left-side values of boundary faces
-	for(acfd_int ied = 0; ied < m->gnbface(); ied++)
+#pragma omp parallel default(shared)
 	{
-		acfd_int ielem = m->gintfac(ied,0);
-		for(ivar = 0; ivar < NVARS; ivar++)
-			uleft(ied,ivar) = u.get(ielem,ivar);
+#pragma omp for simd
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int i = 0; i < NVARS; i++)
+			{
+				residual(iel,i) = 0.0;
+				integ(iel,i) = 0.0;
+			}
+		}
+
+		// first, set cell-centered values of boundary cells as left-side values of boundary faces
+#pragma omp for
+		for(acfd_int ied = 0; ied < m->gnbface(); ied++)
+		{
+			acfd_int ielem = m->gintfac(ied,0);
+			for(ivar = 0; ivar < NVARS; ivar++)
+				uleft(ied,ivar) = u.get(ielem,ivar);
+		}
 	}
 
 	if(order == 2)
@@ -307,6 +319,7 @@ void ExplicitSolver::compute_RHS()
 		// if order is 1, set the face data same as cell-centred data for all faces
 		
 		// set both left and right states for all interior faces
+#pragma omp parallel for
 		for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
 			acfd_int ielem = m->gintfac(ied,0);
@@ -332,72 +345,77 @@ void ExplicitSolver::compute_RHS()
 
 	std::vector<acfd_real> ci(m->gnaface()), vni(m->gnaface()), cj(m->gnaface()), vnj(m->gnaface());
 
-	for(acfd_int ied = 0; ied < m->gnaface(); ied++)
+#pragma omp parallel default(shared)
 	{
-		acfd_int lel = m->gintfac(ied,0);	// left element
-		acfd_int rel = m->gintfac(ied,1);	// right element
-
-		acfd_real n[NDIM];
-		n[0] = m->ggallfa(ied,0);
-		n[1] = m->ggallfa(ied,1);
-		acfd_real len = m->ggallfa(ied,2);
-
-		const acfd_real* ulp = uleft.const_row_pointer(ied);
-		const acfd_real* urp = uright.const_row_pointer(ied);
-		acfd_real* fluxp = fluxes.row_pointer(ied);
-
-		// compute flux
-		inviflux->get_flux(ulp, urp, n, fluxp);
-
-		// integrate over the face
-		for(int ivar = 0; ivar < NVARS; ivar++)
-				fluxp[ivar] *= len;
-
-		// scatter the flux to elements' residuals
-		/*for(int ivar = 0; ivar < NVARS; ivar++)
+#pragma omp for
+		for(acfd_int ied = 0; ied < m->gnaface(); ied++)
 		{
-			residual(lel,ivar) -= fluxp[ivar];
-			if(rel >= 0 && rel < m->gnelem())
-				residual(rel,ivar) += fluxp[ivar];
-		}*/
+			acfd_int lel = m->gintfac(ied,0);	// left element
+			acfd_int rel = m->gintfac(ied,1);	// right element
 
-		//calculate presures from u
-		acfd_real pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
-		acfd_real pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
-		//calculate speeds of sound
-		ci[ied] = sqrt(g*pi/uleft.get(ied,0));
-		cj[ied] = sqrt(g*pj/uright.get(ied,0));
-		//calculate normal velocities
-		vni[ied] = (uleft.get(ied,1)*n[0] +uleft.get(ied,2)*n[1])/uleft.get(ied,0);
-		vnj[ied] = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
-
-		// calculate integ for CFL purposes
-		/*integ(lel,0) += (fabs(vni) + ci)*len;
-		if(rel >= 0 && rel < m->gnelem())
-			integ(rel,0) += (fabs(vnj) + cj)*len;*/
-	}
-
-	// update residual and integ
-	for(acfd_int iel = 0; iel < m->gnelem(); iel++)
-	{
-		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
-		{
-			acfd_int ied = m->gelemface(iel,ifael);
+			acfd_real n[NDIM];
+			n[0] = m->ggallfa(ied,0);
+			n[1] = m->ggallfa(ied,1);
 			acfd_real len = m->ggallfa(ied,2);
-			acfd_int nbdelem = m->gesuel(iel,ifael);
 
-			if(nbdelem > iel) {
-				for(int ivar = 0; ivar < NVARS; ivar++)
-					residual(iel,ivar) -= fluxes(ied,ivar);
-				integ(iel) += (fabs(vni[ied]) + ci[ied])*len;
-			}
-			else {
-				for(int ivar = 0; ivar < NVARS; ivar++)
-					residual(iel,ivar) += fluxes(ied,ivar);
-				integ(iel) += (fabs(vnj[ied]) + cj[ied])*len;
+			const acfd_real* ulp = uleft.const_row_pointer(ied);
+			const acfd_real* urp = uright.const_row_pointer(ied);
+			acfd_real* fluxp = fluxes.row_pointer(ied);
+
+			// compute flux
+			inviflux->get_flux(ulp, urp, n, fluxp);
+
+			// integrate over the face
+			for(int ivar = 0; ivar < NVARS; ivar++)
+					fluxp[ivar] *= len;
+
+			// scatter the flux to elements' residuals
+			/*for(int ivar = 0; ivar < NVARS; ivar++)
+			{
+				residual(lel,ivar) -= fluxp[ivar];
+				if(rel >= 0 && rel < m->gnelem())
+					residual(rel,ivar) += fluxp[ivar];
+			}*/
+
+			//calculate presures from u
+			acfd_real pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
+			acfd_real pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
+			//calculate speeds of sound
+			ci[ied] = sqrt(g*pi/uleft.get(ied,0));
+			cj[ied] = sqrt(g*pj/uright.get(ied,0));
+			//calculate normal velocities
+			vni[ied] = (uleft.get(ied,1)*n[0] +uleft.get(ied,2)*n[1])/uleft.get(ied,0);
+			vnj[ied] = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
+
+			// calculate integ for CFL purposes
+			/*integ(lel,0) += (fabs(vni) + ci)*len;
+			if(rel >= 0 && rel < m->gnelem())
+				integ(rel,0) += (fabs(vnj) + cj)*len;*/
+		}
+
+		// update residual and integ
+#pragma omp for
+		for(acfd_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				acfd_int ied = m->gelemface(iel,ifael);
+				acfd_real len = m->ggallfa(ied,2);
+				acfd_int nbdelem = m->gesuel(iel,ifael);
+
+				if(nbdelem > iel) {
+					for(int ivar = 0; ivar < NVARS; ivar++)
+						residual(iel,ivar) -= fluxes(ied,ivar);
+					integ(iel) += (fabs(vni[ied]) + ci[ied])*len;
+				}
+				else {
+					for(int ivar = 0; ivar < NVARS; ivar++)
+						residual(iel,ivar) += fluxes(ied,ivar);
+					integ(iel) += (fabs(vnj[ied]) + cj[ied])*len;
+				}
 			}
 		}
-	}
+	} // end parallel region
 }
 
 void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl)
@@ -405,10 +423,6 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 	int step = 0;
 	acfd_real resi = 1.0;
 	acfd_real initres = 1.0;
-	amat::Matrix<acfd_real>* err;
-	err = new amat::Matrix<acfd_real>[NVARS];
-	for(int i = 0; i<NVARS; i++)
-		err[i].setup(m->gnelem(),1);
 	amat::Matrix<acfd_real> res(NVARS,1);
 	res.ones();
 	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
@@ -417,42 +431,63 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 	while(resi/initres > tol && step < maxiter)
 	{
 		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
-		// reset fluxes
-		integ.zeros();		// reset CFL data
 
 		//calculate fluxes
-		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals
+		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals, also computes max wave speeds integ
+
+		acfd_real err[NVARS];
+		for(int i = 0; i < NVARS; i++)
+			err[i] = 0;
 
 		//calculate dt based on CFL
-
-		for(int iel = 0; iel < m->gnelem(); iel++)
+#pragma omp parallel default(shared)
 		{
-			dtm(iel) = cfl*(0.5*m->gjacobians(iel)/integ(iel));
-		}
-
-		uold = u;
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			for(int i = 0; i < NVARS; i++)
+#pragma omp for simd
+			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
+				dtm(iel) = cfl*(0.5*m->gjacobians(iel)/integ(iel));
 			}
-		}
 
-		//if(step == 0) { dudx.mprint();  break; }
+#pragma omp for simd
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				for(int i = 0; i < NVARS; i++)
+				{
+					//uold(iel,i) = u(iel,i);
+					u(iel,i) += dtm.get(iel)*m_inverse.get(iel)*residual.get(iel,i);
+				}
+			}
 
+			//if(step == 0) { dudx.mprint();  break; }
+
+			/*for(int i = 0; i < NVARS; i++)
+			{
+				err[i] = (u-uold).col(i);
+				//err[i] = residual.col(i);
+				res(i) = l2norm(&err[i]);
+			}
+			resi = res.max();*/
+
+#pragma omp for simd reduction(+:err[:NVARS])
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				for(int i = 0; i < NVARS; i++)
+				{
+					err[i] += residual(iel,i)*residual(iel,i)*m->garea(iel);
+				}
+			}
+		} // end parallel region
+
+		resi = 2e-15;
 		for(int i = 0; i < NVARS; i++)
-		{
-			err[i] = (u-uold).col(i);
-			//err[i] = residual.col(i);
-			res(i) = l2norm(&err[i]);
-		}
-		resi = res.max();
+			if(err[i] > resi*resi)
+				resi = err[i];
+		resi = sqrt(resi);
 
 		if(step == 0)
 			initres = resi;
 
-		if(step % 20 == 0)
+		if(step % 50 == 0)
 			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
@@ -465,9 +500,6 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 
 	if(step == maxiter)
 		std::cout << "ExplicitSolver: solve_rk1_steady(): Exceeded max iterations!" << std::endl;
-	//calculate gradients
-	//rec->compute_gradients();
-	delete [] err;
 }
 
 void ExplicitSolver::postprocess_point()
