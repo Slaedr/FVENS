@@ -167,7 +167,7 @@ void ExplicitSolver::compute_ghost_cell_coords_about_face()
 void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf)
 {
 	// Note that reference density and reference velocity are the values at infinity
-	//cout << "EulerFV: loaddata(): Calculating initial data...\n";
+	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
 	acfd_real vx = vinf*cos(a);
 	acfd_real vy = vinf*sin(a);
 	acfd_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
@@ -218,7 +218,7 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 	}
 
 	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
-	cout << "ExplicitSolver: loaddata(): Initial data calculated.\n";
+	std::cout << "ExplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
 void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
@@ -247,7 +247,7 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 		{
 			//if(Mni <= -1.0)
 			{
-				for(i = 0; i < NVARS; i++)
+				for(int i = 0; i < NVARS; i++)
 					bs(ied,i) = uinf(0,i);
 			}
 			/*else if(Mni > -1.0 && Mni < 0)
@@ -284,16 +284,15 @@ acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
 
 void ExplicitSolver::compute_RHS()
 {
+	//std::cout << "Computing res ---\n";
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int i = 0; i < NVARS; i++)
-			{
 				residual(iel,i) = 0.0;
-				integ(iel,i) = 0.0;
-			}
+			integ(iel) = 0.0;
 		}
 
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
@@ -301,7 +300,7 @@ void ExplicitSolver::compute_RHS()
 		for(acfd_int ied = 0; ied < m->gnbface(); ied++)
 		{
 			acfd_int ielem = m->gintfac(ied,0);
-			for(ivar = 0; ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 				uleft(ied,ivar) = u.get(ielem,ivar);
 		}
 	}
@@ -350,8 +349,8 @@ void ExplicitSolver::compute_RHS()
 #pragma omp for
 		for(acfd_int ied = 0; ied < m->gnaface(); ied++)
 		{
-			acfd_int lel = m->gintfac(ied,0);	// left element
-			acfd_int rel = m->gintfac(ied,1);	// right element
+			//acfd_int lel = m->gintfac(ied,0);	// left element
+			//acfd_int rel = m->gintfac(ied,1);	// right element
 
 			acfd_real n[NDIM];
 			n[0] = m->ggallfa(ied,0);
@@ -394,6 +393,7 @@ void ExplicitSolver::compute_RHS()
 		}
 
 		// update residual and integ
+		//std::cout << "Beginning new loop --- \n";
 #pragma omp for
 		for(acfd_int iel = 0; iel < m->gnelem(); iel++)
 		{
@@ -430,7 +430,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 
 	while(resi/initres > tol && step < maxiter)
 	{
-		//cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << endl;
+		//std::cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << std::endl;
 
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals, also computes max wave speeds integ
@@ -494,7 +494,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 		/*acfd_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
-		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
 		//if(step == 10000) break;
 	}
 
@@ -504,7 +504,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 
 void ExplicitSolver::postprocess_point()
 {
-	cout << "ExplicitSolver: postprocess_point(): Creating output arrays...\n";
+	std::cout << "ExplicitSolver: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
 	amat::Matrix<acfd_real> c(m->gnpoin(),1);
@@ -556,19 +556,19 @@ void ExplicitSolver::postprocess_point()
 		c(ipoin) = sqrt(g*scalars(ipoin,2)/up.get(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
 	}
-	cout << "EulerFV: postprocess_point(): Done.\n";
+	std::cout << "EulerFV: postprocess_point(): Done.\n";
 }
 
 void ExplicitSolver::postprocess_cell()
 {
-	cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
+	std::cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
 	amat::Matrix<acfd_real> c(m->gnelem(), 1);
 
 	amat::Matrix<acfd_real> d = u.col(0);
 	scalars.replacecol(0, d);		// populate density data
-	//cout << "EulerFV: postprocess(): Written density\n";
+	//std::cout << "EulerFV: postprocess(): Written density\n";
 
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -581,7 +581,7 @@ void ExplicitSolver::postprocess_cell()
 		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
 		scalars(iel,1) = sqrt(vmag2)/c(iel);
 	}
-	cout << "EulerFV: postprocess_cell(): Done.\n";
+	std::cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
 acfd_real ExplicitSolver::compute_entropy_cell()
@@ -602,7 +602,7 @@ acfd_real ExplicitSolver::compute_entropy_cell()
 	//acfd_real h = sqrt((m->jacobians).max());
 	acfd_real h = 1.0/sqrt(m->gnelem());
  
-	cout << "EulerFV:   " << log(h) << "  " << setprecision(10) << log(error) << endl;
+	std::cout << "EulerFV:   " << log10(h) << "  " << std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
 }

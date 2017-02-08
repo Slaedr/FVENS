@@ -4,24 +4,8 @@
  * @date February 3, 2016
  */
 
-#ifndef _GLIBCXX_VECTOR
-#include <vector>
-#endif
-
-#ifndef __ACONSTANTS_H
-#include <aconstants.hpp>
-#endif
-
-#ifndef __AMATRIX_H
-#include <amatrix.hpp>
-#endif
-
 #ifndef __AMESH2DH_H
 #include <amesh2dh.hpp>
-#endif
-
-#ifndef NDIM
-#define NDIM 2
 #endif
 
 #define __ARECONSTRUCTION_H 1
@@ -40,8 +24,6 @@ protected:
 	const amat::Matrix<acfd_real>* rc;
 	/// Ghost cell centers
 	const amat::Matrix<acfd_real>* rcg;
-	/// Number of converved variables ** deprecated, use the preprocessor constant NVARS instead **
-	int nvars;
 	/// Cell-centered flow vaiables
 	const amat::Matrix<acfd_real>* u;
 	/// flow variables at ghost cells

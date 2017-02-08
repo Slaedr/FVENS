@@ -2,6 +2,13 @@
 
 #define __ACONSTANTS_H 1
 
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <string>
+#include <iomanip>
+
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353
 

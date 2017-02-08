@@ -32,7 +32,6 @@ protected:
 	const amat::Matrix<acfd_real>* gr;		/// coords of gauss points of each face
 	amat::Matrix<acfd_real>* ufl;			///< left face flow data
 	amat::Matrix<acfd_real>* ufr;			///< right face flow data
-	int nvars;								///< Number of flow variables
 	int ng;									///< Number of Gauss points
 	
 	// for local use

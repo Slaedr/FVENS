@@ -2,7 +2,9 @@
 
 int perm(int start, int end, int n, int off)
 {
-	if(n > end) { cout << "Permutation point error!\n"; return 0; }
+#ifdef DEBUG
+	if(n > end) { std::cout << "Permutation point error!\n"; return 0; }
+#endif
 	if(off == 0) return n;
 
 	CircList<int> list(start);

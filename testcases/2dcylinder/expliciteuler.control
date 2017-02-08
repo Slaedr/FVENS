@@ -1,7 +1,7 @@
 -mesh_file
-../data/2dcylinder-coarse.msh
+../data/2dcylinder-fine.msh
 -output_file
-../data/2dcylinder-coarse-hllc-tvdrk-weno.vtu
+../data/2dcylinder-fine-hllc-tvdrk-weno.vtu
 -CFL
 0.24
 -Tolerance

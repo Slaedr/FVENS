@@ -1,12 +1,10 @@
 #ifndef __ADATASTRUCTURES_H
 
-#ifndef _GLIBCXX_IOSTREAM
-#include <iostream>
-#endif
-
 #define __ADATASTRUCTURES_H
 
-using namespace std;
+#ifndef __ACONSTANTS_H
+#include <aconstants.hpp>
+#endif
 
 template <class T>
 struct Node
@@ -34,7 +32,7 @@ public:
 	//Get the node which is "n" nodes away from start
 	Node<T>* traverse(int n)
 	{
-		if(n < 0) { cout << "! CircList: traverse: invalid argument!\n"; return nullptr;}
+		if(n < 0) { std::cout << "! CircList: traverse: invalid argument!\n"; return nullptr;}
 		Node<T>* cur;
 		cur = start;
 		int i = 0;
@@ -80,7 +78,7 @@ public:
 			if(cur->data == x) return cur;
 			cur = cur->next;
 		}
-		cout << "! CircList: find: Data not found in list!\n";
+		std::cout << "! CircList: find: Data not found in list!\n";
 		return nullptr;
 	}
 
@@ -88,13 +86,13 @@ public:
 	{
 		Node<T>* cur;
 		cur = start;
-		cout << start->data << " ";
+		std::cout << start->data << " ";
 
 		while(cur->next != start)
 		{	cur = cur->next;
-			cout << cur->data << " ";
+			std::cout << cur->data << " ";
 		}
-		cout << endl;
+		std::cout << std::endl;
 	}
 
 	~CircList()

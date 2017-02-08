@@ -22,7 +22,6 @@ void Reconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* 
 	dudy = grady;
 	rc = _rc;
 	rcg = _rcg;
-	nvars = u->cols();
 }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
@@ -44,8 +43,8 @@ void GreenGaussReconstruction::compute_gradients()
 #pragma omp for
 		for(acfd_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			acfd_int ielem, jelem, ip1, ip2;
-			acfd_real areainv1, areainv2;
+			acfd_int ielem, ip1, ip2;
+			acfd_real areainv1;
 			acfd_real ut[NVARS];
 			acfd_real dL, dR, mid[NDIM];
 		
@@ -63,7 +62,7 @@ void GreenGaussReconstruction::compute_gradients()
 			dR = sqrt(dR);
 			areainv1 = 1.0/m->garea(ielem);
 			
-			for(ivar = 0; ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				ut[ivar] = (u->get(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
@@ -116,7 +115,7 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat:
 		const amat::Matrix<acfd_real>* _rc, const amat::Matrix<acfd_real>* const _rcg)
 {
 	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _rc, _rcg);
-	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; nvars = " << NVARS << std::endl;
+	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; num vars = " << NVARS << std::endl;
 
 	V.resize(m->gnelem());
 	f.resize(m->gnelem());

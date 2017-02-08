@@ -222,7 +222,7 @@ void ImplicitSolverBase::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, a
 	}
 
 	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
-	cout << "ImplicitSolver: loaddata(): Initial data calculated.\n";
+	std::cout << "ImplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
 void ImplicitSolverBase::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
@@ -387,7 +387,7 @@ void ImplicitSolverBase::compute_RHS()
 
 void ImplicitSolverBase::postprocess_point()
 {
-	cout << "ImplicitSolverBase: postprocess_point(): Creating output arrays...\n";
+	std::cout << "ImplicitSolverBase: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
 	amat::Matrix<acfd_real> c(m->gnpoin(),1);
@@ -439,19 +439,19 @@ void ImplicitSolverBase::postprocess_point()
 		c(ipoin) = sqrt(g*scalars(ipoin,2)/up.get(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
 	}
-	cout << "EulerFV: postprocess_point(): Done.\n";
+	std::cout << "EulerFV: postprocess_point(): Done.\n";
 }
 
 void ImplicitSolverBase::postprocess_cell()
 {
-	cout << "ImplicitSolverBase: postprocess_cell(): Creating output arrays...\n";
+	std::cout << "ImplicitSolverBase: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
 	amat::Matrix<acfd_real> c(m->gnelem(), 1);
 
 	amat::Matrix<acfd_real> d = u.col(0);
 	scalars.replacecol(0, d);		// populate density data
-	//cout << "EulerFV: postprocess(): Written density\n";
+	//std::cout << "EulerFV: postprocess(): Written density\n";
 
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -464,7 +464,7 @@ void ImplicitSolverBase::postprocess_cell()
 		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
 		scalars(iel,1) = sqrt(vmag2)/c(iel);
 	}
-	cout << "ImplicitSolverBase: postprocess_cell(): Done.\n";
+	std::cout << "ImplicitSolverBase: postprocess_cell(): Done.\n";
 }
 
 acfd_real ImplicitSolverBase::compute_entropy_cell()
@@ -485,7 +485,7 @@ acfd_real ImplicitSolverBase::compute_entropy_cell()
 	//acfd_real h = sqrt((m->jacobians).max());
 	acfd_real h = 1.0/sqrt(m->gnelem());
  
-	cout << "EulerFV:   " << log(h) << "  " << setprecision(10) << log(error) << endl;
+	std::cout << "EulerFV:   " << log10(h) << "  " << std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
 }
@@ -887,7 +887,7 @@ void SteadyStateImplicitSolver::solve()
 		/*acfd_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
-		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
 		//if(step == 10000) break;
 	}
 
@@ -1143,7 +1143,7 @@ void LUSSORSteadyStateImplicitSolverMF::solve()
 		/*acfd_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
-		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
 		//if(step == 10000) break;
 	}
 
@@ -1316,7 +1316,7 @@ void SteadyStateImplicitSolverMF::solve()
 		/*acfd_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
-		cout << "EulerFV: solve(): Total energy = " << totalenergy << endl;*/
+			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
 		//if(step == 10000) break;
 	}
 

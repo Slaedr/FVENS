@@ -1040,7 +1040,7 @@ void UMesh2dh::compute_face_data()
 	}
 
 	//Populate boundary flags in gallfa
-	cout << "UTriMesh: compute_face_data(): Storing boundary flags in gallfa...\n";
+	std::cout << "UTriMesh: compute_face_data(): Storing boundary flags in gallfa...\n";
 	for(int ied = 0; ied < nbface; ied++)
 	{
 		p1 = intfac(ied,2);
@@ -1066,7 +1066,7 @@ void UMesh2dh::compute_face_data()
 		}
 	}
 
-	cout << "UTriMesh: compute_face_data(): Done.\n";
+	std::cout << "UTriMesh: compute_face_data(): Done.\n";
 }
 
 void UMesh2dh::compute_boundary_maps()

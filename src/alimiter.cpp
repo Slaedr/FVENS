@@ -13,7 +13,6 @@ FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const amat::Matr
 	m(mesh),
 	u (unknowns),
 	ug (unknow_ghost),          // contains ghost cell states according to BCs for each boundary edge
-	nvars (u->cols()),
 	dudx (x_deriv),
 	dudy (y_deriv),
 	ri (c_centres),
@@ -35,7 +34,6 @@ void FaceDataComputation::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_re
 	m = mesh;
 	u = unknowns;
 	ug = unknow_ghost;          // contains ghost cell states according to BCs for each boundary edge
-	nvars = u->cols();
 	dudx = x_deriv;
 	dudy = y_deriv;
 	ri = c_centres;
@@ -311,7 +309,6 @@ void VanAlbadaLimiter::compute_face_values()
     Matrix<double>* gaussy;
     Matrix<double>* xi;
     Matrix<double>* yi;
-    int nvars;
     int ngauss;
 
     Matrix<double>* phi_l;
@@ -348,7 +345,6 @@ public:
     {
         m = mesh;
         u = unknowns;
-        nvars = u->cols();
         dudx = x_deriv;
         dudy = y_deriv;
         xi = x_centres;

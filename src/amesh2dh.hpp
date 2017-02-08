@@ -4,30 +4,10 @@
  */
 
 #ifndef __AMESH2DH_H
+#define __AMESH2DH_H
 
-#ifndef _GLIBCXX_IOSTREAM
-#include <iostream>
-#endif
-#ifndef _GLIBCXX_IOMANIP
-#include <iomanip>
-#endif
-#ifndef _GLIBCXX_FSTREAM
-#include <fstream>
-#endif
-#ifndef _GLIBCXX_STRING
-#include <string>
-#endif
-#ifndef _GLIBCXX_CMATH
-#include <cmath>
-#endif
-#ifndef _GLIBCXX_VECTOR
-#include <vector>
-#endif
-
-#ifdef _OPENMP
-#ifndef OMP_H
-#include <omp.h>
-#endif
+#ifndef __ACONSTANTS_H
+#include <aconstants.hpp>
 #endif
 
 #ifndef __AMATRIX_H
@@ -36,10 +16,6 @@
 #ifndef __ADATASTRUCTURES_H
 #include <adatastructures.hpp>
 #endif
-
-#include <aconstants.hpp>
-
-#define __AMESH2DH_H
 
 namespace acfd {
 

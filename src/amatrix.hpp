@@ -18,34 +18,18 @@
 
 #ifndef __AMATRIX_H
 
-#ifndef _GLIBCXX_IOSTREAM
-#include <iostream>
-#endif
+#define __AMATRIX_H
 
-#ifndef _GLIBCXX_IOMANIP
-#include <iomanip>
-#endif
-
-#ifndef _GLIBCXX_FSTREAM
-#include <fstream>
-#endif
-
-#ifndef _GLIBCXX_CMATH
-#include <cmath>
-#endif
-
-#ifdef _OPENMP
+/*#ifdef _OPENMP
 	#ifndef OMP_H
 		#include <omp.h>
 		#define nthreads_m 4
 	#endif
-#endif
+#endif*/
 
 #ifndef __ACONSTANTS_H
 #include <aconstants.hpp>
 #endif
-
-#define __AMATRIX_H
 
 #ifndef MATRIX_DOUBLE_PRECISION
 #define MATRIX_DOUBLE_PRECISION 14
@@ -324,7 +308,7 @@ public:
 	const T* const_row_pointer(const acfd_int r) const
 	{
 #ifdef DEBUG
-		if(t >= nrows) { std::cout << "! Matrix: const_row_pointer(): Row index beyond array size!\n"; return nullptr;
+		if(r >= nrows) { std::cout << "! Matrix: const_row_pointer(): Row index beyond array size!\n"; return nullptr;}
 #endif
 		return &elems[r*ncols];
 	}
@@ -333,7 +317,7 @@ public:
 	T* row_pointer(const acfd_int r)
 	{
 #ifdef DEBUG
-		if(t >= nrows) { std::cout << "! Matrix: row_pointer(): Row index beyond array size!\n"; return nullptr;
+		if(r >= nrows) { std::cout << "! Matrix: row_pointer(): Row index beyond array size!\n"; return nullptr;}
 #endif
 		return &elems[r*ncols];
 	}

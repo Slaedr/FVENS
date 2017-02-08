@@ -8,6 +8,7 @@ if(len(sys.argv) < 2):
 	sys.exit(-1)
 	
 fname = sys.argv[1]
+title = fname.split('/')[-1]
 
 data = np.genfromtxt(fname)
 n = data.shape[0]
@@ -28,7 +29,7 @@ pslope = (n*psigxy-sigx*psigy)/(n*sigx2-sigx**2)
 print("Slope is " + str(pslope))
 
 plt.plot(data[:,0],data[:,1],'o-')
-plt.title("Grid-refinement - " + fname + ", slope = "+str(pslope))
+plt.title("Grid-refinement - " + title + ", slope = "+str(pslope))
 plt.xlabel("Log mesh size")
 plt.ylabel("Log l2 error")
 plt.show()
