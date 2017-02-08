@@ -33,13 +33,6 @@ protected:
 	amat::Matrix<acfd_real>* ufl;			///< left face flow data
 	amat::Matrix<acfd_real>* ufr;			///< right face flow data
 	int ng;									///< Number of Gauss points
-	
-	// for local use
-	int ielem;
-	int jelem;
-	int ied;
-	acfd_real nx;
-	acfd_real ny;
 
 public:
 	FaceDataComputation();
@@ -103,8 +96,8 @@ public:
 		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
 		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* r_centres,
 		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right);
-    void compute_limiters();
-    /// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
+    
+	/// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
 	void compute_face_values();
 	// Computes face values using my own simplistic limiting (probably bogus)
     //void compute_reg_face_values();

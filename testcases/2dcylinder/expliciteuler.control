@@ -1,7 +1,7 @@
 -mesh_file
 ../data/2dcylinder-fine.msh
 -output_file
-../data/2dcylinder-fine-hllc-tvdrk-weno.vtu
+../data/omp-2dcylinder-fine-hllc-tvdrk.vtu
 -CFL
 0.24
 -Tolerance
@@ -23,4 +23,4 @@ HLLC
 -reconstruction-scheme
 GREENGAUSS
 -limiter
-WENO
+NONE

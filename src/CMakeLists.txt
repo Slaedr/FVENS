@@ -7,7 +7,16 @@ project (fvens)
 #set (CMAKE_CXX_COMPILER $ENV{GPP})
 
 # to compile with OpenMP
-#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+if(OMP)
+	message(STATUS "Compiling with OpenMP")
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -openmp")
+	else()
+		message(SEND_ERROR "Don't know OpenMP flag for this compiler")
+	endif()
+endif()
 
 # set compile options
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftree-vectorizer-verbose=2")
