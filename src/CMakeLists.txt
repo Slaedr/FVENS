@@ -12,14 +12,18 @@ if(OMP)
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -openmp")
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qopenmp")
 	else()
 		message(SEND_ERROR "Don't know OpenMP flag for this compiler")
 	endif()
 endif()
 
 # set compile options
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftree-vectorizer-verbose=2")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftree-vectorizer-verbose=2")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+endif()
 
 # ---------------------------------------------------------------------------- #
 

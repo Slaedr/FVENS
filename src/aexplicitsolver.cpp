@@ -436,6 +436,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals, also computes max wave speeds integ
 
 		acfd_real err[NVARS];
+		acfd_real errmass = 0;
 		for(int i = 0; i < NVARS; i++)
 			err[i] = 0;
 
@@ -458,31 +459,24 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 				}
 			}
 
-			//if(step == 0) { dudx.mprint();  break; }
-
-			/*for(int i = 0; i < NVARS; i++)
-			{
-				err[i] = (u-uold).col(i);
-				//err[i] = residual.col(i);
-				res(i) = l2norm(&err[i]);
-			}
-			resi = res.max();*/
-
-#pragma omp for simd reduction(+:err[:NVARS])
+#pragma omp for simd reduction(+:errmass)
+//#pragma omp for simd reduction(+:err[:NVARS])
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(int i = 0; i < NVARS; i++)
+				/*for(int i = 0; i < NVARS; i++)
 				{
 					err[i] += residual(iel,i)*residual(iel,i)*m->garea(iel);
-				}
+				}*/
+				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 			}
 		} // end parallel region
 
-		resi = 2e-15;
+		/*resi = 2e-15;
 		for(int i = 0; i < NVARS; i++)
 			if(err[i] > resi*resi)
 				resi = err[i];
-		resi = sqrt(resi);
+		resi = sqrt(resi);*/
+		resi = sqrt(errmass);
 
 		if(step == 0)
 			initres = resi;
