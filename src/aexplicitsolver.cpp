@@ -39,7 +39,7 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),NVARS);
-	gr = new amat::Matrix<acfd_real>[m->gnaface()];
+	gr = new amat::Matrix<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 		gr[i].setup(ngaussf, m->gndim());
 
@@ -48,15 +48,15 @@ ExplicitSolver::ExplicitSolver(const UMesh2dh* mesh, const int _order, std::stri
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER")
-		inviflux = new VanLeerFlux(NVARS, m->gndim(), g);
+		inviflux = new VanLeerFlux(g);
 	else if(invflux == "ROE")
 	{
-		inviflux = new RoeFlux(NVARS, m->gndim(), g);
+		inviflux = new RoeFlux(g);
 		std::cout << "ExplicitSolver: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
-		inviflux = new HLLCFlux(NVARS, m->gndim(), g);
+		inviflux = new HLLCFlux(g);
 		std::cout << "ExplicitSolver: Using HLLC fluxes." << std::endl;
 	}
 	else
@@ -99,7 +99,7 @@ ExplicitSolver::~ExplicitSolver()
 void ExplicitSolver::compute_ghost_cell_coords_about_midpoint()
 {
 	int iface, ielem, idim, ip1, ip2;
-	std::vector<acfd_real> midpoint(m->gndim());
+	std::vector<a_real> midpoint(m->gndim());
 	for(iface = 0; iface < m->gnbface(); iface++)
 	{
 		ielem = m->gintfac(iface,0);
@@ -118,15 +118,15 @@ void ExplicitSolver::compute_ghost_cell_coords_about_midpoint()
 
 void ExplicitSolver::compute_ghost_cell_coords_about_face()
 {
-	int ied, ig, ielem;
-	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
+	int ied, ielem;
+	a_real x1, y1, x2, y2, xs, ys, xi, yi;
 
 	for(ied = 0; ied < m->gnbface(); ied++)
 	{
 		ielem = m->gintfac(ied,0); //int lel = ielem;
 		//jelem = m->gintfac(ied,1); //int rel = jelem;
-		acfd_real nx = m->ggallfa(ied,0);
-		acfd_real ny = m->ggallfa(ied,1);
+		a_real nx = m->ggallfa(ied,0);
+		a_real ny = m->ggallfa(ied,1);
 
 		xi = rc.get(ielem,0);
 		yi = rc.get(ielem,1);
@@ -164,13 +164,13 @@ void ExplicitSolver::compute_ghost_cell_coords_about_face()
  * \param a Angle of attack (radians)
  * \param rhoinf Free stream density
  */
-void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf)
+void ExplicitSolver::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
-	acfd_real vx = vinf*cos(a);
-	acfd_real vy = vinf*sin(a);
-	acfd_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
+	a_real vx = vinf*cos(a);
+	a_real vy = vinf*sin(a);
+	a_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
 	uinf(0,0) = rhoinf;		// should be 1
 	uinf(0,1) = rhoinf*vx;
 	uinf(0,2) = rhoinf*vy;
@@ -192,12 +192,12 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 			rc(ielem,idim) = 0;
 			for(inode = 0; inode < m->gnnode(ielem); inode++)
 				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / (acfd_real)(m->gnnode(ielem));
+			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
 		}
 	}
 
-	int ied, ig, ielem;
-	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
+	int ied, ig;
+	a_real x1, y1, x2, y2;
 
 	compute_ghost_cell_coords_about_midpoint();
 	//compute_ghost_cell_coords_about_face();
@@ -212,8 +212,8 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 		y2 = m->gcoords(m->gintfac(ied,3),1);
 		for(ig = 0; ig < ngaussf; ig++)
 		{
-			gr[ied](ig,0) = x1 + (acfd_real)(ig+1.0)/(acfd_real)(ngaussf+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (acfd_real)(ig+1.0)/(acfd_real)(ngaussf+1.0) * (y2-y1);
+			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(ngaussf+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(ngaussf+1.0) * (y2-y1);
 		}
 	}
 
@@ -221,19 +221,19 @@ void ExplicitSolver::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_
 	std::cout << "ExplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
-void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
+void ExplicitSolver::compute_boundary_states(const amat::Matrix<a_real>& ins, amat::Matrix<a_real>& bs)
 {
 #pragma omp parallel for default(shared)
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
-		acfd_real nx = m->ggallfa(ied,0);
-		acfd_real ny = m->ggallfa(ied,1);
+		a_real nx = m->ggallfa(ied,0);
+		a_real ny = m->ggallfa(ied,1);
 
-		acfd_real vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
-		acfd_real pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
-		acfd_real pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
-		acfd_real ci = sqrt(g*pi/ins.get(ied,0));
-		acfd_real Mni = vni/ci;
+		a_real vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
+		a_real pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
+		//a_real pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
+		a_real ci = sqrt(g*pi/ins.get(ied,0));
+		//a_real Mni = vni/ci;
 
 		if(m->ggallfa(ied,3) == solid_wall_id)
 		{
@@ -271,9 +271,9 @@ void ExplicitSolver::compute_boundary_states(const amat::Matrix<acfd_real>& ins,
 	}
 }
 
-acfd_real ExplicitSolver::l2norm(const amat::Matrix<acfd_real>* const v)
+a_real ExplicitSolver::l2norm(const amat::Matrix<a_real>* const v)
 {
-	acfd_real norm = 0;
+	a_real norm = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		norm += v->get(iel)*v->get(iel)*m->gjacobians(iel)/2.0;
@@ -297,9 +297,9 @@ void ExplicitSolver::compute_RHS()
 
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
 #pragma omp for
-		for(acfd_int ied = 0; ied < m->gnbface(); ied++)
+		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
-			acfd_int ielem = m->gintfac(ied,0);
+			a_int ielem = m->gintfac(ied,0);
 			for(int ivar = 0; ivar < NVARS; ivar++)
 				uleft(ied,ivar) = u.get(ielem,ivar);
 		}
@@ -319,10 +319,10 @@ void ExplicitSolver::compute_RHS()
 		
 		// set both left and right states for all interior faces
 #pragma omp parallel for
-		for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
-			acfd_int ielem = m->gintfac(ied,0);
-			acfd_int jelem = m->gintfac(ied,1);
+			a_int ielem = m->gintfac(ied,0);
+			a_int jelem = m->gintfac(ied,1);
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				uleft(ied,ivar) = u.get(ielem,ivar);
@@ -342,24 +342,24 @@ void ExplicitSolver::compute_RHS()
 	 * so that time steps can be calculated for explicit time stepping.
 	 */
 
-	std::vector<acfd_real> ci(m->gnaface()), vni(m->gnaface()), cj(m->gnaface()), vnj(m->gnaface());
+	std::vector<a_real> ci(m->gnaface()), vni(m->gnaface()), cj(m->gnaface()), vnj(m->gnaface());
 
 #pragma omp parallel default(shared)
 	{
 #pragma omp for
-		for(acfd_int ied = 0; ied < m->gnaface(); ied++)
+		for(a_int ied = 0; ied < m->gnaface(); ied++)
 		{
-			//acfd_int lel = m->gintfac(ied,0);	// left element
-			//acfd_int rel = m->gintfac(ied,1);	// right element
+			//a_int lel = m->gintfac(ied,0);	// left element
+			//a_int rel = m->gintfac(ied,1);	// right element
 
-			acfd_real n[NDIM];
+			a_real n[NDIM];
 			n[0] = m->ggallfa(ied,0);
 			n[1] = m->ggallfa(ied,1);
-			acfd_real len = m->ggallfa(ied,2);
+			a_real len = m->ggallfa(ied,2);
 
-			const acfd_real* ulp = uleft.const_row_pointer(ied);
-			const acfd_real* urp = uright.const_row_pointer(ied);
-			acfd_real* fluxp = fluxes.row_pointer(ied);
+			const a_real* ulp = uleft.const_row_pointer(ied);
+			const a_real* urp = uright.const_row_pointer(ied);
+			a_real* fluxp = fluxes.row_pointer(ied);
 
 			// compute flux
 			inviflux->get_flux(ulp, urp, n, fluxp);
@@ -377,8 +377,8 @@ void ExplicitSolver::compute_RHS()
 			}*/
 
 			//calculate presures from u
-			acfd_real pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
-			acfd_real pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
+			a_real pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
+			a_real pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
 			//calculate speeds of sound
 			ci[ied] = sqrt(g*pi/uleft.get(ied,0));
 			cj[ied] = sqrt(g*pj/uright.get(ied,0));
@@ -395,13 +395,13 @@ void ExplicitSolver::compute_RHS()
 		// update residual and integ
 		//std::cout << "Beginning new loop --- \n";
 #pragma omp for
-		for(acfd_int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				acfd_int ied = m->gelemface(iel,ifael);
-				acfd_real len = m->ggallfa(ied,2);
-				acfd_int nbdelem = m->gesuel(iel,ifael);
+				a_int ied = m->gelemface(iel,ifael);
+				a_real len = m->ggallfa(ied,2);
+				a_int nbdelem = m->gesuel(iel,ifael);
 
 				if(nbdelem > iel) {
 					for(int ivar = 0; ivar < NVARS; ivar++)
@@ -418,15 +418,15 @@ void ExplicitSolver::compute_RHS()
 	} // end parallel region
 }
 
-void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl)
+void ExplicitSolver::solve_rk1_steady(const a_real tol, const int maxiter, const a_real cfl)
 {
 	int step = 0;
-	acfd_real resi = 1.0;
-	acfd_real initres = 1.0;
-	amat::Matrix<acfd_real> res(NVARS,1);
+	a_real resi = 1.0;
+	a_real initres = 1.0;
+	amat::Matrix<a_real> res(NVARS,1);
 	res.ones();
-	amat::Matrix<acfd_real> dtm(m->gnelem(), 1);		// for local time-stepping
-	amat::Matrix<acfd_real> uold(u.rows(), u.cols());
+	amat::Matrix<a_real> dtm(m->gnelem(), 1);		// for local time-stepping
+	amat::Matrix<a_real> uold(u.rows(), u.cols());
 
 	while(resi/initres > tol && step < maxiter)
 	{
@@ -435,8 +435,8 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 		//calculate fluxes
 		compute_RHS();		// this invokes Flux calculating function after zeroing the residuals, also computes max wave speeds integ
 
-		acfd_real err[NVARS];
-		acfd_real errmass = 0;
+		a_real err[NVARS];
+		a_real errmass = 0;
 		for(int i = 0; i < NVARS; i++)
 			err[i] = 0;
 
@@ -485,7 +485,7 @@ void ExplicitSolver::solve_rk1_steady(const acfd_real tol, const int maxiter, co
 			std::cout << "EulerFV: solve_rk1_steady(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		/*acfd_real totalenergy = 0;
+		/*a_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
 			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
@@ -501,15 +501,15 @@ void ExplicitSolver::postprocess_point()
 	std::cout << "ExplicitSolver: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
-	amat::Matrix<acfd_real> c(m->gnpoin(),1);
+	amat::Matrix<a_real> c(m->gnpoin(),1);
 	
-	amat::Matrix<acfd_real> areasum(m->gnpoin(),1);
-	amat::Matrix<acfd_real> up(m->gnpoin(), NVARS);
+	amat::Matrix<a_real> areasum(m->gnpoin(),1);
+	amat::Matrix<a_real> up(m->gnpoin(), NVARS);
 	up.zeros();
 	areasum.zeros();
 
 	int inode, ivar;
-	acfd_int ielem, iface, ip1, ip2, ipoin;
+	a_int ielem, iface, ip1, ip2, ipoin;
 
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -545,7 +545,7 @@ void ExplicitSolver::postprocess_point()
 		velocities(ipoin,1) = up.get(ipoin,2)/up.get(ipoin,0);
 		//velocities(ipoin,0) = dudx(ipoin,1);
 		//velocities(ipoin,1) = dudy(ipoin,1);
-		acfd_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
+		a_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
 		scalars(ipoin,2) = up.get(ipoin,0)*(g-1) * (up.get(ipoin,3)/up.get(ipoin,0) - 0.5*vmag2);		// pressure
 		c(ipoin) = sqrt(g*scalars(ipoin,2)/up.get(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
@@ -558,9 +558,9 @@ void ExplicitSolver::postprocess_cell()
 	std::cout << "ExplicitSolver: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
-	amat::Matrix<acfd_real> c(m->gnelem(), 1);
+	amat::Matrix<a_real> c(m->gnelem(), 1);
 
-	amat::Matrix<acfd_real> d = u.col(0);
+	amat::Matrix<a_real> d = u.col(0);
 	scalars.replacecol(0, d);		// populate density data
 	//std::cout << "EulerFV: postprocess(): Written density\n";
 
@@ -570,7 +570,7 @@ void ExplicitSolver::postprocess_cell()
 		velocities(iel,1) = u.get(iel,2)/u.get(iel,0);
 		//velocities(iel,0) = dudx(iel,1);
 		//velocities(iel,1) = dudy(iel,1);
-		acfd_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
+		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
 		scalars(iel,2) = d(iel)*(g-1) * (u.get(iel,3)/d(iel) - 0.5*vmag2);		// pressure
 		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
 		scalars(iel,1) = sqrt(vmag2)/c(iel);
@@ -578,14 +578,14 @@ void ExplicitSolver::postprocess_cell()
 	std::cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
-acfd_real ExplicitSolver::compute_entropy_cell()
+a_real ExplicitSolver::compute_entropy_cell()
 {
 	postprocess_cell();
-	acfd_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
-	acfd_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
+	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
+	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
 
-	amat::Matrix<acfd_real> s_err(m->gnelem(),1);
-	acfd_real error = 0;
+	amat::Matrix<a_real> s_err(m->gnelem(),1);
+	a_real error = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		s_err(iel) = (scalars(iel,2)/pow(scalars(iel,0),g) - sinf)/sinf;
@@ -593,20 +593,20 @@ acfd_real ExplicitSolver::compute_entropy_cell()
 	}
 	error = sqrt(error);
 
-	//acfd_real h = sqrt((m->jacobians).max());
-	acfd_real h = 1.0/sqrt(m->gnelem());
+	//a_real h = sqrt((m->jacobians).max());
+	a_real h = 1.0/sqrt(m->gnelem());
  
 	std::cout << "EulerFV:   " << log10(h) << "  " << std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
 }
 
-amat::Matrix<acfd_real> ExplicitSolver::getscalars() const
+amat::Matrix<a_real> ExplicitSolver::getscalars() const
 {
 	return scalars;
 }
 
-amat::Matrix<acfd_real> ExplicitSolver::getvelocities() const
+amat::Matrix<a_real> ExplicitSolver::getvelocities() const
 {
 	return velocities;
 }

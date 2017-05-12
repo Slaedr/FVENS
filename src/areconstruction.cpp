@@ -12,8 +12,8 @@ namespace acfd
 Reconstruction::~Reconstruction()
 { }
 
-void Reconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unk, const amat::Matrix<acfd_real>* unkg, amat::Matrix<acfd_real>* gradx, amat::Matrix<acfd_real>* grady, 
-		const amat::Matrix<acfd_real>* _rc, const amat::Matrix<acfd_real>* const _rcg)
+void Reconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
+		const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg)
 {
 	m = mesh;
 	u = unk;
@@ -31,7 +31,7 @@ void GreenGaussReconstruction::compute_gradients()
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
-		for(acfd_int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int i = 0; i < NVARS; i++)
 			{
@@ -41,12 +41,12 @@ void GreenGaussReconstruction::compute_gradients()
 		}
 		
 #pragma omp for
-		for(acfd_int iface = 0; iface < m->gnbface(); iface++)
+		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			acfd_int ielem, ip1, ip2;
-			acfd_real areainv1;
-			acfd_real ut[NVARS];
-			acfd_real dL, dR, mid[NDIM];
+			a_int ielem, ip1, ip2;
+			a_real areainv1;
+			a_real ut[NVARS];
+			a_real dL, dR, mid[NDIM];
 		
 			ielem = m->gintfac(iface,0);
 			ip1 = m->gintfac(iface,2);
@@ -71,12 +71,12 @@ void GreenGaussReconstruction::compute_gradients()
 		}
 
 #pragma omp for
-		for(acfd_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 		{
-			acfd_int ielem, jelem, ip1, ip2;
-			acfd_real areainv1, areainv2;
-			acfd_real ut[NVARS];
-			acfd_real dL, dR, mid[NDIM];
+			a_int ielem, jelem, ip1, ip2;
+			a_real areainv1, areainv2;
+			a_real ut[NVARS];
+			a_real dL, dR, mid[NDIM];
 		
 			ielem = m->gintfac(iface,0);
 			jelem = m->gintfac(iface,1);
@@ -111,8 +111,8 @@ void GreenGaussReconstruction::compute_gradients()
 }
 
 
-void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unk, const amat::Matrix<acfd_real>* unkg, amat::Matrix<acfd_real>* gradx, amat::Matrix<acfd_real>* grady, 
-		const amat::Matrix<acfd_real>* _rc, const amat::Matrix<acfd_real>* const _rcg)
+void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
+		const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg)
 {
 	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _rc, _rcg);
 	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; num vars = " << NVARS << std::endl;
@@ -131,7 +131,7 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat:
 
 	// compute LHS of least-squares problem
 	int iface, ielem, jelem, idim;
-	acfd_real w2, dr[2];
+	a_real w2, dr[2];
 
 	for(iface = 0; iface < m->gnbface(); iface++)
 	{
@@ -182,7 +182,7 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat:
 void WeightedLeastSquaresReconstruction::compute_gradients()
 {
 	int iface, ielem, jelem, idim, ivar;
-	acfd_real w2, dr[2];
+	a_real w2, dr[2];
 
 	// compute least-squares RHS
 

@@ -10,7 +10,7 @@ namespace acfd {
 
 ImplicitSolverBase::ImplicitSolverBase(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
 		const double cfl_num, const double init_cfl, const int switch_stepi, const int switch_step, const double relaxation_factor)
-	: cfl(cfl_num), cfl_init(init_cfl), switchstepi(switch_stepi), switchstep(switch_step), w(relaxation_factor), order(_order), m(mesh)
+	: m(mesh), cfl_init(init_cfl), cfl(cfl_num), switchstepi(switch_stepi), switchstep(switch_step), order(_order), w(relaxation_factor)
 {
 	g = 1.4;
 
@@ -38,7 +38,7 @@ ImplicitSolverBase::ImplicitSolverBase(const UMesh2dh* const mesh, const int _or
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),nvars);
-	gr = new amat::Matrix<acfd_real>[m->gnaface()];
+	gr = new amat::Matrix<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 	{
 		gr[i].setup(ngaussf, m->gndim());
@@ -51,15 +51,15 @@ ImplicitSolverBase::ImplicitSolverBase(const UMesh2dh* const mesh, const int _or
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER")
-		inviflux = new VanLeerFlux(nvars, m->gndim(), g);
+		inviflux = new VanLeerFlux(g);
 	else if(invflux == "ROE")
 	{
-		inviflux = new RoeFlux(nvars, m->gndim(), g);
+		inviflux = new RoeFlux(g);
 		std::cout << "ImplicitSolver: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
-		inviflux = new HLLCFlux(nvars, m->gndim(), g);
+		inviflux = new HLLCFlux(g);
 		std::cout << "ImplicitSolver: Using HLLC fluxes." << std::endl;
 	}
 	else
@@ -103,7 +103,7 @@ ImplicitSolverBase::~ImplicitSolverBase()
 void ImplicitSolverBase::compute_ghost_cell_coords_about_midpoint()
 {
 	int iface, ielem, idim, ip1, ip2;
-	std::vector<acfd_real> midpoint(m->gndim());
+	std::vector<a_real> midpoint(m->gndim());
 	for(iface = 0; iface < m->gnbface(); iface++)
 	{
 		ielem = m->gintfac(iface,0);
@@ -122,15 +122,15 @@ void ImplicitSolverBase::compute_ghost_cell_coords_about_midpoint()
 
 void ImplicitSolverBase::compute_ghost_cell_coords_about_face()
 {
-	int ied, ig, ielem;
-	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
+	int ied, ielem;
+	a_real x1, y1, x2, y2, xs, ys, xi, yi;
 
 	for(ied = 0; ied < m->gnbface(); ied++)
 	{
 		ielem = m->gintfac(ied,0); //int lel = ielem;
 		//jelem = m->gintfac(ied,1); //int rel = jelem;
-		acfd_real nx = m->ggallfa(ied,0);
-		acfd_real ny = m->ggallfa(ied,1);
+		a_real nx = m->ggallfa(ied,0);
+		a_real ny = m->ggallfa(ied,1);
 
 		xi = rc.get(ielem,0);
 		yi = rc.get(ielem,1);
@@ -168,13 +168,13 @@ void ImplicitSolverBase::compute_ghost_cell_coords_about_face()
  * \param a Angle of attack (radians)
  * \param rhoinf Free stream density
  */
-void ImplicitSolverBase::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf)
+void ImplicitSolverBase::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//cout << "EulerFV: loaddata(): Calculating initial data...\n";
-	acfd_real vx = vinf*cos(a);
-	acfd_real vy = vinf*sin(a);
-	acfd_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
+	a_real vx = vinf*cos(a);
+	a_real vy = vinf*sin(a);
+	a_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
 	uinf(0,0) = rhoinf;		// should be 1
 	uinf(0,1) = rhoinf*vx;
 	uinf(0,2) = rhoinf*vy;
@@ -196,12 +196,12 @@ void ImplicitSolverBase::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, a
 			rc(ielem,idim) = 0;
 			for(inode = 0; inode < m->gnnode(ielem); inode++)
 				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / (acfd_real)(m->gnnode(ielem));
+			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
 		}
 	}
 
-	int ied, ig, ielem;
-	acfd_real x1, y1, x2, y2, xs, ys, xi, yi;
+	int ied, ig;
+	a_real x1, y1, x2, y2;
 
 	compute_ghost_cell_coords_about_midpoint();
 	//compute_ghost_cell_coords_about_face();
@@ -216,8 +216,8 @@ void ImplicitSolverBase::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, a
 		y2 = m->gcoords(m->gintfac(ied,3),1);
 		for(ig = 0; ig < ngaussf; ig++)
 		{
-			gr[ied](ig,0) = x1 + (acfd_real)(ig+1.0)/(acfd_real)(ngaussf+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (acfd_real)(ig+1.0)/(acfd_real)(ngaussf+1.0) * (y2-y1);
+			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(ngaussf+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(ngaussf+1.0) * (y2-y1);
 		}
 	}
 
@@ -225,10 +225,9 @@ void ImplicitSolverBase::loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, a
 	std::cout << "ImplicitSolver: loaddata(): Initial data calculated.\n";
 }
 
-void ImplicitSolverBase::compute_boundary_states(const amat::Matrix<acfd_real>& ins, amat::Matrix<acfd_real>& bs)
+void ImplicitSolverBase::compute_boundary_states(const amat::Matrix<a_real>& ins, amat::Matrix<a_real>& bs)
 {
-	int lel, rel, i;
-	acfd_real nx, ny, vni, pi, ci, Mni, vnj, pj, cj, Mnj, vinfx, vinfy, vinfn, vbn, pinf, pb, cinf, cb, vgx, vgy, vbx, vby;
+	a_real nx, ny, vni, pi, ci, Mni, pinf;
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
 		nx = m->ggallfa(ied,0);
@@ -252,7 +251,7 @@ void ImplicitSolverBase::compute_boundary_states(const amat::Matrix<acfd_real>& 
 		{
 			//if(Mni <= -1.0)
 			{
-				for(i = 0; i < nvars; i++)
+				for(int i = 0; i < nvars; i++)
 					bs(ied,i) = uinf(0,i);
 			}
 			/*else if(Mni > -1.0 && Mni < 0)
@@ -276,9 +275,9 @@ void ImplicitSolverBase::compute_boundary_states(const amat::Matrix<acfd_real>& 
 	}
 }
 
-acfd_real ImplicitSolverBase::l2norm(const amat::Matrix<acfd_real>* const v)
+a_real ImplicitSolverBase::l2norm(const amat::Matrix<a_real>* const v)
 {
-	acfd_real norm = 0;
+	a_real norm = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		norm += v->get(iel)*v->get(iel)*m->gjacobians(iel)/2.0;
@@ -337,9 +336,9 @@ void ImplicitSolverBase::compute_RHS()
 	 * \f]
 	 * so that time steps can be calculated for explicit time stepping.
 	 */
-	acfd_real n[NDIM], nx, ny, len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
+	a_real n[NDIM], len, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
 	int lel, rel;
-	const acfd_real *ulp, *urp; acfd_real fluxp[NVARS];
+	const a_real *ulp, *urp; a_real fluxp[NVARS];
 
 	for(ied = 0; ied < m->gnaface(); ied++)
 	{
@@ -390,15 +389,15 @@ void ImplicitSolverBase::postprocess_point()
 	std::cout << "ImplicitSolverBase: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
-	amat::Matrix<acfd_real> c(m->gnpoin(),1);
+	amat::Matrix<a_real> c(m->gnpoin(),1);
 	
-	amat::Matrix<acfd_real> areasum(m->gnpoin(),1);
-	amat::Matrix<acfd_real> up(m->gnpoin(), nvars);
+	amat::Matrix<a_real> areasum(m->gnpoin(),1);
+	amat::Matrix<a_real> up(m->gnpoin(), nvars);
 	up.zeros();
 	areasum.zeros();
 
 	int inode, ivar;
-	acfd_int ielem, iface, ip1, ip2, ipoin;
+	a_int ielem, iface, ip1, ip2, ipoin;
 
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -434,7 +433,7 @@ void ImplicitSolverBase::postprocess_point()
 		velocities(ipoin,1) = up.get(ipoin,2)/up.get(ipoin,0);
 		//velocities(ipoin,0) = dudx(ipoin,1);
 		//velocities(ipoin,1) = dudy(ipoin,1);
-		acfd_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
+		a_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
 		scalars(ipoin,2) = up.get(ipoin,0)*(g-1) * (up.get(ipoin,3)/up.get(ipoin,0) - 0.5*vmag2);		// pressure
 		c(ipoin) = sqrt(g*scalars(ipoin,2)/up.get(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
@@ -447,9 +446,9 @@ void ImplicitSolverBase::postprocess_cell()
 	std::cout << "ImplicitSolverBase: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
-	amat::Matrix<acfd_real> c(m->gnelem(), 1);
+	amat::Matrix<a_real> c(m->gnelem(), 1);
 
-	amat::Matrix<acfd_real> d = u.col(0);
+	amat::Matrix<a_real> d = u.col(0);
 	scalars.replacecol(0, d);		// populate density data
 	//std::cout << "EulerFV: postprocess(): Written density\n";
 
@@ -459,7 +458,7 @@ void ImplicitSolverBase::postprocess_cell()
 		velocities(iel,1) = u.get(iel,2)/u.get(iel,0);
 		//velocities(iel,0) = dudx(iel,1);
 		//velocities(iel,1) = dudy(iel,1);
-		acfd_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
+		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
 		scalars(iel,2) = d(iel)*(g-1) * (u.get(iel,3)/d(iel) - 0.5*vmag2);		// pressure
 		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
 		scalars(iel,1) = sqrt(vmag2)/c(iel);
@@ -467,14 +466,14 @@ void ImplicitSolverBase::postprocess_cell()
 	std::cout << "ImplicitSolverBase: postprocess_cell(): Done.\n";
 }
 
-acfd_real ImplicitSolverBase::compute_entropy_cell()
+a_real ImplicitSolverBase::compute_entropy_cell()
 {
 	postprocess_cell();
-	acfd_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
-	acfd_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
+	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
+	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
 
-	amat::Matrix<acfd_real> s_err(m->gnelem(),1);
-	acfd_real error = 0;
+	amat::Matrix<a_real> s_err(m->gnelem(),1);
+	a_real error = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		s_err(iel) = (scalars(iel,2)/pow(scalars(iel,0),g) - sinf)/sinf;
@@ -482,20 +481,20 @@ acfd_real ImplicitSolverBase::compute_entropy_cell()
 	}
 	error = sqrt(error);
 
-	//acfd_real h = sqrt((m->jacobians).max());
-	acfd_real h = 1.0/sqrt(m->gnelem());
+	//a_real h = sqrt((m->jacobians).max());
+	a_real h = 1.0/sqrt(m->gnelem());
  
 	std::cout << "EulerFV:   " << log10(h) << "  " << std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
 }
 
-amat::Matrix<acfd_real> ImplicitSolverBase::getscalars() const
+amat::Matrix<a_real> ImplicitSolverBase::getscalars() const
 {
 	return scalars;
 }
 
-amat::Matrix<acfd_real> ImplicitSolverBase::getvelocities() const
+amat::Matrix<a_real> ImplicitSolverBase::getvelocities() const
 {
 	return velocities;
 }
@@ -507,11 +506,11 @@ ImplicitSolver::ImplicitSolver(const UMesh2dh* const mesh, const int _order, std
 		const double cfl_num, const double init_cfl, const int switch_stepi, const int switch_step, const double relaxation_factor)
 	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switch_stepi, switch_step, relaxation_factor)
 {
-	diag = new amat::Matrix<acfd_real>[m->gnelem()];
-	ludiag = new amat::Matrix<acfd_real>[m->gnelem()];
+	diag = new amat::Matrix<a_real>[m->gnelem()];
+	ludiag = new amat::Matrix<a_real>[m->gnelem()];
 	diagp = new amat::Matrix<int>[m->gnelem()];
-	lower = new amat::Matrix<acfd_real>[m->gnaface()];
-	upper = new amat::Matrix<acfd_real>[m->gnaface()];
+	lower = new amat::Matrix<a_real>[m->gnaface()];
+	upper = new amat::Matrix<a_real>[m->gnaface()];
 	/** \note Allocation for lower and upper is currently for all faces, whereas what is needed is only interior faces. */
 
 	for(int i = 0; i < m->gnelem(); i++)
@@ -555,10 +554,10 @@ void ImplicitSolver::compute_LHS()
 {
 	// compute `eigenvalues' across faces and Euler fluxes
 	
-	acfd_int iface, ielem, jelem, face;
+	a_int iface, ielem, jelem, face;
 	int i,j;
-	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, lambdaij, n[2], len, u02, vn;
-	amat::Matrix<acfd_real> Ji(nvars,nvars), Jj(nvars,nvars);
+	a_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, lambdaij, n[2], len, u02, vn;
+	amat::Matrix<a_real> Ji(nvars,nvars), Jj(nvars,nvars);
 
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 		diag[ielem].zeros();
@@ -714,7 +713,7 @@ void ImplicitSolver::compute_LHS()
 	}
 }
 
-void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>* const du, amat::Matrix<acfd_real>& ans)
+void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<a_real>* const du, amat::Matrix<a_real>& ans)
 {
 	int ielem, jelem, iface, i,j;
 	ans.zeros();
@@ -740,28 +739,28 @@ void ImplicitSolver::jacobianVectorProduct(const amat::Matrix<acfd_real>* const 
 }
 
 SteadyStateImplicitSolver::SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux,std::string reconst,std::string limiter, std::string lsolver, const double cfl, 
-		const double initcfl, const int switchstepi, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
+		const double initcfl, const int switchstepi, const int switchstep, const double omega, const a_real steady_tol, const int steady_maxiter, const a_real lin_tol, const int lin_maxiter)
 	: ImplicitSolver(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstepi, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
 { }
 
 void SteadyStateImplicitSolver::solve()
 {
 	int step = 0, linstep;
-	acfd_int iel;
+	a_int iel;
 	int i;
-	acfd_real resi = 1.0, linresi, curCFL;
-	acfd_real initres = 1.0, lininitres;
-	amat::Matrix<acfd_real> res(nvars,1);
+	a_real resi = 1.0, linresi, curCFL;
+	a_real initres = 1.0, lininitres;
+	amat::Matrix<a_real> res(nvars,1);
 	res.ones();
-	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
-	amat::Matrix<acfd_real>* ddu = new amat::Matrix<acfd_real>[m->gnelem()];
+	amat::Matrix<a_real>* du = new amat::Matrix<a_real>[m->gnelem()];
+	amat::Matrix<a_real>* ddu = new amat::Matrix<a_real>[m->gnelem()];
 	for(iel = 0; iel < m->gnelem(); iel++)
 	{
 		du[iel].setup(nvars,1);
 		ddu[iel].setup(nvars,1);
 	}
 
-	std::vector<acfd_real> dunorm(nvars), eps(nvars);
+	std::vector<a_real> dunorm(nvars), eps(nvars);
 
 	std::cout << "SteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
 
@@ -884,7 +883,7 @@ void SteadyStateImplicitSolver::solve()
 			std::cout << "SteadyStateImplicitSolver: solve(): Step " << step << ",  Mass residual " << resi << std::endl;
 
 		step++;
-		/*acfd_real totalenergy = 0;
+		/*a_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
 			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
@@ -905,10 +904,10 @@ ImplicitSolverMF::ImplicitSolverMF(const UMesh2dh* const mesh, const int _order,
 		const double cfl_num, const double init_cfl, const int switchstepi, const int switch_step, const double relaxation_factor)
 	: ImplicitSolverBase(mesh, _order, invflux, reconst, limiter, linear_solver, cfl_num, init_cfl, switchstepi, switch_step, relaxation_factor)
 {
-	diag = new amat::Matrix<acfd_real>[m->gnelem()];
+	diag = new amat::Matrix<a_real>[m->gnelem()];
 	diagp = new amat::Matrix<int>[m->gnelem()];
 	lambdaij.setup(m->gnaface(),1);
-	elemfaceflux = new amat::Matrix<acfd_real>[m->gnaface()];
+	elemfaceflux = new amat::Matrix<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 	{
 		elemfaceflux[i].setup(2,nvars);
@@ -948,8 +947,8 @@ void ImplicitSolverMF::compute_LHS()
 {
 	// compute `eigenvalues' across faces and Euler fluxes
 	
-	acfd_int iface, ielem, jelem, face;
-	acfd_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
+	a_int iface, ielem, jelem, face;
+	a_real uij, vij, rhoij, vnij, pi, pj, pij, hi, hj, hij, Rij, cij, n[2], len;
 
 	// boundary faces
 	for(iface = 0; iface < m->gnbface(); iface++)
@@ -1009,8 +1008,8 @@ void ImplicitSolverMF::compute_LHS()
 	}
 
 	// compute diagonal blocks
-	acfd_int ifael;
-	acfd_real u02, vn;
+	a_int ifael;
+	a_real u02, vn;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		diag[ielem].zeros();
@@ -1051,24 +1050,24 @@ void ImplicitSolverMF::compute_LHS()
 }
 
 LUSSORSteadyStateImplicitSolverMF::LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, 
-		const double init_cfl, const int switchstepi, const int switch_step, const double omega, const acfd_real steady_tol, const int steady_maxiter)
+		const double init_cfl, const int switchstepi, const int switch_step, const double omega, const a_real steady_tol, const int steady_maxiter)
 	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, "SSOR", cfl, init_cfl, switchstepi, switch_step, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter)
 { }
 
 void LUSSORSteadyStateImplicitSolverMF::solve()
 {
 	int step = 0;
-	acfd_int iel;
+	a_int iel;
 	int i;
-	acfd_real resi = 1.0, curCFL, dt;
-	acfd_real initres = 1.0;
-	amat::Matrix<acfd_real>* err;
-	err = new amat::Matrix<acfd_real>[nvars];
+	a_real resi = 1.0, curCFL, dt;
+	a_real initres = 1.0;
+	amat::Matrix<a_real>* err;
+	err = new amat::Matrix<a_real>[nvars];
 	for(int i = 0; i<nvars; i++)
 		err[i].setup(m->gnelem(),1);
-	amat::Matrix<acfd_real> res(nvars,1);
+	amat::Matrix<a_real> res(nvars,1);
 	res.ones();
-	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
+	amat::Matrix<a_real>* du = new amat::Matrix<a_real>[m->gnelem()];
 	for(iel = 0; iel < m->gnelem(); iel++)
 		du[iel].setup(nvars,1);
 	std::cout << "LUSSORSteadyStateImplicitSolver: solve(): Beginning time loop..." << std::endl;
@@ -1140,7 +1139,7 @@ void LUSSORSteadyStateImplicitSolverMF::solve()
 			std::cout << "LUSSORSteadyStateImplicitSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		/*acfd_real totalenergy = 0;
+		/*a_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
 			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
@@ -1154,30 +1153,30 @@ void LUSSORSteadyStateImplicitSolverMF::solve()
 }
 
 SteadyStateImplicitSolverMF::SteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string lsolver, 
-		const double cfl, const double initcfl, const int switchstepi, const int switchstep, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter)
+		const double cfl, const double initcfl, const int switchstepi, const int switchstep, const double omega, const a_real steady_tol, const int steady_maxiter, const a_real lin_tol, const int lin_maxiter)
 	: ImplicitSolverMF(mesh, _order, invflux, reconst, limiter, lsolver, cfl, initcfl, switchstepi, switchstep, omega), steadytol(steady_tol), steadymaxiter(steady_maxiter), lintol(lin_tol), linmaxiter(lin_maxiter)
 { }
 
 void SteadyStateImplicitSolverMF::solve()
 {
 	int step = 0, linstep;
-	acfd_int iel;
+	a_int iel;
 	int i;
-	acfd_real resi = 1.0, linresi, curCFL;
-	acfd_real initres = 1.0, lininitres;
-	amat::Matrix<acfd_real> res(nvars,1);
-	amat::Matrix<acfd_real> prevresidual(m->gnelem(), nvars);
+	a_real resi = 1.0, linresi, curCFL;
+	a_real initres = 1.0, lininitres;
+	amat::Matrix<a_real> res(nvars,1);
+	amat::Matrix<a_real> prevresidual(m->gnelem(), nvars);
 	res.ones();
-	amat::Matrix<acfd_real>* du = new amat::Matrix<acfd_real>[m->gnelem()];
-	amat::Matrix<acfd_real>* ddu = new amat::Matrix<acfd_real>[m->gnelem()];
+	amat::Matrix<a_real>* du = new amat::Matrix<a_real>[m->gnelem()];
+	amat::Matrix<a_real>* ddu = new amat::Matrix<a_real>[m->gnelem()];
 	for(iel = 0; iel < m->gnelem(); iel++)
 	{
 		du[iel].setup(nvars,1);
 		ddu[iel].setup(nvars,1);
 	}
 
-	acfd_real epsilon = 1.0e-2;
-	std::vector<acfd_real> dunorm(nvars), eps(nvars);
+	a_real epsilon = 1.0e-2;
+	std::vector<a_real> dunorm(nvars), eps(nvars);
 
 	std::cout << "SteadyStateImplicitSolverMF: solve(): Beginning time loop..." << std::endl;
 
@@ -1313,7 +1312,7 @@ void SteadyStateImplicitSolverMF::solve()
 			std::cout << "SteadyStateImplicitSolverMF: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		/*acfd_real totalenergy = 0;
+		/*a_real totalenergy = 0;
 		for(int i = 0; i < m->gnelem(); i++)
 			totalenergy += u(i,3)*m->jacobians(i);
 			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/

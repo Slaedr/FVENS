@@ -18,22 +18,17 @@
 
 namespace acfd {
 
-/// Adiabatic index
-const double g = 1.4;
-
 /// Abstract class from which to derive all numerical flux classes
 /** The class is such that given the left and right states and a face normal, the numerical flux is computed.
  */
 class InviscidFlux
 {
 protected:
-	int nvars;		///< Number of conserved variables
-	int ndim;		///< Number of spatial dimensions involved
-	acfd_real g;	///< Adiabatic index
+	a_real g;	///< Adiabatic index
 
 public:
 	/// Sets up data for the inviscid flux scheme
-	InviscidFlux(int num_vars, int num_dims, acfd_real gamma);
+	InviscidFlux(a_real gamma);
 
 	/** Computes flux across a face with
 	 * \param[in] uleft is the vector of left states for the face
@@ -41,27 +36,34 @@ public:
 	 * \param[in] n is the normal vector to the face
 	 * \param[in|out] flux contains the computed flux
 	 */
-	virtual void get_flux(const acfd_real *const uleft, const acfd_real *const uright, const acfd_real* const n, acfd_real *const flux) = 0;
+	virtual void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const flux) = 0;
 	virtual ~InviscidFlux();
+};
+
+class LocalLaxFriedrichsFlux : public InviscidFlux
+{
+public:
+	LocalLaxFriedrichsFlux(const a_real gamma);
+	void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const flux);
 };
 
 /// Given left and right states at each face, the Van-Leer flux-vector-splitting is calculated at each face
 class VanLeerFlux : public InviscidFlux
 {
-	amat::Matrix<acfd_real> fiplus;
-	amat::Matrix<acfd_real> fjminus;
+	amat::Matrix<a_real> fiplus;
+	amat::Matrix<a_real> fjminus;
 
 public:
-	VanLeerFlux(int num_vars, int num_dims, acfd_real gamma);
-	void get_flux(const acfd_real *const ul, const acfd_real *const ur, const acfd_real* const n, acfd_real *const flux);
+	VanLeerFlux(a_real gamma);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 
 /// Roe flux-difference splitting Riemann solver for the Euler equations
 class RoeFlux : public InviscidFlux
 {
 public:
-	RoeFlux(int num_vars, int num_dims, acfd_real gamma);
-	void get_flux(const acfd_real *const ul, const acfd_real *const ur, const acfd_real* const n, acfd_real *const flux);
+	RoeFlux(a_real gamma);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
@@ -69,10 +71,10 @@ public:
  */
 class HLLCFlux : public InviscidFlux
 {
-	amat::Matrix<acfd_real> utemp;
+	amat::Matrix<a_real> utemp;
 public:
-	HLLCFlux(int num_vars, int num_dims, acfd_real gamma);
-	void get_flux(const acfd_real *const ul, const acfd_real *const ur, const acfd_real* const n, acfd_real *const flux);
+	HLLCFlux(a_real gamma);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 
 } // end namespace acfd

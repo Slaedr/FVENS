@@ -22,7 +22,14 @@ endif()
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftree-vectorizer-verbose=2")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -qopt-report=2")
+endif()
+
+# PETSc
+if(WITH_PETSC)
+	find_library(PETSC_LIB NAMES petsc PATHS $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib)
+	include_directories($ENV{PETSC_DIR}/include $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/include)
+	message(STATUS "Building with PETSc found at ${PETSC_LIB}")
 endif()
 
 # ---------------------------------------------------------------------------- #
@@ -41,7 +48,7 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+#set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
 add_library(fvens_base areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp amatrix.cpp adatastructures.cpp)
@@ -51,6 +58,9 @@ target_link_libraries(fvens_explicit fvens_base)
 
 add_library(fvens_implicit aimplicitsolver.cpp alinalg.cpp)
 target_link_libraries(fvens_implicit fvens_base)
+if(WITH_PETSC)
+	target_link_libraries(fvens_implicit ${PETSC_LIB})
+endif()
 
 # for the final executable(s)
 
@@ -59,8 +69,8 @@ add_subdirectory(utilities)
 add_executable(fvense explicitsolver.cpp)
 target_link_libraries(fvense fvens_explicit)
 
-add_executable(steadylufvensi steadyLUimplicitsolver.cpp)
-target_link_libraries(steadylufvensi fvens_implicit)
+#add_executable(steadylufvensi steadyLUimplicitsolver.cpp)
+#target_link_libraries(steadylufvensi fvens_implicit)
 
-add_executable(steadyfvensi steadyimplicitsolver.cpp)
-target_link_libraries(steadyfvensi fvens_implicit)
+#add_executable(steadyfvensi steadyimplicitsolver.cpp)
+#target_link_libraries(steadyfvensi fvens_implicit)

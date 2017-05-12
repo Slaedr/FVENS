@@ -44,17 +44,17 @@ class ImplicitSolverBase
 {
 protected:
 	const UMesh2dh* const m;
-	amat::Matrix<acfd_real> m_inverse;			///< mass matrix (just the volume of the element for FV)
-	amat::Matrix<acfd_real> residual;			///< Right hand side for boundary integrals and source terms
+	amat::Matrix<a_real> m_inverse;			///< mass matrix (just the volume of the element for FV)
+	amat::Matrix<a_real> residual;			///< Right hand side for boundary integrals and source terms
 	int nvars;									///< number of conserved variables
-	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
-	acfd_real g;								///< adiabatic index
+	amat::Matrix<a_real> uinf;				///< Free-stream/reference condition
+	a_real g;								///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
-	amat::Matrix<acfd_real> integ;
+	amat::Matrix<a_real> integ;
 	
 	/// Local time steps
-	amat::Matrix<acfd_real> dtl;
+	amat::Matrix<a_real> dtl;
 
 	/// Flux (boundary integral) calculation context
 	InviscidFlux* inviflux;
@@ -66,35 +66,35 @@ protected:
 	FaceDataComputation* lim;
 
 	/// Cell centers
-	amat::Matrix<acfd_real> rc;
+	amat::Matrix<a_real> rc;
 
 	/// Ghost cell centers
-	amat::Matrix<acfd_real> rcg;
+	amat::Matrix<a_real> rcg;
 	/// Ghost cell-center flow quantities
-	amat::Matrix<acfd_real> ug;
+	amat::Matrix<a_real> ug;
 
 	/// Number of Guass points per face
 	int ngaussf;
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguassf x ndim (in that order)
-	amat::Matrix<acfd_real>* gr;
+	amat::Matrix<a_real>* gr;
 
 	/// Left state at each face (assuming 1 Gauss point per face)
-	amat::Matrix<acfd_real> uleft;
+	amat::Matrix<a_real> uleft;
 	/// Rigt state at each face (assuming 1 Gauss point per face)
-	amat::Matrix<acfd_real> uright;
+	amat::Matrix<a_real> uright;
 	
 	/// vector of unknowns
-	amat::Matrix<acfd_real> u;
+	amat::Matrix<a_real> u;
 	/// x-slopes
-	amat::Matrix<acfd_real> dudx;
+	amat::Matrix<a_real> dudx;
 	/// y-slopes
-	amat::Matrix<acfd_real> dudy;
+	amat::Matrix<a_real> dudy;
 
 	/// Linear solver to use
 	IterativeSolver* solver;
 
-	amat::Matrix<acfd_real> scalars;		///< Holds density, Mach number and pressure for each cell
-	amat::Matrix<acfd_real> velocities;		///< Holds velocity components for each cell
+	amat::Matrix<a_real> scalars;		///< Holds density, Mach number and pressure for each cell
+	amat::Matrix<a_real> velocities;		///< Holds velocity components for each cell
 
 	int order;					///< Formal order of accuracy of the scheme (1 or 2)
 
@@ -110,7 +110,7 @@ public:
 	ImplicitSolverBase(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
 			const double cfl, const double cfl_init, const int switchstepi, const int switchstep, const double relaxation_factor);
 	virtual ~ImplicitSolverBase();
-	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
+	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf);
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
@@ -119,7 +119,7 @@ public:
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Matrix<acfd_real>& instates, amat::Matrix<acfd_real>& bounstates);
+	void compute_boundary_states(const amat::Matrix<a_real>& instates, amat::Matrix<a_real>& bounstates);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** Note that the residual corresponds to R in the equation
@@ -139,7 +139,7 @@ public:
 	virtual void solve() = 0;
 
 	/// Computes the L2 norm of a cell-centered quantity
-	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);
+	a_real l2norm(const amat::Matrix<a_real>* const v);
 	
 	/// Compute cell-centred quantities to export
 	void postprocess_cell();
@@ -149,10 +149,10 @@ public:
 
 	/// Compute norm of cell-centered entropy production
 	/// Call aftr computing pressure etc \sa postprocess_cell
-	acfd_real compute_entropy_cell();
+	a_real compute_entropy_cell();
 
-	amat::Matrix<acfd_real> getscalars() const;
-	amat::Matrix<acfd_real> getvelocities() const;
+	amat::Matrix<a_real> getscalars() const;
+	amat::Matrix<a_real> getvelocities() const;
 
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint();
@@ -166,17 +166,17 @@ class ImplicitSolver : public ImplicitSolverBase
 {
 protected:
 	/// Diagonal blocks of the residual Jacobian
-	amat::Matrix<acfd_real>* diag;
+	amat::Matrix<a_real>* diag;
 	/// LU-factorized diagonal blocks
-	amat::Matrix<acfd_real>* ludiag;
+	amat::Matrix<a_real>* ludiag;
 	/// Permuation arrays of the diagonal blocks after LU factorization
 	amat::Matrix<int>* diagp;
 	/// Blocks in the lower triangular part
-	amat::Matrix<acfd_real>* lower;
+	amat::Matrix<a_real>* lower;
 	/// Blocks in the  upper triangular part
-	amat::Matrix<acfd_real>* upper;
+	amat::Matrix<a_real>* upper;
 	/// Residual corresponding to linear system to be solved (as opposed to that of the ODE to be solved)
-	amat::Matrix<acfd_real> afresidual;
+	amat::Matrix<a_real> afresidual;
 
 public:
 	ImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
@@ -187,20 +187,20 @@ public:
 	virtual void compute_LHS();
 
 	/// Computes the product of a vector with the jacobian (D+L+U) of the system
-	void jacobianVectorProduct(const amat::Matrix<acfd_real>* const du, amat::Matrix<acfd_real>& ans);
+	void jacobianVectorProduct(const amat::Matrix<a_real>* const du, amat::Matrix<a_real>& ans);
 
 	virtual void solve() = 0;
 };
 
 class SteadyStateImplicitSolver : public ImplicitSolver
 {
-	const acfd_real lintol;
-	const acfd_real steadytol;
+	const a_real lintol;
+	const a_real steadytol;
 	const int linmaxiter;
 	const int steadymaxiter;
 public:
 	SteadyStateImplicitSolver(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const a_real steady_tol, const int steady_maxiter, const a_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();
@@ -217,15 +217,15 @@ protected:
 	FluxFunction* eulerflux;
 
 	/// Diagonal blocks of the residual Jacobian
-	amat::Matrix<acfd_real>* diag;
+	amat::Matrix<a_real>* diag;
 	/// Permuation arrays of the diagonal blocks after LU factorization
 	amat::Matrix<int>* diagp;
 
 	/// `Eigenvalues' of flux for LHS
-	amat::Matrix<acfd_real> lambdaij;
+	amat::Matrix<a_real> lambdaij;
 
 	/// Flux evaluation for LHS; stores Euler flux for either cell for each face
-	amat::Matrix<acfd_real>* elemfaceflux;
+	amat::Matrix<a_real>* elemfaceflux;
 
 public:
 	ImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
@@ -248,11 +248,11 @@ public:
  */
 class LUSSORSteadyStateImplicitSolverMF : public ImplicitSolverMF
 {
-	const acfd_real steadytol;
+	const a_real steadytol;
 	const int steadymaxiter;
 public:
 	LUSSORSteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, const double cfl, const double icfl, const int switchstepi, const int swtchstp,
-			const double omega, const acfd_real steady_tol, const int steady_maxiter);
+			const double omega, const a_real steady_tol, const int steady_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();
@@ -263,13 +263,13 @@ public:
  */
 class SteadyStateImplicitSolverMF : public ImplicitSolverMF
 {
-	const acfd_real lintol;
-	const acfd_real steadytol;
+	const a_real lintol;
+	const a_real steadytol;
 	const int linmaxiter;
 	const int steadymaxiter;
 public:
 	SteadyStateImplicitSolverMF(const UMesh2dh* const mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real steady_tol, const int steady_maxiter, const acfd_real lin_tol, const int lin_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const a_real steady_tol, const int steady_maxiter, const a_real lin_tol, const int lin_maxiter);
 
 	/// Solves a steady problem by an implicit method first order in time, using local time-stepping
 	void solve();
@@ -277,13 +277,13 @@ public:
 
 class UnsteadyImplicitSolver : public ImplicitSolver
 {
-	const acfd_real lintol;
-	const acfd_real newtontol;
+	const a_real lintol;
+	const a_real newtontol;
 	const int linmaxiter;
 	const int newtonmaxiter;
 public:
 	UnsteadyImplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const a_real lin_tol, const int lin_maxiter, const a_real newton_tol, const int newton_maxiter);
 
 	/// Solves unsteady problem
 	virtual void solve() = 0;
@@ -294,7 +294,7 @@ class BackwardEulerSolver : public UnsteadyImplicitSolver
 {
 public:
 	BackwardEulerSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter, std::string linear_solver, 
-			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const acfd_real lin_tol, const int lin_maxiter, const acfd_real newton_tol, const int newton_maxiter);
+			const double cfl, const double icfl, const int switchstepi, const int swtchstp, const double omega, const a_real lin_tol, const int lin_maxiter, const a_real newton_tol, const int newton_maxiter);
 
 	void solve();
 };

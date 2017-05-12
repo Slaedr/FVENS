@@ -21,22 +21,22 @@ class Reconstruction
 protected:
 	const UMesh2dh* m;
 	/// Cell centers' coords
-	const amat::Matrix<acfd_real>* rc;
+	const amat::Matrix<a_real>* rc;
 	/// Ghost cell centers
-	const amat::Matrix<acfd_real>* rcg;
+	const amat::Matrix<a_real>* rcg;
 	/// Cell-centered flow vaiables
-	const amat::Matrix<acfd_real>* u;
+	const amat::Matrix<a_real>* u;
 	/// flow variables at ghost cells
-	const amat::Matrix<acfd_real>* ug;
+	const amat::Matrix<a_real>* ug;
 	/// Cell-centred x-gradients
-	amat::Matrix<acfd_real>* dudx;
+	amat::Matrix<a_real>* dudx;
 	/// Cell-centred y-gradients
-	amat::Matrix<acfd_real>* dudy;
+	amat::Matrix<a_real>* dudy;
 
 public:
 	virtual ~Reconstruction();
-	virtual void setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unk, const amat::Matrix<acfd_real>* unkg, amat::Matrix<acfd_real>* gradx, amat::Matrix<acfd_real>* grady, 
-			const amat::Matrix<acfd_real>* _rc, const amat::Matrix<acfd_real>* const _rcg);
+	virtual void setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
+			const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg);
 	virtual void compute_gradients() = 0;
 };
 
@@ -55,15 +55,15 @@ public:
 /// Class implementing linear weighted least-squares reconstruction
 class WeightedLeastSquaresReconstruction : public Reconstruction
 {
-	std::vector<amat::Matrix<acfd_real>> V;		///< LHS of least-squares problem
-	std::vector<amat::Matrix<acfd_real>> f;		///< RHS of least-squares problem
-	amat::Matrix<acfd_real> d;					///< unknown vector of least-squares problem
-	amat::Matrix<acfd_real> idets;				///< inverse of determinants of the LHS
-	amat::Matrix<acfd_real> du;
+	std::vector<amat::Matrix<a_real>> V;		///< LHS of least-squares problem
+	std::vector<amat::Matrix<a_real>> f;		///< RHS of least-squares problem
+	amat::Matrix<a_real> d;					///< unknown vector of least-squares problem
+	amat::Matrix<a_real> idets;				///< inverse of determinants of the LHS
+	amat::Matrix<a_real> du;
 
 public:
-	void setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unk, const amat::Matrix<acfd_real>* unkg, amat::Matrix<acfd_real>* gradx, amat::Matrix<acfd_real>* grady, 
-			const amat::Matrix<acfd_real>* _rc, const amat::Matrix<acfd_real>* const _rcg);
+	void setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
+			const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg);
 	void compute_gradients();
 };
 

@@ -8,21 +8,45 @@
 
 namespace acfd {
 
-InviscidFlux::InviscidFlux(int num_vars, int num_dims, acfd_real gamma) : nvars(num_vars), ndim(num_dims), g(gamma)
+InviscidFlux::InviscidFlux(const a_real gamma) : g(gamma)
 { }
 
 InviscidFlux::~InviscidFlux()
 { }
 
+LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma) : InviscidFlux(gamma)
+{ }
 
-VanLeerFlux::VanLeerFlux(int num_vars, int num_dims, acfd_real gamma) : InviscidFlux(num_vars, num_dims, gamma)
+void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux)
+{
+	a_real vni, vnj, pi, pj, ci, cj, eig;
+
+	//calculate presures from u
+	pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
+	pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
+	//calculate speeds of sound
+	ci = sqrt(g*pi/ul[0]);
+	cj = sqrt(g*pj/ur[0]);
+	//calculate normal velocities
+	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
+	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
+	// max eigenvalue
+	eig = fabs(vni+ci) > fabs(vnj+cj) ? fabs(vni+ci) : fabs(vnj+cj);
+	
+	flux[0] = 0.5*( ul[0]*vni + ur[0]*vnj - eig*(ur[0]-ul[0]) );
+	flux[1] = 0.5*( vni*ul[1]+pi*n[0] + vnj*ur[1]+pj*n[0] - eig*(ur[1]-ul[1]) );
+	flux[2] = 0.5*( vni*ul[2]+pi*n[1] + vnj*ur[2]*pj*n[1] - eig*(ur[2]-ul[2]) );
+	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
+}
+
+VanLeerFlux::VanLeerFlux(const a_real gamma) : InviscidFlux(gamma)
 {
 }
 
-void VanLeerFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, const acfd_real* const n, acfd_real *const flux)
+void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	acfd_real nx, ny, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
-	acfd_real fiplus[NVARS], fjminus[NVARS];
+	a_real nx, ny, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
+	a_real fiplus[NVARS], fjminus[NVARS];
 
 	nx = n[0];
 	ny = n[1];
@@ -86,12 +110,12 @@ void VanLeerFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur,
 }
 
 
-RoeFlux::RoeFlux(int num_vars, int num_dims, acfd_real gamma) : InviscidFlux(num_vars, num_dims, gamma)
+RoeFlux::RoeFlux(const a_real gamma) : InviscidFlux(gamma)
 { }
 
-void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, const acfd_real* const n, acfd_real *const flux)
+void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	acfd_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
+	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
 	int ivar;
 
 	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
@@ -112,7 +136,7 @@ void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, con
 
 	// compute Roe-averages
 	
-	acfd_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	a_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
 	Rij = sqrt(ur[0]/ul[0]);
 	rhoij = Rij*ul[0];
 	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
@@ -123,11 +147,11 @@ void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, con
 	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
 	// eigenvalues
-	acfd_real l[4];
+	a_real l[4];
 	l[0] = vnij; l[1] = vnij; l[2] = vnij + cij; l[3] = vnij - cij;
 
 	// Harten-Hyman entropy fix
-	acfd_real eps = 0;
+	a_real eps = 0;
 	if(eps < l[0]-vni) eps = l[0]-vni;
 	if(eps < vnj-l[0]) eps = vnj-l[0];
 	if(fabs(l[0]) < eps) l[0] = eps;
@@ -144,7 +168,7 @@ void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, con
 	if(fabs(l[3]) < eps) l[3] = eps;
 
 	// eigenvectors (column vectors of r below)
-	acfd_real r[4][4];
+	a_real r[4][4];
 	
 	// according to Dr Luo's notes
 	r[0][0] = 1.0;		r[0][1] = 0;							r[0][2] = 1.0;				r[0][3] = 1.0;
@@ -171,7 +195,7 @@ void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, con
 	}
 
 	// R^(-1)(qR-qL)
-	acfd_real dw[4];
+	a_real dw[4];
 	dw[0] = (ur[0]-ul[0]) - (pj-pi)/(cij*cij);
 	dw[1] = (vxj-vxi)*n[1] - (vyj-vyi)*n[0];			// Dr Luo
 	//dw(1) = rhoij;										// hack for conformance with Fink
@@ -179,14 +203,14 @@ void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, con
 	dw[3] = -(vnj-vni) + (pj-pi)/(rhoij*cij);
 
 	// get one-sided flux vectors
-	acfd_real fi[4], fj[4];
+	a_real fi[4], fj[4];
 	fi[0] = ul[0]*vni;						fj[0] = ur[0]*vnj;
 	fi[1] = ul[0]*vni*vxi + pi*n[0];		fj[1] = ur[0]*vnj*vxj + pj*n[0];
 	fj[2] = ul[0]*vni*vyi + pi*n[1];		fj[2] = ur[0]*vnj*vyj + pj*n[1];
 	fj[3] = vni*(ul[3] + pi);				fj[3] = vnj*(ur[3] + pj);
 
 	// finally compute fluxes
-	acfd_real sum; int j;
+	a_real sum; int j;
 	for(ivar = 0; ivar < NVARS; ivar++)
 	{
 		sum = 0;
@@ -196,16 +220,16 @@ void RoeFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, con
 	}
 }
 
-HLLCFlux::HLLCFlux(int num_vars, int num_dims, acfd_real gamma) : InviscidFlux(num_vars, num_dims, gamma)
+HLLCFlux::HLLCFlux(const a_real gamma) : InviscidFlux(gamma)
 {
 }
 
 /** Currently, the estimated signal speeds are the classical estimates, not the corrected ones given by Remaki et. al.
  */
-void HLLCFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, const acfd_real* const n, acfd_real *const flux)
+void HLLCFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	acfd_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj, pstar;
-	acfd_real utemp[NVARS];
+	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj, pstar;
+	a_real utemp[NVARS];
 	int ivar;
 
 	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
@@ -225,7 +249,7 @@ void HLLCFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, co
 	Hj = (ur[3] + pj)/ur[0];
 
 	// compute Roe-averages
-	acfd_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	a_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
 	Rij = sqrt(ur[0]/ul[0]);
 	rhoij = Rij*ul[0];
 	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
@@ -236,7 +260,7 @@ void HLLCFlux::get_flux(const acfd_real *const ul, const acfd_real *const ur, co
 	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
 	// estimate signal speeds (classical; not Remaki corrected)
-	acfd_real sr, sl, sm;
+	a_real sr, sl, sm;
 	sl = vni - ci;
 	if (sl > vnij-cij)
 		sl = vnij-cij;

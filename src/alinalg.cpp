@@ -2,7 +2,7 @@
 
 namespace acfd {
 
-void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Matrix<acfd_real>& x)
+void gausselim(amat::Matrix<a_real>& A, amat::Matrix<a_real>& b, amat::Matrix<a_real>& x)
 {
 #ifdef DEBUG
 	//std::cout << "gausselim: Input LHS matrix is " << A.rows() << " x " << A.cols() << std::endl;
@@ -11,11 +11,11 @@ void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Mat
 	int N = A.rows();
 	
 	int k, l;
-	acfd_real ff, temp;
+	a_real ff, temp;
 
 	for(int i = 0; i < N-1; i++)
 	{
-		acfd_real max = fabs(A(i,i));
+		a_real max = fabs(A(i,i));
 		int maxr = i;
 		for(int j = i+1; j < N; j++)
 		{
@@ -57,7 +57,7 @@ void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Mat
 
 	//Part 2: back substitution to obtain final solution
 	// Note: the solution is stored in x
-	acfd_real sum;
+	a_real sum;
 	for(l = 0; l < b.cols(); l++)
 	{
 		x(N-1,l) = b(N-1,l)/A(N-1,N-1);
@@ -76,7 +76,7 @@ void gausselim(amat::Matrix<acfd_real>& A, amat::Matrix<acfd_real>& b, amat::Mat
 	}
 }
 
-void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
+void LUfactor(amat::Matrix<a_real>& A, amat::Matrix<int>& p)
 {
 	int N = A.rows();
 #ifdef DEBUG
@@ -87,7 +87,7 @@ void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
 	}
 #endif
 	int l,k,i,j,maxrow;
-	acfd_real maxentry, temp;
+	a_real maxentry, temp;
 
 	// set initial permutation array
 	for(k = 0; k < N; k++)
@@ -125,12 +125,12 @@ void LUfactor(amat::Matrix<acfd_real>& A, amat::Matrix<int>& p)
 	}
 }
 
-void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const amat::Matrix<acfd_real>& b, amat::Matrix<acfd_real>& x)
+void LUsolve(const amat::Matrix<a_real>& A, const amat::Matrix<int>& p, const amat::Matrix<a_real>& b, amat::Matrix<a_real>& x)
 {
 	int N = A.rows();
 
-	amat::Matrix<acfd_real> y(N,1);
-	acfd_real sum;
+	amat::Matrix<a_real> y(N,1);
+	a_real sum;
 	int i,j;
 	
 	// solve Ly = Pb for y
@@ -162,9 +162,9 @@ void LUsolve(const amat::Matrix<acfd_real>& A, const amat::Matrix<int>& p, const
 	}
 }
 
-SSOR_MFSolver::SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
-		const amat::Matrix<acfd_real>* const unk, const double omega)
+SSOR_MFSolver::SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
+		const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij,  const amat::Matrix<a_real>* const elem_flux,
+		const amat::Matrix<a_real>* const unk, const double omega)
 	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
 {
 	f1.setup(nvars,1);
@@ -172,7 +172,7 @@ SSOR_MFSolver::SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, con
 	uelpdu.setup(nvars,1);
 }
 
-void SSOR_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
+void SSOR_MFSolver::compute_update(amat::Matrix<a_real>* const du)
 {
 	// forward sweep
 	// f1 is used to aggregate contributions from neighboring elements
@@ -245,18 +245,18 @@ void SSOR_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
-BJ_MFSolver::BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, const FluxFunction* const inviscid_flux,
-		const amat::Matrix<acfd_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<acfd_real>* const lambda_ij,  const amat::Matrix<acfd_real>* const elem_flux,
-		const amat::Matrix<acfd_real>* const unk, const double omega)
+BJ_MFSolver::BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
+		const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij,  const amat::Matrix<a_real>* const elem_flux,
+		const amat::Matrix<a_real>* const unk, const double omega)
 	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
 {
 	f1.setup(nvars,1);
 	uelpdu.setup(nvars,1);
 }
 
-void BJ_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
+void BJ_MFSolver::compute_update(amat::Matrix<a_real>* const du)
 {
-	acfd_int ielem;
+	a_int ielem;
 	int ivar;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -268,8 +268,8 @@ void BJ_MFSolver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
-SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
-		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
+		const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
 		const double omega)
 	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
 {
@@ -277,7 +277,7 @@ SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat
 	f2.setup(nvars,1);
 }
 
-void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+void SSOR_Solver::compute_update(amat::Matrix<a_real>* const du)
 {
 	int jfa, ivar;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
@@ -333,17 +333,17 @@ void SSOR_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
-BJ_Solver::BJ_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
-		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+BJ_Solver::BJ_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
+		const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
 		const double omega)
 	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), w(omega)
 {
 	f1.setup(nvars,1);
 }
 
-void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
+void BJ_Solver::compute_update(amat::Matrix<a_real>* const du)
 {
-	acfd_int ielem;
+	a_int ielem;
 	int ivar;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -355,18 +355,18 @@ void BJ_Solver::compute_update(amat::Matrix<acfd_real>* const du)
 	}
 }
 
-BJ_Relaxation::BJ_Relaxation(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<acfd_real>* const residual, 
-		const amat::Matrix<acfd_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<acfd_real>* const lower, const amat::Matrix<acfd_real>* const upper,
+BJ_Relaxation::BJ_Relaxation(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
+		const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
 		const double omega)
 	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
 {
 	f1.setup(nvars,1);
 }
 
-void BJ_Relaxation::compute_update(amat::Matrix<acfd_real>* const u)
+void BJ_Relaxation::compute_update(amat::Matrix<a_real>* const u)
 {
 	// TODO: modify this function to implement block Jacobi relaxation scheme
-	acfd_int ielem;
+	a_int ielem;
 	int ivar;
 	for(ielem = 0; ielem < m->gnelem(); ielem++)
 	{

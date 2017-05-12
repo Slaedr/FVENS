@@ -2,7 +2,7 @@
  * @brief Implementation of subroutines to write mesh data to various kinds of output formats
  */
 
-#include <aoutput.hpp>
+#include "aoutput.hpp"
 
 /* Writes multiple scalar data sets and one vector data set, all cell-centered data, to a file in VTU format.
  * If either x or y is a 0x0 matrix, it is ignored.
@@ -272,7 +272,7 @@ void writeMeshToVtu(std::string fname, acfd::UMesh2dh& m)
 			elemcode = 23;
 		else if(m.gnnode(i) == 9)
 			elemcode = 23;
-			out << "\t\t\t\t" << elemcode << '\n';
+		out << "\t\t\t\t" << elemcode << '\n';
 	}
 	out << "\t\t\t</DataArray>\n";
 	out << "\t\t</Cells>\n";

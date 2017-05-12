@@ -41,7 +41,7 @@ private:
 	amat::Matrix<int > inpoel;				///< Interconnectivity matrix: lists node numbers of nodes in each element
 	amat::Matrix<int > bface;					///< Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
 	amat::Matrix<double > vol_regions;		///< to hold volume region markers, if any
-	amat::Matrix<acfd_real > flag_bpoin;		///< Holds 1 or 0 for each point depending on whether or not that point is a boundary point
+	amat::Matrix<a_real > flag_bpoin;		///< Holds 1 or 0 for each point depending on whether or not that point is a boundary point
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Matrix<int > esup_p;
@@ -84,8 +84,8 @@ private:
 
 	bool alloc_jacobians;			///< Flag indicating whether space has been allocated for jacobians
 	amat::Matrix<double > jacobians;		///< Contains jacobians of each (linear triangular) element
-	amat::Matrix<acfd_real> area;			///< Contains area of each element (either triangle or quad)
-	amat::Matrix<acfd_real> gallfa;			///< Stores lengths and normals for linear mesh faces
+	amat::Matrix<a_real> area;			///< Contains area of each element (either triangle or quad)
+	amat::Matrix<a_real> gallfa;			///< Stores lengths and normals for linear mesh faces
 	
 	/// Contains Knupp's node-local areas for each node of each element. 
 	/** If the elements are triangles, it contains just 1 value for each element. If elements are quads, there are 4 values for each element, one associated with each node. */
@@ -128,7 +128,7 @@ public:
 	int gpsup(int i) const { return psup.get(i); }
 	int gpsup_p(int i) const { return psup_p.get(i); }
 	int gesuel(int ielem, int jnode) const { return esuel.get(ielem, jnode); }
-	acfd_int gelemface(acfd_int ielem, int inode) const { return elemface.get(ielem,inode); }
+	a_int gelemface(a_int ielem, int inode) const { return elemface.get(ielem,inode); }
 	int gintfac(int face, int i) const { return intfac.get(face,i); }
 	int gintfacbtags(int face, int i) const { return intfacbtags.get(face,i); }
 	int gbpoints(int poin, int i) const { return bpoints.get(poin,i); }
@@ -137,9 +137,9 @@ public:
 	int gbifmap(int intfacno) const { return bifmap.get(intfacno); }
 	int gifbmap(int bfaceno) const { return ifbmap.get(bfaceno); }
 	double gjacobians(int ielem) const { return jacobians.get(ielem,0); }
-	acfd_real garea(acfd_int ielem) const { return area.get(ielem,0); }
-	acfd_real ggallfa(acfd_int iface, int index) const { return gallfa.get(iface,index); }
-	int gflag_bpoin(const acfd_int pointno) const { return flag_bpoin.get(pointno); }
+	a_real garea(a_int ielem) const { return area.get(ielem,0); }
+	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
+	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
 	int gnpoin() const { return npoin; }
 	int gnelem() const { return nelem; }
@@ -156,7 +156,7 @@ public:
 
 	/* Functions to set some mesh data structures. */
 	/// set coordinates of a certain point; 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
-	void scoords(const acfd_int pointno, const int dim, const acfd_real value)
+	void scoords(const a_int pointno, const int dim, const a_real value)
 	{
 		coords(pointno,dim) = value;
 	}

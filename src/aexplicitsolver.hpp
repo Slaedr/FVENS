@@ -39,14 +39,14 @@ namespace acfd {
 class ExplicitSolver
 {
 	const UMesh2dh* m;
-	amat::Matrix<acfd_real> m_inverse;			///< Left hand side (just the volume of the element for FV)
-	amat::Matrix<acfd_real> residual;			///< Right hand side for boundary integrals and source terms
+	amat::Matrix<a_real> m_inverse;			///< Left hand side (just the volume of the element for FV)
+	amat::Matrix<a_real> residual;			///< Right hand side for boundary integrals and source terms
 	int nvars;									///< number of conserved variables ** deprecated, use the preprocessor constant NVARS instead **
-	amat::Matrix<acfd_real> uinf;				///< Free-stream/reference condition
-	acfd_real g;								///< adiabatic index
+	amat::Matrix<a_real> uinf;				///< Free-stream/reference condition
+	a_real g;								///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
-	amat::Matrix<acfd_real> integ;
+	amat::Matrix<a_real> integ;
 
 	/// Flux (boundary integral) calculation context
 	InviscidFlux* inviflux;
@@ -58,34 +58,34 @@ class ExplicitSolver
 	FaceDataComputation* lim;
 
 	/// Cell centers
-	amat::Matrix<acfd_real> rc;
+	amat::Matrix<a_real> rc;
 
 	/// Ghost cell centers
-	amat::Matrix<acfd_real> rcg;
+	amat::Matrix<a_real> rcg;
 	/// Ghost cell flow quantities
-	amat::Matrix<acfd_real> ug;
+	amat::Matrix<a_real> ug;
 
 	/// Number of Guass points per face
 	int ngaussf;
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguassf x ndim (in that order)
-	amat::Matrix<acfd_real>* gr;
+	amat::Matrix<a_real>* gr;
 
 	/// Flux across each face
-	amat::Matrix<acfd_real> fluxes;
+	amat::Matrix<a_real> fluxes;
 	/// Left state at each face (assuming 1 Gauss point per face)
-	amat::Matrix<acfd_real> uleft;
+	amat::Matrix<a_real> uleft;
 	/// Rigt state at each face (assuming 1 Gauss point per face)
-	amat::Matrix<acfd_real> uright;
+	amat::Matrix<a_real> uright;
 	
 	/// vector of unknowns
-	amat::Matrix<acfd_real> u;
+	amat::Matrix<a_real> u;
 	/// x-slopes
-	amat::Matrix<acfd_real> dudx;
+	amat::Matrix<a_real> dudx;
 	/// y-slopes
-	amat::Matrix<acfd_real> dudy;
+	amat::Matrix<a_real> dudy;
 
-	amat::Matrix<acfd_real> scalars;		///< Holds density, Mach number and pressure for each cell
-	amat::Matrix<acfd_real> velocities;		///< Holds velocity components for each cell
+	amat::Matrix<a_real> scalars;		///< Holds density, Mach number and pressure for each cell
+	amat::Matrix<a_real> velocities;		///< Holds velocity components for each cell
 
 	int order;					///< Formal order of accuracy of the scheme (1 or 2)
 
@@ -95,7 +95,7 @@ class ExplicitSolver
 public:
 	ExplicitSolver(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter);
 	~ExplicitSolver();
-	void loaddata(acfd_real Minf, acfd_real vinf, acfd_real a, acfd_real rhoinf);
+	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf);
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
@@ -104,7 +104,7 @@ public:
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Matrix<acfd_real>& instates, amat::Matrix<acfd_real>& bounstates);
+	void compute_boundary_states(const amat::Matrix<a_real>& instates, amat::Matrix<a_real>& bounstates);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	void compute_RHS();
@@ -113,10 +113,10 @@ public:
 	void compute_face_states();
 
 	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
-	void solve_rk1_steady(const acfd_real tol, const int maxiter, const acfd_real cfl);
+	void solve_rk1_steady(const a_real tol, const int maxiter, const a_real cfl);
 
 	/// Computes the L2 norm of a cell-centered quantity
-	acfd_real l2norm(const amat::Matrix<acfd_real>* const v);
+	a_real l2norm(const amat::Matrix<a_real>* const v);
 	
 	/// Compute cell-centred quantities to export
 	void postprocess_cell();
@@ -126,10 +126,10 @@ public:
 
 	/// Compute norm of cell-centered entropy production
 	/// Call aftr computing pressure etc \sa postprocess_cell
-	acfd_real compute_entropy_cell();
+	a_real compute_entropy_cell();
 
-	amat::Matrix<acfd_real> getscalars() const;
-	amat::Matrix<acfd_real> getvelocities() const;
+	amat::Matrix<a_real> getscalars() const;
+	amat::Matrix<a_real> getvelocities() const;
 
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint();

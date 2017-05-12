@@ -20,6 +20,7 @@
 
 #define NDIM 2
 #define NVARS 4
+#define NGAUSS 1
 
 #ifndef MESHDATA_DOUBLE_PRECISION
 #define MESHDATA_DOUBLE_PRECISION 20
@@ -27,8 +28,8 @@
 
 namespace acfd
 {
-	typedef double acfd_real;
-	typedef int acfd_int;
+	typedef double a_real;
+	typedef int a_int;
 }
 
 #endif

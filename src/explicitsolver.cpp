@@ -64,8 +64,8 @@ int main(int argc, char* argv[])
 	double err = prob.compute_entropy_cell();
 
 	//prob.postprocess_point();
-	Matrix<acfd_real> scalars = prob.getscalars();
-	Matrix<acfd_real> velocities = prob.getvelocities();
+	Matrix<a_real> scalars = prob.getscalars();
+	Matrix<a_real> velocities = prob.getvelocities();
 
 	string scalarnames[] = {"density", "mach-number", "pressure"};
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");

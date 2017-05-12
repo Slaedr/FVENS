@@ -25,10 +25,10 @@ T determinant(const Matrix<T>& mat)
 		Matrix<T>* submat;
 		submat = new Matrix<T>[mat.nrows];
 		T* dets = new T[mat.nrows];
-		for(acfd_int k = 0; k < mat.nrows; k++)
+		for(a_int k = 0; k < mat.nrows; k++)
 		{
 			submat[k].setup(mat.nrows-1,mat.nrows-1);
-			acfd_int i,j, ii=0, jj=0;
+			a_int i,j, ii=0, jj=0;
 			for(i = 1; i < mat.nrows; i++)		// leave first row
 			{
 				jj = 0;

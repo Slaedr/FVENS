@@ -1,7 +1,7 @@
 -mesh_file
-../data/2dcylinder-fine.msh
+../data/2dcylinder-medium.msh
 -output_file
-../data/omp-2dcylinder-fine-hllc-tvdrk.vtu
+../data/omp-2dcylinder-medium-hllc-tvdrk.vtu
 -CFL
 0.24
 -Tolerance

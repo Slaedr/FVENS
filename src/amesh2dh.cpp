@@ -133,7 +133,7 @@ void UMesh2dh::readDomn(std::string mfile)
 	//std::cout << "\nUTriMesh: Allocating coords..";
 	coords.setup(npoin, ndim);
 	// temporary array to hold connectivity matrix
-	amat::Matrix<acfd_int > elms(nelem,nnode2);
+	amat::Matrix<a_int > elms(nelem,nnode2);
 	//std::cout << "UTriMesh: Allocating bface...\n";
 	bface.setup(nface, nnofa + nbtag);
 	
@@ -717,7 +717,7 @@ void UMesh2dh::compute_topological()
 				nbd[j] = false;
 
 			if(nnode[ielem] == 3)
-				for(int i = 0; i < nbd.size(); i++)
+				for(size_t i = 0; i < nbd.size(); i++)
 					nbd[i] = true;
 			else if(nnode[ielem] == 4)
 				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
@@ -765,7 +765,7 @@ void UMesh2dh::compute_topological()
 				nbd[j] = false;
 
 			if(nnode[ielem] == 3)
-				for(int i = 0; i < nbd.size(); i++)
+				for(size_t i = 0; i < nbd.size(); i++)
 					nbd[i] = true;
 			else if(nnode[ielem] == 4)
 				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
@@ -900,7 +900,7 @@ void UMesh2dh::compute_topological()
 	//reset face totals
 	nbface = naface = 0;
 
-	int in1, je, jnode, jlocnode;
+	int in1, je, jnode;
 
 	//second run: populate intfac
 	for(int ie = 0; ie < nelem; ie++)
@@ -1322,17 +1322,16 @@ UMesh2dh UMesh2dh::convertLinearToQuadratic()
 	
 	// for non-simplicial mesh, add extra points at cell-centres as well
 
-	int parmcell;
 	int numpoin = npoin+naface*parm;		// next global point number to be added
 	// get cell centres
 	for(int iel = 0; iel < nelem; iel++)
 	{
-		parmcell = 1;		// number of extra nodes per cell in the interior of the cell
+		//parmcell = 1;		// number of extra nodes per cell in the interior of the cell
 		double c_x = 0, c_y = 0;
 
 		if(nnode[iel] == 4)	
 		{
-			parmcell = parm*parm;		// number of interior points to be added
+			//parmcell = parm*parm;		// number of interior points to be added
 			// for now, we just add one node at cell center
 				for(int inode = 0; inode < nnode[iel]; inode++)
 				{

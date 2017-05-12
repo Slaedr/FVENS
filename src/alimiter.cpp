@@ -5,18 +5,18 @@ namespace acfd {
 FaceDataComputation::FaceDataComputation()
 { }
 
-FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
-		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
-		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const amat::Matrix<a_real>* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
+		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
+		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
+		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
 	:
 	m(mesh),
 	u (unknowns),
 	ug (unknow_ghost),          // contains ghost cell states according to BCs for each boundary edge
 	dudx (x_deriv),
 	dudy (y_deriv),
-	ri (c_centres),
 	rb (ghost_centres),       // contains coords of right "cell centroid" of each boundary edge
+	ri (c_centres),
 	gr (gauss_r),
 	ufl (uface_left),
 	ufr (uface_right),
@@ -26,10 +26,10 @@ FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const amat::Matr
 FaceDataComputation::~FaceDataComputation()
 { }
 
-void FaceDataComputation::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
-		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres,
-		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+void FaceDataComputation::setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
+		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
+		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres,
+		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
 {
 	m = mesh;
 	u = unknowns;
@@ -44,10 +44,10 @@ void FaceDataComputation::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_re
 	ng = gr[0].rows();
 }
 
-NoLimiter::NoLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
-		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, 
-		const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+NoLimiter::NoLimiter(const UMesh2dh* mesh, const amat::Matrix<a_real>* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
+		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
+		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
+		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
 	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
 { }
 
@@ -58,13 +58,13 @@ void NoLimiter::compute_face_values()
 #pragma omp parallel default(shared)
 	{
 #pragma omp for
-		for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
-			acfd_int ielem = m->gintfac(ied,0);
-			acfd_int jelem = m->gintfac(ied,1);
+			a_int ielem = m->gintfac(ied,0);
+			a_int jelem = m->gintfac(ied,1);
 
 			//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
-			for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
+			for(int ig = 0; ig < NGAUSS; ig++)      // iterate over gauss points
 			{
 				for(int i = 0; i < NVARS; i++)
 				{
@@ -77,11 +77,11 @@ void NoLimiter::compute_face_values()
 		//cout << "NoLimiter: compute_unlimited_interface_values(): Computing values at faces - boundary\n";
 		//Now calculate ghost states at boundary faces using the ufl and ufr of cells
 #pragma omp for
-		for(acfd_int ied = 0; ied < m->gnbface(); ied++)
+		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
-			acfd_int ielem = m->gintfac(ied,0);
+			a_int ielem = m->gintfac(ied,0);
 
-			for(int ig = 0; ig < ng; ig++)
+			for(int ig = 0; ig < NGAUSS; ig++)
 			{
 				for(int i = 0; i < NVARS; i++)
 					(*ufl)(ied,i) = u->get(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
@@ -90,14 +90,14 @@ void NoLimiter::compute_face_values()
 	}
 }
 
-WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
-		const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-		const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* c_centres, const amat::Matrix<acfd_real>* gauss_r, 
-		amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const amat::Matrix<a_real>* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
+		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
+		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, const amat::Matrix<a_real>* gauss_r, 
+		amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
 	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
 {
-	ldudx = new amat::Matrix<acfd_real>(m->gnelem(),NVARS);
-	ldudy = new amat::Matrix<acfd_real>(m->gnelem(),NVARS);
+	ldudx = new amat::Matrix<a_real>(m->gnelem(),NVARS);
+	ldudy = new amat::Matrix<a_real>(m->gnelem(),NVARS);
 	// values below chosen from second reference (Dumbser and Kaeser)
 	gamma = 4.0;
 	lambda = 1e3;
@@ -117,17 +117,17 @@ void WENOLimiter::compute_face_values()
 #pragma omp parallel default(shared)
 	{
 #pragma omp for
-		for(acfd_int ielem = 0; ielem < m->gnelem(); ielem++)
+		for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 		{
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
-				acfd_real wsum = 0;
+				a_real wsum = 0;
 				(*ldudx)(ielem,ivar) = 0;
 				(*ldudy)(ielem,ivar) = 0;
 
 				// Central stencil
-				acfd_real denom = pow( dudx->get(ielem,ivar)*dudx->get(ielem,ivar) + dudy->get(ielem,ivar)*dudy->get(ielem,ivar) + epsilon, gamma);
-				acfd_real w = lambda / denom;
+				a_real denom = pow( dudx->get(ielem,ivar)*dudx->get(ielem,ivar) + dudy->get(ielem,ivar)*dudy->get(ielem,ivar) + epsilon, gamma);
+				a_real w = lambda / denom;
 				wsum += w;
 				(*ldudx)(ielem,ivar) += w*dudx->get(ielem,ivar);
 				(*ldudy)(ielem,ivar) += w*dudy->get(ielem,ivar);
@@ -135,7 +135,7 @@ void WENOLimiter::compute_face_values()
 				// Biased stencils
 				for(int jel = 0; jel < m->gnfael(ielem); jel++)
 				{
-					acfd_int jelem = m->gesuel(ielem,jel);
+					a_int jelem = m->gesuel(ielem,jel);
 
 					// ignore ghost cells
 					if(jelem >= m->gnelem())
@@ -155,13 +155,13 @@ void WENOLimiter::compute_face_values()
 		
 		// internal faces
 #pragma omp for
-		for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
-			acfd_int ielem = m->gintfac(ied,0);
-			acfd_int jelem = m->gintfac(ied,1);
+			a_int ielem = m->gintfac(ied,0);
+			a_int jelem = m->gintfac(ied,1);
 
 			//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
-			for(int ig = 0; ig < ng; ig++)      // iterate over gauss points
+			for(int ig = 0; ig < NGAUSS; ig++)      // iterate over gauss points
 			{
 				for(int i = 0; i < NVARS; i++)
 				{
@@ -174,11 +174,11 @@ void WENOLimiter::compute_face_values()
 		
 		//Now calculate ghost states at boundary faces using the ufl and ufr of cells
 #pragma omp for
-		for(acfd_int ied = 0; ied < m->gnbface(); ied++)
+		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
-			acfd_int ielem = m->gintfac(ied,0);
+			a_int ielem = m->gintfac(ied,0);
 
-			for(int ig = 0; ig < ng; ig++)
+			for(int ig = 0; ig < NGAUSS; ig++)
 			{
 				for(int i = 0; i < NVARS; i++)
 					(*ufl)(ied,i) = u->get(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
@@ -187,10 +187,10 @@ void WENOLimiter::compute_face_values()
 	} // end parallel region
 }
 
-void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Matrix<acfd_real>* unknowns, const amat::Matrix<acfd_real>* unknow_ghost, 
-	const amat::Matrix<acfd_real>* x_deriv, const amat::Matrix<acfd_real>* y_deriv, 
-	const amat::Matrix<acfd_real>* ghost_centres, const amat::Matrix<acfd_real>* r_centres, 
-	const amat::Matrix<acfd_real>* gauss_r, amat::Matrix<acfd_real>* uface_left, amat::Matrix<acfd_real>* uface_right)
+void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
+	const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
+	const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* r_centres, 
+	const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
 {
 	FaceDataComputation::setup(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, r_centres, gauss_r, uface_left, uface_right);
 	eps = 1e-8;
@@ -204,10 +204,10 @@ void VanAlbadaLimiter::compute_face_values()
 {
 	//compute_limiters
 	
-	for(acfd_int ied = 0; ied < m->gnbface(); ied++)
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		int lel = m->gintfac(ied,0);
-		amat::Matrix<acfd_real> deltam(NVARS,1);
+		amat::Matrix<a_real> deltam(NVARS,1);
 		for(int i = 0; i < NVARS; i++)
 		{
 			deltam(i) = 2 * ( dudx->get(lel,i)*(rb->get(ied,0)-ri->get(lel,0)) + dudy->get(lel,i)*(rb->get(ied,1)-ri->get(lel,1)) ) - (ug->get(ied,i) - u->get(lel,i));
@@ -216,12 +216,12 @@ void VanAlbadaLimiter::compute_face_values()
 		}
 	}
 
-	for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+	for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 	{
-		acfd_int lel = m->gintfac(ied,0);
-		acfd_int rel = m->gintfac(ied,1);
-		amat::Matrix<acfd_real> deltam(NVARS,1);
-		amat::Matrix<acfd_real> deltap(NVARS,1);
+		a_int lel = m->gintfac(ied,0);
+		a_int rel = m->gintfac(ied,1);
+		amat::Matrix<a_real> deltam(NVARS,1);
+		amat::Matrix<a_real> deltap(NVARS,1);
 		for(int i = 0; i < NVARS; i++)
 		{
 			deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u->get(rel,i) - u->get(lel,i));
@@ -238,12 +238,12 @@ void VanAlbadaLimiter::compute_face_values()
 	// apply the limiters
 	
 	//cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
-	amat::Matrix<acfd_real> deltam(NVARS,1);
-	amat::Matrix<acfd_real> deltap(NVARS,1);
-	for(acfd_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+	amat::Matrix<a_real> deltam(NVARS,1);
+	amat::Matrix<a_real> deltap(NVARS,1);
+	for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 	{
-		acfd_int ielem = m->gintfac(ied,0);
-		acfd_int jelem = m->gintfac(ied,1);
+		a_int ielem = m->gintfac(ied,0);
+		a_int jelem = m->gintfac(ied,1);
 
 		// NOTE: Only for 1 Gauss point per face
 		//cout << "VanAlbadaLimiter: compute_interface_values(): iterate over gauss points..\n";
