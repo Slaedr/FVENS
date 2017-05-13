@@ -37,6 +37,9 @@ public:
 	 * \param[in|out] flux contains the computed flux
 	 */
 	virtual void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const flux) = 0;
+
+	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
+
 	virtual ~InviscidFlux();
 };
 

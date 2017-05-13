@@ -11,6 +11,9 @@ namespace acfd {
 InviscidFlux::InviscidFlux(const a_real gamma) : g(gamma)
 { }
 
+void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+{ }
+
 InviscidFlux::~InviscidFlux()
 { }
 
@@ -38,6 +41,8 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *cons
 	flux[2] = 0.5*( vni*ul[2]+pi*n[1] + vnj*ur[2]*pj*n[1] - eig*(ur[2]-ul[2]) );
 	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
 }
+
+void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 
 VanLeerFlux::VanLeerFlux(const a_real gamma) : InviscidFlux(gamma)
 {
