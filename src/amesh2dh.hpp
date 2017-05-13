@@ -7,14 +7,14 @@
 #define __AMESH2DH_H
 
 #ifndef __ACONSTANTS_H
-#include <aconstants.hpp>
+#include "aconstants.hpp"
 #endif
 
 #ifndef __AMATRIX_H
-#include <amatrix.hpp>
+#include "amatrix.hpp"
 #endif
 #ifndef __ADATASTRUCTURES_H
-#include <adatastructures.hpp>
+#include "adatastructures.hpp"
 #endif
 
 namespace acfd {
@@ -137,7 +137,7 @@ public:
 	int gbifmap(int intfacno) const { return bifmap.get(intfacno); }
 	int gifbmap(int bfaceno) const { return ifbmap.get(bfaceno); }
 	double gjacobians(int ielem) const { return jacobians.get(ielem,0); }
-	a_real garea(a_int ielem) const { return area.get(ielem,0); }
+	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
 	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 

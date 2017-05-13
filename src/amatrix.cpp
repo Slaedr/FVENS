@@ -1,4 +1,4 @@
-#include <amatrix.hpp>
+#include "amatrix.hpp"
 
 namespace amat {
 

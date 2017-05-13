@@ -9,8 +9,8 @@
 #include <amesh2dh.hpp>
 #endif
 
-#ifndef __AEULERFLUXNORMAL_H
-#include <aeulerfluxnormal.hpp>
+#ifndef __AEULERFLUX_H
+#include "aeulerflux.hpp"
 #endif
 
 #define __ALINALG_H
@@ -59,14 +59,14 @@ public:
 class MatrixFreeIterativeSolver : public IterativeSolver
 {
 protected:
-	const FluxFunction* const invf;
+	const Flux* const invf;
 	const amat::Matrix<a_real>* const diag;			///< Diagonal blocks
 	const amat::Matrix<int>* const pa;					///< permuation array of diag after LU factorization
 	const amat::Matrix<a_real>* const lambdaij;		///< Eigenvalue part of the Jacobian
 	const amat::Matrix<a_real>* const elemflux;		///< Flux corresponding to the state at which Jacobian is to be computed
 	const amat::Matrix<a_real>* const u;				///< state at which Jacobian is to be computed
 public:
-	MatrixFreeIterativeSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
+	MatrixFreeIterativeSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const Flux* const inviscid_flux,
 			const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij, const amat::Matrix<a_real>* const elem_flux,
 			const amat::Matrix<a_real>* const unk)
 		: IterativeSolver(num_vars, mesh, residual), invf(inviscid_flux), diag(diagonal_blocks), pa(perm), lambdaij(lambda_ij), elemflux(elem_flux), u(unk)
@@ -98,7 +98,7 @@ class SSOR_MFSolver : public MatrixFreeIterativeSolver
 	
 public:
 
-	SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
+	SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const Flux* const inviscid_flux,
 			const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij, const amat::Matrix<a_real>* const elem_flux,
 			const amat::Matrix<a_real>* const unk, const double omega);
 
@@ -126,7 +126,7 @@ class BJ_MFSolver : public MatrixFreeIterativeSolver
 	
 public:
 
-	BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
+	BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const Flux* const inviscid_flux,
 			const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij, const amat::Matrix<a_real>* const elem_flux,
 			const amat::Matrix<a_real>* const unk, const double omega);
 

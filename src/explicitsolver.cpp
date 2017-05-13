@@ -1,8 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <aoutput.hpp>
-#include <aexplicitsolver.hpp>
+#include "aoutput.hpp"
+#include "aexplicitsolver.hpp"
 
 using namespace amat;
 using namespace std;
@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 	ifstream control(argv[1]);
 
 	string dum, meshfile, outf, invflux, reconst, limiter;
-	double cfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance;
+	double cfl, M_inf, vinf, alpha, rho_inf, tolerance;
 	int order, maxiter;
 
 	control >> dum;
@@ -54,14 +54,17 @@ int main(int argc, char* argv[])
 	m.compute_jacobians();
 	m.compute_face_data();
 
+	// set up problem
+	
+	EulerFV prob(&m, order, invflux, reconst, limiter);
+	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
+	ForwardEulerTimeSolver time(&m, &prob);
+
 	// Now start computation
 
-	ExplicitSolver prob(&m, order, invflux, reconst, limiter);
-	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
+	time.solve(tolerance, maxiter, cfl);
 
-	prob.solve_rk1_steady(tolerance, maxiter, cfl);
-
-	double err = prob.compute_entropy_cell();
+	prob.compute_entropy_cell();
 
 	//prob.postprocess_point();
 	Matrix<a_real> scalars = prob.getscalars();
@@ -70,6 +73,6 @@ int main(int argc, char* argv[])
 	string scalarnames[] = {"density", "mach-number", "pressure"};
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
 
-	cout << "\n--------------- End --------------------- \n";
+	cout << "\n--------------- End --------------------- \n\n";
 	return 0;
 }

@@ -5,7 +5,7 @@
  */
 
 #ifndef __AMESH2DH_H
-#include <amesh2dh.hpp>
+#include "amesh2dh.hpp"
 #endif
 
 #define __ARECONSTRUCTION_H 1

@@ -4,20 +4,16 @@
 
 #ifndef __AOUTPUT_H
 
+#ifndef __ACONSTANTS_H
+#include "aconstants.hpp"
+#endif
+
 #ifndef __AMATRIX_H
-#include <amatrix.hpp>
+#include "amatrix.hpp"
 #endif
 
 #ifndef __AMESH2DHYBRID_H
-#include <amesh2dh.hpp>
-#endif
-
-#ifndef _GLIBCXX_FSTREAM
-#include <fstream>
-#endif
-
-#ifndef _GLIBCXX_STRING
-#include <string>
+#include "amesh2dh.hpp"
 #endif
 
 #define __AOUTPUT_H 1

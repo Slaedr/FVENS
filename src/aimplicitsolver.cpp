@@ -4,7 +4,7 @@
  * @date May 6, 2016
  */
 
-#include <aimplicitsolver.hpp>
+#include "aimplicitsolver.hpp"
 
 namespace acfd {
 
@@ -919,7 +919,7 @@ ImplicitSolverMF::ImplicitSolverMF(const UMesh2dh* const mesh, const int _order,
 		diagp[i].setup(nvars,1);
 	}
 
-	eulerflux = new FluxFunction(g);
+	eulerflux = new EulerFlux(g);
 	
 	// set solver
 	if(linear_solver == "SSOR")

@@ -1,17 +1,26 @@
-#ifndef __AEULERFLUXNORMAL_H
+/** \file aeulerflux.hpp
+ * \brief Provides analytical flux computation contexts
+ * \author Aditya Kashi
+ * \date 2017 May 12
+ */
 
-#define __AEULERFLUXNORMAL_H
+#ifndef __AEULERFLUX_H
+#define __AEULERFLUX_H
+
 #ifndef __AMATRTIX_H
-#include <amatrix.hpp>
+#include "amatrix.hpp"
 #endif
 
 namespace acfd {
 
-/// Abstract class providing analytical fluxes and their Jacobians along some normal direction
+/// Abstract class providing analytical fluxes and their Jacobians
 class Flux
 {
 public:
+	/// Computes the flux vector along some direction
 	virtual void evaluate_normal_flux(const a_real *const u, const a_real* const n, a_real *const flux) const = 0;
+
+	/// Computes the Jacobian of the flux along some direction, at the given state
 	virtual void evaluate_normal_jacobian(const a_real *const u, const a_real* const n, a_real *const dfdu) const = 0;
 };
 	
@@ -21,7 +30,7 @@ class EulerFlux : public Flux
 protected:
 	const a_real g;
 public:
-	FluxFunction (a_real _g) : g(_g)
+	EulerFlux(a_real _g) : g(_g)
 	{ }
 
 	void evaluate_normal_flux(const a_real *const __restrict__ u, const a_real* const __restrict__ n, a_real *const __restrict__ flux) const
@@ -34,6 +43,9 @@ public:
 		flux[3] = vn*(u[3] + p);
 	}
 	
+	/// Computes the Jacobian of the flux along some direction, at the given state
+	/** The flux Jacobian matrix dfdu is assumed stored in a row-major 1-dimensional array.
+	 */
 	void evaluate_normal_jacobian(const a_real *const __restrict__ u, const a_real* const __restrict__ n, a_real *const __restrict__ dfdu) const
 	{
 		a_real rhovn = u[1]*n[0]+u[2]*n[1], u02 = u[0]*u[0];
@@ -46,6 +58,14 @@ public:
 		dfdu[7] = (g-1)*n[0];
 		// third row
 		dfdu[8] = (-rhovn*u[2] + (g-1)*n[1]*(u[1]*u[1]+u[2]*u[2])/2.0)/u02;
+		dfdu[9] = (n[0]*u[2]-(g-1)*n[1]*u[1])/u[0];
+		dfdu[10]= n[1]*u[2]/u[0]*(2-g);
+		dfdu[11]= (g-1)*n[1];
+		// fourth row
+		dfdu[12]= rhovn*((g-1) * (u[1]*u[1]+u[2]*u[2])/(u02*u[0]) - g*u[3]/u02);
+		dfdu[13]= g*u[3]*n[0]/u[0] - (g-1)*0.5/u02*(3*u[1]*u[1]*n[0]+u[2]*u[2]*n[0]+2*u[1]*u[2]*n[1]);
+		dfdu[14]= g*u[3]*n[1]/u[0] - (g-1)*0.5/u02*(2*u[1]*u[2]*n[0]+u[1]*u[1]*n[1]+3*u[2]*u[2]*n[1]);
+		dfdu[15]= g*rhovn/u[0];
 	}
 	
 	void evaluate_flux_2(const amat::Matrix<a_real>& state, const int ielem, const a_real* const n, amat::Matrix<a_real>& flux, const int iside) const

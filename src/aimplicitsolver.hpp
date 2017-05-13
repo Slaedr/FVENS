@@ -6,31 +6,31 @@
 #ifndef __AIMPLICITSOLVER_H
 
 #ifndef __ACONSTANTS_H
-#include <aconstants.hpp>
+#include "aconstants.hpp"
 #endif
 
 #ifndef __AMATRIX_H
-#include <amatrix.hpp>
+#include "amatrix.hpp"
 #endif
 
 #ifndef __AMESH2DH_H
-#include <amesh2dh.hpp>
+#include "amesh2dh.hpp"
 #endif
 
 #ifndef __ANUMERICALFLUX_H
-#include <anumericalflux.hpp>
+#include "anumericalflux.hpp"
 #endif
 
 #ifndef __ALIMITER_H
-#include <alimiter.hpp>
+#include "alimiter.hpp"
 #endif
 
 #ifndef __ARECONSTRUCTION_H
-#include <areconstruction.hpp>
+#include "areconstruction.hpp"
 #endif
 
 #ifndef __ALINALG_H
-#include <alinalg.hpp>
+#include "alinalg.hpp"
 #endif
 
 #define __AIMPLICITSOLVER_H 1
@@ -214,7 +214,7 @@ class ImplicitSolverMF : public ImplicitSolverBase
 {
 protected:
 	/// Euler flux
-	FluxFunction* eulerflux;
+	Flux* eulerflux;
 
 	/// Diagonal blocks of the residual Jacobian
 	amat::Matrix<a_real>* diag;

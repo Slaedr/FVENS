@@ -4,11 +4,11 @@
  * \date March 2015
  */
 
-#include <anumericalflux.hpp>
+#include "anumericalflux.hpp"
 
 namespace acfd {
 
-InviscidFlux::InviscidFlux(const a_real gamma) : g(gamma)
+InviscidFlux::InviscidFlux(const a_real gamma, const EulerFlux *const analyticalflux) : g(gamma), aflux(analyticalflux)
 { }
 
 void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
@@ -17,7 +17,7 @@ void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const u
 InviscidFlux::~InviscidFlux()
 { }
 
-LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma) : InviscidFlux(gamma)
+LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 { }
 
 void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux)
@@ -42,9 +42,34 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *cons
 	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
 }
 
-void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
+void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+{
+	// first, get common max eig
+	
+	a_real vni, vnj, pi, pj, ci, cj, eig;
 
-VanLeerFlux::VanLeerFlux(const a_real gamma) : InviscidFlux(gamma)
+	//calculate presures from u
+	pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
+	pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
+	//calculate speeds of sound
+	ci = sqrt(g*pi/ul[0]);
+	cj = sqrt(g*pj/ur[0]);
+	//calculate normal velocities
+	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
+	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
+	// max eigenvalue
+	eig = fabs(vni+ci) > fabs(vnj+cj) ? fabs(vni+ci) : fabs(vnj+cj);
+
+	// get flux jacobians
+	aflux->evaluate_normal_jacobian(ul, n, dfdl);
+	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	for(int i = 0; i < NVARS; i++) {
+		dfdl[i*NVARS+i] += eig;
+		dfdr[i*NVARS+i] -= eig;
+	}
+}
+
+VanLeerFlux::VanLeerFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 {
 }
 
@@ -115,7 +140,7 @@ void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *co
 }
 
 
-RoeFlux::RoeFlux(const a_real gamma) : InviscidFlux(gamma)
+RoeFlux::RoeFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 { }
 
 void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
@@ -225,7 +250,7 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	}
 }
 
-HLLCFlux::HLLCFlux(const a_real gamma) : InviscidFlux(gamma)
+HLLCFlux::HLLCFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 {
 }
 
@@ -254,9 +279,9 @@ void HLLCFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const
 	Hj = (ur[3] + pj)/ur[0];
 
 	// compute Roe-averages
-	a_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
 	Rij = sqrt(ur[0]/ul[0]);
-	rhoij = Rij*ul[0];
+	//rhoij = Rij*ul[0];
 	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
 	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
 	Hij = (Rij*Hj + Hi)/(Rij + 1.0);

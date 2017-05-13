@@ -60,9 +60,6 @@ inline a_real minmod(a_real a, a_real b)
 	else return 0.0;
 }
 
-template <typename T>
-T determinant(const Matrix<T>& mat);
-
 /**
  * \class Matrix
  * \brief Stores a dense row-major matrix.
@@ -577,8 +574,6 @@ public:
 		}
 		return max;
 	}
-
-	friend T determinant<>(const Matrix<T>& mat);
 };
 
 

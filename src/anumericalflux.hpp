@@ -7,11 +7,15 @@
 #ifndef __ANUMERICALFLUX_H
 
 #ifndef __ACONSTANTS_H
-#include <aconstants.hpp>
+#include "aconstants.hpp"
 #endif
 
 #ifndef __AMATRIX_H
-#include <amatrix.hpp>
+#include "amatrix.hpp"
+#endif
+
+#ifndef __AEULERFLUX_H
+#include "aeulerflux.hpp"
 #endif
 
 #define __ANUMERICALFLUX_H 1
@@ -24,11 +28,12 @@ namespace acfd {
 class InviscidFlux
 {
 protected:
-	a_real g;	///< Adiabatic index
+	a_real g;						///< Adiabatic index
+	const EulerFlux *const aflux;		///< Analytical flux context
 
 public:
 	/// Sets up data for the inviscid flux scheme
-	InviscidFlux(a_real gamma);
+	InviscidFlux(const a_real gamma, const EulerFlux *const analyticalflux);
 
 	/** Computes flux across a face with
 	 * \param[in] uleft is the vector of left states for the face
@@ -46,8 +51,9 @@ public:
 class LocalLaxFriedrichsFlux : public InviscidFlux
 {
 public:
-	LocalLaxFriedrichsFlux(const a_real gamma);
+	LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const flux);
+	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 };
 
 /// Given left and right states at each face, the Van-Leer flux-vector-splitting is calculated at each face
@@ -57,7 +63,7 @@ class VanLeerFlux : public InviscidFlux
 	amat::Matrix<a_real> fjminus;
 
 public:
-	VanLeerFlux(a_real gamma);
+	VanLeerFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 
@@ -65,7 +71,7 @@ public:
 class RoeFlux : public InviscidFlux
 {
 public:
-	RoeFlux(a_real gamma);
+	RoeFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 
@@ -76,7 +82,7 @@ class HLLCFlux : public InviscidFlux
 {
 	amat::Matrix<a_real> utemp;
 public:
-	HLLCFlux(a_real gamma);
+	HLLCFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 

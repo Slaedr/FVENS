@@ -2,10 +2,6 @@ cmake_minimum_required(VERSION 2.8)
 
 project (fvens)
 
-# set compiler
-#set (CMAKE_C_COMPILER $ENV{GC})
-#set (CMAKE_CXX_COMPILER $ENV{GPP})
-
 # to compile with OpenMP
 if(OMP)
 	message(STATUS "Compiling with OpenMP")
@@ -45,22 +41,20 @@ else()
 	message(STATUS "Release mode")
 endif()
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
-add_library(fvens_base areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp amatrix.cpp adatastructures.cpp)
+add_library(fvens_base aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp adatastructures.cpp)
 
 add_library(fvens_explicit aexplicitsolver.cpp)
 target_link_libraries(fvens_explicit fvens_base)
 
-add_library(fvens_implicit aimplicitsolver.cpp alinalg.cpp)
-target_link_libraries(fvens_implicit fvens_base)
-if(WITH_PETSC)
-	target_link_libraries(fvens_implicit ${PETSC_LIB})
-endif()
+#add_library(fvens_implicit aimplicitsolver.cpp alinalg.cpp)
+#target_link_libraries(fvens_implicit fvens_base)
+#if(WITH_PETSC)
+#	target_link_libraries(fvens_implicit ${PETSC_LIB})
+#endif()
 
 # for the final executable(s)
 
