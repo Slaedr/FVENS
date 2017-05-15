@@ -15,7 +15,7 @@ EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, st
 	order = _order;
 	g = 1.4;
 
-	std::cout << "EulerFV: Setting up explicit solver for spatial order " << order << std::endl;
+	std::cout << "EulerFV: Setting up spatial discretization for order " << order << std::endl;
 
 	// for upto second-order finite volume, we only need 1 Guass point per face
 	ngaussf = 1;
@@ -25,16 +25,13 @@ EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, st
 	inflow_outflow_id = 4;
 
 	// allocation
-	residual.setup(m->gnelem(),NVARS);
-	u.setup(m->gnelem(), NVARS);
+	residual.resize(m->gnelem(),NVARS);
+	u.resize(m->gnelem(), NVARS);
 	uinf.setup(1, NVARS);
 	integ.setup(m->gnelem(), 1);
 	dtm.setup(m->gnelem(), 1);
 	dudx.setup(m->gnelem(), NVARS);
 	dudy.setup(m->gnelem(), NVARS);
-	fluxes.setup(m->gnaface(), NVARS);
-	uleft.setup(m->gnaface(), NVARS);
-	uright.setup(m->gnaface(), NVARS);
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),NVARS);
@@ -331,6 +328,16 @@ a_real EulerFV::l2norm(const amat::Matrix<a_real>* const v)
 
 void EulerFV::compute_residual()
 {
+	// Flux across each face
+	amat::Matrix<a_real> fluxes;
+	// Left state at each face
+	amat::Matrix<a_real> uleft;
+	// Rigt state at each face
+	amat::Matrix<a_real> uright;
+	fluxes.setup(m->gnaface(), NVARS);
+	uleft.setup(m->gnaface(), NVARS);
+	uright.setup(m->gnaface(), NVARS);
+	
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
@@ -347,7 +354,7 @@ void EulerFV::compute_residual()
 		{
 			a_int ielem = m->gintfac(ied,0);
 			for(int ivar = 0; ivar < NVARS; ivar++)
-				uleft(ied,ivar) = u.get(ielem,ivar);
+				uleft(ied,ivar) = u(ielem,ivar);
 		}
 	}
 
@@ -364,15 +371,15 @@ void EulerFV::compute_residual()
 		// if order is 1, set the face data same as cell-centred data for all faces
 		
 		// set both left and right states for all interior faces
-#pragma omp parallel for
+#pragma omp parallel for default(shared)
 		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
 			a_int jelem = m->gintfac(ied,1);
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
-				uleft(ied,ivar) = u.get(ielem,ivar);
-				uright(ied,ivar) = u.get(jelem,ivar);
+				uleft(ied,ivar) = u(ielem,ivar);
+				uright(ied,ivar) = u(jelem,ivar);
 			}
 		}
 	}
@@ -400,26 +407,26 @@ void EulerFV::compute_residual()
 			n[1] = m->ggallfa(ied,1);
 			a_real len = m->ggallfa(ied,2);
 
-			const a_real* ulp = uleft.const_row_pointer(ied);
+			/*const a_real* ulp = uleft.const_row_pointer(ied);
 			const a_real* urp = uright.const_row_pointer(ied);
 			a_real* fluxp = fluxes.row_pointer(ied);
 
-			// compute flux
-			inviflux->get_flux(ulp, urp, n, fluxp);
+			inviflux->get_flux(ulp, urp, n, fluxp);*/
+			inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, &fluxes(ied,0));
 
 			// integrate over the face
 			for(int ivar = 0; ivar < NVARS; ivar++)
-					fluxp[ivar] *= len;
+					fluxes(ied,ivar) *= len;
 
 			//calculate presures from u
-			a_real pi = (g-1)*(uleft.get(ied,3) - 0.5*(pow(uleft.get(ied,1),2)+pow(uleft.get(ied,2),2))/uleft.get(ied,0));
-			a_real pj = (g-1)*(uright.get(ied,3) - 0.5*(pow(uright.get(ied,1),2)+pow(uright.get(ied,2),2))/uright.get(ied,0));
+			a_real pi = (g-1)*(uleft(ied,3) - 0.5*(pow(uleft(ied,1),2)+pow(uleft(ied,2),2))/uleft(ied,0));
+			a_real pj = (g-1)*(uright(ied,3) - 0.5*(pow(uright(ied,1),2)+pow(uright(ied,2),2))/uright(ied,0));
 			//calculate speeds of sound
-			ci[ied] = sqrt(g*pi/uleft.get(ied,0));
-			cj[ied] = sqrt(g*pj/uright.get(ied,0));
+			ci[ied] = sqrt(g*pi/uleft(ied,0));
+			cj[ied] = sqrt(g*pj/uright(ied,0));
 			//calculate normal velocities
-			vni[ied] = (uleft.get(ied,1)*n[0] +uleft.get(ied,2)*n[1])/uleft.get(ied,0);
-			vnj[ied] = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
+			vni[ied] = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
+			vnj[ied] = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
 		}
 
 #pragma omp barrier

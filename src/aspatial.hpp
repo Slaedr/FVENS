@@ -43,8 +43,8 @@ class EulerFV
 {
 protected:
 	const UMesh2dh* m;
-	amat::Matrix<a_real> m_inverse;			///< Left hand side (just the volume of the element for FV)
-	amat::Matrix<a_real> residual;			///< Right hand side for boundary integrals and source terms
+	Eigen::Matrix residual;					///< Right hand side for boundary integrals and source terms
+	Eigen::Matrix u;						///< The conserved variables
 	amat::Matrix<a_real> uinf;				///< Free-stream/reference condition
 	a_real g;								///< adiabatic index
 
@@ -84,15 +84,6 @@ protected:
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguassf x ndim (in that order)
 	amat::Matrix<a_real>* gr;
 
-	/// Flux across each face
-	amat::Matrix<a_real> fluxes;
-	/// Left state at each face (assuming 1 Gauss point per face)
-	amat::Matrix<a_real> uleft;
-	/// Rigt state at each face (assuming 1 Gauss point per face)
-	amat::Matrix<a_real> uright;
-	
-	/// vector of unknowns
-	amat::Matrix<a_real> u;
 	/// x-slopes
 	amat::Matrix<a_real> dudx;
 	/// y-slopes
@@ -137,6 +128,8 @@ public:
 	void compute_jacobian(const bool blocked, Mat A);
 #else
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
+	/** D, L and U are zeroed first.
+	 */
 	void compute_jacobian(Matrix<a_real> *const D, Matrix<a_real> *const L, Matrix<a_real> *const U);
 #endif
 

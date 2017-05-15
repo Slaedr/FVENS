@@ -32,4 +32,11 @@ namespace acfd
 	typedef int a_int;
 }
 
+#ifndef EIGEN_CORE_H
+#include <Eigen/Core>
+namespace Eigen
+{
+	typedef Matrix<acfd::a_real, Dynamic, Dynamic, RowMajor> Matrix;
+	typedef Matrix<acfd::a_real, Dynamic, 1> Vector;
+}
 #endif

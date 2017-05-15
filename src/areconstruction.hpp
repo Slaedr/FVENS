@@ -25,7 +25,7 @@ protected:
 	/// Ghost cell centers
 	const amat::Matrix<a_real>* rcg;
 	/// Cell-centered flow vaiables
-	const amat::Matrix<a_real>* u;
+	const Eigen::Matrix* u;
 	/// flow variables at ghost cells
 	const amat::Matrix<a_real>* ug;
 	/// Cell-centred x-gradients
@@ -35,7 +35,7 @@ protected:
 
 public:
 	virtual ~Reconstruction();
-	virtual void setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
+	virtual void setup(const UMesh2dh* mesh, const Eigen::Matrix* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
 			const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg);
 	virtual void compute_gradients() = 0;
 };

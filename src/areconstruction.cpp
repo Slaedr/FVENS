@@ -12,7 +12,7 @@ namespace acfd
 Reconstruction::~Reconstruction()
 { }
 
-void Reconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
+void Reconstruction::setup(const UMesh2dh* mesh, const Eigen::Matrix* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
 		const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg)
 {
 	m = mesh;
@@ -64,7 +64,7 @@ void GreenGaussReconstruction::compute_gradients()
 			
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
-				ut[ivar] = (u->get(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar] = ((*u)(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
 				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
 			}
@@ -96,7 +96,7 @@ void GreenGaussReconstruction::compute_gradients()
 			
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
-				ut[ivar] = (u->get(ielem,ivar)*dL + u->get(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar] = ((*u)(ielem,ivar)*dL + (*u)(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 #pragma omp atomic update
 				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
 #pragma omp atomic update

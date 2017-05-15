@@ -21,6 +21,10 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -qopt-report=2")
 endif()
 
+# Eigen
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_DONT_PARALLELIZE")
+include_directories($ENV{EIGEN_DIR})
+
 # PETSc
 if(WITH_PETSC)
 	find_library(PETSC_LIB NAMES petsc PATHS $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib)
@@ -33,7 +37,7 @@ endif()
 # flags and stuff
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -ggdb -DDEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -UDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -UDEBUG -DNDEBUG")
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS "Debug mode")

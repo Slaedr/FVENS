@@ -1,4 +1,5 @@
 #include "alinalg.hpp"
+#include <Eigen/LU>
 
 namespace acfd {
 
@@ -107,7 +108,7 @@ void LUfactor(amat::Matrix<a_real>& A, amat::Matrix<int>& p)
 
 		if(maxentry < ZERO_TOL)
 		{
-			std::cout << "LUfactor: ! Encountered zero pivot! Exiting." << std::endl;
+			std::cout << "! LUfactor: Encountered zero pivot! Exiting." << std::endl;
 			return;
 		}
 
@@ -162,219 +163,86 @@ void LUsolve(const amat::Matrix<a_real>& A, const amat::Matrix<int>& p, const am
 	}
 }
 
-SSOR_MFSolver::SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
-		const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij,  const amat::Matrix<a_real>* const elem_flux,
-		const amat::Matrix<a_real>* const unk, const double omega)
-	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
+void IterativeBlockSolver::setLHS(Eigen::Matrix *const diago, const Eigen::Matrix *const lower, const Eigen::Matrix *const upper)
 {
-	f1.setup(nvars,1);
-	f2.setup(nvars,1);
-	uelpdu.setup(nvars,1);
+	L = lower;
+	U = upper;
+	D = diago;
+	for(int iel = 0; iel < m->gnelem(); iel++)
+		D[iel] = D[iel].inverse().eval();
 }
 
-void SSOR_MFSolver::compute_update(amat::Matrix<a_real>* const du)
+void SGS_Relaxation::solve(const Eigen::Matrix& __restrict__ res, Eigen::Matrix& __restrict__ du)
 {
-	// forward sweep
-	// f1 is used to aggregate contributions from neighboring elements
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	a_real resnorm = 100.0, bnorm = 0;
+	int step = 0;
+	// we need an extra array solely to measure convergence
+	Eigen::Matrix uold(m->gnelem(),NVARS);
+
+	// norm of RHS
+	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
-		du[ielem].zeros();
-		f1.zeros();
-		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
-		{
-			jelem = m->gesuel(ielem,jfa);
-			if(jelem > ielem) continue;
-
-			iface = m->gelemface(ielem,jfa);
-			n[0] = m->ggallfa(iface,0);
-			n[1] = m->ggallfa(iface,1);
-			s = m->ggallfa(iface,2);
-			lambda = lambdaij->get(iface);
-
-			for(ivar = 0; ivar < nvars; ivar++)
-				uelpdu(ivar) = u->get(jelem,ivar) + du[jelem].get(ivar);
-
-			// compute F(u+du*) and store in f2
-			invf->evaluate_flux(uelpdu,n,f2);
-			// get F(u+du*) - F(u) - lambda * du
-			for(ivar = 0; ivar < nvars; ivar++)
-			{
-				f2(ivar) = -1.0*(f2(ivar) - elemflux[iface].get(1,ivar)) - lambda*du[jelem].get(ivar);
-				f2(ivar) *= s*0.5;
-				f1(ivar) += f2(ivar);
-			}
-		}
-		for(ivar = 0; ivar < nvars; ivar++)
-			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
-
-		LUsolve(diag[ielem], pa[ielem], f2, du[ielem]);
+		bnorm += res.row(iel).squaredNorm();
 	}
+	bnorm = std::sqrt(bnorm);
 
-	// next, compute backward sweep
-	for(ielem = m->gnelem()-1; ielem >= 0; ielem--)
+	while(resnorm/bnorm > tol && step < maxiter)
 	{
-		f1.zeros();
-		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
+		for(int iel = 0; iel < m->gnelem(); iel++) 
 		{
-			jelem = m->gesuel(ielem,jfa);
-			if(jelem < ielem || jelem >= m->gnelem()) continue;
-
-			iface = m->gelemface(ielem,jfa);
-			n[0] = m->ggallfa(iface,0);
-			n[1] = m->ggallfa(iface,1);
-			s = m->ggallfa(iface,2);
-			lambda = lambdaij->get(iface);
-
-			for(ivar = 0; ivar < nvars; ivar++)
-				uelpdu(ivar) = u->get(jelem,ivar) + du[jelem].get(ivar);
-
-			// compute F(u+du*) in store in f2
-			invf->evaluate_flux(uelpdu,n,f2);
-			// get F(u+du*) - F(u) - lambda * du
-			for(ivar = 0; ivar < nvars; ivar++)
+			uold.row(iel) = du.row(iel);
+			Eigen::Vector inter = Eigen::Vector::Zero(NVARS);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				f2(ivar) = f2(ivar) - elemflux[iface].get(1,ivar) - lambda*du[jelem].get(ivar);
-				f2(ivar) *= s*0.5;
-				f1(ivar) += f2(ivar);
+				a_int face = m->gelemface(iel,ifael);
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				if(nbdelem > iel && nbdelem < m->gnelem()) {
+					// upper
+					inter += U[face]*du.row(nbdelem);
+				}
+				else {
+					// lower
+					inter += L[face]*du.row(nbdelem);
+				}
 			}
+			du.row(iel) = D[iel]*(-res.row(iel) - inter);
 		}
 
-		LUsolve(diag[ielem], pa[ielem], f1, f2);
-		for(ivar = 0; ivar < nvars; ivar++)
-			du[ielem](ivar) -= w*f2.get(ivar);
-	}
-}
-
-BJ_MFSolver::BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const FluxFunction* const inviscid_flux,
-		const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij,  const amat::Matrix<a_real>* const elem_flux,
-		const amat::Matrix<a_real>* const unk, const double omega)
-	: MatrixFreeIterativeSolver(num_vars, mesh, residual, inviscid_flux, diagonal_blocks, perm, lambda_ij, elem_flux, unk), w(omega)
-{
-	f1.setup(nvars,1);
-	uelpdu.setup(nvars,1);
-}
-
-void BJ_MFSolver::compute_update(amat::Matrix<a_real>* const du)
-{
-	a_int ielem;
-	int ivar;
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		du[ielem].zeros();
-
-		for(ivar = 0; ivar < nvars; ivar++)
-			f1(ivar) = res->get(ielem,ivar);
-		LUsolve(diag[ielem], pa[ielem], f1, du[ielem]);
-	}
-}
-
-SSOR_Solver::SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
-		const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
-		const double omega)
-	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
-{
-	f1.setup(nvars,1);
-	f2.setup(nvars,1);
-}
-
-void SSOR_Solver::compute_update(amat::Matrix<a_real>* const du)
-{
-	int jfa, ivar;
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		du[ielem].zeros();
-		f1.zeros();
-		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
-		{
-			jelem = m->gesuel(ielem,jfa);
-			if(jelem > ielem) continue;
-
-			iface = m->gelemface(ielem,jfa);
-			
-			// compute L*du
-			f2.zeros();
-			for(i = 0; i < nvars; i++)
+#pragma omp barrier
+		
+		// backward sweep
+		for(int iel = m->gnelem()-1; iel >= 0; iel--) {
+			Eigen::Matrix inter = Eigen::Zero(NVARS,NVARS);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				for(j = 0; j < nvars; j++)
-					f2(i) += L[iface].get(i,j)*du[jelem].get(j);
-				f1(i) += f2.get(i);
+				a_int face = m->gelemface(iel,ifael);
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				if(nbdelem > iel && nbdelem < m->gnelem()) {
+					// upper
+					inter += U[face]*du.row(nbdelem);
+				}
+				else {
+					// lower
+					inter += L[face]*du.row(nbdelem);
+				}
 			}
-		}
-		for(ivar = 0; ivar < nvars; ivar++)
-			f2(ivar) = w * ((2.0-w)*res->get(ielem,ivar) - f1.get(ivar));
-
-		LUsolve(D[ielem], Dpa[ielem], f2, du[ielem]);
-	}
-
-	// next, compute backward sweep
-	for(ielem = m->gnelem()-1; ielem >= 0; ielem--)
-	{
-		f1.zeros();
-		for(jfa = 0; jfa < m->gnfael(ielem); jfa++)
-		{
-			jelem = m->gesuel(ielem,jfa);
-			if(jelem < ielem || jelem >= m->gnelem()) continue;
-
-			iface = m->gelemface(ielem,jfa);
-
-			// compute U*du
-			f2.zeros();
-			for(i = 0; i < nvars; i++)
-			{
-				for(j = 0; j < nvars; j++)
-					f2(i) += U[iface].get(i,j)*du[jelem].get(j);
-				f1(i) += f2.get(i);
-			}
+			du.row(iel) = D[iel]*(-res.row(iel) - inter);
 		}
 
-		LUsolve(D[ielem], Dpa[ielem], f1, f2);
-		for(ivar = 0; ivar < nvars; ivar++)
-			du[ielem](ivar) -= w*f2.get(ivar);
-	}
-}
+#pragma omp barrier
 
-BJ_Solver::BJ_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
-		const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
-		const double omega)
-	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), w(omega)
-{
-	f1.setup(nvars,1);
-}
-
-void BJ_Solver::compute_update(amat::Matrix<a_real>* const du)
-{
-	a_int ielem;
-	int ivar;
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		du[ielem].zeros();
-
-		for(ivar = 0; ivar < nvars; ivar++)
-			f1(ivar) = res->get(ielem,ivar);
-		LUsolve(D[ielem], Dpa[ielem], f1, du[ielem]);
-	}
-}
-
-BJ_Relaxation::BJ_Relaxation(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
-		const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
-		const double omega)
-	: IterativeSolver(nvars, mesh, residual), D(diag), Dpa(diagperm), L(lower), U(upper), w(omega)
-{
-	f1.setup(nvars,1);
-}
-
-void BJ_Relaxation::compute_update(amat::Matrix<a_real>* const u)
-{
-	// TODO: modify this function to implement block Jacobi relaxation scheme
-	a_int ielem;
-	int ivar;
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		u[ielem].zeros();
-
-		for(ivar = 0; ivar < nvars; ivar++)
-			f1(ivar) = res->get(ielem,ivar);
-		LUsolve(D[ielem], Dpa[ielem], f1, u[ielem]);
+		/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
+		 * to measure convergence.
+		 */
+		resnorm = 0;
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			// compute norm
+			resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+		}
+		resnorm = std::sqrt(resnorm);
 	}
 }
 
