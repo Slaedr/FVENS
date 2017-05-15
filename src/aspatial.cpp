@@ -422,6 +422,8 @@ void EulerFV::compute_residual()
 			vnj[ied] = (uright.get(ied,1)*n[0] + uright.get(ied,2)*n[1])/uright.get(ied,0);
 		}
 
+#pragma omp barrier
+
 		// update residual and integ
 #pragma omp for
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -444,6 +446,7 @@ void EulerFV::compute_residual()
 				}
 			}
 		}
+#pragma omp barrier
 #pragma omp for simd
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
