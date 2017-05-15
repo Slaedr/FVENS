@@ -30,6 +30,10 @@
 #include "areconstruction.hpp"
 #endif
 
+#if HAVE_PETSC==1
+#include <petscmat.h>
+#endif
+
 namespace acfd {
 
 /// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
@@ -41,7 +45,6 @@ protected:
 	const UMesh2dh* m;
 	amat::Matrix<a_real> m_inverse;			///< Left hand side (just the volume of the element for FV)
 	amat::Matrix<a_real> residual;			///< Right hand side for boundary integrals and source terms
-	int nvars;									///< number of conserved variables ** deprecated, use the preprocessor constant NVARS instead **
 	amat::Matrix<a_real> uinf;				///< Free-stream/reference condition
 	a_real g;								///< adiabatic index
 
@@ -54,8 +57,13 @@ protected:
 	/// Analytical flux vector computation
 	EulerFlux aflux;
 	
-	/// Numerical inviscid flux calculation context
+	/// Numerical inviscid flux calculation context for residual computation
+	/** This is the "actual" flux being used.
+	 */
 	InviscidFlux* inviflux;
+
+	/// Numerical inviscid flux context for the Jacobian
+	InviscidFlux* jflux;
 
 	/// Reconstruction context
 	Reconstruction* rec;
@@ -98,11 +106,6 @@ protected:
 	amat::Matrix<a_real> scalars;			///< Holds density, Mach number and pressure for each cell
 	amat::Matrix<a_real> velocities;		///< Holds velocity components for each cell
 
-public:
-	EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter);
-	~EulerFV();
-	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf);
-
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
 	 * \param[out] bounstates will contain the right state of boundary faces
@@ -112,14 +115,30 @@ public:
 	 */
 	void compute_boundary_states(const amat::Matrix<a_real>& instates, amat::Matrix<a_real>& bounstates);
 
+	/// Computes ghost cell state across the face denoted by the first parameter
+	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
+
+public:
+	EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+	
+	~EulerFV();
+	
+	/// Set simulation data and precompute data needed for reconstruction
+	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf);
+
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculating function after zeroing the residuals
 	 * and also computes [local time steps](@ref dtm).
 	 */
 	void compute_residual();
-	
-	/// Computes the left and right states at each face, using the [reconstruction](@ref rec) and [limiter](@ref limiter) objects
-	void compute_face_states();
+
+#if HAVE_PETSC==1
+	/// Computes the residual Jacobian as a PETSc martrix
+	void compute_jacobian(const bool blocked, Mat A);
+#else
+	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
+	void compute_jacobian(Matrix<a_real> *const D, Matrix<a_real> *const L, Matrix<a_real> *const U);
+#endif
 
 	/// Computes the L2 norm of a cell-centered quantity
 	a_real l2norm(const amat::Matrix<a_real>* const v);

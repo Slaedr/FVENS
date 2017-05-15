@@ -63,9 +63,19 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	// get flux jacobians
 	aflux->evaluate_normal_jacobian(ul, n, dfdl);
 	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	for(int i = 0; i < NVARS; i++)
+		for(int j = 0; j < NVARS; j++)
+		{
+			// lower block
+			dfdl[i*NVARS+j] = -0.5*dfdl[i*NVARS+j];
+			// upper block
+			dfdr[i*NVARS+j] =  0.5*dfdr[i*NVARS+j];
+		}
 	for(int i = 0; i < NVARS; i++) {
-		dfdl[i*NVARS+i] += eig;
-		dfdr[i*NVARS+i] -= eig;
+		// lower:
+		dfdl[i*NVARS+i] = dfdl[i*NVARS+i] - 0.5*eig;
+		// upper:
+		dfdr[i*NVARS+i] = dfdr[i*NVARS+i] - 0.5*eig;
 	}
 }
 

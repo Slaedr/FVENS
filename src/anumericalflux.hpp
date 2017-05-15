@@ -43,6 +43,12 @@ public:
 	 */
 	virtual void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const flux) = 0;
 
+	/// Computes the Jacobian of the inviscid flux across a face w.r.t. both left and right states
+	/** dfdl is the `lower' block formed by the coupling between the elements adjoining the face,
+	 * while dfdr is the `upper' block.
+	 * The negative of the lower block is the contribution to the diagonal block of the left cell, and
+	 * the negative of the upper block is the contribution to the diagonal block of the right cell.
+	 */
 	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 
 	virtual ~InviscidFlux();

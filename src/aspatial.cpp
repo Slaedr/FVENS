@@ -8,7 +8,8 @@
 
 namespace acfd {
 
-EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, std::string reconst, std::string limiter) : aflux(1.4)
+EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
+	: aflux(1.4)
 {
 	m = mesh;
 	order = _order;
@@ -54,6 +55,32 @@ EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, st
 		inviflux = new HLLCFlux(g, &aflux);
 		std::cout << "EulerFV: Using HLLC fluxes." << std::endl;
 	}
+	else if(invflux == "LLF")
+	{
+		inviflux = new LocalLaxFriedrichsFlux(g, &aflux);
+		std::cout << "EulerFV: Using LLF fluxes." << std::endl;
+	}
+	else
+		std::cout << "EulerFV: ! Flux scheme not available!" << std::endl;
+	
+	// set inviscid flux scheme for Jacobian
+	if(invflux == "VANLEER")
+		inviflux = new VanLeerFlux(g, &aflux);
+	else if(invflux == "ROE")
+	{
+		inviflux = new RoeFlux(g, &aflux);
+		std::cout << "EulerFV: Using Roe fluxes." << std::endl;
+	}
+	else if(invflux == "HLLC")
+	{
+		inviflux = new HLLCFlux(g, &aflux);
+		std::cout << "EulerFV: Using HLLC fluxes." << std::endl;
+	}
+	else if(invflux == "LLF")
+	{
+		inviflux = new LocalLaxFriedrichsFlux(g, &aflux);
+		std::cout << "EulerFV: Using LLF fluxes for Jacobian." << std::endl;
+	}
 	else
 		std::cout << "EulerFV: ! Flux scheme not available!" << std::endl;
 
@@ -62,7 +89,6 @@ EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, st
 	if(reconst == "GREENGAUSS")
 	{
 		rec = new GreenGaussReconstruction();
-		//rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
 	}
 	else 
 	{
@@ -266,6 +292,32 @@ void EulerFV::compute_boundary_states(const amat::Matrix<a_real>& ins, amat::Mat
 	}
 }
 
+void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+{
+	a_real nx = m->ggallfa(ied,0);
+	a_real ny = m->ggallfa(ied,1);
+
+	a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
+	//a_real pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
+	//a_real pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
+	//a_real ci = sqrt(g*pi/ins.get(ied,0));
+	//a_real Mni = vni/ci;
+
+	if(m->ggallfa(ied,3) == solid_wall_id)
+	{
+		bs[0] = ins[0];
+		bs[1] = ins[1] - 2*vni*nx*bs[0];
+		bs[2] = ins[2] - 2*vni*ny*bs[0];
+		bs[3] = ins[3];
+	}
+
+	if(m->ggallfa(ied,3) == inflow_outflow_id)
+	{
+		for(int i = 0; i < NVARS; i++)
+			bs[i] = uinf(0,i);
+	}
+}
+
 a_real EulerFV::l2norm(const amat::Matrix<a_real>* const v)
 {
 	a_real norm = 0;
@@ -399,6 +451,172 @@ void EulerFV::compute_residual()
 		}
 	} // end parallel region
 }
+
+#if HAVE_PETSC==1
+
+void EulerFV::compute_jacobian(const bool blocked, Mat A)
+{
+	if(blocked)
+	{
+		// TODO: construct blocked Jacobian
+	}
+	else
+	{
+		Matrix<a_real>* D = new Matrix<a_real>[m->gnelem()];
+		for(int iel = 0; iel < m->gnelem(); iel++) {
+			D[iel].setup(NVARS,NVARS);
+			D[iel].zeros();
+		}
+
+		for(a_int iface = 0; iface < m->gnbface(); iface++)
+		{
+			a_int lelem = m->gintfac(iface,0);
+			a_real n[NDIM];
+			n[0] = m->ggallfa(iface,0);
+			n[1] = m->ggallfa(iface,1);
+			a_real len = m->ggallfa(iface,2);
+			a_real uface[NVARS];
+			Matrix<a_real> left(NVARS,NVARS);
+			Matrix<a_real> right(NVARS,NVARS);
+			
+			compute_boundary_state(iface, &u(lelem,0), uface);
+			jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
+			
+			for(int i = 0; i < NVARS; i++)
+				for(int j = 0; j < NVARS; j++) {
+					left(i,j) *= len;
+#pragma omp atomic write
+					D[lelem](i,j) -= left(i,j);
+				}
+		}
+
+		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		{
+			a_int lelem = m->gintfac(iface,0);
+			a_int relem = m->gintfac(iface,1);
+			a_real n[NDIM];
+			n[0] = m->ggallfa(iface,0);
+			n[1] = m->ggallfa(iface,1);
+			a_real len = m->ggallfa(iface,2);
+			a_real uface[NVARS];
+			Matrix<a_real> left(NVARS,NVARS);
+			Matrix<a_real> right(NVARS,NVARS);
+			
+			jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &left(0,0), &right(0,0));
+
+			for(int i = 0; i < NVARS; i++)
+				for(int j = 0; j < NVARS; j++) {
+					left(i,j) *= len;
+					right(i,j) *= len;
+#pragma omp atomic write
+					D[lelem](i,j) -= left(i,j);
+#pragma omp atomic write
+					D[relem](i,j) -= right(i,j);
+				}
+
+			PetscInt* rindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
+			PetscInt* cindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
+			// insert upper block U = right
+			for(int i = 0; i < NVARS; i++)
+				for(int j = 0; j < NVARS; j++)
+				{
+					rindices[i*NVARS+j] = ielem*NVARS+i;
+					cindices[i*NVARS+j] = jelem*NVARS+j;
+				}
+			MatSetValues(A, NVARS, rindices, NVARS, cindices, &right(0,0), INSERT_VALUES);
+
+			// insert lower block L = left
+			for(int i = 0; i < NVARS; i++)
+				for(int j = 0; j < NVARS; j++)
+				{
+					rindices[i*NVARS+j] = jelem*NVARS+i;
+					cindices[i*NVARS+j] = ielem*NVARS+j;
+				}
+			MatSetValues(A, NVARS, rindices, NVARS, cindices, &left(0,0), INSERT_VALUES);
+
+			std::free(rindices);
+			std::free(cindices);
+		}
+
+		// diagonal blocks
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			PetscInt* rindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
+			PetscInt* cindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
+			
+			for(int i = 0; i < NVARS; i++)
+				for(int j = 0; j < NVARS; j++)
+				{
+					rindices[i*NVARS+j] = iel*NVARS+i;
+					cindices[i*NVARS+j] = iel*NVARS+j;
+				}
+			MatSetValues(A, NVARS, rindices, NVARS, cindices, &D[iel](0,0), ADD_VALUES);
+
+			std::free(rindices);
+			std::free(cindices);
+		}
+	}
+}
+
+#else
+
+void EulerFV::compute_jacobian(Matrix<a_real> *const D, Matrix<a_real> *const L, Matrix<a_real> *const U)
+{
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		D[iel].zeros();
+	}
+	for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
+		L[iface].zeros();
+		U[iface].zeros();
+	}
+
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real n[NDIM];
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		a_real uface[NVARS];
+		Matrix<a_real> left(NVARS,NVARS);
+		Matrix<a_real> right(NVARS,NVARS);
+		
+		compute_boundary_state(iface, &u(lelem,0), uface);
+		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
+		
+		for(int i = 0; i < NVARS; i++)
+			for(int j = 0; j < NVARS; j++) {
+				left(i,j) *= len;
+#pragma omp atomic write
+				D[lelem](i,j) -= left(i,j);
+			}
+	}
+
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real n[NDIM];
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		
+		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[iface](0,0), &U[iface](0,0));
+
+		for(int i = 0; i < NVARS; i++)
+			for(int j = 0; j < NVARS; j++) {
+				L[iface](i,j) *= len;
+				U[iface](i,j) *= len;
+#pragma omp atomic write
+				D[lelem](i,j) -= L[iface](i,j);
+#pragma omp atomic write
+				D[relem](i,j) -= U[iface](i,j);
+			}
+	}
+}
+
+#endif
+
 
 void EulerFV::postprocess_point()
 {
