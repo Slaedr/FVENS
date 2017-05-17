@@ -136,8 +136,8 @@ void SteadyBackwardEulerSolver::solve()
 		else if(step < rampend) {
 			double slopec = (cflfin-cflinit)/(rampend-rampstart);
 			curCFL = cflinit + slopec*(step-rampstart);
-			//curlinmaxiter = int(linmaxiterstart + (linmaxiterend-linmaxiterstart)/(rampend-rampstart)*(step-rampstart));
-			curlinmaxiter = linmaxiterstart;
+			curlinmaxiter = int(linmaxiterstart + (linmaxiterend-linmaxiterstart)/(rampend-rampstart)*(step-rampstart));
+			//curlinmaxiter = linmaxiterstart;
 		}
 		else {
 			curCFL = cflfin;
@@ -164,8 +164,8 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp for
 			for(int iel = 0; iel < m->gnelem(); iel++) {
 				eul->unknowns().row(iel) += du.row(iel);
-				for(int i = 0; i < NVARS; i++)
-					du(iel,i) = 0;
+				//for(int i = 0; i < NVARS; i++)
+				//	du(iel,i) = 0;
 			}
 #pragma omp for simd reduction(+:errmass)
 			for(int iel = 0; iel < m->gnelem(); iel++)

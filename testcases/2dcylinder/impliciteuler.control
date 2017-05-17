@@ -1,7 +1,7 @@
 -mesh_file
-../data/2dcylinder-coarse.msh
+../testcases/2dcylinder/grids/2dcylinder-coarse.msh
 -output_file
-../data/2dcylinder-coarse-hllc-bsgs.vtu
+../data/2dcylinder-coarse-llf-bsgs.vtu
 -M_infinity
 0.38
 -velocity_infinity
@@ -11,7 +11,7 @@
 -rho_infinity
 1.0
 -inviscid-flux
-HLLC
+LLF
 -reconstruction-scheme
 GREENGAUSS
 -limiter
@@ -19,11 +19,11 @@ NONE
 -initial-CFL
 0.24
 -final-CFL
-20.0
+10.0
 -ramp-start-step
-400
+100
 -ramp-end-step
-600
+400
 -Tolerance
 1e-4
 -Max-pseudotime-iterations
@@ -33,8 +33,8 @@ BSGS
 -Linear-solver-tolerance
 1e-2
 -Linear-solver-max-iterations-initial
-40
+25
 -Linear-solver-max-iterations-end
-20
+15
 -relaxation-factor
 1.0

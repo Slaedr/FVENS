@@ -25,16 +25,17 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *cons
 	a_real vni, vnj, pi, pj, ci, cj, eig;
 
 	//calculate presures from u
-	pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
-	pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
+	pi = (g-1)*(ul[3] - 0.5*(std::pow(ul[1],2)+std::pow(ul[2],2))/ul[0]);
+	pj = (g-1)*(ur[3] - 0.5*(std::pow(ur[1],2)+std::pow(ur[2],2))/ur[0]);
 	//calculate speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	ci = std::sqrt(g*pi/ul[0]);
+	cj = std::sqrt(g*pj/ur[0]);
 	//calculate normal velocities
 	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
 	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
-	eig = fabs(vni+ci) > fabs(vnj+cj) ? fabs(vni+ci) : fabs(vnj+cj);
+	eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
+	//eig = 2*eig;
 	
 	flux[0] = 0.5*( ul[0]*vni + ur[0]*vnj - eig*(ur[0]-ul[0]) );
 	flux[1] = 0.5*( vni*ul[1]+pi*n[0] + vnj*ur[1]+pj*n[0] - eig*(ur[1]-ul[1]) );
@@ -58,7 +59,7 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
 	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
-	eig = fabs(vni+ci) > fabs(vnj+cj) ? fabs(vni+ci) : fabs(vnj+cj);
+	eig = fabs(vni)+ci > fabs(vnj)+cj ? fabs(vni)+ci : fabs(vnj)+cj;
 
 	// get flux jacobians
 	aflux->evaluate_normal_jacobian(ul, n, dfdl);

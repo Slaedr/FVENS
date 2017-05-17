@@ -36,8 +36,10 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	uright.setup(m->gnaface(), NVARS);
 
 	// set inviscid flux scheme
-	if(invflux == "VANLEER")
+	if(invflux == "VANLEER") {
 		inviflux = new VanLeerFlux(g, &aflux);
+		std::cout << "EulerFV: Using Van Leer fluxes." << std::endl;
+	}
 	else if(invflux == "ROE")
 	{
 		inviflux = new RoeFlux(g, &aflux);
