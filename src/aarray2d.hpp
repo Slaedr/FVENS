@@ -1,6 +1,6 @@
 /**
- * @file amatrix.hpp
- * @brief Defines a class to manipulate matrices.
+ * @file aarray2d.hpp
+ * @brief Defines a class to manipulate 2d arrays.
  * 
  * Part of FVENS.
  * @author Aditya Kashi
@@ -13,12 +13,11 @@
 
 /**
  * \namespace amat
- * \brief Includes all array and matrix storage classes, as well as linear algebra.
+ * \brief Includes array storage classes.
  */
 
-#ifndef __AMATRIX_H
-
-#define __AMATRIX_H
+#ifndef __AARRAY2D_H
+#define __AARRAY2D_H
 
 /*#ifdef _OPENMP
 	#ifndef OMP_H
@@ -46,7 +45,7 @@ using acfd::a_int;
 const int WIDTH = 10;		// width of field for printing matrices
 
 template <class T>
-class Matrix;
+class Array2d;
 
 inline a_real dabs(a_real x)
 {
@@ -61,14 +60,14 @@ inline a_real minmod(a_real a, a_real b)
 }
 
 /**
- * \class Matrix
+ * \class Array2d
  * \brief Stores a dense row-major matrix.
  * 
  * Notes:
  * If A is a column-major matrix, A[i][j] == A[j * nrows + i] where i is the row-index and j is the column index.
  */
 template <class T>
-class Matrix
+class Array2d
 {
 private:
 	a_int nrows;
@@ -78,15 +77,15 @@ private:
 	bool isalloc;
 
 public:
-	///No-arg constructor. Note: no memory allocation! Make sure Matrix::setup(a_int,a_int,MStype) is used.
-	Matrix()
+	///No-arg constructor. Note: no memory allocation! Make sure Array2d::setup(a_int,a_int,MStype) is used.
+	Array2d()
 	{
 		nrows = 0; ncols = 0; size = 0;
 		isalloc = false;
 	}
 
 	// Full-arg constructor
-	Matrix(a_int nr, a_int nc)
+	Array2d(a_int nr, a_int nc)
 	{
 		if(nc==0)
 		{
@@ -104,7 +103,7 @@ public:
 		isalloc = true;
 	}
 
-	Matrix(const Matrix<T>& other)
+	Array2d(const Array2d<T>& other)
 	{
 		nrows = other.nrows;
 		ncols = other.ncols;
@@ -117,14 +116,14 @@ public:
 		}
 	}
 
-	~Matrix()
+	~Array2d()
 	{
 		if(isalloc == true)	
 			delete [] elems;
 		isalloc = false;
 	}
 
-	Matrix<T>& operator=(const Matrix<T>& rhs)
+	Array2d<T>& operator=(const Array2d<T>& rhs)
 	{
 #ifdef DEBUG
 		if(this==&rhs) return *this;		// check for self-assignment
@@ -148,12 +147,12 @@ public:
 	{
 		if(nc==0)
 		{
-			std::cout << "Matrix: setup(): Error: Number of columns is zero. Setting it to 1.\n";
+			std::cout << "Array2d: setup(): Error: Number of columns is zero. Setting it to 1.\n";
 			nc=1;
 		}
 		if(nr==0)
 		{
-			std::cout << "Matrix(): setup(): Error: Number of rows is zero. Setting it to 1.\n";
+			std::cout << "Array2d(): setup(): Error: Number of rows is zero. Setting it to 1.\n";
 			nr=1;
 		}
 		nrows = nr; ncols = nc;
@@ -164,7 +163,7 @@ public:
 		isalloc = true;
 	}
 
-	/// Setup without deleting earlier allocation: use in case of Matrix<t>* (pointer to Matrix<t>)
+	/// Setup without deleting earlier allocation: use in case of Array2d<t>* (pointer to Array2d<t>)
 	void setupraw(a_int nr, a_int nc)
 	{
 		//std::cout << "\nEntered setupraw";
@@ -225,8 +224,8 @@ public:
 	T get(const a_int i, const a_int j=0) const
 	{
 #ifdef DEBUG
-		if(i>=nrows || j>=ncols) { std::cout << "Matrix: get(): Index beyond array size(s)\n"; return 0; }
-		if(i < 0 || j < 0) { std::cout << "Matrix: get(): Index less than 0!\n"; return 0; }
+		if(i>=nrows || j>=ncols) { std::cout << "Array2d: get(): Index beyond array size(s)\n"; return 0; }
+		if(i < 0 || j < 0) { std::cout << "Array2d: get(): Index less than 0!\n"; return 0; }
 #endif
 		return elems[i*ncols + j];
 	}
@@ -234,8 +233,8 @@ public:
 	void set(a_int i, a_int j, T data)
 	{
 #ifdef DEBUG
-		if(i>=nrows || j>=ncols) { std::cout << "Matrix: set(): Index beyond array size(s)\n"; return; }
-		if(i < 0 || j < 0) {std::cout << "Matrix: set(): Negative index!\n"; return; }
+		if(i>=nrows || j>=ncols) { std::cout << "Array2d: set(): Index beyond array size(s)\n"; return; }
+		if(i < 0 || j < 0) {std::cout << "Array2d: set(): Negative index!\n"; return; }
 #endif
 		elems[i*ncols + j] = data;
 	}
@@ -285,8 +284,8 @@ public:
 	T& operator()(const a_int x, const a_int y=0)
 	{
 #ifdef DEBUG
-		if(x>=nrows || y>=ncols) { std::cout << "! Matrix (): Index beyond array size(s)\n"; return elems[0]; }
-		if(x<0 || y<0) { std::cout << "! Matrix (): Index negative!\n"; return elems[0]; }
+		if(x>=nrows || y>=ncols) { std::cout << "! Array2d (): Index beyond array size(s)\n"; return elems[0]; }
+		if(x<0 || y<0) { std::cout << "! Array2d (): Index negative!\n"; return elems[0]; }
 #endif
 		return elems[x*ncols + y];
 	}
@@ -295,8 +294,8 @@ public:
 	const T& operator()(const a_int x, const a_int y=0) const
 	{
 #ifdef DEBUG
-		if(x>=nrows || y>=ncols) { std::cout << "Matrix (): Index beyond array size(s)\n"; return elems[0]; }
-		if(x<0 || y<0) { std::cout << "! Matrix (): Index negative!\n"; return elems[0]; }
+		if(x>=nrows || y>=ncols) { std::cout << "Array2d (): Index beyond array size(s)\n"; return elems[0]; }
+		if(x<0 || y<0) { std::cout << "! Array2d (): Index negative!\n"; return elems[0]; }
 #endif
 		return elems[x*ncols + y];
 	}
@@ -305,7 +304,7 @@ public:
 	const T* const_row_pointer(const a_int r) const
 	{
 #ifdef DEBUG
-		if(r >= nrows) { std::cout << "! Matrix: const_row_pointer(): Row index beyond array size!\n"; return nullptr;}
+		if(r >= nrows) { std::cout << "! Array2d: const_row_pointer(): Row index beyond array size!\n"; return nullptr;}
 #endif
 		return &elems[r*ncols];
 	}
@@ -314,7 +313,7 @@ public:
 	T* row_pointer(const a_int r)
 	{
 #ifdef DEBUG
-		if(r >= nrows) { std::cout << "! Matrix: row_pointer(): Row index beyond array size!\n"; return nullptr;}
+		if(r >= nrows) { std::cout << "! Array2d: row_pointer(): Row index beyond array size!\n"; return nullptr;}
 #endif
 		return &elems[r*ncols];
 	}
@@ -406,9 +405,9 @@ public:
 	}
 
 	/// function to return a sub-matrix of this matrix
-	Matrix<T> sub(a_int startr, a_int startc, a_int offr, a_int offc) const
+	Array2d<T> sub(a_int startr, a_int startc, a_int offr, a_int offc) const
 	{
-		Matrix<T> B(offr, offc);
+		Array2d<T> B(offr, offc);
 		for(a_int i = 0; i < offr; i++)
 			for(a_int j = 0; j < offc; j++)
 				B(i,j) = elems[(startr+i)*ncols + startc + j];
@@ -416,34 +415,34 @@ public:
 	}
 
 	/// Function that returns a given column of the matrix as a row-major matrix
-	Matrix<T> col(a_int j) const
+	Array2d<T> col(a_int j) const
 	{
-		Matrix<T> b(nrows, 1);
+		Array2d<T> b(nrows, 1);
 		for(a_int i = 0; i < nrows; i++)
 			b(i,0) = elems[i*ncols + j];
 		return b;
 	}
 
-	Matrix<T> row(a_int i) const
+	Array2d<T> row(a_int i) const
 	{
-		Matrix<T> b(1, ncols);
+		Array2d<T> b(1, ncols);
 		for(a_int j = 0; j < ncols; j++)
 			b(0,j) = elems[i*ncols + j];
 		return b;
 	}
 
 	/*//Function to return a reference to a given column of the matrix
-	Matrix<T>& colr(a_int j)
+	Array2d<T>& colr(a_int j)
 	{
-		//Matrix<T>* b(nrows, 1);
-		Matrix<T>* b; b->elems.reserve(nrows);
+		//Array2d<T>* b(nrows, 1);
+		Array2d<T>* b; b->elems.reserve(nrows);
 		for(a_int i = 0; i < nrows; i++)
 			b.elems[i] = &elems[i*ncols + j];
 		return *b;
 	} */
 
 	/// Function for replacing a column of the matrix with a vector. NOTE: No check for whether b is really a vector - which it must be.
-	void replacecol(a_int j, Matrix<T> b)
+	void replacecol(a_int j, Array2d<T> b)
 	{
 #ifdef DEBUG
 		if(b.cols() != 1 || b.rows() != nrows) { std::cout << "\nSize error in replacecol"; return; }
@@ -453,7 +452,7 @@ public:
 	}
 
 	/// Function for replacing a row
-	void replacerow(a_int i, Matrix<T> b)
+	void replacerow(a_int i, Array2d<T> b)
 	{
 #ifdef DEBUG
 		if(b.cols() != ncols || b.rows() != 1) { std::cout << "\nSize error in replacerow"; return; }
@@ -463,9 +462,9 @@ public:
 	}
 
 	/// Returns the transpose
-	Matrix<T> trans() const
+	Array2d<T> trans() const
 	{
-		Matrix<T> t(ncols, nrows);
+		Array2d<T> t(ncols, nrows);
 		for(a_int i = 0; i < ncols; i++)
 			for(a_int j = 0; j < nrows; j++)
 				t(i,j) = get(j,i);
@@ -473,9 +472,9 @@ public:
 	}
 
 	/// Multiply a matrix by a scalar. Note: only expressions of type A*3 work, not 3*A
-	Matrix<T> operator*(T num)
+	Array2d<T> operator*(T num)
 	{
-		Matrix<T> A(nrows,ncols);
+		Array2d<T> A(nrows,ncols);
 		a_int i;
 
 		for(i = 0; i < A.size; i++)
@@ -484,17 +483,17 @@ public:
 	}
 
 	/**	The matrix addition and subtraction operators are inefficient! Do not use in long loops. */
-	Matrix<T> operator+(Matrix<T> B) const
+	Array2d<T> operator+(Array2d<T> B) const
 	{
 #ifdef DEBUG
 		if(nrows != B.rows() || ncols != B.cols())
 		{
-			std::cout << "! Matrix: Addition cannot be performed due to incompatible sizes\n";
-			Matrix<T> C(1,1);
+			std::cout << "! Array2d: Addition cannot be performed due to incompatible sizes\n";
+			Array2d<T> C(1,1);
 			return C;
 		}
 #endif
-		Matrix<T> C(nrows, ncols);
+		Array2d<T> C(nrows, ncols);
 		a_int i;
 
 		for(i = 0; i < C.size; i++)
@@ -502,31 +501,31 @@ public:
 		return C;
 	}
 
-	Matrix<T> operator-(Matrix<T> B) const
+	Array2d<T> operator-(Array2d<T> B) const
 	{
 #ifdef DEBUG
 		if(nrows != B.rows() || ncols != B.cols())
 		{
-			std::cout << "! Matrix: Subtraction cannot be performed due to incompatible sizes\n";
-			Matrix<T> C(1,1);
+			std::cout << "! Array2d: Subtraction cannot be performed due to incompatible sizes\n";
+			Array2d<T> C(1,1);
 			return C;
 		}
 #endif
-		Matrix<T> C(nrows, ncols);
+		Array2d<T> C(nrows, ncols);
 
 		for(a_int i = 0; i < C.size; i++)
 			C.elems[i] = elems[i] - B.elems[i];
 		return C;
 	}
 
-	Matrix<T> operator*(Matrix<T> B)
+	Array2d<T> operator*(Array2d<T> B)
 	{
-		Matrix<a_real> C(nrows, B.cols());
+		Array2d<a_real> C(nrows, B.cols());
 		C.zeros();
 #ifdef DEBUG
 		if(ncols != B.rows())
 		{
-			std::cout << "! Matrix: Multiplication cannot be performed - incompatible sizes!\n";
+			std::cout << "! Array2d: Multiplication cannot be performed - incompatible sizes!\n";
 			return C;
 		}
 #endif
@@ -540,7 +539,7 @@ public:
 	}
 
 	/// Returns sum of products of respective elements of flattened arrays containing matrix elements of this and A
-	T dot_product(const Matrix<T>& A)
+	T dot_product(const Array2d<T>& A)
 	{
 		T* elemsA = A.elems;
 		#ifdef _OPENMP

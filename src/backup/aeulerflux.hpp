@@ -46,10 +46,7 @@ public:
 	{
 		a_real rhovn = u[1]*n[0]+u[2]*n[1], u02 = u[0]*u[0];
 		// first row
-		dfdu[0] = 0; 
-		dfdu[1] = n[0]; 
-		dfdu[2] = n[1]; 
-		dfdu[3] = 0;
+		dfdu[0] = 0; dfdu[1] = n[0]; dfdu[2] = n[1]; dfdu[3] = 0;
 		// second row
 		dfdu[4] = (-rhovn*u[1] + (g-1)*n[0]*(u[1]*u[1]+u[2]*u[2])/2.0)/u02;
 		dfdu[5] = n[0]*u[1]/u[0]*(2-g);
@@ -65,6 +62,16 @@ public:
 		dfdu[13]= g*u[3]*n[0]/u[0] - (g-1)*0.5/u02*(3*u[1]*u[1]*n[0]+u[2]*u[2]*n[0]+2*u[1]*u[2]*n[1]);
 		dfdu[14]= g*u[3]*n[1]/u[0] - (g-1)*0.5/u02*(2*u[1]*u[2]*n[0]+u[1]*u[1]*n[1]+3*u[2]*u[2]*n[1]);
 		dfdu[15]= g*rhovn/u[0];
+	}
+	
+	void evaluate_flux_2(const amat::Matrix<a_real>& state, const int ielem, const a_real* const n, amat::Matrix<a_real>& flux, const int iside) const
+	{
+		a_real vn = (state.get(ielem,1)*n[0] + state.get(ielem,2)*n[1])/state.get(ielem,0);
+		a_real p = (g-1.0)*(state.get(ielem,3) - 0.5*(state.get(ielem,1)*state.get(ielem,1) + state.get(ielem,2)*state.get(ielem,2))/state.get(ielem,0));
+		flux(iside,0) = state.get(ielem,0) * vn;
+		flux(iside,1) = vn*state.get(ielem,1) + p*n[0];
+		flux(iside,2) = vn*state.get(ielem,2) + p*n[1];
+		flux(iside,3) = vn*(state.get(ielem,3) + p);
 	}
 };
 

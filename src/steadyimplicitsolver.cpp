@@ -1,8 +1,5 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <aoutput.hpp>
-#include <aimplicitsolver.hpp>
+#include "aoutput.hpp"
+#include "aodesolver.hpp"
 
 using namespace amat;
 using namespace std;
@@ -19,30 +16,30 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, invflux, reconst, limiter, solver;
-	double cfl, initcfl, ttime, M_inf, vinf, alpha, rho_inf, tolerance, lintolerance, omega;
-	int order, maxiter, linmaxiter, swtchstpi, swtchstp;
+	string dum, meshfile, outf, invflux, reconst, limiter, linsolver;
+	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, lin_relaxfactor;
+	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
-	control >> dum; control >> cfl;
-	control >> dum; control >> initcfl;
-	control >> dum; control >> swtchstp;
-	control >> dum; control >> swtchstpi;
-	control >> dum; control >> tolerance;
-	control >> dum; control >> maxiter;
 	control >> dum; control >> M_inf;
 	control >> dum; control >> vinf;
 	control >> dum; control >> alpha;
 	control >> dum; control >> rho_inf;
-	control >> dum; control >> order;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
-	control >> dum; control >> solver;
-	control >> dum; control >> omega;
-	control >> dum; control >> lintolerance;
-	control >> dum; control >> linmaxiter;
+	control >> dum; control >> initcfl;
+	control >> dum; control >> endcfl;
+	control >> dum; control >> rampstart;
+	control >> dum; control >> rampend;
+	control >> dum; control >> tolerance;
+	control >> dum; control >> maxiter;
+	control >> dum; control >> linsolver;
+	control >> dum; control >> lintol;
+	control >> dum; control >> linmaxiterstart;
+	control >> dum; control >> linmaxiterend;
+	control >> dum; control >> lin_relaxfactor;
 	control.close(); 
 
 	// Set up mesh
@@ -54,22 +51,24 @@ int main(int argc, char* argv[])
 	m.compute_jacobians();
 	m.compute_face_data();
 
-	// Now start computation
-
-	SteadyStateImplicitSolver prob(&m, order, invflux, reconst, limiter, solver, cfl, initcfl, swtchstpi, swtchstp, omega, tolerance, maxiter, lintolerance, linmaxiter);
+	// set up problem
+	
+	EulerFV prob(&m, invflux, "LLF", reconst, limiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
+	SteadyBackwardEulerSolver time(&m, &prob, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, lintol, linmaxiterstart, linmaxiterend, linsolver);
 
-	prob.solve();
+	// computation
+	time.solve();
 
-	double err = prob.compute_entropy_cell();
+	prob.compute_entropy_cell();
 
 	//prob.postprocess_point();
-	Matrix<acfd_real> scalars = prob.getscalars();
-	Matrix<acfd_real> velocities = prob.getvelocities();
+	Array2d<a_real> scalars = prob.getscalars();
+	Array2d<a_real> velocities = prob.getvelocities();
 
 	string scalarnames[] = {"density", "mach-number", "pressure"};
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
 
-	cout << "\n--------------- End --------------------- \n";
+	cout << "\n--------------- End --------------------- \n\n";
 	return 0;
 }

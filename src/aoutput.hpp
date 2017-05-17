@@ -8,8 +8,8 @@
 #include "aconstants.hpp"
 #endif
 
-#ifndef __AMATRIX_H
-#include "amatrix.hpp"
+#ifndef __AARRAY2D_H
+#include "aarray2d.hpp"
 #endif
 
 #ifndef __AMESH2DHYBRID_H
@@ -22,10 +22,10 @@
  * If either x or y is a 0x0 matrix, it is ignored.
  * \param fname is the output vtu file name
  */
-void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, const amat::Matrix<double>& x, std::string scaname[], const amat::Matrix<double>& y, std::string vecname);
+void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, const amat::Array2d<double>& x, std::string scaname[], const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes nodal data to VTU file
-void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& m, const amat::Matrix<double>& x, std::string scaname[], const amat::Matrix<double>& y, std::string vecname);
+void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& m, const amat::Array2d<double>& x, std::string scaname[], const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.

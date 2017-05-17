@@ -3,7 +3,7 @@
 
 namespace acfd {
 
-void gausselim(amat::Matrix<a_real>& A, amat::Matrix<a_real>& b, amat::Matrix<a_real>& x)
+void gausselim(amat::Array2d<a_real>& A, amat::Array2d<a_real>& b, amat::Array2d<a_real>& x)
 {
 #ifdef DEBUG
 	//std::cout << "gausselim: Input LHS matrix is " << A.rows() << " x " << A.cols() << std::endl;
@@ -77,7 +77,7 @@ void gausselim(amat::Matrix<a_real>& A, amat::Matrix<a_real>& b, amat::Matrix<a_
 	}
 }
 
-void LUfactor(amat::Matrix<a_real>& A, amat::Matrix<int>& p)
+void LUfactor(amat::Array2d<a_real>& A, amat::Array2d<int>& p)
 {
 	int N = A.rows();
 #ifdef DEBUG
@@ -126,11 +126,11 @@ void LUfactor(amat::Matrix<a_real>& A, amat::Matrix<int>& p)
 	}
 }
 
-void LUsolve(const amat::Matrix<a_real>& A, const amat::Matrix<int>& p, const amat::Matrix<a_real>& b, amat::Matrix<a_real>& x)
+void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const amat::Array2d<a_real>& b, amat::Array2d<a_real>& x)
 {
 	int N = A.rows();
 
-	amat::Matrix<a_real> y(N,1);
+	amat::Array2d<a_real> y(N,1);
 	a_real sum;
 	int i,j;
 	
@@ -163,7 +163,7 @@ void LUsolve(const amat::Matrix<a_real>& A, const amat::Matrix<int>& p, const am
 	}
 }
 
-void IterativeBlockSolver::setLHS(Eigen::Matrix *const diago, const Eigen::Matrix *const lower, const Eigen::Matrix *const upper)
+void IterativeBlockSolver::setLHS(Matrix *const diago, const Matrix *const lower, const Matrix *const upper)
 {
 	L = lower;
 	U = upper;
@@ -172,12 +172,12 @@ void IterativeBlockSolver::setLHS(Eigen::Matrix *const diago, const Eigen::Matri
 		D[iel] = D[iel].inverse().eval();
 }
 
-void SGS_Relaxation::solve(const Eigen::Matrix& __restrict__ res, Eigen::Matrix& __restrict__ du)
+void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
 {
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
 	// we need an extra array solely to measure convergence
-	Eigen::Matrix uold(m->gnelem(),NVARS);
+	Matrix uold(m->gnelem(),NVARS);
 
 	// norm of RHS
 	for(int iel = 0; iel < m->gnelem(); iel++)
@@ -191,44 +191,50 @@ void SGS_Relaxation::solve(const Eigen::Matrix& __restrict__ res, Eigen::Matrix&
 		for(int iel = 0; iel < m->gnelem(); iel++) 
 		{
 			uold.row(iel) = du.row(iel);
-			Eigen::Vector inter = Eigen::Vector::Zero(NVARS);
+			Matrix inter = Matrix::Zero(1,NVARS);
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				a_int face = m->gelemface(iel,ifael);
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
 				a_int nbdelem = m->gesuel(iel,ifael);
 
-				if(nbdelem > iel && nbdelem < m->gnelem()) {
-					// upper
-					inter += U[face]*du.row(nbdelem);
-				}
-				else {
-					// lower
-					inter += L[face]*du.row(nbdelem);
+				if(nbdelem < m->gnelem())
+				{
+					if(nbdelem > iel) {
+						// upper
+						inter += du.row(nbdelem)*U[face].transpose();
+					}
+					else {
+						// lower
+						inter += du.row(nbdelem)*L[face].transpose();
+					}
 				}
 			}
-			du.row(iel) = D[iel]*(-res.row(iel) - inter);
+			du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
 		}
 
 #pragma omp barrier
 		
 		// backward sweep
 		for(int iel = m->gnelem()-1; iel >= 0; iel--) {
-			Eigen::Matrix inter = Eigen::Zero(NVARS,NVARS);
+			Matrix inter = Matrix::Zero(1,NVARS);
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				a_int face = m->gelemface(iel,ifael);
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
 				a_int nbdelem = m->gesuel(iel,ifael);
 
-				if(nbdelem > iel && nbdelem < m->gnelem()) {
-					// upper
-					inter += U[face]*du.row(nbdelem);
-				}
-				else {
-					// lower
-					inter += L[face]*du.row(nbdelem);
+				if(nbdelem < m->gnelem())
+				{
+					if(nbdelem > iel) {
+						// upper
+						inter += du.row(nbdelem)*U[face].transpose();
+					}
+					else {
+						// lower
+						inter += du.row(nbdelem)*L[face].transpose();
+					}
 				}
 			}
-			du.row(iel) = D[iel]*(-res.row(iel) - inter);
+			du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
 		}
 
 #pragma omp barrier
@@ -243,6 +249,8 @@ void SGS_Relaxation::solve(const Eigen::Matrix& __restrict__ res, Eigen::Matrix&
 			resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
 		}
 		resnorm = std::sqrt(resnorm);
+
+		step++;
 	}
 }
 

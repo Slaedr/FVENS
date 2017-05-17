@@ -10,10 +10,6 @@
 #include "aconstants.hpp"
 #endif
 
-#ifndef __AMATRIX_H
-#include "amatrix.hpp"
-#endif
-
 #ifndef __AEULERFLUX_H
 #include "aeulerflux.hpp"
 #endif
@@ -65,9 +61,6 @@ public:
 /// Given left and right states at each face, the Van-Leer flux-vector-splitting is calculated at each face
 class VanLeerFlux : public InviscidFlux
 {
-	amat::Matrix<a_real> fiplus;
-	amat::Matrix<a_real> fjminus;
-
 public:
 	VanLeerFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
@@ -86,7 +79,6 @@ public:
  */
 class HLLCFlux : public InviscidFlux
 {
-	amat::Matrix<a_real> utemp;
 public:
 	HLLCFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);

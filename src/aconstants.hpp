@@ -34,9 +34,10 @@ namespace acfd
 
 #ifndef EIGEN_CORE_H
 #include <Eigen/Core>
-namespace Eigen
-{
-	typedef Matrix<acfd::a_real, Dynamic, Dynamic, RowMajor> Matrix;
-	typedef Matrix<acfd::a_real, Dynamic, 1> Vector;
+namespace acfd {
+	typedef Eigen::Matrix<acfd::a_real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Matrix;
+	typedef Eigen::Matrix<acfd::a_real, Eigen::Dynamic, 1> Vector;
 }
+#endif
+
 #endif

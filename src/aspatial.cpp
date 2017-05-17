@@ -8,17 +8,11 @@
 
 namespace acfd {
 
-EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
+EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
 	: aflux(1.4)
 {
 	m = mesh;
-	order = _order;
 	g = 1.4;
-
-	std::cout << "EulerFV: Setting up spatial discretization for order " << order << std::endl;
-
-	// for upto second-order finite volume, we only need 1 Guass point per face
-	ngaussf = 1;
 
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
@@ -35,9 +29,11 @@ EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, st
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),NVARS);
-	gr = new amat::Matrix<a_real>[m->gnaface()];
+	gr = new amat::Array2d<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
-		gr[i].setup(ngaussf, m->gndim());
+		gr[i].setup(NGAUSS, m->gndim());
+	uleft.setup(m->gnaface(), NVARS);
+	uright.setup(m->gnaface(), NVARS);
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER")
@@ -61,37 +57,44 @@ EulerFV::EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, st
 		std::cout << "EulerFV: ! Flux scheme not available!" << std::endl;
 	
 	// set inviscid flux scheme for Jacobian
-	if(invflux == "VANLEER")
-		inviflux = new VanLeerFlux(g, &aflux);
-	else if(invflux == "ROE")
+	if(jacflux == "VANLEER")
+		jflux = new VanLeerFlux(g, &aflux);
+	else if(jacflux == "ROE")
 	{
-		inviflux = new RoeFlux(g, &aflux);
+		jflux = new RoeFlux(g, &aflux);
 		std::cout << "EulerFV: Using Roe fluxes." << std::endl;
 	}
-	else if(invflux == "HLLC")
+	else if(jacflux == "HLLC")
 	{
-		inviflux = new HLLCFlux(g, &aflux);
+		jflux = new HLLCFlux(g, &aflux);
 		std::cout << "EulerFV: Using HLLC fluxes." << std::endl;
 	}
-	else if(invflux == "LLF")
+	else if(jacflux == "LLF")
 	{
-		inviflux = new LocalLaxFriedrichsFlux(g, &aflux);
+		jflux = new LocalLaxFriedrichsFlux(g, &aflux);
 		std::cout << "EulerFV: Using LLF fluxes for Jacobian." << std::endl;
 	}
 	else
 		std::cout << "EulerFV: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
+	secondOrderRequested = true;
 	std::cout << "EulerFV: Selected reconstruction scheme is " << reconst << std::endl;
-	if(reconst == "GREENGAUSS")
-	{
-		rec = new GreenGaussReconstruction();
-	}
-	else 
+	if(reconst == "LEASTSQUARES")
 	{
 		rec = new WeightedLeastSquaresReconstruction();
+		std::cout << "EulerFV: Weighted least-squares reconstruction will be used." << std::endl;
 	}
-	if(order == 1) std::cout << "EulerFV: No reconstruction will be used." << std::endl;
+	else if(reconst == "NONE") {
+		rec = new ConstantReconstruction();
+		std::cout << "EulerFV: No reconstruction; first order solution." << std::endl;
+		secondOrderRequested = false;
+	}
+	else //if(reconst == "GREENGAUSS")
+	{
+		rec = new GreenGaussReconstruction();
+		std::cout << "EulerFV: Green-Gauss reconstruction will be used." << std::endl;
+	}
 
 	// set limiter
 	if(limiter == "NONE")
@@ -110,6 +113,7 @@ EulerFV::~EulerFV()
 {
 	delete rec;
 	delete inviflux;
+	delete jflux;
 	delete lim;
 	delete [] gr;
 }
@@ -228,10 +232,10 @@ void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf)
 		y1 = m->gcoords(m->gintfac(ied,2),1);
 		x2 = m->gcoords(m->gintfac(ied,3),0);
 		y2 = m->gcoords(m->gintfac(ied,3),1);
-		for(ig = 0; ig < ngaussf; ig++)
+		for(ig = 0; ig < NGAUSS; ig++)
 		{
-			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(ngaussf+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(ngaussf+1.0) * (y2-y1);
+			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
 		}
 	}
 
@@ -239,7 +243,7 @@ void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf)
 	std::cout << "EulerFV: loaddata(): Initial data calculated.\n";
 }
 
-void EulerFV::compute_boundary_states(const amat::Matrix<a_real>& ins, amat::Matrix<a_real>& bs)
+void EulerFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
 {
 #pragma omp parallel for default(shared)
 	for(int ied = 0; ied < m->gnbface(); ied++)
@@ -315,7 +319,7 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 	}
 }
 
-a_real EulerFV::l2norm(const amat::Matrix<a_real>* const v)
+a_real EulerFV::l2norm(const amat::Array2d<a_real>* const v)
 {
 	a_real norm = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
@@ -329,14 +333,8 @@ a_real EulerFV::l2norm(const amat::Matrix<a_real>* const v)
 void EulerFV::compute_residual()
 {
 	// Flux across each face
-	amat::Matrix<a_real> fluxes;
-	// Left state at each face
-	amat::Matrix<a_real> uleft;
-	// Rigt state at each face
-	amat::Matrix<a_real> uright;
+	amat::Array2d<a_real> fluxes;
 	fluxes.setup(m->gnaface(), NVARS);
-	uleft.setup(m->gnaface(), NVARS);
-	uright.setup(m->gnaface(), NVARS);
 	
 #pragma omp parallel default(shared)
 	{
@@ -358,7 +356,7 @@ void EulerFV::compute_residual()
 		}
 	}
 
-	if(order == 2)
+	if(secondOrderRequested)
 	{
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
@@ -472,7 +470,7 @@ void EulerFV::compute_jacobian(const bool blocked, Mat A)
 	}
 	else
 	{
-		Matrix<a_real>* D = new Matrix<a_real>[m->gnelem()];
+		Array2d<a_real>* D = new Array2d<a_real>[m->gnelem()];
 		for(int iel = 0; iel < m->gnelem(); iel++) {
 			D[iel].setup(NVARS,NVARS);
 			D[iel].zeros();
@@ -486,8 +484,8 @@ void EulerFV::compute_jacobian(const bool blocked, Mat A)
 			n[1] = m->ggallfa(iface,1);
 			a_real len = m->ggallfa(iface,2);
 			a_real uface[NVARS];
-			Matrix<a_real> left(NVARS,NVARS);
-			Matrix<a_real> right(NVARS,NVARS);
+			amat::Array2d<a_real> left(NVARS,NVARS);
+			amat::Array2d<a_real> right(NVARS,NVARS);
 			
 			compute_boundary_state(iface, &u(lelem,0), uface);
 			jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
@@ -509,8 +507,8 @@ void EulerFV::compute_jacobian(const bool blocked, Mat A)
 			n[1] = m->ggallfa(iface,1);
 			a_real len = m->ggallfa(iface,2);
 			a_real uface[NVARS];
-			Matrix<a_real> left(NVARS,NVARS);
-			Matrix<a_real> right(NVARS,NVARS);
+			amat::Array2d<a_real> left(NVARS,NVARS);
+			amat::Array2d<a_real> right(NVARS,NVARS);
 			
 			jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &left(0,0), &right(0,0));
 
@@ -570,15 +568,17 @@ void EulerFV::compute_jacobian(const bool blocked, Mat A)
 
 #else
 
-void EulerFV::compute_jacobian(Matrix<a_real> *const D, Matrix<a_real> *const L, Matrix<a_real> *const U)
+void EulerFV::compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U)
 {
 	for(int iel = 0; iel < m->gnelem(); iel++) {
-		D[iel].zeros();
+		for(int i = 0; i < NVARS; i++)
+			for(int j = 0; j < NVARS; j++)
+				D[iel](i,j) = 0;
 	}
-	for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
+	/*for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
 		L[iface].zeros();
 		U[iface].zeros();
-	}
+	}*/
 
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
@@ -588,39 +588,41 @@ void EulerFV::compute_jacobian(Matrix<a_real> *const D, Matrix<a_real> *const L,
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
 		a_real uface[NVARS];
-		Matrix<a_real> left(NVARS,NVARS);
-		Matrix<a_real> right(NVARS,NVARS);
+		Matrix left(NVARS,NVARS); //left.resize(NVARS,NVARS);
+		Matrix right(NVARS,NVARS); //right.resize(NVARS,NVARS);
 		
 		compute_boundary_state(iface, &u(lelem,0), uface);
+		//jflux->get_jacobian(u.data()+lelem*NVARS, uface, n, left.data(), right.data());
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 		
 		for(int i = 0; i < NVARS; i++)
 			for(int j = 0; j < NVARS; j++) {
 				left(i,j) *= len;
-#pragma omp atomic write
+#pragma omp atomic update
 				D[lelem](i,j) -= left(i,j);
 			}
 	}
 
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
+		a_int intface = iface-m->gnbface();
 		a_int lelem = m->gintfac(iface,0);
 		a_int relem = m->gintfac(iface,1);
 		a_real n[NDIM];
 		n[0] = m->ggallfa(iface,0);
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
-		
-		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[iface](0,0), &U[iface](0,0));
+	
+		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[intface](0,0), &U[intface](0,0));
 
 		for(int i = 0; i < NVARS; i++)
 			for(int j = 0; j < NVARS; j++) {
-				L[iface](i,j) *= len;
-				U[iface](i,j) *= len;
-#pragma omp atomic write
-				D[lelem](i,j) -= L[iface](i,j);
-#pragma omp atomic write
-				D[relem](i,j) -= U[iface](i,j);
+				L[intface](i,j) *= len;
+				U[intface](i,j) *= len;
+#pragma omp atomic update
+				D[lelem](i,j) -= L[intface](i,j);
+#pragma omp atomic update
+				D[relem](i,j) -= U[intface](i,j);
 			}
 	}
 }
@@ -633,10 +635,10 @@ void EulerFV::postprocess_point()
 	std::cout << "EulerFV: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
-	amat::Matrix<a_real> c(m->gnpoin(),1);
+	amat::Array2d<a_real> c(m->gnpoin(),1);
 	
-	amat::Matrix<a_real> areasum(m->gnpoin(),1);
-	amat::Matrix<a_real> up(m->gnpoin(), NVARS);
+	amat::Array2d<a_real> areasum(m->gnpoin(),1);
+	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
 	up.zeros();
 	areasum.zeros();
 
@@ -648,7 +650,7 @@ void EulerFV::postprocess_point()
 		for(inode = 0; inode < m->gnnode(ielem); inode++)
 			for(ivar = 0; ivar < NVARS; ivar++)
 			{
-				up(m->ginpoel(ielem,inode),ivar) += u.get(ielem,ivar)*m->garea(ielem);
+				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
 				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
 			}
 	}
@@ -659,8 +661,8 @@ void EulerFV::postprocess_point()
 		ip2 = m->gintfac(iface,3);
 		for(ivar = 0; ivar < NVARS; ivar++)
 		{
-			up(ip1,ivar) += ug.get(iface,ivar)*m->garea(ielem);
-			up(ip2,ivar) += ug.get(iface,ivar)*m->garea(ielem);
+			up(ip1,ivar) += ug(iface,ivar)*m->garea(ielem);
+			up(ip2,ivar) += ug(iface,ivar)*m->garea(ielem);
 			areasum(ip1) += m->garea(ielem);
 			areasum(ip2) += m->garea(ielem);
 		}
@@ -672,14 +674,14 @@ void EulerFV::postprocess_point()
 	
 	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 	{
-		scalars(ipoin,0) = up.get(ipoin,0);
-		velocities(ipoin,0) = up.get(ipoin,1)/up.get(ipoin,0);
-		velocities(ipoin,1) = up.get(ipoin,2)/up.get(ipoin,0);
+		scalars(ipoin,0) = up(ipoin,0);
+		velocities(ipoin,0) = up(ipoin,1)/up(ipoin,0);
+		velocities(ipoin,1) = up(ipoin,2)/up(ipoin,0);
 		//velocities(ipoin,0) = dudx(ipoin,1);
 		//velocities(ipoin,1) = dudy(ipoin,1);
 		a_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
-		scalars(ipoin,2) = up.get(ipoin,0)*(g-1) * (up.get(ipoin,3)/up.get(ipoin,0) - 0.5*vmag2);		// pressure
-		c(ipoin) = sqrt(g*scalars(ipoin,2)/up.get(ipoin,0));
+		scalars(ipoin,2) = up(ipoin,0)*(g-1) * (up(ipoin,3)/up(ipoin,0) - 0.5*vmag2);		// pressure
+		c(ipoin) = sqrt(g*scalars(ipoin,2)/up(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
 	}
 	std::cout << "EulerFV: postprocess_point(): Done.\n";
@@ -690,20 +692,22 @@ void EulerFV::postprocess_cell()
 	std::cout << "EulerFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
-	amat::Matrix<a_real> c(m->gnelem(), 1);
+	amat::Array2d<a_real> c(m->gnelem(), 1);
 
-	amat::Matrix<a_real> d = u.col(0);
+	amat::Array2d<a_real> d(m->gnelem(),1);
 	scalars.replacecol(0, d);		// populate density data
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		d(iel) = u(iel,0);
+		scalars(iel,0) = u(iel,0);
+	}
 	//std::cout << "EulerFV: postprocess(): Written density\n";
 
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
-		velocities(iel,0) = u.get(iel,1)/u.get(iel,0);
-		velocities(iel,1) = u.get(iel,2)/u.get(iel,0);
-		//velocities(iel,0) = dudx(iel,1);
-		//velocities(iel,1) = dudy(iel,1);
+		velocities(iel,0) = u(iel,1)/u(iel,0);
+		velocities(iel,1) = u(iel,2)/u(iel,0);
 		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
-		scalars(iel,2) = d(iel)*(g-1) * (u.get(iel,3)/d(iel) - 0.5*vmag2);		// pressure
+		scalars(iel,2) = d(iel)*(g-1) * (u(iel,3)/d(iel) - 0.5*vmag2);		// pressure
 		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
 		scalars(iel,1) = sqrt(vmag2)/c(iel);
 	}
@@ -716,12 +720,12 @@ a_real EulerFV::compute_entropy_cell()
 	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
 	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
 
-	amat::Matrix<a_real> s_err(m->gnelem(),1);
+	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		s_err(iel) = (scalars(iel,2)/pow(scalars(iel,0),g) - sinf)/sinf;
-		error += s_err(iel)*s_err(iel)*m->gjacobians(iel)/2.0;
+		error += s_err(iel)*s_err(iel)*m->garea(iel);
 	}
 	error = sqrt(error);
 
@@ -733,12 +737,12 @@ a_real EulerFV::compute_entropy_cell()
 	return error;
 }
 
-amat::Matrix<a_real> EulerFV::getscalars() const
+amat::Array2d<a_real> EulerFV::getscalars() const
 {
 	return scalars;
 }
 
-amat::Matrix<a_real> EulerFV::getvelocities() const
+amat::Array2d<a_real> EulerFV::getvelocities() const
 {
 	return velocities;
 }

@@ -12,8 +12,8 @@ namespace acfd
 Reconstruction::~Reconstruction()
 { }
 
-void Reconstruction::setup(const UMesh2dh* mesh, const Eigen::Matrix* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
-		const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg)
+void Reconstruction::setup(const UMesh2dh* mesh, const Matrix* unk, const amat::Array2d<a_real>* unkg, amat::Array2d<a_real>* gradx, amat::Array2d<a_real>* grady, 
+		const amat::Array2d<a_real>* _rc, const amat::Array2d<a_real>* const _rcg)
 {
 	m = mesh;
 	u = unk;
@@ -22,6 +22,19 @@ void Reconstruction::setup(const UMesh2dh* mesh, const Eigen::Matrix* unk, const
 	dudy = grady;
 	rc = _rc;
 	rcg = _rcg;
+}
+
+void ConstantReconstruction::compute_gradients()
+{
+#pragma omp parallel for simd default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		for(int i = 0; i < NVARS; i++)
+		{
+			(*dudx)(iel,i) = 0;
+			(*dudy)(iel,i) = 0;
+		}
+	}
 }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
@@ -111,8 +124,8 @@ void GreenGaussReconstruction::compute_gradients()
 }
 
 
-void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const amat::Matrix<a_real>* unk, const amat::Matrix<a_real>* unkg, amat::Matrix<a_real>* gradx, amat::Matrix<a_real>* grady, 
-		const amat::Matrix<a_real>* _rc, const amat::Matrix<a_real>* const _rcg)
+void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const Matrix* unk, const amat::Array2d<a_real>* unkg, amat::Array2d<a_real>* gradx, amat::Array2d<a_real>* grady, 
+		const amat::Array2d<a_real>* _rc, const amat::Array2d<a_real>* const _rcg)
 {
 	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _rc, _rcg);
 	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; num vars = " << NVARS << std::endl;
@@ -197,7 +210,7 @@ void WeightedLeastSquaresReconstruction::compute_gradients()
 		}
 		w2 = 1.0/w2;
 		for(ivar = 0; ivar < NVARS; ivar++)
-			du(ivar) = u->get(ielem,ivar) - ug->get(iface,ivar);
+			du(ivar) = (*u)(ielem,ivar) - (*ug)(iface,ivar);
 		
 		for(ivar = 0; ivar < NVARS; ivar++)
 		{
@@ -217,7 +230,7 @@ void WeightedLeastSquaresReconstruction::compute_gradients()
 		}
 		w2 = 1.0/w2;
 		for(ivar = 0; ivar < NVARS; ivar++)
-			du(ivar) = u->get(ielem,ivar) - u->get(jelem,ivar);
+			du(ivar) = (*u)(ielem,ivar) - (*u)(jelem,ivar);
 
 		for(ivar = 0; ivar < NVARS; ivar++)
 		{

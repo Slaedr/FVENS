@@ -5,10 +5,10 @@ namespace acfd {
 FaceDataComputation::FaceDataComputation()
 { }
 
-FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
-		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
+FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+		const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+		const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+		const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right)
 	:
 	m(mesh),
 	u (unknowns),
@@ -26,10 +26,10 @@ FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const Eigen::Mat
 FaceDataComputation::~FaceDataComputation()
 { }
 
-void FaceDataComputation::setup(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres,
-		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
+void FaceDataComputation::setup(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+		const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+		const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres,
+		const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right)
 {
 	m = mesh;
 	u = unknowns;
@@ -44,10 +44,10 @@ void FaceDataComputation::setup(const UMesh2dh* mesh, const Eigen::Matrix* unkno
 	ng = gr[0].rows();
 }
 
-NoLimiter::NoLimiter(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
-		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
+NoLimiter::NoLimiter(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+		const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+		const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+		const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right)
 	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
 { }
 
@@ -90,14 +90,14 @@ void NoLimiter::compute_face_values()
 	}
 }
 
-WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, const amat::Matrix<a_real>* gauss_r, 
-		amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
+WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+		const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+		const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r, 
+		amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right)
 	: FaceDataComputation(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, c_centres, gauss_r, uface_left, uface_right)
 {
-	ldudx = new amat::Matrix<a_real>(m->gnelem(),NVARS);
-	ldudy = new amat::Matrix<a_real>(m->gnelem(),NVARS);
+	ldudx = new amat::Array2d<a_real>(m->gnelem(),NVARS);
+	ldudy = new amat::Array2d<a_real>(m->gnelem(),NVARS);
 	// values below chosen from second reference (Dumbser and Kaeser)
 	gamma = 4.0;
 	lambda = 1e3;
@@ -187,10 +187,10 @@ void WENOLimiter::compute_face_values()
 	} // end parallel region
 }
 
-void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-	const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-	const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* r_centres, 
-	const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right)
+void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+	const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+	const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* r_centres, 
+	const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right)
 {
 	FaceDataComputation::setup(mesh, unknowns, unknow_ghost, x_deriv, y_deriv, ghost_centres, r_centres, gauss_r, uface_left, uface_right);
 	eps = 1e-8;
@@ -207,7 +207,7 @@ void VanAlbadaLimiter::compute_face_values()
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		int lel = m->gintfac(ied,0);
-		amat::Matrix<a_real> deltam(NVARS,1);
+		amat::Array2d<a_real> deltam(NVARS,1);
 		for(int i = 0; i < NVARS; i++)
 		{
 			deltam(i) = 2 * ( dudx->get(lel,i)*(rb->get(ied,0)-ri->get(lel,0)) + dudy->get(lel,i)*(rb->get(ied,1)-ri->get(lel,1)) ) - (ug->get(ied,i) - (*u)(lel,i));
@@ -220,8 +220,8 @@ void VanAlbadaLimiter::compute_face_values()
 	{
 		a_int lel = m->gintfac(ied,0);
 		a_int rel = m->gintfac(ied,1);
-		amat::Matrix<a_real> deltam(NVARS,1);
-		amat::Matrix<a_real> deltap(NVARS,1);
+		amat::Array2d<a_real> deltam(NVARS,1);
+		amat::Array2d<a_real> deltap(NVARS,1);
 		for(int i = 0; i < NVARS; i++)
 		{
 			deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - ((*u)(rel,i) - (*u)(lel,i));
@@ -238,8 +238,8 @@ void VanAlbadaLimiter::compute_face_values()
 	// apply the limiters
 	
 	//cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
-	amat::Matrix<a_real> deltam(NVARS,1);
-	amat::Matrix<a_real> deltap(NVARS,1);
+	amat::Array2d<a_real> deltam(NVARS,1);
+	amat::Array2d<a_real> deltap(NVARS,1);
 	for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);

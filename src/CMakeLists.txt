@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 
+# The environment variable EIGEN_DIR needs to be set to the path where
+# the Eigen source directory is present.
+
 project (fvens)
 
 # to compile with OpenMP
@@ -51,13 +54,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 # libraries to be compiled
 add_library(fvens_base aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp adatastructures.cpp)
 
-add_library(fvens_explicit aexplicitsolver.cpp)
-target_link_libraries(fvens_explicit fvens_base)
-
-#add_library(fvens_implicit aimplicitsolver.cpp alinalg.cpp)
-#target_link_libraries(fvens_implicit fvens_base)
+add_library(fvens_time aodesolver.cpp alinalg.cpp)
+target_link_libraries(fvens_time fvens_base)
 #if(WITH_PETSC)
-#	target_link_libraries(fvens_implicit ${PETSC_LIB})
+#	target_link_libraries(fvens_time ${PETSC_LIB})
 #endif()
 
 # for the final executable(s)
@@ -65,10 +65,10 @@ target_link_libraries(fvens_explicit fvens_base)
 add_subdirectory(utilities)
 
 add_executable(fvense explicitsolver.cpp)
-target_link_libraries(fvense fvens_explicit)
+target_link_libraries(fvense fvens_time)
+
+add_executable(steadyfvensi steadyimplicitsolver.cpp)
+target_link_libraries(steadyfvensi fvens_time)
 
 #add_executable(steadylufvensi steadyLUimplicitsolver.cpp)
 #target_link_libraries(steadylufvensi fvens_implicit)
-
-#add_executable(steadyfvensi steadyimplicitsolver.cpp)
-#target_link_libraries(steadyfvensi fvens_implicit)

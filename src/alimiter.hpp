@@ -4,8 +4,8 @@
 #include "aconstants.hpp"
 #endif
 
-#ifndef __AMATRIX_H
-#include "amatrix.hpp"
+#ifndef __AARRAY2D_H
+#include "aarray2d.hpp"
 #endif
 
 #ifndef __AMESH2DH_H
@@ -23,26 +23,26 @@ class FaceDataComputation
 {
 protected:
 	const UMesh2dh* m;
-	const Eigen::Matrix* u;					///< Cell-centered flow data
-	const amat::Matrix<a_real>* ug;			///< Cell-centered ghost cell flow data
-	const amat::Matrix<a_real>* dudx;
-	const amat::Matrix<a_real>* dudy;
-	const amat::Matrix<a_real>* rb;			///< coords of cell centers of ghost cells
-	const amat::Matrix<a_real>* ri;			///< coords of cell centers of real cells
-	const amat::Matrix<a_real>* gr;		/// coords of gauss points of each face
-	amat::Matrix<a_real>* ufl;			///< left face flow data
-	amat::Matrix<a_real>* ufr;			///< right face flow data
+	const Matrix* u;					///< Cell-centered flow data
+	const amat::Array2d<a_real>* ug;			///< Cell-centered ghost cell flow data
+	const amat::Array2d<a_real>* dudx;
+	const amat::Array2d<a_real>* dudy;
+	const amat::Array2d<a_real>* rb;			///< coords of cell centers of ghost cells
+	const amat::Array2d<a_real>* ri;			///< coords of cell centers of real cells
+	const amat::Array2d<a_real>* gr;		/// coords of gauss points of each face
+	amat::Array2d<a_real>* ufl;			///< left face flow data
+	amat::Array2d<a_real>* ufr;			///< right face flow data
 	int ng;									///< Number of Gauss points
 
 public:
 	FaceDataComputation();
-    FaceDataComputation (const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-			const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-			const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
-			const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right);
-    void setup(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-			const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
-			const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right);
+    FaceDataComputation (const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+			const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+			const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right);
+    void setup(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+			const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right);
 	virtual void compute_face_values() = 0;
 	virtual ~FaceDataComputation();
 };
@@ -54,10 +54,10 @@ class NoLimiter : public FaceDataComputation
 {
 public:
 	/// Constructs the NoLimiter object. \sa FaceDataComputation::FaceDataComputation.
-	NoLimiter(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-			const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-			const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, 
-			const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right);
+	NoLimiter(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+			const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+			const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right);
 	void compute_face_values();
 };
 
@@ -70,15 +70,15 @@ public:
  */
 class WENOLimiter : public FaceDataComputation
 {
-	amat::Matrix<a_real>* ldudx;
-	amat::Matrix<a_real>* ldudy;
+	amat::Array2d<a_real>* ldudx;
+	amat::Array2d<a_real>* ldudy;
 	a_real gamma;
 	a_real lambda;
 	a_real epsilon;
 public:
-    WENOLimiter(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-			const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* c_centres, const amat::Matrix<a_real>* gauss_r, 
-			amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right);
+    WENOLimiter(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+			const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r, 
+			amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right);
 	void compute_face_values();
 	~WENOLimiter();
 };
@@ -88,14 +88,14 @@ class VanAlbadaLimiter : public FaceDataComputation
 {
     a_real eps;
     a_real k;               			/// van-Albada parameter
-	amat::Matrix<a_real> phi_l;		/// left-face limiter values
-	amat::Matrix<a_real> phi_r;		/// right-face limiter values
+	amat::Array2d<a_real> phi_l;		/// left-face limiter values
+	amat::Array2d<a_real> phi_r;		/// right-face limiter values
 
 public:
-	void setup(const UMesh2dh* mesh, const Eigen::Matrix* unknowns, const amat::Matrix<a_real>* unknow_ghost, 
-		const amat::Matrix<a_real>* x_deriv, const amat::Matrix<a_real>* y_deriv, 
-		const amat::Matrix<a_real>* ghost_centres, const amat::Matrix<a_real>* r_centres,
-		const amat::Matrix<a_real>* gauss_r, amat::Matrix<a_real>* uface_left, amat::Matrix<a_real>* uface_right);
+	void setup(const UMesh2dh* mesh, const Matrix* unknowns, const amat::Array2d<a_real>* unknow_ghost, 
+		const amat::Array2d<a_real>* x_deriv, const amat::Array2d<a_real>* y_deriv, 
+		const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* r_centres,
+		const amat::Array2d<a_real>* gauss_r, amat::Array2d<a_real>* uface_left, amat::Array2d<a_real>* uface_right);
     
 	/// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
 	void compute_face_values();

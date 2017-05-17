@@ -10,8 +10,8 @@
 #include "aconstants.hpp"
 #endif
 
-#ifndef __AMATRIX_H
-#include "amatrix.hpp"
+#ifndef __AARRAY2D_H
+#include "aarray2d.hpp"
 #endif
 #ifndef __ADATASTRUCTURES_H
 #include "adatastructures.hpp"
@@ -37,63 +37,63 @@ private:
 	int nbpoin;					///< number of boundary points
 	int nbtag;					///< number of tags for each boundary face
 	int ndtag;					///< number of tags for each element
-	amat::Matrix<double > coords;				///< Specifies coordinates of each node
-	amat::Matrix<int > inpoel;				///< Interconnectivity matrix: lists node numbers of nodes in each element
-	amat::Matrix<int > bface;					///< Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
-	amat::Matrix<double > vol_regions;		///< to hold volume region markers, if any
-	amat::Matrix<a_real > flag_bpoin;		///< Holds 1 or 0 for each point depending on whether or not that point is a boundary point
+	amat::Array2d<double > coords;				///< Specifies coordinates of each node
+	amat::Array2d<int > inpoel;				///< Interconnectivity matrix: lists node numbers of nodes in each element
+	amat::Array2d<int > bface;					///< Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
+	amat::Array2d<double > vol_regions;		///< to hold volume region markers, if any
+	amat::Array2d<a_real > flag_bpoin;		///< Holds 1 or 0 for each point depending on whether or not that point is a boundary point
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
-	amat::Matrix<int > esup_p;
+	amat::Array2d<int > esup_p;
 	/// List of elements surrounding points. 
 	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p). */
-	amat::Matrix<int > esup;
+	amat::Array2d<int > esup;
 	/// Lists of indices of psup corresponding to nodes (points)
-	amat::Matrix<int > psup_p;
+	amat::Array2d<int > psup_p;
 	
 	/// List of nodes surrounding nodes
 	/** Integers pointing to particular nodes' node lists are stored in [psup_p](@ref psup_p)
 	 */
-	amat::Matrix<int > psup;
+	amat::Array2d<int > psup;
 	
 	/// Elements surrounding elements
-	amat::Matrix<int > esuel;
+	amat::Array2d<int > esuel;
 	/// Face data structure - contains info about elements and nodes associated with a face
-	amat::Matrix<int > intfac;
+	amat::Array2d<int > intfac;
 	/// Holds boundary tags (markers) corresponding to intfac
-	amat::Matrix<int > intfacbtags;
+	amat::Array2d<int > intfacbtags;
 	/// Holds face numbers of faces making up an element
-	amat::Matrix<int> elemface;
+	amat::Array2d<int> elemface;
 	
 	/** @brief Boundary points list
 	 * 
 	 * bpoints contains: bpoints(0) = global point number, bpoints(1) = first containing intfac face (face with intfac's second point as this point), 
 	 * bpoints(2) = second containing intfac face (face with intfac's first point as this point)
 	 */
-	amat::Matrix<int > bpoints;
+	amat::Array2d<int > bpoints;
 	
 	/// Like bpoints, but stores bface numbers corresponding to each face, rather than intfac faces
-	amat::Matrix<int > bpointsb;
+	amat::Array2d<int > bpointsb;
 
 	/// Stores boundary-points numbers (defined by bpointsb) of the two points making up a particular bface.
-	amat::Matrix<int > bfacebp;
+	amat::Array2d<int > bfacebp;
 
-	amat::Matrix<int > bifmap;				///< relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
-	amat::Matrix<int > ifbmap;				///< relates boundary faces in bface with intfac, ie, ifbmap(bface no.) = intfac no.
+	amat::Array2d<int > bifmap;				///< relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
+	amat::Array2d<int > ifbmap;				///< relates boundary faces in bface with intfac, ie, ifbmap(bface no.) = intfac no.
 	bool isBoundaryMaps;			///< Specifies whether bface-intfac maps have been created
 
 	bool alloc_jacobians;			///< Flag indicating whether space has been allocated for jacobians
-	amat::Matrix<double > jacobians;		///< Contains jacobians of each (linear triangular) element
-	amat::Matrix<a_real> area;			///< Contains area of each element (either triangle or quad)
-	amat::Matrix<a_real> gallfa;			///< Stores lengths and normals for linear mesh faces
+	amat::Array2d<double > jacobians;		///< Contains jacobians of each (linear triangular) element
+	amat::Array2d<a_real> area;			///< Contains area of each element (either triangle or quad)
+	amat::Array2d<a_real> gallfa;			///< Stores lengths and normals for linear mesh faces
 	
 	/// Contains Knupp's node-local areas for each node of each element. 
 	/** If the elements are triangles, it contains just 1 value for each element. If elements are quads, there are 4 values for each element, one associated with each node. */
-	amat::Matrix<double > alpha;
+	amat::Array2d<double > alpha;
 
 	/// Contains Knupp's 3 coeffs of metric tensor for each node of each element. 
 	/** In case of triangles, it just contains 3 coeffs for each element. In case of quads, we need to store 3 coeffs for each node of each element. */
-	amat::Matrix<double >* lambda;
+	amat::Array2d<double >* lambda;
 
 	std::vector<int> nmtens;				///< number of metric tensors required for each element - 1 for triangles and 4 for quads.
 	int neleminlambda;				///< number of coeffs in lambda per element per node.
@@ -120,7 +120,7 @@ public:
 		return bface.get(faceno, val);
 	}
 
-	amat::Matrix<double >* getcoords()
+	amat::Array2d<double >* getcoords()
 	{ return &coords; }
 
 	int gesup(int i) const { return esup.get(i); }
@@ -161,13 +161,13 @@ public:
 		coords(pointno,dim) = value;
 	}
 
-	void setcoords(amat::Matrix<double >* c)
+	void setcoords(amat::Array2d<double >* c)
 	{ coords = *c; }
 
-	void setinpoel(amat::Matrix<int >* inp)
+	void setinpoel(amat::Array2d<int >* inp)
 	{ inpoel = *inp; }
 
-	void setbface(amat::Matrix<int >* bf)
+	void setbface(amat::Array2d<int >* bf)
 	{ bface = *bf; }
 
 	void modify_bface_marker(int iface, int pos, int number)

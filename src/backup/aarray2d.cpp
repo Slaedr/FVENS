@@ -1,4 +1,4 @@
-#include "amatrix.hpp"
+#include "aarray2d.hpp"
 
 namespace amat {
 
@@ -8,11 +8,11 @@ namespace amat {
 * \note NOTE: This function does not work (as of 8 February 2016)!!
 */
 template <typename T>
-T determinant(const Matrix<T>& mat)
+T determinant(const Array2d<T>& mat)
 {
 #ifdef DEBUG
 	if(mat.nrows != mat.ncols || mat.nrows < 2) {
-		std::cout << "Matrix: determinant(): Size error!" << std::endl;
+		std::cout << "Array2d: determinant(): Size error!" << std::endl;
 		return 0;
 	}
 #endif
@@ -22,8 +22,8 @@ T determinant(const Matrix<T>& mat)
 	{
 		T det;
 		// create minors
-		Matrix<T>* submat;
-		submat = new Matrix<T>[mat.nrows];
+		Array2d<T>* submat;
+		submat = new Array2d<T>[mat.nrows];
 		T* dets = new T[mat.nrows];
 		for(a_int k = 0; k < mat.nrows; k++)
 		{

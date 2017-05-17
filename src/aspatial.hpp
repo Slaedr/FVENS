@@ -10,8 +10,8 @@
 #include "aconstants.hpp"
 #endif
 
-#ifndef __AMATRIX_H
-#include "amatrix.hpp"
+#ifndef __AARRAY2D_H
+#include "aarray2d.hpp"
 #endif
 
 #ifndef __AMESH2DH_H
@@ -43,16 +43,16 @@ class EulerFV
 {
 protected:
 	const UMesh2dh* m;
-	Eigen::Matrix residual;					///< Right hand side for boundary integrals and source terms
-	Eigen::Matrix u;						///< The conserved variables
-	amat::Matrix<a_real> uinf;				///< Free-stream/reference condition
+	Matrix residual;						///< Right hand side for boundary integrals and source terms
+	Matrix u;								///< The conserved variables
+	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
 	a_real g;								///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
-	amat::Matrix<a_real> integ;
+	amat::Array2d<a_real> integ;
 	
 	/// Stores allowable local time step for each cell
-	amat::Matrix<a_real> dtm;
+	amat::Array2d<a_real> dtm;
 
 	/// Analytical flux vector computation
 	EulerFlux aflux;
@@ -67,35 +67,38 @@ protected:
 
 	/// Reconstruction context
 	Reconstruction* rec;
+	
+	bool secondOrderRequested;
 
 	/// Limiter context
 	FaceDataComputation* lim;
 
 	/// Cell centers
-	amat::Matrix<a_real> rc;
+	amat::Array2d<a_real> rc;
 
 	/// Ghost cell centers
-	amat::Matrix<a_real> rcg;
+	amat::Array2d<a_real> rcg;
 	/// Ghost cell flow quantities
-	amat::Matrix<a_real> ug;
+	amat::Array2d<a_real> ug;
 
-	/// Number of Guass points per face
-	int ngaussf;
-	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguassf x ndim (in that order)
-	amat::Matrix<a_real>* gr;
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguass x ndim (in that order)
+	amat::Array2d<a_real>* gr;
 
 	/// x-slopes
-	amat::Matrix<a_real> dudx;
+	amat::Array2d<a_real> dudx;
 	/// y-slopes
-	amat::Matrix<a_real> dudy;
-
-	int order;								///< Formal order of accuracy of the scheme (1 or 2)
+	amat::Array2d<a_real> dudy;
 
 	int solid_wall_id;						///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
 	
-	amat::Matrix<a_real> scalars;			///< Holds density, Mach number and pressure for each cell
-	amat::Matrix<a_real> velocities;		///< Holds velocity components for each cell
+	amat::Array2d<a_real> scalars;			///< Holds density, Mach number and pressure for each cell
+	amat::Array2d<a_real> velocities;		///< Holds velocity components for each cell
+	
+	/// Left state at each face
+	amat::Array2d<a_real> uleft;
+	/// Rigt state at each face
+	amat::Array2d<a_real> uright;
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
@@ -104,13 +107,13 @@ protected:
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Matrix<a_real>& instates, amat::Matrix<a_real>& bounstates);
+	void compute_boundary_states(const amat::Array2d<a_real>& instates, amat::Array2d<a_real>& bounstates);
 
 	/// Computes ghost cell state across the face denoted by the first parameter
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
 
 public:
-	EulerFV(const UMesh2dh* mesh, const int _order, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+	EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
 	
 	~EulerFV();
 	
@@ -130,11 +133,11 @@ public:
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
 	/** D, L and U are zeroed first.
 	 */
-	void compute_jacobian(Matrix<a_real> *const D, Matrix<a_real> *const L, Matrix<a_real> *const U);
+	void compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U);
 #endif
 
 	/// Computes the L2 norm of a cell-centered quantity
-	a_real l2norm(const amat::Matrix<a_real>* const v);
+	a_real l2norm(const amat::Array2d<a_real>* const v);
 	
 	/// Compute cell-centred quantities to export
 	void postprocess_cell();
@@ -146,19 +149,19 @@ public:
 	/// Call aftr computing pressure etc \sa postprocess_cell
 	a_real compute_entropy_cell();
 
-	amat::Matrix<a_real> getscalars() const;
-	amat::Matrix<a_real> getvelocities() const;
+	amat::Array2d<a_real> getscalars() const;
+	amat::Array2d<a_real> getvelocities() const;
 
-	const amat::Matrix<a_real>& localTimeSteps() const {
+	const amat::Array2d<a_real>& localTimeSteps() const {
 		return dtm;
 	}
 	
-	const amat::Matrix<a_real>& residuals() const {
+	const Matrix& residuals() const {
 		return residual;
 	}
 	
 	/// Write access to the conserved variables
-	amat::Matrix<a_real>& unknowns() {
+	Matrix& unknowns() {
 		return u;
 	}
 

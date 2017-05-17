@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 #include "aoutput.hpp"
-#include "aexplicitsolver.hpp"
+#include "aodesolver.hpp"
 
 using namespace amat;
 using namespace std;
@@ -21,16 +21,12 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, invflux, reconst, limiter;
 	double cfl, M_inf, vinf, alpha, rho_inf, tolerance;
-	int order, maxiter;
+	int maxiter;
 
 	control >> dum;
 	control >> meshfile;
 	control >> dum;
 	control >> outf;
-	control >> dum;
-	control >> cfl;
-	control >> dum; control >> tolerance;
-	control >> dum; control >> maxiter;
 	control >> dum;
 	control >> M_inf;
 	control >> dum;
@@ -39,10 +35,13 @@ int main(int argc, char* argv[])
 	control >> alpha;
 	control >> dum;
 	control >> rho_inf;
-	control >> dum; control >> order;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
+	control >> dum;
+	control >> cfl;
+	control >> dum; control >> tolerance;
+	control >> dum; control >> maxiter;
 	control.close(); 
 
 	// Set up mesh
@@ -56,9 +55,9 @@ int main(int argc, char* argv[])
 
 	// set up problem
 	
-	EulerFV prob(&m, order, invflux, reconst, limiter);
+	EulerFV prob(&m, invflux, "LLF", reconst, limiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
-	ForwardEulerTimeSolver time(&m, &prob);
+	SteadyForwardEulerSolver time(&m, &prob);
 
 	// Now start computation
 
@@ -67,8 +66,8 @@ int main(int argc, char* argv[])
 	prob.compute_entropy_cell();
 
 	//prob.postprocess_point();
-	Matrix<a_real> scalars = prob.getscalars();
-	Matrix<a_real> velocities = prob.getvelocities();
+	Array2d<a_real> scalars = prob.getscalars();
+	Array2d<a_real> velocities = prob.getvelocities();
 
 	string scalarnames[] = {"density", "mach-number", "pressure"};
 	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
