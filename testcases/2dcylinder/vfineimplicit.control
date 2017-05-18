@@ -35,8 +35,8 @@ BSGS
 -Linear-solver-tolerance
 1e-2
 -Linear-solver-max-iterations-initial
-2
+4
 -Linear-solver-max-iterations-end
-2
+4
 -relaxation-factor
 1.0

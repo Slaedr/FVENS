@@ -582,6 +582,7 @@ void EulerFV::compute_jacobian(const bool blocked, Mat A)
 
 void EulerFV::compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U)
 {
+#pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++) {
 		for(int i = 0; i < NVARS; i++)
 			for(int j = 0; j < NVARS; j++)
@@ -592,6 +593,7 @@ void EulerFV::compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U
 		U[iface].zeros();
 	}*/
 
+#pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
@@ -615,6 +617,7 @@ void EulerFV::compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U
 			}
 	}
 
+#pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		a_int intface = iface-m->gnbface();

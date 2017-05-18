@@ -8,6 +8,9 @@
 #include <cmath>
 #include <string>
 #include <iomanip>
+#include <time.h>
+// Unix only:
+#include <sys/time.h>
 
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353

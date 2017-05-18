@@ -76,11 +76,11 @@ protected:
 	Matrix * D;							///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
 	const Matrix * L;					///< `Lower' blocks of LHS
 	const Matrix * U;					///< `Upper' blocks of LHS
+	double walltime;
+	double cputime;
 
 public:
-	IterativeBlockSolver(const UMesh2dh* const mesh)
-		: IterativeSolver(mesh)
-	{ }
+	IterativeBlockSolver(const UMesh2dh* const mesh);
 
 	/// Sets D,L,U and inverts each D
 	void setLHS(Matrix *const diago, const Matrix *const lower, const Matrix *const upper);

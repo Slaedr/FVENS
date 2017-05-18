@@ -19,7 +19,7 @@ GREENGAUSS
 -limiter
 NONE
 -initial-CFL
-0.5
+2.0
 -final-CFL
 6.0
 -ramp-start-step
