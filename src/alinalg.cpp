@@ -1,6 +1,8 @@
 #include "alinalg.hpp"
 #include <Eigen/LU>
 
+#define THREAD_CHUNK_SIZE 100
+
 namespace acfd {
 
 void gausselim(amat::Array2d<a_real>& A, amat::Array2d<a_real>& b, amat::Array2d<a_real>& x)
@@ -168,6 +170,7 @@ void IterativeBlockSolver::setLHS(Matrix *const diago, const Matrix *const lower
 	L = lower;
 	U = upper;
 	D = diago;
+#pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
 		D[iel] = D[iel].inverse().eval();
 }
@@ -180,6 +183,7 @@ void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ 
 	Matrix uold(m->gnelem(),NVARS);
 
 	// norm of RHS
+#pragma omp parallel for reduction(+:bnorm) default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		bnorm += res.row(iel).squaredNorm();
@@ -188,65 +192,71 @@ void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ 
 
 	while(resnorm/bnorm > tol && step < maxiter)
 	{
-		for(int iel = 0; iel < m->gnelem(); iel++) 
+#pragma omp parallel default(shared)
 		{
-			uold.row(iel) = du.row(iel);
-			Matrix inter = Matrix::Zero(1,NVARS);
-			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+#pragma omp for schedule(dynamic, THREAD_CHUNK_SIZE)
+			for(int iel = 0; iel < m->gnelem(); iel++) 
 			{
-				a_int face = m->gelemface(iel,ifael) - m->gnbface();
-				a_int nbdelem = m->gesuel(iel,ifael);
-
-				if(nbdelem < m->gnelem())
+				uold.row(iel) = du.row(iel);
+				Matrix inter = Matrix::Zero(1,NVARS);
+				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
-					if(nbdelem > iel) {
-						// upper
-						inter += du.row(nbdelem)*U[face].transpose();
-					}
-					else {
-						// lower
-						inter += du.row(nbdelem)*L[face].transpose();
+					a_int face = m->gelemface(iel,ifael) - m->gnbface();
+					a_int nbdelem = m->gesuel(iel,ifael);
+
+					if(nbdelem < m->gnelem())
+					{
+						if(nbdelem > iel) {
+							// upper
+							inter += du.row(nbdelem)*U[face].transpose();
+						}
+						else {
+							// lower
+							inter += du.row(nbdelem)*L[face].transpose();
+						}
 					}
 				}
+				du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
 			}
-			du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
-		}
 
 #pragma omp barrier
-		
-		// backward sweep
-		for(int iel = m->gnelem()-1; iel >= 0; iel--) {
-			Matrix inter = Matrix::Zero(1,NVARS);
-			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
-			{
-				a_int face = m->gelemface(iel,ifael) - m->gnbface();
-				a_int nbdelem = m->gesuel(iel,ifael);
-
-				if(nbdelem < m->gnelem())
+			
+			// backward sweep
+#pragma omp for schedule(dynamic, THREAD_CHUNK_SIZE)
+			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
+				Matrix inter = Matrix::Zero(1,NVARS);
+				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
-					if(nbdelem > iel) {
-						// upper
-						inter += du.row(nbdelem)*U[face].transpose();
-					}
-					else {
-						// lower
-						inter += du.row(nbdelem)*L[face].transpose();
+					a_int face = m->gelemface(iel,ifael) - m->gnbface();
+					a_int nbdelem = m->gesuel(iel,ifael);
+
+					if(nbdelem < m->gnelem())
+					{
+						if(nbdelem > iel) {
+							// upper
+							inter += du.row(nbdelem)*U[face].transpose();
+						}
+						else {
+							// lower
+							inter += du.row(nbdelem)*L[face].transpose();
+						}
 					}
 				}
+				du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
 			}
-			du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
-		}
 
 #pragma omp barrier
 
-		/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
-		 * to measure convergence.
-		 */
-		resnorm = 0;
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			// compute norm
-			resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+			/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
+			 * to measure convergence.
+			 */
+			resnorm = 0;
+#pragma omp for reduction(+:resnorm)
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				// compute norm
+				resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+			}
 		}
 		resnorm = std::sqrt(resnorm);
 

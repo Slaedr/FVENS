@@ -2,6 +2,9 @@
  * @brief Implements driver class(es) for solution of ODEs arising from Euler/Navier-Stokes equations.
  * @author Aditya Kashi
  * @date Feb 24, 2016
+ *
+ * Observation: Increasing the number of B-SGS sweeps part way into the simulation 
+ * does not help convergence.
  */
 
 #include "aodesolver.hpp"
@@ -136,7 +139,8 @@ void SteadyBackwardEulerSolver::solve()
 		else if(step < rampend) {
 			double slopec = (cflfin-cflinit)/(rampend-rampstart);
 			curCFL = cflinit + slopec*(step-rampstart);
-			curlinmaxiter = int(linmaxiterstart + (linmaxiterend-linmaxiterstart)/(rampend-rampstart)*(step-rampstart));
+			double slopei = double(linmaxiterend-linmaxiterstart)/(rampend-rampstart);
+			curlinmaxiter = int(linmaxiterstart + slopei*(step-rampstart));
 			//curlinmaxiter = linmaxiterstart;
 		}
 		else {
@@ -164,8 +168,8 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp for
 			for(int iel = 0; iel < m->gnelem(); iel++) {
 				eul->unknowns().row(iel) += du.row(iel);
-				//for(int i = 0; i < NVARS; i++)
-				//	du(iel,i) = 0;
+				/*for(int i = 0; i < NVARS; i++)
+					du(iel,i) = 0;*/
 			}
 #pragma omp for simd reduction(+:errmass)
 			for(int iel = 0; iel < m->gnelem(); iel++)
@@ -179,8 +183,10 @@ void SteadyBackwardEulerSolver::solve()
 		if(step == 0)
 			initres = resi;
 
-		//if(step % 20 == 0)
+		if(step % 10 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+			std::cout << "         CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter << std::endl;
+		}
 
 		step++;
 	}

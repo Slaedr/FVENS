@@ -34,8 +34,11 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *cons
 	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
 	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
+	/*a_real vmagl = std::sqrt(ul[1]*ul[1]+ul[2]*ul[2])/ul[0];
+	a_real vmagr = std::sqrt(ur[1]*ur[1]+ur[2]*ur[2])/ur[0];
+	eig = vmagl+ci > vmagr+cj ? vmagl+ci : vmagr+cj;*/
 	eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
-	//eig = 2*eig;
+	eig = 2*eig;
 	
 	flux[0] = 0.5*( ul[0]*vni + ur[0]*vnj - eig*(ur[0]-ul[0]) );
 	flux[1] = 0.5*( vni*ul[1]+pi*n[0] + vnj*ur[1]+pj*n[0] - eig*(ur[1]-ul[1]) );
@@ -60,6 +63,7 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
 	eig = fabs(vni)+ci > fabs(vnj)+cj ? fabs(vni)+ci : fabs(vnj)+cj;
+	eig = 2*eig;
 
 	// get flux jacobians
 	aflux->evaluate_normal_jacobian(ul, n, dfdl);
@@ -261,11 +265,132 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	}
 }
 
+HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
+{
+}
+
+/** Ref: P. Batten, M.A. Lechziner, U.C. Goldberg. Average-state Jacobians and implicit methods for conmpressible viscous and turbulent flows.
+ * JCP 137, pages 38--78. 1997.
+ */
+void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+{
+	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
+
+	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
+	vxj = ur[1]/ur[0]; vyj = ur[2]/ur[0];
+	vni = vxi*n[0] + vyi*n[1];
+	vnj = vxj*n[0] + vyj*n[1];
+	vmag2i = vxi*vxi + vyi*vyi;
+	vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	// speeds of sound
+	ci = sqrt(g*pi/ul[0]);
+	cj = sqrt(g*pj/ur[0]);
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+	Hi = (ul[3] + pi)/ul[0];
+	Hj = (ur[3] + pj)/ur[0];
+
+	// compute Roe-averages
+	a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	Rij = sqrt(ur[0]/ul[0]);
+	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	vm2ij = vxij*vxij + vyij*vyij;
+	vnij = vxij*n[0] + vyij*n[1];
+	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+
+	// Einfeldt estimate for signal speeds
+	a_real sr, sl, sr0, sl0;
+	sl = vni - ci;
+	if (sl > vnij-cij)
+		sl = vnij-cij;
+	sr = vnj+cj;
+	if(sr < vnij+cij)
+		sr = vnij+cij;
+	sr0 = sr > 0 ? 0 : sr;
+	sl0 = sl > 0 ? 0 : sl;
+
+	// flux
+	a_real t1, t2, t3;
+	t1 = (sr0 - sl0)/(sr-sl); t2 = 1.0 - t1; t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
+	flux[0] = t1*vnj*ur[0] + t2*vni*ul[0]                     - t3*(ur[0]-ul[0]);
+	flux[1] = t1*(vnj*ur[1]+pj*n[0]) + t2*(vni*ul[1]+pi*n[0]) - t3*(ur[1]-ul[1]);
+	flux[2] = t1*(vnj*ur[2]+pj*n[1]) + t2*(vni*ul[2]+pi*n[1]) - t3*(ur[2]-ul[2]);
+	flux[3] = t1*(vnj*ur[0]*Hj) + t2*(vni*ul[0]*Hi)           - t3*(ur[3]-ul[3]);
+}
+
+/** The linearization assumes `locally frozen' signal speeds. According to Batten, Lechziner and Goldberg, this should be fine.
+ */
+void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+{
+	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
+
+	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
+	vxj = ur[1]/ur[0]; vyj = ur[2]/ur[0];
+	vni = vxi*n[0] + vyi*n[1];
+	vnj = vxj*n[0] + vyj*n[1];
+	vmag2i = vxi*vxi + vyi*vyi;
+	vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	// speeds of sound
+	ci = sqrt(g*pi/ul[0]);
+	cj = sqrt(g*pj/ur[0]);
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+	Hi = (ul[3] + pi)/ul[0];
+	Hj = (ur[3] + pj)/ur[0];
+
+	// compute Roe-averages
+	a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
+	Rij = sqrt(ur[0]/ul[0]);
+	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	vm2ij = vxij*vxij + vyij*vyij;
+	vnij = vxij*n[0] + vyij*n[1];
+	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+
+	// Einfeldt estimate for signal speeds
+	a_real sr, sl, sr0, sl0;
+	sl = vni - ci;
+	if (sl > vnij-cij)
+		sl = vnij-cij;
+	sr = vnj+cj;
+	if(sr < vnij+cij)
+		sr = vnij+cij;
+	sr0 = sr > 0 ? 0 : sr;
+	sl0 = sl > 0 ? 0 : sl;
+	a_real t1, t2, t3;
+	t1 = (sr0 - sl0)/(sr-sl); t2 = 1.0 - t1; t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
+	
+	// get flux jacobians
+	aflux->evaluate_normal_jacobian(ul, n, dfdl);
+	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	for(int i = 0; i < NVARS; i++)
+		for(int j = 0; j < NVARS; j++)
+		{
+			// lower block
+			dfdl[i*NVARS+j] = -t2*dfdl[i*NVARS+j];
+			// upper block
+			dfdr[i*NVARS+j] =  t1*dfdr[i*NVARS+j];
+		}
+	for(int i = 0; i < NVARS; i++) {
+		// lower:
+		dfdl[i*NVARS+i] = dfdl[i*NVARS+i] - t3;
+		// upper:
+		dfdr[i*NVARS+i] = dfdr[i*NVARS+i] - t3;
+	}
+}
+
 HLLCFlux::HLLCFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 {
 }
 
-/** Currently, the estimated signal speeds are the classical estimates, not the corrected ones given by Remaki et. al.
+/** Currently, the estimated signal speeds are the Einfeldt estimates, not the corrected ones given by Remaki et. al.
  */
 void HLLCFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {

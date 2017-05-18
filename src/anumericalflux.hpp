@@ -74,6 +74,15 @@ public:
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 };
 
+/// Harten Lax Van-Leer numerical flux
+class HLLFlux : public InviscidFlux
+{
+public:
+	HLLFlux(a_real gamma, const EulerFlux *const analyticalflux);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
+};
+
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
 /** From Remaki et. al., "Aerodynamic computations using FVM and HLLC".
  */

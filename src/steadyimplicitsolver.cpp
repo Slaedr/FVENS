@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, invflux, reconst, limiter, linsolver;
+	string dum, meshfile, outf, invflux, invfluxjac, reconst, limiter, linsolver;
 	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, lin_relaxfactor;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend;
 
@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
 	control >> dum; control >> alpha;
 	control >> dum; control >> rho_inf;
 	control >> dum; control >> invflux;
+	control >> dum; control >> invfluxjac;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
 	control >> dum; control >> initcfl;
@@ -53,7 +54,7 @@ int main(int argc, char* argv[])
 
 	// set up problem
 	
-	EulerFV prob(&m, invflux, "LLF", reconst, limiter);
+	EulerFV prob(&m, invflux, invfluxjac, reconst, limiter);
 	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 	SteadyBackwardEulerSolver time(&m, &prob, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, lintol, linmaxiterstart, linmaxiterend, linsolver);
 

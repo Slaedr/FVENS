@@ -45,6 +45,11 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 		inviflux = new RoeFlux(g, &aflux);
 		std::cout << "EulerFV: Using Roe fluxes." << std::endl;
 	}
+	else if(invflux == "HLL")
+	{
+		inviflux = new HLLFlux(g, &aflux);
+		std::cout << "EulerFV: Using HLL fluxes." << std::endl;
+	}
 	else if(invflux == "HLLC")
 	{
 		inviflux = new HLLCFlux(g, &aflux);
@@ -64,12 +69,17 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	else if(jacflux == "ROE")
 	{
 		jflux = new RoeFlux(g, &aflux);
-		std::cout << "EulerFV: Using Roe fluxes." << std::endl;
+		std::cout << "EulerFV: Using Roe fluxes for Jacobian." << std::endl;
+	}
+	else if(jacflux == "HLL")
+	{
+		jflux = new HLLFlux(g, &aflux);
+		std::cout << "EulerFV: Using HLL fluxes for Jacobian." << std::endl;
 	}
 	else if(jacflux == "HLLC")
 	{
 		jflux = new HLLCFlux(g, &aflux);
-		std::cout << "EulerFV: Using HLLC fluxes." << std::endl;
+		std::cout << "EulerFV: Using HLLC fluxes for Jacobian." << std::endl;
 	}
 	else if(jacflux == "LLF")
 	{
