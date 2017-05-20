@@ -111,6 +111,7 @@ SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, 
 
 SteadyBackwardEulerSolver::~SteadyBackwardEulerSolver()
 {
+	delete linsolv;
 	delete [] D;
 	delete [] U;
 	delete [] L;
@@ -194,6 +195,10 @@ void SteadyBackwardEulerSolver::solve()
 	if(step == maxiter)
 		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
 	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << std::endl;
+
+	double linwtime, linctime;
+	linsolv->getRunTimes(linwtime, linctime);
+	std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n    Wall time = " << linwtime << ", CPU time = " << linctime << std::endl;
 }
 
 }	// end namespace

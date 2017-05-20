@@ -99,16 +99,31 @@ IterativeBlockSolver::IterativeBlockSolver(const UMesh2dh* const mesh)
 
 void IterativeBlockSolver::setLHS(Matrix *const diago, const Matrix *const lower, const Matrix *const upper)
 {
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
 	L = lower;
 	U = upper;
 	D = diago;
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
 		D[iel] = D[iel].inverse().eval();
+
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
 void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
 {
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
 	// we need an extra array solely to measure convergence
@@ -194,6 +209,11 @@ void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ 
 
 		step++;
 	}
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
 }

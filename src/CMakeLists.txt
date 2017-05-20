@@ -39,8 +39,8 @@ endif()
 
 # flags and stuff
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -ggdb -DDEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -O3 -UDEBUG -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -ggdb -DDEBUG=1")
+set(CMAKE_CXX_FLAGS_RELEASE "-Wall -O3 -UDEBUG -DNDEBUG")
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS "Debug mode")

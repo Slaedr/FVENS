@@ -85,6 +85,11 @@ public:
 	/// Sets D,L,U and inverts each D
 	void setLHS(Matrix *const diago, const Matrix *const lower, const Matrix *const upper);
 
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
+	}
+
 	/// Solves the linear system with D,L,U as the LHS and the argument res as the negative of the RHS, and stores the result in du
 	virtual void solve(const Matrix& res, Matrix& du) = 0;
 };

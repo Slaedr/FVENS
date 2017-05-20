@@ -40,6 +40,9 @@ namespace acfd
 namespace acfd {
 	typedef Eigen::Matrix<acfd::a_real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Matrix;
 	typedef Eigen::Matrix<acfd::a_real, Eigen::Dynamic, 1> Vector;
+
+	typedef Eigen::Matrix<acfd::a_real, 4, 4, Eigen::RowMajor> Matrix4;
+	typedef Eigen::Matrix<acfd::a_real, 4, 1> Vector4;
 }
 #endif
 
