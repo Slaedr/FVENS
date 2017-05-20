@@ -13,6 +13,9 @@ namespace acfd {
 
 SteadyForwardEulerSolver::SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler) : m(mesh), eul(euler)
 {
+	residual.resize(m->gnelem(),NVARS);
+	u.resize(m->gnelem(), NVARS);
+	dtm.setup(m->gnelem(), 1);
 }
 
 SteadyForwardEulerSolver::~SteadyForwardEulerSolver()
@@ -42,7 +45,7 @@ void SteadyForwardEulerSolver::solve(const a_real tol, const int maxiter, const 
 		//std::cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << std::endl;
 
 		// update residual
-		eul->compute_residual();
+		eul->compute_residual(u, residual, dtm);
 
 		a_real errmass = 0;
 
@@ -54,14 +57,14 @@ void SteadyForwardEulerSolver::solve(const a_real tol, const int maxiter, const 
 				for(int i = 0; i < NVARS; i++)
 				{
 					//uold(iel,i) = u(iel,i);
-					eul->unknowns()(iel,i) -= cfl*eul->localTimeSteps()(iel) * 1.0/m->garea(iel)*eul->residuals()(iel,i);
+					u(iel,i) -= cfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
 				}
 			}
 
 #pragma omp for simd reduction(+:errmass)
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				errmass += eul->residuals()(iel,0)*eul->residuals()(iel,0)*m->garea(iel);
+				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 			}
 		} // end parallel region
 
@@ -93,6 +96,10 @@ SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, 
 	: m(mesh), eul(spatial), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), lintol(lin_tol),
 	linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end)
 {
+	residual.resize(m->gnelem(),NVARS);
+	u.resize(m->gnelem(), NVARS);
+	dtm.setup(m->gnelem(), 1);
+
 	if(linearsolver == "BSGS")
 		linsolv = new SGS_Relaxation(m);
 	else
@@ -128,9 +135,9 @@ void SteadyBackwardEulerSolver::solve()
 	while(resi/initres > tol && step < maxiter)
 	{
 		// update residual and local time steps
-		eul->compute_residual();
+		eul->compute_residual(u, residual, dtm);
 
-		eul->compute_jacobian(D, L, U);
+		eul->compute_jacobian(u, D, L, U);
 		
 		// compute ramped quantities
 		if(step < rampstart) {
@@ -154,13 +161,13 @@ void SteadyBackwardEulerSolver::solve()
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int i = 0; i < NVARS; i++)
-				D[iel](i,i) += m->garea(iel) / (curCFL*eul->localTimeSteps()(iel));
+				D[iel](i,i) += m->garea(iel) / (curCFL*dtm(iel));
 		}
 
 		// setup and solve linear system for the update du
 		linsolv->setLHS(D,L,U);
 		linsolv->setParams(lintol, curlinmaxiter);
-		linsolv->solve(eul->residuals(), du);
+		linsolv->solve(residual, du);
 
 		a_real errmass = 0;
 
@@ -168,14 +175,14 @@ void SteadyBackwardEulerSolver::solve()
 		{
 #pragma omp for
 			for(int iel = 0; iel < m->gnelem(); iel++) {
-				eul->unknowns().row(iel) += du.row(iel);
+				u.row(iel) += du.row(iel);
 				/*for(int i = 0; i < NVARS; i++)
 					du(iel,i) = 0;*/
 			}
 #pragma omp for simd reduction(+:errmass)
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				errmass += eul->residuals()(iel,0)*eul->residuals()(iel,0)*m->garea(iel);
+				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 			}
 		}
 

@@ -43,17 +43,12 @@ class EulerFV
 {
 protected:
 	const UMesh2dh* m;
-	Matrix residual;						///< Right hand side for boundary integrals and source terms
-	Matrix u;								///< The conserved variables
 	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
 	a_real g;								///< adiabatic index
 
 	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
 	amat::Array2d<a_real> integ;
 	
-	/// Stores allowable local time step for each cell
-	amat::Array2d<a_real> dtm;
-
 	/// Analytical flux vector computation
 	EulerFlux aflux;
 	
@@ -84,10 +79,8 @@ protected:
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguass x ndim (in that order)
 	amat::Array2d<a_real>* gr;
 
-	/// x-slopes
-	amat::Array2d<a_real> dudx;
-	/// y-slopes
-	amat::Array2d<a_real> dudy;
+	amat::Array2d<a_real> dudx;				///< X-gradients at cell centres
+	amat::Array2d<a_real> dudy;				///< Y-gradients at cell centres
 
 	int solid_wall_id;						///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
@@ -95,10 +88,14 @@ protected:
 	amat::Array2d<a_real> scalars;			///< Holds density, Mach number and pressure for each cell
 	amat::Array2d<a_real> velocities;		///< Holds velocity components for each cell
 	
-	/// Left state at each face
-	amat::Array2d<a_real> uleft;
-	/// Rigt state at each face
-	amat::Array2d<a_real> uright;
+	amat::Array2d<a_real> uleft;			///< Left state at faces
+	amat::Array2d<a_real> uright;			///< Right state at faces
+
+	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
+	void compute_ghost_cell_coords_about_midpoint();
+
+	/// computes ghost cell centers assuming symmetry about the face
+	void compute_ghost_cell_coords_about_face();
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
@@ -118,58 +115,35 @@ public:
 	~EulerFV();
 	
 	/// Set simulation data and precompute data needed for reconstruction
-	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf);
+	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
-	/** This invokes flux calculating function after zeroing the residuals
-	 * and also computes [local time steps](@ref dtm).
+	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
-	void compute_residual();
+	void compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
 
 #if HAVE_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
-	void compute_jacobian(const bool blocked, Mat A);
+	void compute_jacobian(const Matrix& u, const bool blocked, Mat A);
 #else
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
 	/** D, L and U are zeroed first.
 	 */
-	void compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U);
+	void compute_jacobian(const Matrix& u, Matrix *const D, Matrix *const L, Matrix *const U);
 #endif
 
 	/// Computes the L2 norm of a cell-centered quantity
 	a_real l2norm(const amat::Array2d<a_real>* const v);
 	
 	/// Compute cell-centred quantities to export
-	void postprocess_cell();
+	void postprocess_cell(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 	
 	/// Compute nodal quantities to export, based on area-weighted averaging (which takes into account ghost cells as well)
-	void postprocess_point();
+	void postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 
 	/// Compute norm of cell-centered entropy production
 	/// Call aftr computing pressure etc \sa postprocess_cell
-	a_real compute_entropy_cell();
-
-	amat::Array2d<a_real> getscalars() const;
-	amat::Array2d<a_real> getvelocities() const;
-
-	const amat::Array2d<a_real>& localTimeSteps() const {
-		return dtm;
-	}
-	
-	const Matrix& residuals() const {
-		return residual;
-	}
-	
-	/// Write access to the conserved variables
-	Matrix& unknowns() {
-		return u;
-	}
-
-	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
-	void compute_ghost_cell_coords_about_midpoint();
-
-	/// computes ghost cell centers assuming symmetry about the face
-	void compute_ghost_cell_coords_about_face();
+	a_real compute_entropy_cell(const Matrix& u);
 };
 
 }	// end namespace

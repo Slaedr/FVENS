@@ -19,11 +19,8 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	inflow_outflow_id = 4;
 
 	// allocation
-	residual.resize(m->gnelem(),NVARS);
-	u.resize(m->gnelem(), NVARS);
 	uinf.setup(1, NVARS);
 	integ.setup(m->gnelem(), 1);
-	dtm.setup(m->gnelem(), 1);
 	dudx.setup(m->gnelem(), NVARS);
 	dudy.setup(m->gnelem(), NVARS);
 	rc.setup(m->gnelem(),m->gndim());
@@ -111,12 +108,12 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	// set limiter
 	if(limiter == "NONE")
 	{
-		lim = new NoLimiter(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
+		lim = new NoLimiter(m, &rcg, &rc, gr);
 		std::cout << "EulerFV: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
-		lim = new WENOLimiter(m, &u, &ug, &dudx, &dudy, &rcg, &rc, gr, &uleft, &uright);
+		lim = new WENOLimiter(m, &rcg, &rc, gr);
 		std::cout << "EulerFV: WENO limiter selected.\n";
 	}
 }
@@ -192,13 +189,14 @@ void EulerFV::compute_ghost_cell_coords_about_face()
 	}
 }
 
-/// Function to feed needed data, and compute cell-centers
+/// Function to feed needed data, compute cell-centers, and initialize u
 /** \param Minf Free-stream Mach number
  * \param vinf Free stream velocity magnitude
  * \param a Angle of attack (radians)
  * \param rhoinf Free stream density
+ * \param u conserved variable array
  */
-void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf)
+void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
@@ -251,7 +249,7 @@ void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf)
 		}
 	}
 
-	rec->setup(m, &u, &ug, &dudx, &dudy, &rc, &rcg);
+	rec->setup(m, &rc, &rcg);
 	std::cout << "EulerFV: loaddata(): Initial data calculated.\n";
 }
 
@@ -342,7 +340,7 @@ a_real EulerFV::l2norm(const amat::Array2d<a_real>* const v)
 	return norm;
 }
 
-void EulerFV::compute_residual()
+void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm)
 {
 	// Flux across each face
 	amat::Array2d<a_real> fluxes;
@@ -373,8 +371,8 @@ void EulerFV::compute_residual()
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
-		rec->compute_gradients();
-		lim->compute_face_values();
+		rec->compute_gradients(&u, &ug, &dudx, &dudy);
+		lim->compute_face_values(&u, &ug, &dudx, &dudy, &uleft, &uright);
 	}
 	else
 	{
@@ -474,7 +472,7 @@ void EulerFV::compute_residual()
 
 #if HAVE_PETSC==1
 
-void EulerFV::compute_jacobian(const bool blocked, Mat A)
+void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked, Mat A)
 {
 	if(blocked)
 	{
@@ -580,7 +578,7 @@ void EulerFV::compute_jacobian(const bool blocked, Mat A)
 
 #else
 
-void EulerFV::compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U)
+void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrix *const D, Matrix *const L, Matrix *const U)
 {
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++) {
@@ -645,31 +643,27 @@ void EulerFV::compute_jacobian(Matrix *const D, Matrix *const L, Matrix *const U
 #endif
 
 
-void EulerFV::postprocess_point()
+void EulerFV::postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
 	velocities.setup(m->gnpoin(),2);
-	amat::Array2d<a_real> c(m->gnpoin(),1);
 	
 	amat::Array2d<a_real> areasum(m->gnpoin(),1);
 	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
 	up.zeros();
 	areasum.zeros();
 
-	int inode, ivar;
-	a_int ielem, iface, ip1, ip2, ipoin;
-
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	for(int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(inode = 0; inode < m->gnnode(ielem); inode++)
-			for(ivar = 0; ivar < NVARS; ivar++)
+		for(int inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
 				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
 			}
 	}
-	for(iface = 0; iface < m->gnbface(); iface++)
+	/*for(iface = 0; iface < m->gnbface(); iface++)
 	{
 		ielem = m->gintfac(iface,0);
 		ip1 = m->gintfac(iface,2);
@@ -681,13 +675,13 @@ void EulerFV::postprocess_point()
 			areasum(ip1) += m->garea(ielem);
 			areasum(ip2) += m->garea(ielem);
 		}
-	}
+	}*/
 
-	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(ivar = 0; ivar < NVARS; ivar++)
+	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 	
-	for(ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 	{
 		scalars(ipoin,0) = up(ipoin,0);
 		velocities(ipoin,0) = up(ipoin,1)/up(ipoin,0);
@@ -696,42 +690,40 @@ void EulerFV::postprocess_point()
 		//velocities(ipoin,1) = dudy(ipoin,1);
 		a_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
 		scalars(ipoin,2) = up(ipoin,0)*(g-1) * (up(ipoin,3)/up(ipoin,0) - 0.5*vmag2);		// pressure
-		c(ipoin) = sqrt(g*scalars(ipoin,2)/up(ipoin,0));
-		scalars(ipoin,1) = sqrt(vmag2)/c(ipoin);
+		a_real c = sqrt(g*scalars(ipoin,2)/up(ipoin,0));
+		scalars(ipoin,1) = sqrt(vmag2)/c;
 	}
+
+	compute_entropy_cell(u);
+
 	std::cout << "EulerFV: postprocess_point(): Done.\n";
 }
 
-void EulerFV::postprocess_cell()
+void EulerFV::postprocess_cell(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
-	amat::Array2d<a_real> c(m->gnelem(), 1);
 
-	amat::Array2d<a_real> d(m->gnelem(),1);
-	scalars.replacecol(0, d);		// populate density data
 	for(int iel = 0; iel < m->gnelem(); iel++) {
-		d(iel) = u(iel,0);
 		scalars(iel,0) = u(iel,0);
 	}
-	//std::cout << "EulerFV: postprocess(): Written density\n";
 
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		velocities(iel,0) = u(iel,1)/u(iel,0);
 		velocities(iel,1) = u(iel,2)/u(iel,0);
 		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
-		scalars(iel,2) = d(iel)*(g-1) * (u(iel,3)/d(iel) - 0.5*vmag2);		// pressure
-		c(iel) = sqrt(g*scalars(iel,2)/d(iel));
-		scalars(iel,1) = sqrt(vmag2)/c(iel);
+		scalars(iel,2) = (g-1) * (u(iel,3) - 0.5*u(iel,0)*vmag2);				// pressure
+		a_real c = sqrt(g*scalars(iel,2)/u(iel,0));
+		scalars(iel,1) = sqrt(vmag2)/c;
 	}
+	compute_entropy_cell(u);
 	std::cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
-a_real EulerFV::compute_entropy_cell()
+a_real EulerFV::compute_entropy_cell(const Matrix& u)
 {
-	postprocess_cell();
 	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
 	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
 
@@ -739,7 +731,8 @@ a_real EulerFV::compute_entropy_cell()
 	a_real error = 0;
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
-		s_err(iel) = (scalars(iel,2)/pow(scalars(iel,0),g) - sinf)/sinf;
+		a_real p = (g-1) * ( u(iel,3) - 0.5*(u(iel,1)*u(iel,1)+u(iel,2)*u(iel,2))/u(iel,0) );
+		s_err(iel) = (p / pow(u(iel,0),g) - sinf) / sinf;
 		error += s_err(iel)*s_err(iel)*m->garea(iel);
 	}
 	error = sqrt(error);
@@ -750,16 +743,6 @@ a_real EulerFV::compute_entropy_cell()
 	std::cout << "EulerFV:   " << log10(h) << "  " << std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
-}
-
-amat::Array2d<a_real> EulerFV::getscalars() const
-{
-	return scalars;
-}
-
-amat::Array2d<a_real> EulerFV::getvelocities() const
-{
-	return velocities;
 }
 
 }	// end namespace

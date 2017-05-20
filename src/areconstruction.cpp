@@ -12,19 +12,14 @@ namespace acfd
 Reconstruction::~Reconstruction()
 { }
 
-void Reconstruction::setup(const UMesh2dh* mesh, const Matrix* unk, const amat::Array2d<a_real>* unkg, amat::Array2d<a_real>* gradx, amat::Array2d<a_real>* grady, 
-		const amat::Array2d<a_real>* _rc, const amat::Array2d<a_real>* const _rcg)
+void Reconstruction::setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
 {
 	m = mesh;
-	u = unk;
-	ug = unkg;
-	dudx = gradx;
-	dudy = grady;
 	rc = _rc;
 	rcg = _rcg;
 }
 
-void ConstantReconstruction::compute_gradients()
+void ConstantReconstruction::compute_gradients(const Matrix*const u, const amat::Array2d<a_real>*const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -39,7 +34,7 @@ void ConstantReconstruction::compute_gradients()
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
  */
-void GreenGaussReconstruction::compute_gradients()
+void GreenGaussReconstruction::compute_gradients(const Matrix*const u, const amat::Array2d<a_real>*const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
 #pragma omp parallel default(shared)
 	{
@@ -124,10 +119,9 @@ void GreenGaussReconstruction::compute_gradients()
 }
 
 
-void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const Matrix* unk, const amat::Array2d<a_real>* unkg, amat::Array2d<a_real>* gradx, amat::Array2d<a_real>* grady, 
-		const amat::Array2d<a_real>* _rc, const amat::Array2d<a_real>* const _rcg)
+void WeightedLeastSquaresReconstruction::setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
 {
-	Reconstruction::setup(mesh, unk, unkg, gradx, grady, _rc, _rcg);
+	Reconstruction::setup(mesh, _rc, _rcg);
 	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; num vars = " << NVARS << std::endl;
 
 	V.resize(m->gnelem());
@@ -192,7 +186,7 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh* mesh, const Matri
 	}
 }
 
-void WeightedLeastSquaresReconstruction::compute_gradients()
+void WeightedLeastSquaresReconstruction::compute_gradients(const Matrix *const u, const amat::Array2d<a_real> *const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
 	int iface, ielem, jelem, idim, ivar;
 	a_real w2, dr[2];

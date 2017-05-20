@@ -1066,7 +1066,7 @@ void UMesh2dh::compute_face_data()
 		}
 	}
 
-	std::cout << "UTriMesh: compute_face_data(): Done.\n";
+	std::cout << "UMesh2dh: compute_face_data(): Done.\n";
 }
 
 void UMesh2dh::compute_boundary_maps()

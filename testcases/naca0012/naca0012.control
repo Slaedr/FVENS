@@ -1,7 +1,7 @@
 -mesh_file
 ../testcases/naca0012/naca0012-inviscid.msh
 -output_file
-../data/naca0012_2-p.vtu
+../data/naca0012-hll-2-expl.vtu
 -M_infinity
 0.85
 -velocity_infinity
@@ -11,17 +11,15 @@
 -rho_infinity
 1.0
 -inviscid-flux
-VANLEER
+HLL
 -reconstruction
 GREENGAUSS
 -limiter
 NONE
 -CFL
 0.24
--Total_time
-0.5
 -Tolerance
-1e-4
+1e-3
 -Max-iterations
 200000
 

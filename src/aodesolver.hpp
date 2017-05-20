@@ -23,6 +23,9 @@ class SteadyForwardEulerSolver
 {
 	const UMesh2dh *const m;				///< Mesh
 	EulerFV *const eul;						///< Spatial discretization context
+	Matrix residual;						///< Right hand side for boundary integrals and source terms
+	Matrix u;								///< The conserved variables
+	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
 
 public:
 	SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler);
@@ -33,6 +36,15 @@ public:
 
 	/// Computes the L2 norm of a cell-centered quantity
 	a_real l2norm(const amat::Array2d<a_real>* const v);
+	
+	const Matrix& residuals() const {
+		return residual;
+	}
+	
+	/// Write access to the conserved variables
+	Matrix& unknowns() {
+		return u;
+	}
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -41,6 +53,10 @@ class SteadyBackwardEulerSolver
 	const UMesh2dh *const m;
 	
 	EulerFV *const eul;
+	Matrix residual;						///< Right hand side for boundary integrals and source terms
+	Matrix u;								///< The conserved variables
+	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
+
 
 	IterativeBlockSolver * linsolv;
 	Matrix* D;
@@ -65,6 +81,15 @@ public:
 	~SteadyBackwardEulerSolver();
 
 	void solve();
+	
+	const Matrix& residuals() const {
+		return residual;
+	}
+	
+	/// Direct access to the conserved variables
+	Matrix& unknowns() {
+		return u;
+	}
 };
 
 }	// end namespace

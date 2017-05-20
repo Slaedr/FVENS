@@ -35,16 +35,16 @@ protected:
 
 public:
 	virtual ~Reconstruction();
-	virtual void setup(const UMesh2dh* mesh, const Matrix* unk, const amat::Array2d<a_real>* unkg, amat::Array2d<a_real>* gradx, amat::Array2d<a_real>* grady, 
-			const amat::Array2d<a_real>* _rc, const amat::Array2d<a_real>* const _rcg);
-	virtual void compute_gradients() = 0;
+	virtual void setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real> *const _rcg);
+
+	virtual void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
 };
 
 /// Simply sets the gradient to zero
 class ConstantReconstruction : public Reconstruction
 {
 public:
-	void compute_gradients();
+	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
 /**
@@ -55,7 +55,7 @@ public:
 class GreenGaussReconstruction : public Reconstruction
 {
 public:
-	void compute_gradients();
+	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
 
@@ -69,9 +69,9 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 	amat::Array2d<a_real> du;
 
 public:
-	void setup(const UMesh2dh* mesh, const Matrix* unk, const amat::Array2d<a_real>* unkg, amat::Array2d<a_real>* gradx, amat::Array2d<a_real>* grady, 
-			const amat::Array2d<a_real>* _rc, const amat::Array2d<a_real>* const _rcg);
-	void compute_gradients();
+	void setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
+
+	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
 

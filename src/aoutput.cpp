@@ -188,7 +188,7 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 	for(int i = 0; i < m.gnpoin(); i++)
 	{
 		out << "\t\t\t";
-		for(int idim = 0; idim < m.gndim(); idim++)
+		for(int idim = 0; idim < NDIM; idim++)
 			out << m.gcoords(i,idim) << " ";
 		if(m.gndim() == 2)
 			out << "0.0 ";
@@ -220,12 +220,25 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 	}
 	out << "\t\t\t</DataArray>\n";
 	out << "\t\t\t<DataArray type=\"UInt32\" Name=\"offsets\" Format=\"ascii\">\n";
-	for(int i = 0; i < m.gnelem(); i++)
-		out << "\t\t\t\t" << m.gnnode(i)*(i+1) << '\n';
+	int totalcells = 0;
+	for(int i = 0; i < m.gnelem(); i++) {
+		totalcells += m.gnnode(i);
+		out << "\t\t\t\t" << totalcells << '\n';
+	}
 	out << "\t\t\t</DataArray>\n";
 	out << "\t\t\t<DataArray type=\"Int32\" Name=\"types\" Format=\"ascii\">\n";
-	for(int i = 0; i < m.gnelem(); i++)
+	for(int i = 0; i < m.gnelem(); i++) {
+		elemcode = 5;
+		if(m.gnnode(i) == 4)
+			elemcode = 9;
+		else if(m.gnnode(i) == 6)
+			elemcode = 22;
+		else if(m.gnnode(i) == 8)
+			elemcode = 23;
+		else if(m.gnnode(i) == 9)
+			elemcode = 28;
 		out << "\t\t\t\t" << elemcode << '\n';
+	}
 	out << "\t\t\t</DataArray>\n";
 	out << "\t\t</Cells>\n";
 

@@ -1,7 +1,7 @@
 -mesh_file
-../testcases/2dcylinder/grids/2dcylinder-vfine.msh
+../testcases/2dcylinder/grids/2dcylquad2.msh
 -output_file
-../data/2dcylinder-vfine-hll-2-expl.vtu
+../data/2dcylquad2-hll-2-expl.vtu
 -M_infinity
 0.38
 -velocity_infinity
@@ -19,6 +19,6 @@ NONE
 -CFL
 0.24
 -Tolerance
-1e-6
+1e-5
 -Max-iterations
-500000
+900000

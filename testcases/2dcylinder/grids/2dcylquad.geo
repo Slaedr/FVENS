@@ -3,11 +3,11 @@
 // actual boundary
 srad = 0.5;
 // far field
-ffs = 20.0;
+ffs = 40*srad;
 // mesh size at cylinder
 hc = 0.025;
 // mesh size at far field
-hf = 50*hc;
+hf = 40*hc;
 
 //center
 Point(1) = { 0,   0,  0, hc};

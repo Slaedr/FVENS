@@ -56,21 +56,20 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	EulerFV prob(&m, invflux, "LLF", reconst, limiter);
-	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf);
 	SteadyForwardEulerSolver time(&m, &prob);
+	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 
 	// Now start computation
 
 	time.solve(tolerance, maxiter, cfl);
 
-	prob.compute_entropy_cell();
-
 	//prob.postprocess_point();
-	Array2d<a_real> scalars = prob.getscalars();
-	Array2d<a_real> velocities = prob.getvelocities();
+	Array2d<a_real> scalars;
+	Array2d<a_real> velocities;
+	prob.postprocess_point(time.unknowns(), scalars, velocities);
 
 	string scalarnames[] = {"density", "mach-number", "pressure"};
-	writeScalarsVectorToVtu_CellData(outf, m, scalars, scalarnames, velocities, "velocity");
+	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
 
 	cout << "\n--------------- End --------------------- \n\n";
 	return 0;
