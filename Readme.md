@@ -1,12 +1,13 @@
 FVENS
 =====
 
-A finite volume (2nd order in space) compressible Euler solver. Currently,only explicit time-stepping workds.
+A finite volume (2nd order in space) compressible Euler solver.
 
 Building
 --------
 The Eigen matrix library is required. Please set EIGEN_DIR before issuing
-    cmake /path/to/src -DCMAKE_BUILD_TYPE=Debug -DOMP=1
+
+		cmake /path/to/src -DCMAKE_BUILD_TYPE=Debug -DOMP=1
 
 Running
 -------
