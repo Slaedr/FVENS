@@ -708,9 +708,13 @@ void UMesh2dh::compute_topological()
 			int ielem = esup(ie,0);		// element number
 
 			// find local node number of ip in ielem
-			int inode;
+			int inode = -1;
 			for(int jnode = 0; jnode < nnode[ielem]; jnode++)
 				if(inpoel(ielem,jnode) == ip) inode = jnode;
+#ifdef DEBUG
+			if(inode == -1)
+				std::cout << " ! UMesh2dh: compute_topological(): inode not found while computing psup!\n";
+#endif
 
 			std::vector<bool> nbd(nnode[ielem]);		// contains true if that local node number is connected to a particular local node.
 			for(int j = 0; j < nnode[ielem]; j++)
@@ -756,9 +760,13 @@ void UMesh2dh::compute_topological()
 			int ielem = esup(ie,0);		// element number
 
 			// find local node number of ip in ielem
-			int inode;
+			int inode = -1;
 			for(int jnode = 0; jnode < nnode[ielem]; jnode++)
 				if(inpoel(ielem,jnode) == ip) inode = jnode;
+#ifdef DEBUG
+			if(inode == -1)
+				std::cout << " ! UMesh2dh: compute_topological(): inode not found while computing psup!\n";
+#endif
 
 			std::vector<bool> nbd(nnode[ielem]);		// nbd[j] contains true if ip is connected to local node number j of ielem.
 			for(int j = 0; j < nnode[ielem]; j++)
@@ -807,7 +815,6 @@ void UMesh2dh::compute_topological()
 	{
 		// first get lpofa for this element
 		amat::Array2d<int > lpofai(nfael[ielem], nnofa);	// lpofa(i,j) holds local node number of jth node of ith face (j in [0:nnofa], i in [0:nfael])
-		amat::Array2d<int > lpofaj;							// to be initialized for each jelem
 		for(int i = 0; i < nfael[ielem]; i++)
 		{
 			for(int j = 0; j < nnofa; j++)
@@ -831,6 +838,7 @@ void UMesh2dh::compute_topological()
 				if(jelem != ielem)
 				{
 					// setup lpofa for jelem
+					amat::Array2d<int > lpofaj;
 					lpofaj.setup(nfael[jelem],nnofa);
 					for(int i = 0; i < nfael[jelem]; i++)
 						for(int j = 0; j < nnofa; j++)
@@ -1252,33 +1260,31 @@ UMesh2dh UMesh2dh::convertLinearToQuadratic()
 
 	q.vol_regions = vol_regions;
 
-	int ied, p1, p2, ielem, jelem, idim, inode, lp1, lp2, ifa;
-
 	/// We then iterate over faces, introducing the required number of points in each face.
 	
 	//std::cout << "UMesh2d: convertLinearToQuadratic(): Iterating over boundary faces..." << std::endl;
 	// iterate over boundary faces
-	for(ied = 0; ied < nbface; ied++)
+	for(int ied = 0; ied < nbface; ied++)
 	{
-		ielem = intfac(ied,0);
-		jelem = intfac(ied,1);
-		p1 = intfac(ied,2);
-		p2 = intfac(ied,3);
+		int ielem = intfac(ied,0);
+		int p1 = intfac(ied,2);
+		int p2 = intfac(ied,3);
+		int lp1 = -100000;
 
-		for(idim = 0; idim < ndim; idim++)
+		for(int idim = 0; idim < ndim; idim++)
 			q.coords(npoin+ied*parm,idim) = (coords(p1,idim) + coords(p2,idim))/2.0;
 
-		for(inode = 0; inode < nnode[ielem]; inode++)
+		for(int inode = 0; inode < nnode[ielem]; inode++)
 		{
 			if(p1 == inpoel(ielem,inode)) lp1 = inode;
-			if(p2 == inpoel(ielem,inode)) lp2 = inode;
+			//if(p2 == inpoel(ielem,inode)) lp2 = inode;
 		}
 
 		// in the left element, the new point is in face ip1 (ie, the face whose first point is ip1 in CCW order)
 		q.inpoel(ielem, nnode[ielem]+lp1) = npoin+ied*parm;
 
 		// find the bface that this face corresponds to
-		for(ifa = 0; ifa < nface; ifa++)
+		for(int ifa = 0; ifa < nface; ifa++)
 		{
 			if((p1 == bface(ifa,0) && p2 == bface(ifa,1)) || (p1 == bface(ifa,1) && p2 == bface(ifa,0)))	// face found
 			{
@@ -1289,18 +1295,20 @@ UMesh2dh UMesh2dh::convertLinearToQuadratic()
 
 	//std::cout << "UMesh2d: convertLinearToQuadratic(): Iterating over internal faces..." << std::endl;
 	// iterate over internal faces
-	for(ied = nbface; ied < naface; ied++)
+	for(int ied = nbface; ied < naface; ied++)
 	{
-		ielem = intfac(ied,0);
-		jelem = intfac(ied,1);
-		p1 = intfac(ied,2);
-		p2 = intfac(ied,3);
+		int ielem = intfac(ied,0);
+		int jelem = intfac(ied,1);
+		int p1 = intfac(ied,2);
+		int p2 = intfac(ied,3);
+		int lp1 = -100000;
+		int lp2 = -100000;
 
-		for(idim = 0; idim < ndim; idim++)
+		for(int idim = 0; idim < ndim; idim++)
 			q.coords(npoin+ied*parm,idim) = (coords(p1,idim) + coords(p2,idim))/2.0;
 
 		// First look at left element
-		for(inode = 0; inode < nnode[ielem]; inode++)
+		for(int inode = 0; inode < nnode[ielem]; inode++)
 		{
 			if(p1 == inpoel(ielem,inode)) lp1 = inode;
 			if(p2 == inpoel(ielem,inode)) lp2 = inode;
@@ -1310,7 +1318,7 @@ UMesh2dh UMesh2dh::convertLinearToQuadratic()
 		q.inpoel(ielem, nnode[ielem]+lp1) = npoin+ied*parm;
 
 		// Then look at right element
-		for(inode = 0; inode < nnode[jelem]; inode++)
+		for(int inode = 0; inode < nnode[jelem]; inode++)
 		{
 			if(p1 == inpoel(jelem,inode)) lp1 = inode;
 			if(p2 == inpoel(jelem,inode)) lp2 = inode;

@@ -403,6 +403,8 @@ void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict_
 	 * so that time steps can be calculated for explicit time stepping.
 	 */
 
+	//std::vector<a_real> ci(m->gnaface()), vni(m->gnaface()), cj(m->gnaface()), vnj(m->gnaface());
+
 #pragma omp parallel default(shared)
 	{
 #pragma omp for
@@ -450,6 +452,30 @@ void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict_
 			}
 		}
 
+/*#pragma omp barrier
+
+		// update residual and integ
+#pragma omp for
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				a_int ied = m->gelemface(iel,ifael);
+				a_real len = m->ggallfa(ied,2);
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				if(nbdelem > iel) {
+					for(int ivar = 0; ivar < NVARS; ivar++)
+						residual(iel,ivar) += fluxes(ied,ivar);
+					integ(iel) += (fabs(vni[ied]) + ci[ied])*len;
+				}
+				else {
+					for(int ivar = 0; ivar < NVARS; ivar++)
+						residual(iel,ivar) -= fluxes(ied,ivar);
+					integ(iel) += (fabs(vnj[ied]) + cj[ied])*len;
+				}
+			}
+		}*/
 #pragma omp barrier
 #pragma omp for simd
 		for(int iel = 0; iel < m->gnelem(); iel++)

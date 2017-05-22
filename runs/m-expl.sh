@@ -11,21 +11,14 @@
 # ppn=16:sandybridge will always be run on a SW2 sandy bridge node, according to http://www.hpc.mcgill.ca/index.php/starthere/81-doc-pages/91-guillimin-job-submit
 
 cd $PBS_O_WORKDIR
+module load intel/2017.00
 
-export OMP_NUM_THREADS=1
-time ../build/fvense ../testcases/2dcylnder/expliciteuler.control
+threadseq='1 2 4 8'
 
-export OMP_NUM_THREADS=2
-time ../build/fvense ../testcases/2dcylnder/expliciteuler.control
+for i in ${threadseq}; do
 
-export OMP_NUM_THREADS=4
-time ../build/fvense ../testcases/2dcylnder/expliciteuler.control
+    export OMP_NUM_THREADS=$i
+    time ../build/fvense ../testcases/2dcylnder/expliciteuler.control
 
-export OMP_NUM_THREADS=8
-time ../build/fvense ../testcases/2dcylnder/expliciteuler.control
+done
 
-export OMP_NUM_THREADS=10
-time ../build/fvense ../testcases/2dcylnder/expliciteuler.control
-
-export OMP_NUM_THREADS=16
-time ../build/fvense ../testcases/2dcylnder/expliciteuler.control

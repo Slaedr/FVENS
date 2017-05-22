@@ -19,6 +19,6 @@ NONE
 -CFL
 0.24
 -Tolerance
-1e-5
+1e-4
 -Max-iterations
 900000
