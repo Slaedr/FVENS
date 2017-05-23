@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
 	string dum, meshfile, outf, invflux, reconst, limiter;
 	double cfl, M_inf, vinf, alpha, rho_inf, tolerance;
 	int maxiter;
+	short inittype;
 
 	control >> dum;
 	control >> meshfile;
@@ -35,6 +36,7 @@ int main(int argc, char* argv[])
 	control >> alpha;
 	control >> dum;
 	control >> rho_inf;
+	control >> dum; control >> inittype;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
@@ -57,7 +59,7 @@ int main(int argc, char* argv[])
 	
 	EulerFV prob(&m, invflux, "LLF", reconst, limiter);
 	SteadyForwardEulerSolver time(&m, &prob);
-	prob.loaddata(M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
+	prob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 
 	// Now start computation
 

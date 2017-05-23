@@ -8,6 +8,29 @@
 
 namespace acfd {
 
+/** Solution for supersonic vortex case given by Krivodonova and Berger.
+ * Lilia Krivodonova and Marsha Berger, "High-order accurate implementation of solid wall boundary conditions in curved geometries",
+ * JCP 211, pp 492--512, 2006.
+ */
+void get_supersonicvortex_state(const a_real g, const a_real Mi, const a_real ri, const a_real rhoi, const a_real r,
+		a_real& rho, a_real& rhov1, a_real& rhov2, a_real& rhoe)
+{
+	a_real p = 1.0 + (g-1.0)*0.5*Mi*Mi*(1-ri*ri/(r*r));
+	rho = rhoi * pow(p, 1.0/(g-1));
+	a_real ci = sqrt(pow(rhoi, g-1.0));
+	a_real v = ci*Mi/r;
+	rhov1 = rho*v; rhov2 = 0;
+	p = pow(rho,g)/g;
+	rhoe = p/(g-1.0) + 0.5*rho*v*v;
+}
+
+void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, const a_real y, a_real& vx, a_real& vy)
+{
+	a_real theta = atan2(y,x) - PI/2.0;
+	vx = vmag*cos(theta);
+	vy = vmag*sin(theta);
+}
+
 EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
 	: aflux(1.4)
 {
@@ -17,6 +40,7 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
 	inflow_outflow_id = 4;
+	supersonic_vortex_case_inflow = 10;
 
 	// allocation
 	uinf.setup(1, NVARS);
@@ -196,7 +220,7 @@ void EulerFV::compute_ghost_cell_coords_about_face()
  * \param rhoinf Free stream density
  * \param u conserved variable array
  */
-void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u)
+void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
@@ -208,10 +232,27 @@ void EulerFV::loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix
 	uinf(0,2) = rhoinf*vy;
 	uinf(0,3) = p/(g-1) + 0.5*rhoinf*vinf*vinf;
 
-	//initial values are equal to boundary values
-	for(int i = 0; i < m->gnelem(); i++)
-		for(int j = 0; j < NVARS; j++)
-			u(i,j) = uinf(0,j);
+	if(inittype == 1)
+		for(int i = 0; i < m->gnelem(); i++)
+		{
+			// call supersonic vortex initialzation
+			a_real x = 0, y = 0;
+			for(int inode = 0; inode < m->gnnode(i); inode++) {
+				x += m->gcoords(m->ginpoel(i, inode), 0);
+				y += m->gcoords(m->ginpoel(i, inode), 1);
+			}
+			x /= m->gnnode(i); y /= m->gnnode(i);
+
+			get_supersonicvortex_initial_velocity(vinf, x, y, u(i,1), u(i,2));
+			u(i,0) = rhoinf;
+			u(i,1) *= rhoinf; u(i,2) *= rhoinf;
+			u(i,3) = uinf(0,3);
+		}
+	else
+		//initial values are equal to boundary values
+		for(int i = 0; i < m->gnelem(); i++)
+			for(int j = 0; j < NVARS; j++)
+				u(i,j) = uinf(0,j);
 
 	// Next, get cell centers (real and ghost)
 	
@@ -258,48 +299,7 @@ void EulerFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Ar
 #pragma omp parallel for default(shared)
 	for(int ied = 0; ied < m->gnbface(); ied++)
 	{
-		a_real nx = m->ggallfa(ied,0);
-		a_real ny = m->ggallfa(ied,1);
-
-		a_real vni = (ins.get(ied,1)*nx + ins.get(ied,2)*ny)/ins.get(ied,0);
-		//a_real pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
-		//a_real pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
-		//a_real ci = sqrt(g*pi/ins.get(ied,0));
-		//a_real Mni = vni/ci;
-
-		if(m->ggallfa(ied,3) == solid_wall_id)
-		{
-			bs(ied,0) = ins.get(ied,0);
-			bs(ied,1) = ins.get(ied,1) - 2*vni*nx*bs(ied,0);
-			bs(ied,2) = ins.get(ied,2) - 2*vni*ny*bs(ied,0);
-			bs(ied,3) = ins.get(ied,3);
-		}
-
-		if(m->ggallfa(ied,3) == inflow_outflow_id)
-		{
-			//if(Mni <= -1.0)
-			{
-				for(int i = 0; i < NVARS; i++)
-					bs(ied,i) = uinf(0,i);
-			}
-			/*else if(Mni > -1.0 && Mni < 0)
-			{
-				// subsonic inflow, specify rho and u according to FUN3D BCs paper
-				for(i = 0; i < NVARS-1; i++)
-					bs(ied,i) = uinf.get(0,i);
-				bs(ied,3) = pi/(g-1.0) + 0.5*( uinf.get(0,1)*uinf.get(0,1) + uinf.get(0,2)*uinf.get(0,2) )/uinf.get(0,0);
-			}
-			else if(Mni >= 0 && Mni < 1.0)
-			{
-				// subsonic ourflow, specify p accoording FUN3D BCs paper
-				for(i = 0; i < NVARS-1; i++)
-					bs(ied,i) = ins.get(ied,i);
-				bs(ied,3) = pinf/(g-1.0) + 0.5*( ins.get(ied,1)*ins.get(ied,1) + ins.get(ied,2)*ins.get(ied,2) )/ins.get(ied,0);
-			}
-			else
-				for(i = 0; i < NVARS; i++)
-					bs(ied,i) = ins.get(ied,i);*/
-		}
+		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
 	}
 }
 
@@ -309,10 +309,13 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 	a_real ny = m->ggallfa(ied,1);
 
 	a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
-	//a_real pi = (g-1.0)*(ins.get(ied,3) - 0.5*(pow(ins.get(ied,1),2)+pow(ins.get(ied,2),2))/ins.get(ied,0));
-	//a_real pinf = (g-1.0)*(uinf.get(0,3) - 0.5*(pow(uinf.get(0,1),2)+pow(uinf.get(0,2),2))/uinf.get(0,0));
-	//a_real ci = sqrt(g*pi/ins.get(ied,0));
-	//a_real Mni = vni/ci;
+	a_real pi = (g-1.0)*(ins[3] - 0.5*(pow(ins[1],2)+pow(ins[2],2))/ins[0]);
+	a_real ci = sqrt(g*pi/ins[0]);
+	a_real Mni = vni/ci;
+	/*a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
+	a_real cinf = sqrt(g*pinf/uinf(0,0));
+	a_real vninf = (uinf(0,1)*nx + uinf(0,2)*ny)/uinf(0,0);
+	a_real Mninf = vninf/cinf;*/
 
 	if(m->ggallfa(ied,3) == solid_wall_id)
 	{
@@ -324,20 +327,47 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 
 	if(m->ggallfa(ied,3) == inflow_outflow_id)
 	{
-		for(int i = 0; i < NVARS; i++)
-			bs[i] = uinf(0,i);
+		if(Mni < 1.0)
+		{
+			for(int i = 0; i < NVARS; i++)
+				bs[i] = uinf(0,i);
+		}
+		else
+		{
+			for(int i = 0; i < NVARS; i++)
+				bs[i] = ins[i];
+		}
+		/*if(Mni <= -1.0)
+		{
+			for(int i = 0; i < NVARS; i++)
+				bs[i] = uinf(0,i);
+		}
+		else if(Mni > -1.0 && Mni < 0)
+		{
+			// subsonic inflow, specify rho and u according to FUN3D BCs paper
+			for(i = 0; i < NVARS-1; i++)
+				bs(ied,i) = uinf.get(0,i);
+			bs(ied,3) = pi/(g-1.0) + 0.5*( uinf.get(0,1)*uinf.get(0,1) + uinf.get(0,2)*uinf.get(0,2) )/uinf.get(0,0);
+		}
+		else if(Mni >= 0 && Mni < 1.0)
+		{
+			// subsonic ourflow, specify p accoording FUN3D BCs paper
+			for(i = 0; i < NVARS-1; i++)
+				bs(ied,i) = ins.get(ied,i);
+			bs(ied,3) = pinf/(g-1.0) + 0.5*( ins.get(ied,1)*ins.get(ied,1) + ins.get(ied,2)*ins.get(ied,2) )/ins.get(ied,0);
+		}
+		else
+			for(i = 0; i < NVARS; i++)
+				bs(ied,i) = ins.get(ied,i);*/
 	}
-}
-
-a_real EulerFV::l2norm(const amat::Array2d<a_real>* const v)
-{
-	a_real norm = 0;
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		norm += v->get(iel)*v->get(iel)*m->gjacobians(iel)/2.0;
+	
+	if(m->ggallfa(ied,3) == supersonic_vortex_case_inflow) {
+		// y-coordinate of face center
+		a_real r = 0.5*(m->gcoords(m->gintfac(ied,2),1) + m->gcoords(m->gintfac(ied,3),1));
+		a_real ri = 1.0, Mi = 2.25, rhoi = 1.0;
+		get_supersonicvortex_state(g, Mi, ri, rhoi, r, bs[0], bs[1], bs[2], bs[3]);
+		std::cout << "  Called supersonic vortex soln function.\n";
 	}
-	norm = sqrt(norm);
-	return norm;
 }
 
 void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm)
@@ -561,6 +591,13 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked,
 
 #else
 
+/** Computes the Jacobian in a block diagonal, lower and upper format.
+ * If the (numerical) flux from cell i to cell j is \f$ F_{ij}(u_i, u_j, n_{ij}) \f$,
+ * then \f$ L_{ij} = -\frac{\partial F_{ij}}{\partial u_i} \f$ and
+ * \f$ U_{ij} = \frac{\partial F_{ij}}{\partial u_j} \f$.
+ * Also, the contribution of face ij to diagonal blocks are 
+ * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rigtharrow D_{jj} -U_{ij} \f$.
+ */
 void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrix *const D, Matrix *const L, Matrix *const U)
 {
 #pragma omp parallel for default(shared)
@@ -572,11 +609,10 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrix *const D, Ma
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
 		a_real uface[NVARS];
-		Matrix left(NVARS,NVARS); //left.resize(NVARS,NVARS);
-		Matrix right(NVARS,NVARS); //right.resize(NVARS,NVARS);
+		Matrix left(NVARS,NVARS);
+		Matrix right(NVARS,NVARS);
 		
 		compute_boundary_state(iface, &u(lelem,0), uface);
-		//jflux->get_jacobian(u.data()+lelem*NVARS, uface, n, left.data(), right.data());
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 		
 		for(int i = 0; i < NVARS; i++)

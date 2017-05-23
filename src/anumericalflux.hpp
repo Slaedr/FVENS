@@ -45,7 +45,7 @@ public:
 	 * The negative of the lower block is the contribution to the diagonal block of the left cell, and
 	 * the negative of the upper block is the contribution to the diagonal block of the right cell.
 	 */
-	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
+	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr) = 0;
 
 	virtual ~InviscidFlux();
 };
@@ -64,6 +64,7 @@ class VanLeerFlux : public InviscidFlux
 public:
 	VanLeerFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 };
 
 /// Roe flux-difference splitting Riemann solver for the Euler equations
@@ -72,6 +73,7 @@ class RoeFlux : public InviscidFlux
 public:
 	RoeFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 };
 
 /// Harten Lax Van-Leer numerical flux
@@ -88,6 +90,8 @@ public:
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
 	
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
+	
+	void get_frozen_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 
 	/// Computes both the flux and the 2 flux Jacobians
 	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux, a_real *const dfdl, a_real *const dfdr);
@@ -101,6 +105,7 @@ class HLLCFlux : public InviscidFlux
 public:
 	HLLCFlux(a_real gamma, const EulerFlux *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
 };
 
 } // end namespace acfd

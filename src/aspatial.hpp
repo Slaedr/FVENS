@@ -84,6 +84,7 @@ protected:
 
 	int solid_wall_id;						///< Boundary marker corresponding to solid wall
 	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
+	int supersonic_vortex_case_inflow;		///< Inflow boundary marker for supersonic vortex case
 	
 	amat::Array2d<a_real> scalars;			///< Holds density, Mach number and pressure for each cell
 	amat::Array2d<a_real> velocities;		///< Holds velocity components for each cell
@@ -115,7 +116,7 @@ public:
 	~EulerFV();
 	
 	/// Set simulation data and precompute data needed for reconstruction
-	void loaddata(a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u);
+	void loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
@@ -127,18 +128,11 @@ public:
 	void compute_jacobian(const Matrix& u, const bool blocked, Mat A);
 #else
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
-	/** D, L and U are zeroed first.
+	/** \note D, L and U are not zeroed before use.
 	 */
 	void compute_jacobian(const Matrix& u, Matrix *const D, Matrix *const L, Matrix *const U);
 #endif
 
-	/// Computes both residual and Jacobian more efficiently than doing them separately
-	void compute(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm, 
-		Matrix *const D, Matrix *const L, Matrix *const U);
-
-	/// Computes the L2 norm of a cell-centered quantity
-	a_real l2norm(const amat::Array2d<a_real>* const v);
-	
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 	

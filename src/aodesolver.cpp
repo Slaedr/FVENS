@@ -45,7 +45,7 @@ void SteadyForwardEulerSolver::solve(const a_real tol, const int maxiter, const 
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++) {
 			for(int i = 0; i < NVARS; i++)
-				resdidual(iel,i) = 0;
+				residual(iel,i) = 0;
 		}
 
 		// update residual
@@ -142,7 +142,7 @@ void SteadyBackwardEulerSolver::solve()
 		for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
 			for(int i = 0; i < NVARS; i++) {
-				resdidual(iel,i) = 0;
+				residual(iel,i) = 0;
 				for(int j = 0; j < NVARS; j++)
 					D[iel](i,j) = 0;
 			}

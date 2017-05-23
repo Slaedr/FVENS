@@ -154,6 +154,10 @@ void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *co
 		flux[i] = fiplus[i] + fjminus[i];
 }
 
+void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+{
+	std::cout << " ! VanLeerFlux: Not implemented!\n";
+}
 
 RoeFlux::RoeFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 { }
@@ -263,6 +267,11 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 			sum += fabs(l[j])*dw[j]*r[ivar][j];
 		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - sum);
 	}
+}
+
+void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+{
+	std::cout << " ! RoeFlux: Not implemented!\n";
 }
 
 HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
