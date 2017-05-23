@@ -342,17 +342,11 @@ a_real EulerFV::l2norm(const amat::Array2d<a_real>* const v)
 
 void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm)
 {
-	// Flux across each face
-	/*amat::Array2d<a_real> fluxes;
-	fluxes.setup(m->gnaface(), NVARS);*/
-	
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
-			for(int i = 0; i < NVARS; i++)
-				residual(iel,i) = 0.0;
 			integ(iel) = 0.0;
 		}
 
@@ -570,17 +564,6 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked,
 void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrix *const D, Matrix *const L, Matrix *const U)
 {
 #pragma omp parallel for default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++) {
-		for(int i = 0; i < NVARS; i++)
-			for(int j = 0; j < NVARS; j++)
-				D[iel](i,j) = 0;
-	}
-	/*for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
-		L[iface].zeros();
-		U[iface].zeros();
-	}*/
-
-#pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
@@ -631,7 +614,6 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrix *const D, Ma
 
 #endif
 
-
 void EulerFV::postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_point(): Creating output arrays...\n";
@@ -652,19 +634,6 @@ void EulerFV::postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars,
 				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
 			}
 	}
-	/*for(iface = 0; iface < m->gnbface(); iface++)
-	{
-		ielem = m->gintfac(iface,0);
-		ip1 = m->gintfac(iface,2);
-		ip2 = m->gintfac(iface,3);
-		for(ivar = 0; ivar < NVARS; ivar++)
-		{
-			up(ip1,ivar) += ug(iface,ivar)*m->garea(ielem);
-			up(ip2,ivar) += ug(iface,ivar)*m->garea(ielem);
-			areasum(ip1) += m->garea(ielem);
-			areasum(ip2) += m->garea(ielem);
-		}
-	}*/
 
 	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 		for(int ivar = 0; ivar < NVARS; ivar++)

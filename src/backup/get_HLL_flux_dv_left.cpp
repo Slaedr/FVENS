@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <Eigen/Core>
+typedef double a_real;
 
 /*
   Differentiation of get_HLL_flux in forward (tangent) mode:
@@ -13,26 +14,26 @@
    RW status of diff variables: *flux:out *ul:in
    Plus diff mem management of: flux:in ul:in
 */
-void get_HLL_flux_dv(const double *const ul, const double *const ur, const double *const n, double *const flux, double *const fluxd)
+void get_HLL_flux_dv(const a_real *const ul, const a_real *const ur, const a_real *const n, a_real *const flux, a_real *const fluxd)
 {
-    double uld[NVARS][NVARS];
+    a_real uld[NVARS][NVARS];
 	for(int i = 0; i < NVARS; i++) {
 		for(int j = 0; j < NVARS; j++)
 			uld[i][j] = 0;
 		uld[i][i] = 1.0;
 	}
 	
-	const double g = 1.4;
-    double Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
-    double Hid[NVARS], cid[NVARS], pid[NVARS], vxid[NVARS], vyid[NVARS], vmag2id[NVARS], vnid[NVARS];
-    double fabs0;
-    double fabs0d[NVARS];
-    double fabs1;
-    double fabs1d[NVARS];
-    double arg1;
-    double arg1d[NVARS];
+	const a_real g = 1.4;
+    a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
+    a_real Hid[NVARS], cid[NVARS], pid[NVARS], vxid[NVARS], vyid[NVARS], vmag2id[NVARS], vnid[NVARS];
+    a_real fabs0;
+    a_real fabs0d[NVARS];
+    a_real fabs1;
+    a_real fabs1d[NVARS];
+    a_real arg1;
+    a_real arg1d[NVARS];
     int nd;
- 	double sld[NVARS];
+ 	a_real sld[NVARS];
     vxi = ul[1]/ul[0];
     vyi = ul[2]/ul[0];
     vmag2i = vxi*vxi + vyi*vyi;
@@ -65,8 +66,8 @@ void get_HLL_flux_dv(const double *const ul, const double *const ur, const doubl
     Hi = (ul[3]+pi)/ul[0];
     Hj = (ur[3]+pj)/ur[0];
     // compute Roe-averages
-    double Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
-    double Rijd[NVARS], vxijd[NVARS], vyijd[NVARS], Hijd[NVARS], cijd[NVARS], vm2ijd[NVARS], vnijd[NVARS];
+    a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
+    a_real Rijd[NVARS], vxijd[NVARS], vyijd[NVARS], Hijd[NVARS], cijd[NVARS], vm2ijd[NVARS], vnijd[NVARS];
     arg1 = ur[0]/ul[0];
     Rij = sqrt(arg1);
     vxij = (Rij*vxj+vxi)/(Rij+1.0);
@@ -88,8 +89,8 @@ void get_HLL_flux_dv(const double *const ul, const double *const ur, const doubl
         cijd[nd] = (arg1 == 0.0 ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1)));
     cij = sqrt(arg1);
     // Einfeldt estimate for signal speeds
-    double sr, sl, sr0, sl0;
-    double srd[NVARS], sr0d[NVARS], sl0d[NVARS];
+    a_real sr, sl, sr0, sl0;
+    a_real srd[NVARS], sr0d[NVARS], sl0d[NVARS];
     sl = vni - ci;
     if (sl > vnij - cij) {
         for (nd = 0; nd < NVARS; ++nd)
@@ -123,8 +124,8 @@ void get_HLL_flux_dv(const double *const ul, const double *const ur, const doubl
         sl0 = sl;
     }
     // flux
-    double t1, t2, t3;
-    double t1d[NVARS], t2d[NVARS], t3d[NVARS];
+    a_real t1, t2, t3;
+    a_real t1d[NVARS], t2d[NVARS], t3d[NVARS];
     for (nd = 0; nd < NVARS; ++nd) {
         t1d[nd] = ((sr0d[nd]-sl0d[nd])*(sr-sl)-(sr0-sl0)*(srd[nd]-sld[nd]))/((sr-sl)*(sr-sl));
         t2d[nd] = -t1d[nd];
@@ -174,12 +175,12 @@ int main()
 {
 	using namespace Eigen;
 	using namespace std;
-	typedef Matrix<double, Dynamic, Dynamic, RowMajor> Matrixx;
+	typedef Matrix<a_real, Dynamic, Dynamic, RowMajor> Matrixx;
 
 	Matrixx df(4,4); VectorXd ul(4), ur(4), flux(4);
 	ur(0) = 1.0; ur(1) = 1.5; ur(2) = 0.45; ur(3) = 3.5;
 	ul = VectorXd::Constant(4,1);
-	double n[2] = {1.0, 0.0};
+	a_real n[2] = {1.0, 0.0};
 	get_HLL_flux_dv(&ul(0), &ur(0), n, &flux(0), &df(0,0));
 	cout << df << endl;
 }

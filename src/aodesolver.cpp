@@ -42,7 +42,11 @@ void SteadyForwardEulerSolver::solve(const a_real tol, const int maxiter, const 
 
 	while(resi/initres > tol && step < maxiter)
 	{
-		//std::cout << "EulerFV: solve_rk1_steady(): Entered loop. Step " << step << std::endl;
+#pragma omp parallel for simd default(shared)
+		for(int iel = 0; iel < m->gnelem(); iel++) {
+			for(int i = 0; i < NVARS; i++)
+				resdidual(iel,i) = 0;
+		}
 
 		// update residual
 		eul->compute_residual(u, residual, dtm);
@@ -134,6 +138,16 @@ void SteadyBackwardEulerSolver::solve()
 
 	while(resi/initres > tol && step < maxiter)
 	{
+#pragma omp parallel for default(shared)
+		for(int iel = 0; iel < m->gnelem(); iel++) {
+#pragma omp simd
+			for(int i = 0; i < NVARS; i++) {
+				resdidual(iel,i) = 0;
+				for(int j = 0; j < NVARS; j++)
+					D[iel](i,j) = 0;
+			}
+		}
+		
 		// update residual and local time steps
 		eul->compute_residual(u, residual, dtm);
 

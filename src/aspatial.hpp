@@ -132,6 +132,10 @@ public:
 	void compute_jacobian(const Matrix& u, Matrix *const D, Matrix *const L, Matrix *const U);
 #endif
 
+	/// Computes both residual and Jacobian more efficiently than doing them separately
+	void compute(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm, 
+		Matrix *const D, Matrix *const L, Matrix *const U);
+
 	/// Computes the L2 norm of a cell-centered quantity
 	a_real l2norm(const amat::Array2d<a_real>* const v);
 	

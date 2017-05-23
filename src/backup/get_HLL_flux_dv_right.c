@@ -12,24 +12,24 @@
    RW status of diff variables: *flux:out *ur:in
    Plus diff mem management of: flux:in ur:in
 */
-void get_HLL_flux_dv(const double *const ul, const double *const ur, const double *const n, double *const flux, double *const fluxd)
+void get_HLL_flux_dv(const a_real *const ul, const a_real *const ur, const a_real *const n, a_real *const flux, a_real *const fluxd)
 {
-    double urd[NVARS][NVARS];
+    a_real urd[NVARS][NVARS];
 	for(int i = 0; i < NVARS; i++) {
 		for(int j = 0; j < NVARS; j++)
 			urd[i][j] = 0;
 		urd[i][i] = 1.0;
 	}
 
-    double Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
-    double Hjd[NBDirsMax], cjd[NBDirsMax], pjd[NBDirsMax], vxjd[NBDirsMax], vyjd[NBDirsMax], 
-		   vmag2jd[NBDirsMax], vnjd[NBDirsMax];
-    double fabs0;
-    double fabs0d[NBDirsMax];
-    double fabs1;
-    double fabs1d[NBDirsMax];
-    double arg1;
-    double arg1d[NBDirsMax];
+    a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
+    a_real Hjd[NVARS], cjd[NVARS], pjd[NVARS], vxjd[NVARS], vyjd[NVARS], 
+		   vmag2jd[NVARS], vnjd[NVARS];
+    a_real fabs0;
+    a_real fabs0d[NVARS];
+    a_real fabs1;
+    a_real fabs1d[NVARS];
+    a_real arg1;
+    a_real arg1d[NVARS];
     int nd;
     vxi = ul[1]/ul[0];
     vyi = ul[2]/ul[0];
@@ -62,9 +62,9 @@ void get_HLL_flux_dv(const double *const ul, const double *const ur, const doubl
     Hi = (ul[3]+pi)/ul[0];
     Hj = (ur[3]+pj)/ur[0];
     // compute Roe-averages
-    double Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
-    double Rijd[NBDirsMax], vxijd[NBDirsMax], vyijd[NBDirsMax], Hijd[NBDirsMax], cijd[NBDirsMax], 
-		   vm2ijd[NBDirsMax], vnijd[NBDirsMax];
+    a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
+    a_real Rijd[NVARS], vxijd[NVARS], vyijd[NVARS], Hijd[NVARS], cijd[NVARS], 
+		   vm2ijd[NVARS], vnijd[NVARS];
     arg1 = ur[0]/ul[0];
     Rij = sqrt(arg1);
     vxij = (Rij*vxj+vxi)/(Rij+1.0);
@@ -86,8 +86,8 @@ void get_HLL_flux_dv(const double *const ul, const double *const ur, const doubl
         cijd[nd] = (arg1 == 0.0 ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1)));
     cij = sqrt(arg1);
     // Einfeldt estimate for signal speeds
-    double sr, sl, sr0, sl0;
-    double srd[NBDirsMax], sld[NBDirsMax], sr0d[NBDirsMax], sl0d[NBDirsMax];
+    a_real sr, sl, sr0, sl0;
+    a_real srd[NVARS], sld[NVARS], sr0d[NVARS], sl0d[NVARS];
     sl = vni - ci;
     if (sl > vnij - cij) {
         for (nd = 0; nd < NVARS; ++nd)
@@ -123,8 +123,8 @@ void get_HLL_flux_dv(const double *const ul, const double *const ur, const doubl
         sl0 = sl;
     }
     // flux
-    double t1, t2, t3;
-    double t1d[NBDirsMax], t2d[NBDirsMax], t3d[NBDirsMax];
+    a_real t1, t2, t3;
+    a_real t1d[NVARS], t2d[NVARS], t3d[NVARS];
     for (nd = 0; nd < NVARS; ++nd) {
         t1d[nd] = ((sr0d[nd]-sl0d[nd])*(sr-sl)-(sr0-sl0)*(srd[nd]-sld[nd]))/((sr-sl)*(sr-sl));
         t2d[nd] = -t1d[nd];

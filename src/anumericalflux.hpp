@@ -77,10 +77,20 @@ public:
 /// Harten Lax Van-Leer numerical flux
 class HLLFlux : public InviscidFlux
 {
+	/// Computes the Jacobian of the numerical flux w.r.t. left state
+	void getFluxJac_left(const a_real *const ul, const a_real *const ur, const a_real *const n, a_real *const flux, a_real *const fluxd);
+	/// Computes the Jacobian of the numerical flux w.r.t. right state
+	void getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, a_real *const flux, a_real *const fluxd);
+
 public:
 	HLLFlux(a_real gamma, const EulerFlux *const analyticalflux);
+	
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr);
+
+	/// Computes both the flux and the 2 flux Jacobians
+	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux, a_real *const dfdl, a_real *const dfdr);
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
