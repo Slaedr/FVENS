@@ -1,11 +1,11 @@
 -mesh_file
-../testcases/supersonic-vortex/grids/quarterannulus0.msh
+../testcases/supersonic-vortex/grids/quarterannulus4.msh
 -output_file
-../data/quarterannulus0-hll-2-expl.vtu
+../data/quarterannulus4-hll-2-expl.vtu
 -M_infinity
-0
+2.25
 -velocity_infinity
-0
+2.25
 -angle_of_attack
 0.0
 -rho_infinity
@@ -15,7 +15,7 @@
 -inviscid-flux
 HLL
 -reconstruction-scheme
-NONE
+GREENGAUSS
 -limiter
 NONE
 -CFL
@@ -24,3 +24,11 @@ NONE
 1e-6
 -Max-iterations
 900000
+-use-first-order-initial-condition
+1
+-CFL-for-initialization-run
+0.8
+-tolerance-for-initialization
+1e-4
+-max-time-steps-for-initialization
+10000

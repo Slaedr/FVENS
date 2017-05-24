@@ -11,7 +11,9 @@
 
 namespace acfd {
 
-SteadyForwardEulerSolver::SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler) : m(mesh), eul(euler)
+SteadyForwardEulerSolver::SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler, EulerFV *const starterfv,
+		const short use_starter, const double toler, const int maxits, const double cfl_n, const double ftoler, const int fmaxits, const double fcfl_n)
+	: SteadySolver(mesh, euler, starterfv, use_starter), tol(toler), maxiter(maxits), cfl(cfl_n), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
 	residual.resize(m->gnelem(),NVARS);
 	u.resize(m->gnelem(), NVARS);
@@ -22,24 +24,61 @@ SteadyForwardEulerSolver::~SteadyForwardEulerSolver()
 {
 }
 
-a_real SteadyForwardEulerSolver::l2norm(const amat::Array2d<a_real>* const v)
-{
-	a_real norm = 0;
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		norm += v->get(iel)*v->get(iel)*m->garea(iel);
-	}
-	norm = sqrt(norm);
-	return norm;
-}
-
-void SteadyForwardEulerSolver::solve(const a_real tol, const int maxiter, const a_real cfl)
+void SteadyForwardEulerSolver::solve()
 {
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
-	//amat::Array2d<a_real> uold(m->gnelem(), NVARS);
 
+	if(usestarter == 1) {
+		while(resi/initres > starttol && step < startmaxiter)
+		{
+#pragma omp parallel for simd default(shared)
+			for(int iel = 0; iel < m->gnelem(); iel++) {
+				for(int i = 0; i < NVARS; i++)
+					residual(iel,i) = 0;
+			}
+
+			// update residual
+			starter->compute_residual(u, residual, dtm);
+
+			a_real errmass = 0;
+
+#pragma omp parallel default(shared)
+			{
+#pragma omp for simd
+				for(int iel = 0; iel < m->gnelem(); iel++)
+				{
+					for(int i = 0; i < NVARS; i++)
+					{
+						//uold(iel,i) = u(iel,i);
+						u(iel,i) -= startcfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
+					}
+				}
+
+#pragma omp for simd reduction(+:errmass)
+				for(int iel = 0; iel < m->gnelem(); iel++)
+				{
+					errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
+				}
+			} // end parallel region
+
+			resi = sqrt(errmass);
+
+			if(step == 0)
+				initres = resi;
+
+			if(step % 50 == 0)
+				std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+
+			step++;
+		}
+		std::cout << "  SteadyForwardEulerSolver: solve(): Initial approximate solve done.\n";
+		step = 0;
+		resi = 100.0;
+	}
+
+	std::cout << "  SteadyForwardEulerSolver: solve(): Starting main solver.\n";
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for simd default(shared)
@@ -94,11 +133,13 @@ void SteadyForwardEulerSolver::solve(const a_real tol, const int maxiter, const 
 }
 
 
-SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, EulerFV *const spatial, 
+SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, EulerFV *const spatial, EulerFV *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const int lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver)
-	: m(mesh), eul(spatial), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), lintol(lin_tol),
-	linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end)
+		const double toler, const int maxits, const int lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver,
+		const double ftoler, const int fmaxits, const double fcfl_n)
+
+	: SteadySolver(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
+	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
 	residual.resize(m->gnelem(),NVARS);
 	u.resize(m->gnelem(), NVARS);
@@ -130,12 +171,80 @@ SteadyBackwardEulerSolver::~SteadyBackwardEulerSolver()
 
 void SteadyBackwardEulerSolver::solve()
 {
-	int step = 0;
 	double curCFL; int curlinmaxiter;
+	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 	Matrix du = Matrix::Zero(m->gnelem(), NVARS);
+	
+	if(usestarter == 1) {
+		while(resi/initres > starttol && step < startmaxiter)
+		{
+#pragma omp parallel for default(shared)
+			for(int iel = 0; iel < m->gnelem(); iel++) {
+#pragma omp simd
+				for(int i = 0; i < NVARS; i++) {
+					residual(iel,i) = 0;
+					for(int j = 0; j < NVARS; j++)
+						D[iel](i,j) = 0;
+				}
+			}
+			
+			// update residual and local time steps
+			starter->compute_residual(u, residual, dtm);
 
+			starter->compute_jacobian(u, D, L, U);
+
+			// add pseudo-time terms to diagonal blocks
+#pragma omp parallel for simd default(shared)
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				for(int i = 0; i < NVARS; i++)
+					D[iel](i,i) += m->garea(iel) / (startcfl*dtm(iel));
+			}
+
+			// setup and solve linear system for the update du
+			linsolv->setLHS(D,L,U);
+			linsolv->setParams(lintol, linmaxiterstart);
+			linsolv->solve(residual, du);
+
+			a_real errmass = 0;
+
+#pragma omp parallel default(shared)
+			{
+#pragma omp for
+				for(int iel = 0; iel < m->gnelem(); iel++) {
+					u.row(iel) += du.row(iel);
+					/*for(int i = 0; i < NVARS; i++)
+						du(iel,i) = 0;*/
+				}
+#pragma omp for simd reduction(+:errmass)
+				for(int iel = 0; iel < m->gnelem(); iel++)
+				{
+					errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
+				}
+			}
+
+			resi = sqrt(errmass);
+
+			if(step == 0)
+				initres = resi;
+
+			if(step % 10 == 0) {
+				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+				std::cout << "         CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << std::endl;
+			}
+
+			step++;
+		}
+
+		std::cout << " SteadyBackwardEulerSolver: solve(): Initial approximate solve done.\n";
+		step = 0;
+		resi = 1.0;
+		initres = 1.0;
+	}
+
+	std::cout << " SteadyBackwardEulerSolver: solve(): Starting main solver.\n";
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for default(shared)
@@ -159,11 +268,17 @@ void SteadyBackwardEulerSolver::solve()
 			curlinmaxiter = linmaxiterstart;
 		}
 		else if(step < rampend) {
-			double slopec = (cflfin-cflinit)/(rampend-rampstart);
-			curCFL = cflinit + slopec*(step-rampstart);
-			double slopei = double(linmaxiterend-linmaxiterstart)/(rampend-rampstart);
-			curlinmaxiter = int(linmaxiterstart + slopei*(step-rampstart));
-			//curlinmaxiter = linmaxiterstart;
+			if(rampend-rampstart <= 0) {
+				curCFL = cflfin;
+				curlinmaxiter = linmaxiterend;
+			}
+			else {
+				double slopec = (cflfin-cflinit)/(rampend-rampstart);
+				curCFL = cflinit + slopec*(step-rampstart);
+				double slopei = double(linmaxiterend-linmaxiterstart)/(rampend-rampstart);
+				curlinmaxiter = int(linmaxiterstart + slopei*(step-rampstart));
+				//curlinmaxiter = linmaxiterstart;
+			}
 		}
 		else {
 			curCFL = cflfin;

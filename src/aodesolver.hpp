@@ -16,27 +16,21 @@
 
 namespace acfd {
 
-/// A driver class for explicit time-stepping solution to steady state using forward Euler time integration
-/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of this class.
- */
-class SteadyForwardEulerSolver
+class SteadySolver
 {
-	const UMesh2dh *const m;				///< Mesh
-	EulerFV *const eul;						///< Spatial discretization context
-	Matrix residual;						///< Right hand side for boundary integrals and source terms
-	Matrix u;								///< The conserved variables
-	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
+protected:
+	const UMesh2dh *const m;
+	EulerFV *const eul;
+	EulerFV *const starter;
+	Matrix residual;
+	Matrix u;
+	const short usestarter;
 
 public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler);
-	~SteadyForwardEulerSolver();
+	SteadySolver(const UMesh2dh *const mesh, EulerFV *const euler, EulerFV *const starterfv, const short use_starter)
+		: m(mesh), eul(euler), starter(starterfv), usestarter(use_starter)
+	{ }
 
-	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
-	void solve(const a_real tol, const int maxiter, const a_real cfl);
-
-	/// Computes the L2 norm of a cell-centered quantity
-	a_real l2norm(const amat::Array2d<a_real>* const v);
-	
 	const Matrix& residuals() const {
 		return residual;
 	}
@@ -45,18 +39,41 @@ public:
 	Matrix& unknowns() {
 		return u;
 	}
+
+	virtual void solve() = 0;
+
+	virtual ~SteadySolver() {}
+};
+	
+/// A driver class for explicit time-stepping solution to steady state using forward Euler time integration
+/** \note Make sure compute_topological(), compute_face_data() and compute_areas()
+ * have been called on the mesh object prior to initialzing an object of this class.
+ */
+class SteadyForwardEulerSolver : public SteadySolver
+{
+	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
+	const double tol;
+	const int maxiter;
+	const double cfl;
+	
+	const double starttol;
+	const int startmaxiter;
+	const double startcfl;
+
+public:
+	SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler, EulerFV *const starterfv, 
+			const short use_starter, const double toler, const int maxits, const double cfl,
+			const double ftoler, const int fmaxits, const double fcfl);
+	~SteadyForwardEulerSolver();
+
+	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
+	void solve();
 };
 
 /// Implicit pseudo-time iteration to steady state
-class SteadyBackwardEulerSolver
+class SteadyBackwardEulerSolver : public SteadySolver
 {
-	const UMesh2dh *const m;
-	
-	EulerFV *const eul;
-	Matrix residual;						///< Right hand side for boundary integrals and source terms
-	Matrix u;								///< The conserved variables
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
-
 
 	IterativeBlockSolver * linsolv;
 	Matrix* D;
@@ -72,24 +89,20 @@ class SteadyBackwardEulerSolver
 	int lintol;
 	int linmaxiterstart;
 	int linmaxiterend;
+	
+	const double starttol;
+	const int startmaxiter;
+	const double startcfl;
 
 public:
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, EulerFV *const spatial,
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, EulerFV *const spatial, EulerFV *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const int lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver);
+		const double toler, const int maxits, const int lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver,
+		const double ftoler, const int fmaxits, const double fcfl);
 	
 	~SteadyBackwardEulerSolver();
 
 	void solve();
-	
-	const Matrix& residuals() const {
-		return residual;
-	}
-	
-	/// Direct access to the conserved variables
-	Matrix& unknowns() {
-		return u;
-	}
 };
 
 }	// end namespace

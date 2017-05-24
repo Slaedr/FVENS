@@ -17,9 +17,9 @@ int main(int argc, char* argv[])
 	ifstream control(argv[1]);
 
 	string dum, meshfile, outf, invflux, invfluxjac, reconst, limiter, linsolver;
-	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, lin_relaxfactor;
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend;
-	short inittype;
+	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, lin_relaxfactor, firstcfl, firsttolerance;
+	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter;
+	short inittype, usestarter;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -43,6 +43,10 @@ int main(int argc, char* argv[])
 	control >> dum; control >> linmaxiterstart;
 	control >> dum; control >> linmaxiterend;
 	control >> dum; control >> lin_relaxfactor;
+	control >> dum; control >> usestarter;
+	control >> dum; control >> firstcfl;
+	control >> dum; control >> firsttolerance;
+	control >> dum; control >> firstmaxiter;
 	control.close(); 
 
 	// Set up mesh
@@ -56,8 +60,13 @@ int main(int argc, char* argv[])
 
 	// set up problem
 	
+	std::cout << "Setting up main spatial scheme.\n";
 	EulerFV prob(&m, invflux, invfluxjac, reconst, limiter);
-	SteadyBackwardEulerSolver time(&m, &prob, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, lintol, linmaxiterstart, linmaxiterend, linsolver);
+	std::cout << "Setting up spatial scheme for the initial guess.\n";
+	EulerFV startprob(&m, invflux, invfluxjac, "NONE", "NONE");
+	SteadyBackwardEulerSolver time(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+			lintol, linmaxiterstart, linmaxiterend, linsolver, firsttolerance, firstmaxiter, firstcfl);
+	startprob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 	prob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 
 	// computation

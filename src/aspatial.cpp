@@ -59,30 +59,30 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
 		inviflux = new VanLeerFlux(g, &aflux);
-		std::cout << "EulerFV: Using Van Leer fluxes." << std::endl;
+		std::cout << "  EulerFV: Using Van Leer fluxes." << std::endl;
 	}
 	else if(invflux == "ROE")
 	{
 		inviflux = new RoeFlux(g, &aflux);
-		std::cout << "EulerFV: Using Roe fluxes." << std::endl;
+		std::cout << "  EulerFV: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLL")
 	{
 		inviflux = new HLLFlux(g, &aflux);
-		std::cout << "EulerFV: Using HLL fluxes." << std::endl;
+		std::cout << "  EulerFV: Using HLL fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
 		inviflux = new HLLCFlux(g, &aflux);
-		std::cout << "EulerFV: Using HLLC fluxes." << std::endl;
+		std::cout << "  EulerFV: Using HLLC fluxes." << std::endl;
 	}
 	else if(invflux == "LLF")
 	{
 		inviflux = new LocalLaxFriedrichsFlux(g, &aflux);
-		std::cout << "EulerFV: Using LLF fluxes." << std::endl;
+		std::cout << "  EulerFV: Using LLF fluxes." << std::endl;
 	}
 	else
-		std::cout << "EulerFV: ! Flux scheme not available!" << std::endl;
+		std::cout << "  EulerFV: ! Flux scheme not available!" << std::endl;
 	
 	// set inviscid flux scheme for Jacobian
 	if(jacflux == "VANLEER")
@@ -90,56 +90,94 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	else if(jacflux == "ROE")
 	{
 		jflux = new RoeFlux(g, &aflux);
-		std::cout << "EulerFV: Using Roe fluxes for Jacobian." << std::endl;
+		std::cout << "  EulerFV: Using Roe fluxes for Jacobian." << std::endl;
 	}
 	else if(jacflux == "HLL")
 	{
 		jflux = new HLLFlux(g, &aflux);
-		std::cout << "EulerFV: Using HLL fluxes for Jacobian." << std::endl;
+		std::cout << "  EulerFV: Using HLL fluxes for Jacobian." << std::endl;
 	}
 	else if(jacflux == "HLLC")
 	{
 		jflux = new HLLCFlux(g, &aflux);
-		std::cout << "EulerFV: Using HLLC fluxes for Jacobian." << std::endl;
+		std::cout << "  EulerFV: Using HLLC fluxes for Jacobian." << std::endl;
 	}
 	else if(jacflux == "LLF")
 	{
 		jflux = new LocalLaxFriedrichsFlux(g, &aflux);
-		std::cout << "EulerFV: Using LLF fluxes for Jacobian." << std::endl;
+		std::cout << "  EulerFV: Using LLF fluxes for Jacobian." << std::endl;
 	}
 	else
-		std::cout << "EulerFV: ! Flux scheme not available!" << std::endl;
+		std::cout << "  EulerFV: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
 	secondOrderRequested = true;
-	std::cout << "EulerFV: Selected reconstruction scheme is " << reconst << std::endl;
+	std::cout << "  EulerFV: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
 		rec = new WeightedLeastSquaresReconstruction();
-		std::cout << "EulerFV: Weighted least-squares reconstruction will be used." << std::endl;
+		std::cout << "  EulerFV: Weighted least-squares reconstruction will be used." << std::endl;
 	}
 	else if(reconst == "NONE") {
 		rec = new ConstantReconstruction();
-		std::cout << "EulerFV: No reconstruction; first order solution." << std::endl;
+		std::cout << "  EulerFV: No reconstruction; first order solution." << std::endl;
 		secondOrderRequested = false;
 	}
 	else //if(reconst == "GREENGAUSS")
 	{
 		rec = new GreenGaussReconstruction();
-		std::cout << "EulerFV: Green-Gauss reconstruction will be used." << std::endl;
+		std::cout << "  EulerFV: Green-Gauss reconstruction will be used." << std::endl;
 	}
 
 	// set limiter
 	if(limiter == "NONE")
 	{
 		lim = new NoLimiter(m, &rcg, &rc, gr);
-		std::cout << "EulerFV: No limiter will be used." << std::endl;
+		std::cout << "  EulerFV: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
 		lim = new WENOLimiter(m, &rcg, &rc, gr);
-		std::cout << "EulerFV: WENO limiter selected.\n";
+		std::cout << "  EulerFV: WENO limiter selected.\n";
 	}
+
+	// Next, get cell centers (real and ghost)
+	
+	int idim, inode;
+
+	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(idim = 0; idim < m->gndim(); idim++)
+		{
+			rc(ielem,idim) = 0;
+			for(inode = 0; inode < m->gnnode(ielem); inode++)
+				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
+			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
+		}
+	}
+
+	int ied, ig;
+	a_real x1, y1, x2, y2;
+
+	compute_ghost_cell_coords_about_midpoint();
+	//compute_ghost_cell_coords_about_face();
+
+	//Calculate and store coordinates of Gauss points (general implementation)
+	// Gauss points are uniformly distributed along the face.
+	for(ied = 0; ied < m->gnaface(); ied++)
+	{
+		x1 = m->gcoords(m->gintfac(ied,2),0);
+		y1 = m->gcoords(m->gintfac(ied,2),1);
+		x2 = m->gcoords(m->gintfac(ied,3),0);
+		y2 = m->gcoords(m->gintfac(ied,3),1);
+		for(ig = 0; ig < NGAUSS; ig++)
+		{
+			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
+		}
+	}
+
+	rec->setup(m, &rc, &rcg);
 }
 
 EulerFV::~EulerFV()
@@ -253,44 +291,7 @@ void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a,
 		for(int i = 0; i < m->gnelem(); i++)
 			for(int j = 0; j < NVARS; j++)
 				u(i,j) = uinf(0,j);
-
-	// Next, get cell centers (real and ghost)
 	
-	int idim, inode;
-
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(idim = 0; idim < m->gndim(); idim++)
-		{
-			rc(ielem,idim) = 0;
-			for(inode = 0; inode < m->gnnode(ielem); inode++)
-				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
-		}
-	}
-
-	int ied, ig;
-	a_real x1, y1, x2, y2;
-
-	compute_ghost_cell_coords_about_midpoint();
-	//compute_ghost_cell_coords_about_face();
-
-	//Calculate and store coordinates of Gauss points (general implementation)
-	// Gauss points are uniformly distributed along the face.
-	for(ied = 0; ied < m->gnaface(); ied++)
-	{
-		x1 = m->gcoords(m->gintfac(ied,2),0);
-		y1 = m->gcoords(m->gintfac(ied,2),1);
-		x2 = m->gcoords(m->gintfac(ied,3),0);
-		y2 = m->gcoords(m->gintfac(ied,3),1);
-		for(ig = 0; ig < NGAUSS; ig++)
-		{
-			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
-		}
-	}
-
-	rec->setup(m, &rc, &rcg);
 	std::cout << "EulerFV: loaddata(): Initial data calculated.\n";
 }
 
@@ -366,7 +367,6 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 		a_real r = 0.5*(m->gcoords(m->gintfac(ied,2),1) + m->gcoords(m->gintfac(ied,3),1));
 		a_real ri = 1.0, Mi = 2.25, rhoi = 1.0;
 		get_supersonicvortex_state(g, Mi, ri, rhoi, r, bs[0], bs[1], bs[2], bs[3]);
-		std::cout << "  Called supersonic vortex soln function.\n";
 	}
 }
 

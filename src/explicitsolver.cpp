@@ -20,9 +20,9 @@ int main(int argc, char* argv[])
 	ifstream control(argv[1]);
 
 	string dum, meshfile, outf, invflux, reconst, limiter;
-	double cfl, M_inf, vinf, alpha, rho_inf, tolerance;
-	int maxiter;
-	short inittype;
+	double cfl, M_inf, vinf, alpha, rho_inf, tolerance, firstcfl, firsttolerance;
+	int maxiter, firstmaxiter;
+	short inittype, usestarter;
 
 	control >> dum;
 	control >> meshfile;
@@ -40,11 +40,14 @@ int main(int argc, char* argv[])
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
-	control >> dum;
-	control >> cfl;
+	control >> dum; control >> cfl;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
-	control.close(); 
+	control >> dum; control >> usestarter;
+	control >> dum; control >> firstcfl;
+	control >> dum; control >> firsttolerance;
+	control >> dum; control >> firstmaxiter;
+	control.close();
 
 	// Set up mesh
 
@@ -57,13 +60,20 @@ int main(int argc, char* argv[])
 
 	// set up problem
 	
+	// the actual spatial didcretization to use
+	std::cout << "Setting up main spatial scheme.\n";
 	EulerFV prob(&m, invflux, "LLF", reconst, limiter);
-	SteadyForwardEulerSolver time(&m, &prob);
+	// the first-order discretization to provide a good initial guess
+	std::cout << "Setting up spatial scheme for the initial guess.\n";
+	EulerFV startprob(&m, invflux, "LLF", "NONE", "NONE");
+
+	SteadyForwardEulerSolver time(&m, &prob, &startprob, usestarter, tolerance, maxiter, cfl, firsttolerance, firstmaxiter, firstcfl);
 	prob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
+	startprob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 
 	// Now start computation
 
-	time.solve(tolerance, maxiter, cfl);
+	time.solve();
 
 	//prob.postprocess_point();
 	Array2d<a_real> scalars;
