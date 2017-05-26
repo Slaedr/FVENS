@@ -1,10 +1,10 @@
 #! /bin/bash
-#PBS -l nodes=1:ppn=16:ivybridge
-#PBS -l walltime=00:30:00
+#PBS -l nodes=1:ppn=16
+#PBS -l walltime=01:00:00
 #PBS -A rck-371-aa
-#PBS -o 2dcylinder-vfine-impl.log
-#PBS -e 2dcylinder-vfine-impl.err
-#PBS -N 2dcylinder
+#PBS -o supersonicvortex-impl.log
+#PBS -e supersonicvortex-impl.err
+#PBS -N svortex
 
 # to be executed from Euler1d-acc/runs/ or equivalent
 
@@ -13,10 +13,11 @@
 threadseq='1 2 4 8 10 16'
 
 cd $PBS_O_WORKDIR
+module load intel/2017.00
 
 for i in ${threadseq}; do
 
 	export OMP_NUM_THREADS=$i
-	time ../build/steadyfvensi ../testcases/2dcylnder/vfineimplicit.control
+	time ../build/steadyfvensi ../testcases/supersonic-vortex/implicit.control
 
 done

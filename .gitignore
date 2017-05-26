@@ -1,5 +1,8 @@
 *.swp
+*.directory
 
 build/** 
 
 *.control
+*.log
+*.err
