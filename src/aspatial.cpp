@@ -598,7 +598,7 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked,
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rigtharrow D_{jj} -U_{ij} \f$.
  */
-void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrix *const D, Matrix *const L, Matrix *const U)
+void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrixb *const D, Matrixb *const L, Matrixb *const U)
 {
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)

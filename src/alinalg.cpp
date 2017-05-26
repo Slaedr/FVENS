@@ -91,33 +91,28 @@ void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const 
 	}
 }
 
+//template <typename Matrixb>
 IterativeBlockSolver::IterativeBlockSolver(const UMesh2dh* const mesh)
 	: IterativeSolver(mesh)
 {
 	walltime = 0; cputime = 0;
 }
 
-void IterativeBlockSolver::setLHS(Matrix *const diago, const Matrix *const lower, const Matrix *const upper)
+//template <typename Matrixb>
+void IterativeBlockSolver::setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper)
 {
-	struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	
 	L = lower;
 	U = upper;
 	D = diago;
-#pragma omp parallel for default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
-		D[iel] = D[iel].inverse().eval();
-
-	gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
-	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
-void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
+//template <typename Matrixb>
+PointSGS_Relaxation::PointSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver(mesh), thread_chunk_size(500)
+{
+}
+
+//template <typename Matrixb>
+void PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -141,7 +136,154 @@ void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ 
 	{
 #pragma omp parallel default(shared)
 		{
-#pragma omp for schedule(dynamic, THREAD_CHUNK_SIZE)
+#pragma omp for collapse(2) schedule(dynamic, thread_chunk_size)
+			for(int iel = 0; iel < m->gnelem(); iel++) 
+			{
+				for(int i = 0; i < NVARS; i++)
+				{
+					uold(iel,i) = du(iel,i);
+					a_real inter = 0;
+
+					for(int j = 0; j < i; j++)
+						inter += D[iel](i,j)*du(iel,j);
+					for(int j = i+1; j < NVARS; j++)
+						inter += D[iel](i,j)*du(iel,j);
+
+					for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+					{
+						a_int face = m->gelemface(iel,ifael) - m->gnbface();
+						a_int nbdelem = m->gesuel(iel,ifael);
+
+						if(nbdelem < m->gnelem())
+						{
+							if(nbdelem > iel) {
+								// upper
+								for(int j = 0; j < NVARS; j++)
+									inter += U[face](i,j) * du(nbdelem,j);
+							}
+							else {
+								// lower
+								for(int j = 0; j < NVARS; j++)
+									inter += L[face](i,j) * du(nbdelem,j);
+							}
+						}
+					}
+					du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
+				}
+			}
+
+#pragma omp barrier
+			
+			// backward sweep
+#pragma omp for collapse(2) schedule(dynamic, thread_chunk_size)
+			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
+				for(int i = NVARS-1; i >= 0; i--)
+				{
+					a_real inter = 0;
+
+					for(int j = 0; j < i; j++)
+						inter += D[iel](i,j)*du(iel,j);
+					for(int j = i+1; j < NVARS; j++)
+						inter += D[iel](i,j)*du(iel,j);
+
+					for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+					{
+						a_int face = m->gelemface(iel,ifael) - m->gnbface();
+						a_int nbdelem = m->gesuel(iel,ifael);
+
+						if(nbdelem < m->gnelem())
+						{
+							if(nbdelem > iel) {
+								// upper
+								for(int j = 0; j < NVARS; j++)
+									inter += U[face](i,j) * du(nbdelem,j);
+							}
+							else {
+								// lower
+								for(int j = 0; j < NVARS; j++)
+									inter += L[face](i,j) * du(nbdelem,j);
+							}
+						}
+					}
+					du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
+				}
+			}
+
+#pragma omp barrier
+
+			/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
+			 * to measure convergence.
+			 */
+			resnorm = 0;
+#pragma omp for reduction(+:resnorm)
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				// compute norm
+				resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+			}
+		}
+		resnorm = std::sqrt(resnorm);
+
+		step++;
+	}
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+}
+
+//template <typename Matrixb>
+BlockSGS_Relaxation::BlockSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver(mesh), thread_chunk_size(200)
+{
+}
+
+//template <typename Matrixb>
+void BlockSGS_Relaxation::setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper)
+{
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
+	L = lower;
+	U = upper;
+	D = diago;
+#pragma omp parallel for default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+		D[iel] = D[iel].inverse().eval();
+
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+}
+
+void BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
+{
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
+	a_real resnorm = 100.0, bnorm = 0;
+	int step = 0;
+	// we need an extra array solely to measure convergence
+	Matrix uold(m->gnelem(),NVARS);
+
+	// norm of RHS
+#pragma omp parallel for reduction(+:bnorm) default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		bnorm += res.row(iel).squaredNorm();
+	}
+	bnorm = std::sqrt(bnorm);
+
+	while(resnorm/bnorm > tol && step < maxiter)
+	{
+#pragma omp parallel default(shared)
+		{
+#pragma omp for schedule(dynamic, thread_chunk_size)
 			for(int iel = 0; iel < m->gnelem(); iel++) 
 			{
 				uold.row(iel) = du.row(iel);
@@ -169,7 +311,7 @@ void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ 
 #pragma omp barrier
 			
 			// backward sweep
-#pragma omp for schedule(dynamic, THREAD_CHUNK_SIZE)
+#pragma omp for schedule(dynamic, thread_chunk_size)
 			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
 				Matrix inter = Matrix::Zero(1,NVARS);
 				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
@@ -215,5 +357,11 @@ void SGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ 
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
+
+// Template specializations that we need
+/*template class BlockSGS_Relaxation<Matrixb>;
+template class PointSGS_Relaxation<Matrixb>;
+template class BlockSGS_Relaxation<Matrix>;
+template class PointSGS_Relaxation<Matrix>;*/
 
 }

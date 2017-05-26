@@ -145,20 +145,28 @@ SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, 
 	u.resize(m->gnelem(), NVARS);
 	dtm.setup(m->gnelem(), 1);
 
-	if(linearsolver == "BSGS")
-		linsolv = new SGS_Relaxation(m);
-	else
-		linsolv = new SGS_Relaxation(m);
+	if(linearsolver == "BSGS") {
+		linsolv = new BlockSGS_Relaxation(m);
+		std::cout << " SteadyBackwardEulerSolver: Selecting Block SGS.\n";
+	}
+	else if(linearsolver == "PSGS") {
+		linsolv = new PointSGS_Relaxation(m);
+		std::cout << " SteadyBackwardEulerSolver: Selecting Point SGS.\n";
+	}
+	else {
+		std::cout << " SteadyBackwardEulerSolver: Invalid linear solver! Selecting Block SGS.\n";
+		linsolv = new BlockSGS_Relaxation(m);
+	}
 
-	D = new Matrix[m->gnelem()];
-	L = new Matrix[m->gnaface()-m->gnbface()];
-	U = new Matrix[m->gnaface()-m->gnbface()];
-	for(int iel = 0; iel < m->gnelem(); iel++)
+	D = new Matrixb[m->gnelem()];
+	L = new Matrixb[m->gnaface()-m->gnbface()];
+	U = new Matrixb[m->gnaface()-m->gnbface()];
+	/*for(int iel = 0; iel < m->gnelem(); iel++)
 		D[iel].resize(NVARS,NVARS);
 	for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
 		L[iface].resize(NVARS,NVARS);
 		U[iface].resize(NVARS,NVARS);
-	}
+	}*/
 }
 
 SteadyBackwardEulerSolver::~SteadyBackwardEulerSolver()

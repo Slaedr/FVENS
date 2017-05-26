@@ -76,9 +76,9 @@ class SteadyBackwardEulerSolver : public SteadySolver
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
 
 	IterativeBlockSolver * linsolv;
-	Matrix* D;
-	Matrix* L;
-	Matrix* U;
+	Matrixb* D;
+	Matrixb* L;
+	Matrixb* U;
 
 	double cflinit;
 	double cflfin;

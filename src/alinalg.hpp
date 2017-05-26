@@ -38,7 +38,10 @@ public:
 		: m(mesh)
 	{ }
 
-	/// Solves the linear system with D,L,U as the LHS and the argument -res as the RHS and stores the result in du
+	/// Solves the linear system
+	/** \param[in] res The right hand side vector stored as a 2D array of size nelem x NVARS (nelem x 4 for 2D Euler)
+	 * \param [in|out] du Contains the solution in the same format as res on exit.
+	 */
 	virtual void solve(const Matrix& res, Matrix& du) = 0;
 
 	virtual ~LinearSolver()
@@ -57,9 +60,6 @@ public:
 		: LinearSolver(mesh)
 	{ }
 
-	/// Solves the linear system with D,L,U as the LHS and the argument -res as the RHS and stores the result in du
-	virtual void solve(const Matrix& res, Matrix& du) = 0;
-
 	/// Set tolerance and max iterations
 	void setParams(const double toler, const int maxits) {
 		maxiter = maxits; tol = toler;
@@ -70,20 +70,21 @@ public:
 };
 
 /// Iterative solver in which the LHS is stored in a block D,L,U format
+//template <typename Matrixb>
 class IterativeBlockSolver : public IterativeSolver
 {
 protected:
-	Matrix * D;							///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
-	const Matrix * L;					///< `Lower' blocks of LHS
-	const Matrix * U;					///< `Upper' blocks of LHS
+	Matrixb * D;						///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrixb * L;					///< `Lower' blocks of LHS
+	const Matrixb * U;					///< `Upper' blocks of LHS
 	double walltime;
 	double cputime;
 
 public:
 	IterativeBlockSolver(const UMesh2dh* const mesh);
 
-	/// Sets D,L,U and inverts each D
-	void setLHS(Matrix *const diago, const Matrix *const lower, const Matrix *const upper);
+	/// Sets D,L,U
+	virtual void setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper);
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
@@ -94,11 +95,29 @@ public:
 	virtual void solve(const Matrix& res, Matrix& du) = 0;
 };
 
-/// Full matrix storage version of the symmetric Gauss-Seidel solver
-class SGS_Relaxation : public IterativeBlockSolver
+/// Full matrix storage version of the (point) symmetric Gauss-Seidel solver
+//template <typename Matrixb>
+class PointSGS_Relaxation : public IterativeBlockSolver
 {
+	const int thread_chunk_size;
+
 public:
-	SGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver(mesh) { }
+	PointSGS_Relaxation(const UMesh2dh* const mesh);
+
+	void solve(const Matrix& res, Matrix& du);
+};
+
+/// Full matrix storage version of the block symmetric Gauss-Seidel solver
+//template <typename Matrixb>
+class BlockSGS_Relaxation : public IterativeBlockSolver
+{
+	const int thread_chunk_size;
+
+public:
+	BlockSGS_Relaxation(const UMesh2dh* const mesh);
+
+	/// Sets D,L,U and inverts each D
+	void setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper);
 
 	void solve(const Matrix& res, Matrix& du);
 };

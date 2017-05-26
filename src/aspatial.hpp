@@ -130,7 +130,7 @@ public:
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
 	/** \note D, L and U are not zeroed before use.
 	 */
-	void compute_jacobian(const Matrix& u, Matrix *const D, Matrix *const L, Matrix *const U);
+	void compute_jacobian(const Matrix& u, Matrixb *const D, Matrixb *const L, Matrixb *const U);
 #endif
 
 	/// Compute cell-centred quantities to export
