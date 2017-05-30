@@ -80,7 +80,7 @@ class SteadyBackwardEulerSolver : public SteadySolver
 	Matrixb* L;
 	Matrixb* U;
 
-	double cflinit;
+	const double cflinit;
 	double cflfin;
 	int rampstart;
 	int rampend;

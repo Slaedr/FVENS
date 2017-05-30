@@ -326,12 +326,24 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 		bs[3] = ins[3];
 	}
 
+	/** Right now, whether the flow is subsonic or supersonic at the boundary
+	 * is decided by interior value of the Mach number.
+	 * TODO: \todo Instead, the Mach number based on the Riemann solution state should be used.
+	 */
 	if(m->ggallfa(ied,3) == inflow_outflow_id)
 	{
-		if(Mni < 1.0)
+		if(Mni <= 0)
 		{
 			for(int i = 0; i < NVARS; i++)
 				bs[i] = uinf(0,i);
+		}
+		else if(Mni <= 1)
+		{
+			a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
+			bs[0] = ins[0];
+			bs[1] = ins[1];
+			bs[2] = ins[2];
+			bs[3] = pinf/(g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
 		}
 		else
 		{
@@ -598,7 +610,7 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked,
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rigtharrow D_{jj} -U_{ij} \f$.
  */
-void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrixb *const D, Matrixb *const L, Matrixb *const U)
+void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrixb *const __restrict__ D, Matrixb *const __restrict__ L, Matrixb *const __restrict__ U)
 {
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)

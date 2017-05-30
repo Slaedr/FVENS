@@ -114,6 +114,10 @@ PointSGS_Relaxation::PointSGS_Relaxation(const UMesh2dh* const mesh) : Iterative
 //template <typename Matrixb>
 void PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
 {
+#ifdef DEBUG
+	feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
+#endif
+
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
@@ -136,77 +140,80 @@ void PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restri
 	{
 #pragma omp parallel default(shared)
 		{
-#pragma omp for collapse(2) schedule(dynamic, thread_chunk_size)
-			for(int iel = 0; iel < m->gnelem(); iel++) 
+#pragma omp for schedule(dynamic, thread_chunk_size)
+			for(a_int ivar = 0; ivar < NVARS*m->gnelem(); ivar++) 
 			{
-				for(int i = 0; i < NVARS; i++)
+				a_int iel = ivar / NVARS;
+				int i = ivar % NVARS;
+				//std::cout << iel << " " << i << std::endl;
+				
+				uold(iel,i) = du(iel,i);
+				a_real inter = 0;
+
+				for(int j = 0; j < i; j++)
+					inter += D[iel](i,j)*du(iel,j);
+				for(int j = i+1; j < NVARS; j++)
+					inter += D[iel](i,j)*du(iel,j);
+
+				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
-					uold(iel,i) = du(iel,i);
-					a_real inter = 0;
+					a_int face = m->gelemface(iel,ifael) - m->gnbface();
+					a_int nbdelem = m->gesuel(iel,ifael);
 
-					for(int j = 0; j < i; j++)
-						inter += D[iel](i,j)*du(iel,j);
-					for(int j = i+1; j < NVARS; j++)
-						inter += D[iel](i,j)*du(iel,j);
-
-					for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+					if(nbdelem < m->gnelem())
 					{
-						a_int face = m->gelemface(iel,ifael) - m->gnbface();
-						a_int nbdelem = m->gesuel(iel,ifael);
-
-						if(nbdelem < m->gnelem())
-						{
-							if(nbdelem > iel) {
-								// upper
-								for(int j = 0; j < NVARS; j++)
-									inter += U[face](i,j) * du(nbdelem,j);
-							}
-							else {
-								// lower
-								for(int j = 0; j < NVARS; j++)
-									inter += L[face](i,j) * du(nbdelem,j);
-							}
+						if(nbdelem > iel) {
+							// upper
+							for(int j = 0; j < NVARS; j++)
+								inter += U[face](i,j) * du(nbdelem,j);
+						}
+						else {
+							// lower
+							for(int j = 0; j < NVARS; j++)
+								inter += L[face](i,j) * du(nbdelem,j);
 						}
 					}
-					du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
 				}
+				du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
 			}
 
 #pragma omp barrier
 			
 			// backward sweep
-#pragma omp for collapse(2) schedule(dynamic, thread_chunk_size)
-			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
-				for(int i = NVARS-1; i >= 0; i--)
+#pragma omp for schedule(dynamic, thread_chunk_size)
+			for(a_int ivar = NVARS*m->gnelem()-1; ivar >= 0; ivar--)
+			{
+				a_int iel = ivar/NVARS;
+				int i = ivar%NVARS;
+				//std::cout << iel << " " << i << std::endl;
+				
+				a_real inter = 0;
+
+				for(int j = 0; j < i; j++)
+					inter += D[iel](i,j)*du(iel,j);
+				for(int j = i+1; j < NVARS; j++)
+					inter += D[iel](i,j)*du(iel,j);
+
+				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
-					a_real inter = 0;
+					a_int face = m->gelemface(iel,ifael) - m->gnbface();
+					a_int nbdelem = m->gesuel(iel,ifael);
 
-					for(int j = 0; j < i; j++)
-						inter += D[iel](i,j)*du(iel,j);
-					for(int j = i+1; j < NVARS; j++)
-						inter += D[iel](i,j)*du(iel,j);
-
-					for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+					if(nbdelem < m->gnelem())
 					{
-						a_int face = m->gelemface(iel,ifael) - m->gnbface();
-						a_int nbdelem = m->gesuel(iel,ifael);
-
-						if(nbdelem < m->gnelem())
-						{
-							if(nbdelem > iel) {
-								// upper
-								for(int j = 0; j < NVARS; j++)
-									inter += U[face](i,j) * du(nbdelem,j);
-							}
-							else {
-								// lower
-								for(int j = 0; j < NVARS; j++)
-									inter += L[face](i,j) * du(nbdelem,j);
-							}
+						if(nbdelem > iel) {
+							// upper
+							for(int j = 0; j < NVARS; j++)
+								inter += U[face](i,j) * du(nbdelem,j);
+						}
+						else {
+							// lower
+							for(int j = 0; j < NVARS; j++)
+								inter += L[face](i,j) * du(nbdelem,j);
 						}
 					}
-					du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
 				}
+				du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
 			}
 
 #pragma omp barrier
@@ -357,11 +364,5 @@ void BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restri
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
-
-// Template specializations that we need
-/*template class BlockSGS_Relaxation<Matrixb>;
-template class PointSGS_Relaxation<Matrixb>;
-template class BlockSGS_Relaxation<Matrix>;
-template class PointSGS_Relaxation<Matrix>;*/
 
 }

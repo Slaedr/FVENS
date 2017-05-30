@@ -1,7 +1,7 @@
 -mesh_file
-../testcases/2dcylinder/grids/2dcyltri3.msh
+../testcases/2dcylinder/grids/2dcylinder-fine.msh
 -output_file
-../data/2dcyltri2-hll-2-expl.vtu
+../data/2dcylinder-fine-hll-2-expl.vtu
 -M_infinity
 0.38
 -velocity_infinity

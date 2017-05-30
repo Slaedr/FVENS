@@ -246,7 +246,7 @@ void SteadyBackwardEulerSolver::solve()
 			step++;
 		}
 
-		std::cout << " SteadyBackwardEulerSolver: solve(): Initial approximate solve done.\n";
+		std::cout << " SteadyBackwardEulerSolver: solve(): Initial approximate solve done, steps = " << step << ".\n";
 		step = 0;
 		resi = 1.0;
 		initres = 1.0;

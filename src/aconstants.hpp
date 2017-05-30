@@ -12,6 +12,11 @@
 // Unix only:
 #include <sys/time.h>
 
+// for floating point exceptions
+#ifdef DEBUG
+#include <fenv.h>
+#endif
+
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353
 
