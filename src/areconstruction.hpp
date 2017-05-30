@@ -24,18 +24,11 @@ protected:
 	const amat::Array2d<a_real>* rc;
 	/// Ghost cell centers
 	const amat::Array2d<a_real>* rcg;
-	/// Cell-centered flow vaiables
-	const Matrix* u;
-	/// flow variables at ghost cells
-	const amat::Array2d<a_real>* ug;
-	/// Cell-centred x-gradients
-	amat::Array2d<a_real>* dudx;
-	/// Cell-centred y-gradients
-	amat::Array2d<a_real>* dudy;
 
 public:
+	Reconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
+	
 	virtual ~Reconstruction();
-	virtual void setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real> *const _rcg);
 
 	virtual void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
 };
@@ -44,6 +37,7 @@ public:
 class ConstantReconstruction : public Reconstruction
 {
 public:
+	ConstantReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
 	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
@@ -55,6 +49,7 @@ public:
 class GreenGaussReconstruction : public Reconstruction
 {
 public:
+	GreenGaussReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
 	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
@@ -69,7 +64,7 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 	amat::Array2d<a_real> du;
 
 public:
-	void setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
+	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
 
 	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };

@@ -233,6 +233,8 @@ void PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restri
 
 		step++;
 	}
+
+	std::cout << "   PointSGS_Relaxation: Number of steps = " << step << ", rel res = " << resnorm/bnorm << std::endl;
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;

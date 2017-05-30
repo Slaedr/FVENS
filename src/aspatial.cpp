@@ -8,6 +8,115 @@
 
 namespace acfd {
 
+Spatial::Spatial(const UMesh2dh *const mesh) : m(mesh)
+{
+	rc.setup(m->gnelem(),m->gndim());
+	rcg.setup(m->gnface(),m->gndim());
+	gr = new amat::Array2d<a_real>[m->gnaface()];
+	for(int i = 0; i <  m->gnaface(); i++)
+		gr[i].setup(NGAUSS, m->gndim());
+
+	// get cell centers (real and ghost)
+	
+	int idim, inode;
+
+	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(idim = 0; idim < m->gndim(); idim++)
+		{
+			rc(ielem,idim) = 0;
+			for(inode = 0; inode < m->gnnode(ielem); inode++)
+				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
+			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
+		}
+	}
+
+	a_real x1, y1, x2, y2;
+
+	compute_ghost_cell_coords_about_midpoint();
+	//compute_ghost_cell_coords_about_face();
+
+	//Calculate and store coordinates of Gauss points (general implementation)
+	// Gauss points are uniformly distributed along the face.
+	for(a_int ied = 0; ied < m->gnaface(); ied++)
+	{
+		x1 = m->gcoords(m->gintfac(ied,2),0);
+		y1 = m->gcoords(m->gintfac(ied,2),1);
+		x2 = m->gcoords(m->gintfac(ied,3),0);
+		y2 = m->gcoords(m->gintfac(ied,3),1);
+		for(short ig = 0; ig < NGAUSS; ig++)
+		{
+			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
+		}
+	}
+}
+
+Spatial::~Spatial()
+{
+	delete [] gr;
+}
+
+void Spatial::compute_ghost_cell_coords_about_midpoint()
+{
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int ielem = m->gintfac(iface,0);
+		a_int ip1 = m->gintfac(iface,2);
+		a_int ip2 = m->gintfac(iface,3);
+		a_real midpoint[NDIM];
+
+		for(short idim = 0; idim < NDIM; idim++)
+		{
+			midpoint[idim] = 0.5 * (m->gcoords(ip1,idim) + m->gcoords(ip2,idim));
+		}
+
+		for(short idim = 0; idim < NDIM; idim++)
+			rcg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
+	}
+}
+
+void Spatial::compute_ghost_cell_coords_about_face()
+{
+	a_real x1, y1, x2, y2, xs, ys, xi, yi;
+
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	{
+		a_int ielem = m->gintfac(ied,0);
+		//a_int jelem = m->gintfac(ied,1);
+		a_real nx = m->ggallfa(ied,0);
+		a_real ny = m->ggallfa(ied,1);
+
+		xi = rc.get(ielem,0);
+		yi = rc.get(ielem,1);
+
+		// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
+		//       It is NOT the reflection about the midpoint of the boundary-face
+		x1 = m->gcoords(m->gintfac(ied,2),0);
+		x2 = m->gcoords(m->gintfac(ied,3),0);
+		y1 = m->gcoords(m->gintfac(ied,2),1);
+		y2 = m->gcoords(m->gintfac(ied,3),1);
+
+		if(fabs(nx)>A_SMALL_NUMBER && fabs(ny)>A_SMALL_NUMBER)		// check if nx != 0 and ny != 0
+		{
+			xs = ( yi-y1 - ny/nx*xi + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
+			ys = ny/nx*xs + yi - ny/nx*xi;
+		}
+		else if(fabs(nx)<=A_SMALL_NUMBER)
+		{
+			xs = xi;
+			ys = y1;
+		}
+		else
+		{
+			xs = x1;
+			ys = yi;
+		}
+		rcg(ied,0) = 2*xs-xi;
+		rcg(ied,1) = 2*ys-yi;
+	}
+}
+
 /** Solution for supersonic vortex case given by Krivodonova and Berger.
  * Lilia Krivodonova and Marsha Berger, "High-order accurate implementation of solid wall boundary conditions in curved geometries",
  * JCP 211, pp 492--512, 2006.
@@ -31,12 +140,9 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 	vy = vmag*sin(theta);
 }
 
-EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
-	: aflux(1.4)
+EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
+	: Spatial(mesh), g(1.4), aflux(g)
 {
-	m = mesh;
-	g = 1.4;
-
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
 	inflow_outflow_id = 4;
@@ -47,12 +153,7 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	integ.setup(m->gnelem(), 1);
 	dudx.setup(m->gnelem(), NVARS);
 	dudy.setup(m->gnelem(), NVARS);
-	rc.setup(m->gnelem(),m->gndim());
-	rcg.setup(m->gnface(),m->gndim());
 	ug.setup(m->gnface(),NVARS);
-	gr = new amat::Array2d<a_real>[m->gnaface()];
-	for(int i = 0; i <  m->gnaface(); i++)
-		gr[i].setup(NGAUSS, m->gndim());
 	uleft.setup(m->gnaface(), NVARS);
 	uright.setup(m->gnaface(), NVARS);
 
@@ -115,18 +216,18 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 	std::cout << "  EulerFV: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
-		rec = new WeightedLeastSquaresReconstruction();
+		rec = new WeightedLeastSquaresReconstruction(m, &rc, &rcg);
 		std::cout << "  EulerFV: Weighted least-squares reconstruction will be used." << std::endl;
 	}
-	else if(reconst == "NONE") {
-		rec = new ConstantReconstruction();
+	else if(reconst == "GREENGAUSS")
+	{
+		rec = new GreenGaussReconstruction(m, &rc, &rcg);
+		std::cout << "  EulerFV: Green-Gauss reconstruction will be used." << std::endl;
+	}
+	else /*if(reconst == "NONE")*/ {
+		rec = new ConstantReconstruction(m, &rc, &rcg);
 		std::cout << "  EulerFV: No reconstruction; first order solution." << std::endl;
 		secondOrderRequested = false;
-	}
-	else //if(reconst == "GREENGAUSS")
-	{
-		rec = new GreenGaussReconstruction();
-		std::cout << "  EulerFV: Green-Gauss reconstruction will be used." << std::endl;
 	}
 
 	// set limiter
@@ -140,44 +241,6 @@ EulerFV::EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux,
 		lim = new WENOLimiter(m, &rcg, &rc, gr);
 		std::cout << "  EulerFV: WENO limiter selected.\n";
 	}
-
-	// Next, get cell centers (real and ghost)
-	
-	int idim, inode;
-
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(idim = 0; idim < m->gndim(); idim++)
-		{
-			rc(ielem,idim) = 0;
-			for(inode = 0; inode < m->gnnode(ielem); inode++)
-				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
-		}
-	}
-
-	int ied, ig;
-	a_real x1, y1, x2, y2;
-
-	compute_ghost_cell_coords_about_midpoint();
-	//compute_ghost_cell_coords_about_face();
-
-	//Calculate and store coordinates of Gauss points (general implementation)
-	// Gauss points are uniformly distributed along the face.
-	for(ied = 0; ied < m->gnaface(); ied++)
-	{
-		x1 = m->gcoords(m->gintfac(ied,2),0);
-		y1 = m->gcoords(m->gintfac(ied,2),1);
-		x2 = m->gcoords(m->gintfac(ied,3),0);
-		y2 = m->gcoords(m->gintfac(ied,3),1);
-		for(ig = 0; ig < NGAUSS; ig++)
-		{
-			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
-		}
-	}
-
-	rec->setup(m, &rc, &rcg);
 }
 
 EulerFV::~EulerFV()
@@ -186,72 +249,9 @@ EulerFV::~EulerFV()
 	delete inviflux;
 	delete jflux;
 	delete lim;
-	delete [] gr;
 }
 
-void EulerFV::compute_ghost_cell_coords_about_midpoint()
-{
-	int iface, ielem, idim, ip1, ip2;
-	std::vector<a_real> midpoint(m->gndim());
-	for(iface = 0; iface < m->gnbface(); iface++)
-	{
-		ielem = m->gintfac(iface,0);
-		ip1 = m->gintfac(iface,2);
-		ip2 = m->gintfac(iface,3);
-
-		for(idim = 0; idim < m->gndim(); idim++)
-		{
-			midpoint[idim] = 0.5 * (m->gcoords(ip1,idim) + m->gcoords(ip2,idim));
-		}
-
-		for(idim = 0; idim < m->gndim(); idim++)
-			rcg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
-	}
-}
-
-void EulerFV::compute_ghost_cell_coords_about_face()
-{
-	int ied, ielem;
-	a_real x1, y1, x2, y2, xs, ys, xi, yi;
-
-	for(ied = 0; ied < m->gnbface(); ied++)
-	{
-		ielem = m->gintfac(ied,0); //int lel = ielem;
-		//jelem = m->gintfac(ied,1); //int rel = jelem;
-		a_real nx = m->ggallfa(ied,0);
-		a_real ny = m->ggallfa(ied,1);
-
-		xi = rc.get(ielem,0);
-		yi = rc.get(ielem,1);
-
-		// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
-		//       It is NOT the reflection about the midpoint of the boundary-face
-		x1 = m->gcoords(m->gintfac(ied,2),0);
-		x2 = m->gcoords(m->gintfac(ied,3),0);
-		y1 = m->gcoords(m->gintfac(ied,2),1);
-		y2 = m->gcoords(m->gintfac(ied,3),1);
-
-		if(fabs(nx)>A_SMALL_NUMBER && fabs(ny)>A_SMALL_NUMBER)		// check if nx != 0 and ny != 0
-		{
-			xs = ( yi-y1 - ny/nx*xi + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
-			ys = ny/nx*xs + yi - ny/nx*xi;
-		}
-		else if(fabs(nx)<=A_SMALL_NUMBER)
-		{
-			xs = xi;
-			ys = y1;
-		}
-		else
-		{
-			xs = x1;
-			ys = yi;
-		}
-		rcg(ied,0) = 2*xs-xi;
-		rcg(ied,1) = 2*ys-yi;
-	}
-}
-
-/// Function to feed needed data, compute cell-centers, and initialize u
+/// Function to feed needed data and initialize u
 /** \param Minf Free-stream Mach number
  * \param vinf Free stream velocity magnitude
  * \param a Angle of attack (radians)

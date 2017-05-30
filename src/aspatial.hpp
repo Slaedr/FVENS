@@ -36,13 +36,48 @@
 
 namespace acfd {
 
+/// Base class for finite volume spatial discretization
+class Spatial
+{
+protected:
+	/// Mesh context
+	const UMesh2dh *const m;
+
+	/// Cell centers
+	amat::Array2d<a_real> rc;
+
+	/// Ghost cell centers
+	amat::Array2d<a_real> rcg;
+
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguass x ndim (in that order)
+	amat::Array2d<a_real>* gr;
+	
+	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
+	void compute_ghost_cell_coords_about_midpoint();
+
+	/// computes ghost cell centers assuming symmetry about the face
+	void compute_ghost_cell_coords_about_face();
+
+public:
+	/// Common setup required for finite volume discretizations
+	/** Computes and stores cell centre coordinates, ghost cells' centres, and 
+	 * quadrature point coordinates.
+	 */
+	Spatial(const UMesh2dh *const mesh);
+
+	virtual ~Spatial();
+	
+	virtual void compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm) = 0;
+	
+	virtual void compute_jacobian(const Matrix& u, Matrixb *const D, Matrixb *const L, Matrixb *const U) = 0;
+};
+	
 /// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of this class.
  */
-class EulerFV
+class EulerFV : public Spatial
 {
 protected:
-	const UMesh2dh* m;
 	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
 	a_real g;								///< adiabatic index
 
@@ -67,17 +102,9 @@ protected:
 
 	/// Limiter context
 	FaceDataComputation* lim;
-
-	/// Cell centers
-	amat::Array2d<a_real> rc;
-
-	/// Ghost cell centers
-	amat::Array2d<a_real> rcg;
+	
 	/// Ghost cell flow quantities
 	amat::Array2d<a_real> ug;
-
-	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguass x ndim (in that order)
-	amat::Array2d<a_real>* gr;
 
 	amat::Array2d<a_real> dudx;				///< X-gradients at cell centres
 	amat::Array2d<a_real> dudy;				///< Y-gradients at cell centres
@@ -92,12 +119,6 @@ protected:
 	amat::Array2d<a_real> uleft;			///< Left state at faces
 	amat::Array2d<a_real> uright;			///< Right state at faces
 
-	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
-	void compute_ghost_cell_coords_about_midpoint();
-
-	/// computes ghost cell centers assuming symmetry about the face
-	void compute_ghost_cell_coords_about_face();
-
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
 	 * \param[out] bounstates will contain the right state of boundary faces
@@ -111,7 +132,7 @@ protected:
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
 
 public:
-	EulerFV(const UMesh2dh* mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+	EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
 	
 	~EulerFV();
 	

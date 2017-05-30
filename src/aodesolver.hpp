@@ -20,14 +20,14 @@ class SteadySolver
 {
 protected:
 	const UMesh2dh *const m;
-	EulerFV *const eul;
-	EulerFV *const starter;
+	Spatial *const eul;
+	Spatial *const starter;
 	Matrix residual;
 	Matrix u;
 	const short usestarter;
 
 public:
-	SteadySolver(const UMesh2dh *const mesh, EulerFV *const euler, EulerFV *const starterfv, const short use_starter)
+	SteadySolver(const UMesh2dh *const mesh, Spatial *const euler, Spatial *const starterfv, const short use_starter)
 		: m(mesh), eul(euler), starter(starterfv), usestarter(use_starter)
 	{ }
 
@@ -61,7 +61,7 @@ class SteadyForwardEulerSolver : public SteadySolver
 	const double startcfl;
 
 public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler, EulerFV *const starterfv, 
+	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial *const euler, Spatial *const starterfv, 
 			const short use_starter, const double toler, const int maxits, const double cfl,
 			const double ftoler, const int fmaxits, const double fcfl);
 	~SteadyForwardEulerSolver();
@@ -95,7 +95,7 @@ class SteadyBackwardEulerSolver : public SteadySolver
 	const double startcfl;
 
 public:
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, EulerFV *const spatial, EulerFV *const starterfv, const short use_starter,
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial *const spatial, Spatial *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, const int lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver,
 		const double ftoler, const int fmaxits, const double fcfl);

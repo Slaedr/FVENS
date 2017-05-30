@@ -9,15 +9,16 @@
 namespace acfd
 {
 
+Reconstruction::Reconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
+	: m(mesh), rc(_rc), rcg(_rcg)
+{ }
+
 Reconstruction::~Reconstruction()
 { }
 
-void Reconstruction::setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
-{
-	m = mesh;
-	rc = _rc;
-	rcg = _rcg;
-}
+ConstantReconstruction::ConstantReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
+	: Reconstruction(mesh, _rc, _rcg)
+{ }
 
 void ConstantReconstruction::compute_gradients(const Matrix*const u, const amat::Array2d<a_real>*const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
@@ -31,6 +32,10 @@ void ConstantReconstruction::compute_gradients(const Matrix*const u, const amat:
 		}
 	}
 }
+
+GreenGaussReconstruction::GreenGaussReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
+	: Reconstruction(mesh, _rc, _rcg)
+{ }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
  */
@@ -63,8 +68,8 @@ void GreenGaussReconstruction::compute_gradients(const Matrix*const u, const ama
 			for(int idim = 0; idim < NDIM; idim++)
 			{
 				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid[idim]-rc->get(ielem,idim))*(mid[idim]-rc->get(ielem,idim));
-				dR += (mid[idim]-rcg->get(iface,idim))*(mid[idim]-rcg->get(iface,idim));
+				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
+				dR += (mid[idim]-(*rcg)(iface,idim))*(mid[idim]-(*rcg)(iface,idim));
 			}
 			dL = sqrt(dL);
 			dR = sqrt(dR);
@@ -72,7 +77,7 @@ void GreenGaussReconstruction::compute_gradients(const Matrix*const u, const ama
 			
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
-				ut[ivar] = ((*u)(ielem,ivar)*dL + ug->get(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar] = ((*u)(ielem,ivar)*dL + (*ug)(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
 				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
 			}
@@ -94,8 +99,8 @@ void GreenGaussReconstruction::compute_gradients(const Matrix*const u, const ama
 			for(int idim = 0; idim < NDIM; idim++)
 			{
 				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid[idim]-rc->get(ielem,idim))*(mid[idim]-rc->get(ielem,idim));
-				dR += (mid[idim]-rc->get(jelem,idim))*(mid[idim]-rc->get(jelem,idim));
+				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
+				dR += (mid[idim]-(*rc)(jelem,idim))*(mid[idim]-(*rc)(jelem,idim));
 			}
 			dL = sqrt(dL);
 			dR = sqrt(dR);
@@ -118,11 +123,11 @@ void GreenGaussReconstruction::compute_gradients(const Matrix*const u, const ama
 	} // end parallel region
 }
 
-
-void WeightedLeastSquaresReconstruction::setup(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
-{
-	Reconstruction::setup(mesh, _rc, _rcg);
-	std::cout << "WeightedLeastSquaresReconstruction: Setting up leastsquares; num vars = " << NVARS << std::endl;
+WeightedLeastSquaresReconstruction::WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, 
+		const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
+	: Reconstruction(mesh, _rc, _rcg)
+{ 
+	std::cout << "   WeightedLeastSquaresReconstruction: Setting up; num vars = " << NVARS << std::endl;
 
 	V.resize(m->gnelem());
 	f.resize(m->gnelem());
@@ -137,17 +142,15 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh *const mesh, const
 	du.setup(NVARS,1);
 
 	// compute LHS of least-squares problem
-	int iface, ielem, jelem, idim;
-	a_real w2, dr[2];
 
-	for(iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		ielem = m->gintfac(iface,0);
-		w2 = 0;
-		for(idim = 0; idim < 2; idim++)
+		a_int ielem = m->gintfac(iface,0);
+		a_real w2 = 0, dr[2];
+		for(short idim = 0; idim < 2; idim++)
 		{
-			w2 += (rc->get(ielem,idim)-rcg->get(iface,idim))*(rc->get(ielem,idim)-rcg->get(iface,idim));
-			dr[idim] = rc->get(ielem,idim)-rcg->get(iface,idim);
+			w2 += ((*rc)(ielem,idim)-(*rcg)(iface,idim))*((*rc)(ielem,idim)-(*rcg)(iface,idim));
+			dr[idim] = (*rc)(ielem,idim)-(*rcg)(iface,idim);
 		}
 		w2 = 1.0/w2;
 
@@ -156,15 +159,15 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh *const mesh, const
 		V[ielem](0,1) += w2*dr[0]*dr[1];
 		V[ielem](1,0) += w2*dr[0]*dr[1];
 	}
-	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		ielem = m->gintfac(iface,0);
-		jelem = m->gintfac(iface,1);
-		w2 = 0;
-		for(idim = 0; idim < 2; idim++)
+		a_int ielem = m->gintfac(iface,0);
+		a_int jelem = m->gintfac(iface,1);
+		a_int w2 = 0, dr[2];
+		for(short idim = 0; idim < 2; idim++)
 		{
-			w2 += (rc->get(ielem,idim)-rc->get(jelem,idim))*(rc->get(ielem,idim)-rc->get(jelem,idim));
-			dr[idim] = rc->get(ielem,idim)-rc->get(jelem,idim);
+			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
+			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
 		}
 		w2 = 1.0/w2;
 
@@ -179,54 +182,51 @@ void WeightedLeastSquaresReconstruction::setup(const UMesh2dh *const mesh, const
 		V[jelem](1,0) += w2*dr[0]*dr[1];
 	}
 
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		idets(ielem) = 1.0/(V[ielem].get(0,0)*V[ielem].get(1,1) - V[ielem].get(0,1)*V[ielem].get(1,0));
+		idets(ielem) = 1.0/(V[ielem](0,0)*V[ielem](1,1) - V[ielem](0,1)*V[ielem](1,0));
 		f[ielem].zeros();
 	}
 }
 
 void WeightedLeastSquaresReconstruction::compute_gradients(const Matrix *const u, const amat::Array2d<a_real> *const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
-	int iface, ielem, jelem, idim, ivar;
-	a_real w2, dr[2];
-
 	// compute least-squares RHS
 
-	for(iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		ielem = m->gintfac(iface,0);
-		w2 = 0;
-		for(idim = 0; idim < 2; idim++)
+		a_int ielem = m->gintfac(iface,0);
+		a_real w2 = 0, dr[NDIM];
+		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc->get(ielem,idim)-rcg->get(iface,idim))*(rc->get(ielem,idim)-rcg->get(iface,idim));
-			dr[idim] = rc->get(ielem,idim)-rcg->get(iface,idim);
+			w2 += ((*rc)(ielem,idim)-(*rcg)(iface,idim))*((*rc)(ielem,idim)-(*rcg)(iface,idim));
+			dr[idim] = (*rc)(ielem,idim)-(*rcg)(iface,idim);
 		}
 		w2 = 1.0/w2;
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(short ivar = 0; ivar < NVARS; ivar++)
 			du(ivar) = (*u)(ielem,ivar) - (*ug)(iface,ivar);
 		
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(short ivar = 0; ivar < NVARS; ivar++)
 		{
 			f[ielem](0,ivar) += w2*dr[0]*du(ivar);
 			f[ielem](1,ivar) += w2*dr[1]*du(ivar);
 		}
 	}
-	for(iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		ielem = m->gintfac(iface,0);
-		jelem = m->gintfac(iface,1);
-		w2 = 0;
-		for(idim = 0; idim < 2; idim++)
+		a_int ielem = m->gintfac(iface,0);
+		a_int jelem = m->gintfac(iface,1);
+		a_real w2 = 0, dr[NDIM];
+		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc->get(ielem,idim)-rc->get(jelem,idim))*(rc->get(ielem,idim)-rc->get(jelem,idim));
-			dr[idim] = rc->get(ielem,idim)-rc->get(jelem,idim);
+			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
+			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
 		}
 		w2 = 1.0/w2;
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(short ivar = 0; ivar < NVARS; ivar++)
 			du(ivar) = (*u)(ielem,ivar) - (*u)(jelem,ivar);
 
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(short ivar = 0; ivar < NVARS; ivar++)
 		{
 			f[ielem](0,ivar) += w2*dr[0]*du(ivar);
 			f[ielem](1,ivar) += w2*dr[1]*du(ivar);
@@ -236,12 +236,12 @@ void WeightedLeastSquaresReconstruction::compute_gradients(const Matrix *const u
 	}
 
 	// solve normal equations by Cramer's rule
-	for(ielem = 0; ielem < m->gnelem(); ielem++)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(short ivar = 0; ivar < NVARS; ivar++)
 		{
-			(*dudx)(ielem,ivar) = (f[ielem].get(0,ivar)*V[ielem].get(1,1) - f[ielem].get(1,ivar)*V[ielem].get(0,1)) * idets.get(ielem);
-			(*dudy)(ielem,ivar) = (V[ielem].get(0,0)*f[ielem].get(1,ivar) - V[ielem].get(1,0)*f[ielem].get(0,ivar)) * idets.get(ielem);
+			(*dudx)(ielem,ivar) = (f[ielem](0,ivar)*V[ielem](1,1) - f[ielem](1,ivar)*V[ielem](0,1)) * idets(ielem);
+			(*dudy)(ielem,ivar) = (V[ielem](0,0)*f[ielem](1,ivar) - V[ielem](1,0)*f[ielem](0,ivar)) * idets(ielem);
 		}
 		f[ielem].zeros();
 	}

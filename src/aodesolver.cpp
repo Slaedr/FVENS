@@ -11,7 +11,7 @@
 
 namespace acfd {
 
-SteadyForwardEulerSolver::SteadyForwardEulerSolver(const UMesh2dh *const mesh, EulerFV *const euler, EulerFV *const starterfv,
+SteadyForwardEulerSolver::SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial *const euler, Spatial *const starterfv,
 		const short use_starter, const double toler, const int maxits, const double cfl_n, const double ftoler, const int fmaxits, const double fcfl_n)
 	: SteadySolver(mesh, euler, starterfv, use_starter), tol(toler), maxiter(maxits), cfl(cfl_n), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
@@ -133,7 +133,7 @@ void SteadyForwardEulerSolver::solve()
 }
 
 
-SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, EulerFV *const spatial, EulerFV *const starterfv, const short use_starter, 
+SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial *const spatial, Spatial *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, const int lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver,
 		const double ftoler, const int fmaxits, const double fcfl_n)
@@ -246,7 +246,7 @@ void SteadyBackwardEulerSolver::solve()
 			step++;
 		}
 
-		std::cout << " SteadyBackwardEulerSolver: solve(): Initial approximate solve done, steps = " << step << ".\n";
+		std::cout << " SteadyBackwardEulerSolver: solve(): Initial solve done, steps = " << step << ", rel residual " << resi/initres << ".\n";
 		step = 0;
 		resi = 1.0;
 		initres = 1.0;
@@ -338,7 +338,7 @@ void SteadyBackwardEulerSolver::solve()
 
 	if(step == maxiter)
 		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
-	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << std::endl;
+	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " << resi/initres << std::endl;
 
 	double linwtime, linctime;
 	linsolv->getRunTimes(linwtime, linctime);
