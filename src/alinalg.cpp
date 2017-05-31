@@ -112,7 +112,7 @@ PointSGS_Relaxation::PointSGS_Relaxation(const UMesh2dh* const mesh) : Iterative
 }
 
 //template <typename Matrixb>
-void PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
+int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
 {
 #ifdef DEBUG
 	feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
@@ -234,12 +234,13 @@ void PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restri
 		step++;
 	}
 
-	std::cout << "   PointSGS_Relaxation: Number of steps = " << step << ", rel res = " << resnorm/bnorm << std::endl;
+	//std::cout << "   PointSGS_Relaxation: Number of steps = " << step << ", rel res = " << resnorm/bnorm << std::endl;
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	return step;
 }
 
 //template <typename Matrixb>
@@ -268,7 +269,7 @@ void BlockSGS_Relaxation::setLHS(Matrixb *const diago, const Matrixb *const lowe
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
-void BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
+int BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -365,6 +366,7 @@ void BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restri
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	return step;
 }
 
 }

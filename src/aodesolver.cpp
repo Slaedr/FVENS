@@ -135,7 +135,7 @@ void SteadyForwardEulerSolver::solve()
 
 SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial *const spatial, Spatial *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const int lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver,
+		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
 	: SteadySolver(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
@@ -214,7 +214,7 @@ void SteadyBackwardEulerSolver::solve()
 			// setup and solve linear system for the update du
 			linsolv->setLHS(D,L,U);
 			linsolv->setParams(lintol, linmaxiterstart);
-			linsolv->solve(residual, du);
+			int linstepsneeded = linsolv->solve(residual, du);
 
 			a_real errmass = 0;
 
@@ -240,7 +240,7 @@ void SteadyBackwardEulerSolver::solve()
 
 			if(step % 10 == 0) {
 				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
-				std::cout << "         CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << std::endl;
+				std::cout << "      CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 			}
 
 			step++;
@@ -285,7 +285,6 @@ void SteadyBackwardEulerSolver::solve()
 				curCFL = cflinit + slopec*(step-rampstart);
 				double slopei = double(linmaxiterend-linmaxiterstart)/(rampend-rampstart);
 				curlinmaxiter = int(linmaxiterstart + slopei*(step-rampstart));
-				//curlinmaxiter = linmaxiterstart;
 			}
 		}
 		else {
@@ -304,7 +303,7 @@ void SteadyBackwardEulerSolver::solve()
 		// setup and solve linear system for the update du
 		linsolv->setLHS(D,L,U);
 		linsolv->setParams(lintol, curlinmaxiter);
-		linsolv->solve(residual, du);
+		int linstepsneeded = linsolv->solve(residual, du);
 
 		a_real errmass = 0;
 
@@ -330,7 +329,7 @@ void SteadyBackwardEulerSolver::solve()
 
 		if(step % 10 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
-			std::cout << "         CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter << std::endl;
+			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 		}
 
 		step++;

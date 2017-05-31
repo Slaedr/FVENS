@@ -41,8 +41,9 @@ public:
 	/// Solves the linear system
 	/** \param[in] res The right hand side vector stored as a 2D array of size nelem x NVARS (nelem x 4 for 2D Euler)
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
+	 * \return Returns the number of solver iterations performed
 	 */
-	virtual void solve(const Matrix& res, Matrix& du) = 0;
+	virtual int solve(const Matrix& res, Matrix& du) = 0;
 
 	virtual ~LinearSolver()
 	{ }
@@ -90,9 +91,6 @@ public:
 	void getRunTimes(double& wall_time, double& cpu_time) const {
 		wall_time = walltime; cpu_time = cputime;
 	}
-
-	/// Solves the linear system with D,L,U as the LHS and the argument res as the negative of the RHS, and stores the result in du
-	virtual void solve(const Matrix& res, Matrix& du) = 0;
 };
 
 /// Full matrix storage version of the (point) symmetric Gauss-Seidel solver
@@ -104,7 +102,7 @@ class PointSGS_Relaxation : public IterativeBlockSolver
 public:
 	PointSGS_Relaxation(const UMesh2dh* const mesh);
 
-	void solve(const Matrix& res, Matrix& du);
+	int solve(const Matrix& res, Matrix& du);
 };
 
 /// Full matrix storage version of the block symmetric Gauss-Seidel solver
@@ -119,7 +117,7 @@ public:
 	/// Sets D,L,U and inverts each D
 	void setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper);
 
-	void solve(const Matrix& res, Matrix& du);
+	int solve(const Matrix& res, Matrix& du);
 };
 
 }

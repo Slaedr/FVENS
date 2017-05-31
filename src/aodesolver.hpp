@@ -86,7 +86,7 @@ class SteadyBackwardEulerSolver : public SteadySolver
 	int rampend;
 	double tol;
 	int maxiter;
-	int lintol;
+	double lintol;
 	int linmaxiterstart;
 	int linmaxiterend;
 	
@@ -97,7 +97,7 @@ class SteadyBackwardEulerSolver : public SteadySolver
 public:
 	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial *const spatial, Spatial *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const int lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver,
+		const double toler, const int maxits, const double lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver,
 		const double ftoler, const int fmaxits, const double fcfl);
 	
 	~SteadyBackwardEulerSolver();
