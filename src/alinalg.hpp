@@ -38,13 +38,6 @@ public:
 		: m(mesh)
 	{ }
 
-	/// Solves the linear system
-	/** \param[in] res The right hand side vector stored as a 2D array of size nelem x NVARS (nelem x 4 for 2D Euler)
-	 * \param [in|out] du Contains the solution in the same format as res on exit.
-	 * \return Returns the number of solver iterations performed
-	 */
-	virtual int solve(const Matrix& res, Matrix& du) = 0;
-
 	virtual ~LinearSolver()
 	{ }
 };
@@ -71,13 +64,17 @@ public:
 };
 
 /// Iterative solver in which the LHS is stored in a block D,L,U format
-//template <typename Matrixb>
+/** The template parameter nvars is the block size we want to use.
+ * In a finite volume setting, the natural choice is the number of physical variables
+ * or the number of PDEs in the system.
+ */
+template <short nvars>
 class IterativeBlockSolver : public IterativeSolver
 {
 protected:
-	Matrixb * D;						///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
-	const Matrixb * L;					///< `Lower' blocks of LHS
-	const Matrixb * U;					///< `Upper' blocks of LHS
+	Matrix<a_real,nvars,nvars,RowMajor> * D;					///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* L;				///< `Lower' blocks of LHS
+	const Matrix<a_real,nvars,nvars,RowMajor>* U;				///< `Upper' blocks of LHS
 	double walltime;
 	double cputime;
 
@@ -85,7 +82,15 @@ public:
 	IterativeBlockSolver(const UMesh2dh* const mesh);
 
 	/// Sets D,L,U
-	virtual void setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper);
+	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+
+	/// Solves the linear system
+	/** \param[in] res The right hand side vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
+	 * \param [in|out] du Contains the solution in the same format as res on exit.
+	 * \return Returns the number of solver iterations performed
+	 */
+	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
@@ -94,30 +99,49 @@ public:
 };
 
 /// Full matrix storage version of the (point) symmetric Gauss-Seidel solver
-//template <typename Matrixb>
-class PointSGS_Relaxation : public IterativeBlockSolver
+template <short nvars>
+class PointSGS_Relaxation : public IterativeBlockSolver<nvars>
 {
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+
 	const int thread_chunk_size;
 
 public:
 	PointSGS_Relaxation(const UMesh2dh* const mesh);
 
-	int solve(const Matrix& res, Matrix& du);
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
 /// Full matrix storage version of the block symmetric Gauss-Seidel solver
-//template <typename Matrixb>
-class BlockSGS_Relaxation : public IterativeBlockSolver
+template <short nvars>
+class BlockSGS_Relaxation : public IterativeBlockSolver<nvars>
 {
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+
 	const int thread_chunk_size;
 
 public:
 	BlockSGS_Relaxation(const UMesh2dh* const mesh);
 
 	/// Sets D,L,U and inverts each D
-	void setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper);
+	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
-	int solve(const Matrix& res, Matrix& du);
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
 }

@@ -8,7 +8,8 @@
 
 namespace acfd {
 
-Spatial::Spatial(const UMesh2dh *const mesh) : m(mesh)
+template<int nvars>
+Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 {
 	rc.setup(m->gnelem(),m->gndim());
 	rcg.setup(m->gnface(),m->gndim());
@@ -52,12 +53,14 @@ Spatial::Spatial(const UMesh2dh *const mesh) : m(mesh)
 	}
 }
 
-Spatial::~Spatial()
+template<int nvars>
+Spatial<nvars>::~Spatial()
 {
 	delete [] gr;
 }
 
-void Spatial::compute_ghost_cell_coords_about_midpoint()
+template<int nvars>
+void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
 {
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
@@ -76,7 +79,8 @@ void Spatial::compute_ghost_cell_coords_about_midpoint()
 	}
 }
 
-void Spatial::compute_ghost_cell_coords_about_face()
+template<int nvars>
+void Spatial<nvars>::compute_ghost_cell_coords_about_face()
 {
 	a_real x1, y1, x2, y2, xs, ys, xi, yi;
 
@@ -141,7 +145,7 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 }
 
 EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
-	: Spatial(mesh), g(1.4), aflux(g)
+	: Spatial<NVARS>(mesh), g(1.4), aflux(g)
 {
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
@@ -258,7 +262,7 @@ EulerFV::~EulerFV()
  * \param rhoinf Free stream density
  * \param u conserved variable array
  */
-void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u)
+void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix<a_real,Dynamic,Dynamic,RowMajor>& u)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
@@ -382,7 +386,8 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 	}
 }
 
-void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm)
+void EulerFV::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+		amat::Array2d<a_real>& __restrict__ dtm)
 {
 #pragma omp parallel default(shared)
 	{
@@ -497,7 +502,7 @@ void EulerFV::compute_residual(const Matrix& __restrict__ u, Matrix& __restrict_
 
 #if HAVE_PETSC==1
 
-void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked, Mat A)
+void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, const bool blocked, Mat A)
 {
 	if(blocked)
 	{
@@ -610,7 +615,10 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, const bool blocked,
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rigtharrow D_{jj} -U_{ij} \f$.
  */
-void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrixb *const __restrict__ D, Matrixb *const __restrict__ L, Matrixb *const __restrict__ U)
+void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ D, 
+		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ L, 
+		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ U)
 {
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -621,8 +629,8 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrixb *const __re
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
 		a_real uface[NVARS];
-		Matrix left(NVARS,NVARS);
-		Matrix right(NVARS,NVARS);
+		Matrix<a_real,NVARS,NVARS,RowMajor> left;
+		Matrix<a_real,NVARS,NVARS,RowMajor> right;
 		
 		compute_boundary_state(iface, &u(lelem,0), uface);
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
@@ -662,7 +670,7 @@ void EulerFV::compute_jacobian(const Matrix& __restrict__ u, Matrixb *const __re
 
 #endif
 
-void EulerFV::postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
+void EulerFV::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
@@ -705,7 +713,7 @@ void EulerFV::postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars,
 	std::cout << "EulerFV: postprocess_point(): Done.\n";
 }
 
-void EulerFV::postprocess_cell(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
+void EulerFV::postprocess_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
@@ -728,7 +736,7 @@ void EulerFV::postprocess_cell(const Matrix& u, amat::Array2d<a_real>& scalars, 
 	std::cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
-a_real EulerFV::compute_entropy_cell(const Matrix& u)
+a_real EulerFV::compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u)
 {
 	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
 	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);

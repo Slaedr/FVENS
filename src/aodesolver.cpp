@@ -11,20 +11,24 @@
 
 namespace acfd {
 
-SteadyForwardEulerSolver::SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial *const euler, Spatial *const starterfv,
+template<short nvars>
+SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, Spatial<nvars> *const starterfv,
 		const short use_starter, const double toler, const int maxits, const double cfl_n, const double ftoler, const int fmaxits, const double fcfl_n)
-	: SteadySolver(mesh, euler, starterfv, use_starter), tol(toler), maxiter(maxits), cfl(cfl_n), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
+
+	: SteadySolver<nvars>(mesh, euler, starterfv, use_starter), tol(toler), maxiter(maxits), cfl(cfl_n), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
-	residual.resize(m->gnelem(),NVARS);
-	u.resize(m->gnelem(), NVARS);
+	residual.resize(m->gnelem(),nvars);
+	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
 }
 
-SteadyForwardEulerSolver::~SteadyForwardEulerSolver()
+template<short nvars>
+SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 {
 }
 
-void SteadyForwardEulerSolver::solve()
+template<short nvars>
+void SteadyForwardEulerSolver<nvars>::solve()
 {
 	int step = 0;
 	a_real resi = 1.0;
@@ -35,7 +39,7 @@ void SteadyForwardEulerSolver::solve()
 		{
 #pragma omp parallel for simd default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++) {
-				for(int i = 0; i < NVARS; i++)
+				for(int i = 0; i < nvars; i++)
 					residual(iel,i) = 0;
 			}
 
@@ -49,7 +53,7 @@ void SteadyForwardEulerSolver::solve()
 #pragma omp for simd
 				for(int iel = 0; iel < m->gnelem(); iel++)
 				{
-					for(int i = 0; i < NVARS; i++)
+					for(int i = 0; i < nvars; i++)
 					{
 						//uold(iel,i) = u(iel,i);
 						u(iel,i) -= startcfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
@@ -83,7 +87,7 @@ void SteadyForwardEulerSolver::solve()
 	{
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++) {
-			for(int i = 0; i < NVARS; i++)
+			for(int i = 0; i < nvars; i++)
 				residual(iel,i) = 0;
 		}
 
@@ -97,7 +101,7 @@ void SteadyForwardEulerSolver::solve()
 #pragma omp for simd
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(int i = 0; i < NVARS; i++)
+				for(int i = 0; i < nvars; i++)
 				{
 					//uold(iel,i) = u(iel,i);
 					u(iel,i) -= cfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
@@ -120,11 +124,6 @@ void SteadyForwardEulerSolver::solve()
 			std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		/*a_real totalenergy = 0;
-		for(int i = 0; i < m->gnelem(); i++)
-			totalenergy += u(i,3)*m->jacobians(i);
-			std::cout << "EulerFV: solve(): Total energy = " << totalenergy << std::endl;*/
-		//if(step == 10000) break;
 	}
 
 	if(step == maxiter)
@@ -133,43 +132,40 @@ void SteadyForwardEulerSolver::solve()
 }
 
 
-SteadyBackwardEulerSolver::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial *const spatial, Spatial *const starterfv, const short use_starter, 
+template <short nvars>
+SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
-	: SteadySolver(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
+	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
 	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
-	residual.resize(m->gnelem(),NVARS);
-	u.resize(m->gnelem(), NVARS);
+	/* NOTE: the number of columns here MUST match the static number of columns, which is nvars. */
+	residual.resize(m->gnelem(),nvars);
+	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
 
 	if(linearsolver == "BSGS") {
-		linsolv = new BlockSGS_Relaxation(m);
+		linsolv = new BlockSGS_Relaxation<nvars>(m);
 		std::cout << " SteadyBackwardEulerSolver: Selecting Block SGS.\n";
 	}
 	else if(linearsolver == "PSGS") {
-		linsolv = new PointSGS_Relaxation(m);
+		linsolv = new PointSGS_Relaxation<nvars>(m);
 		std::cout << " SteadyBackwardEulerSolver: Selecting Point SGS.\n";
 	}
 	else {
 		std::cout << " SteadyBackwardEulerSolver: Invalid linear solver! Selecting Block SGS.\n";
-		linsolv = new BlockSGS_Relaxation(m);
+		linsolv = new BlockSGS_Relaxation<nvars>(m);
 	}
 
-	D = new Matrixb[m->gnelem()];
-	L = new Matrixb[m->gnaface()-m->gnbface()];
-	U = new Matrixb[m->gnaface()-m->gnbface()];
-	/*for(int iel = 0; iel < m->gnelem(); iel++)
-		D[iel].resize(NVARS,NVARS);
-	for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
-		L[iface].resize(NVARS,NVARS);
-		U[iface].resize(NVARS,NVARS);
-	}*/
+	D = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
+	L = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
+	U = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
 }
 
-SteadyBackwardEulerSolver::~SteadyBackwardEulerSolver()
+template <short nvars>
+SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 {
 	delete linsolv;
 	delete [] D;
@@ -177,13 +173,14 @@ SteadyBackwardEulerSolver::~SteadyBackwardEulerSolver()
 	delete [] L;
 }
 
-void SteadyBackwardEulerSolver::solve()
+template <short nvars>
+void SteadyBackwardEulerSolver<nvars>::solve()
 {
 	double curCFL; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
-	Matrix du = Matrix::Zero(m->gnelem(), NVARS);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> du = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
 	
 	if(usestarter == 1) {
 		while(resi/initres > starttol && step < startmaxiter)
@@ -191,9 +188,9 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp parallel for default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-				for(int i = 0; i < NVARS; i++) {
+				for(int i = 0; i < nvars; i++) {
 					residual(iel,i) = 0;
-					for(int j = 0; j < NVARS; j++)
+					for(int j = 0; j < nvars; j++)
 						D[iel](i,j) = 0;
 				}
 			}
@@ -207,7 +204,7 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp parallel for simd default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(int i = 0; i < NVARS; i++)
+				for(int i = 0; i < nvars; i++)
 					D[iel](i,i) += m->garea(iel) / (startcfl*dtm(iel));
 			}
 
@@ -223,8 +220,6 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp for
 				for(int iel = 0; iel < m->gnelem(); iel++) {
 					u.row(iel) += du.row(iel);
-					/*for(int i = 0; i < NVARS; i++)
-						du(iel,i) = 0;*/
 				}
 #pragma omp for simd reduction(+:errmass)
 				for(int iel = 0; iel < m->gnelem(); iel++)
@@ -258,9 +253,9 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp parallel for default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-			for(int i = 0; i < NVARS; i++) {
+			for(int i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
-				for(int j = 0; j < NVARS; j++)
+				for(int j = 0; j < nvars; j++)
 					D[iel](i,j) = 0;
 			}
 		}
@@ -296,7 +291,7 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
-			for(int i = 0; i < NVARS; i++)
+			for(int i = 0; i < nvars; i++)
 				D[iel](i,i) += m->garea(iel) / (curCFL*dtm(iel));
 		}
 
@@ -312,8 +307,6 @@ void SteadyBackwardEulerSolver::solve()
 #pragma omp for
 			for(int iel = 0; iel < m->gnelem(); iel++) {
 				u.row(iel) += du.row(iel);
-				/*for(int i = 0; i < NVARS; i++)
-					du(iel,i) = 0;*/
 			}
 #pragma omp for simd reduction(+:errmass)
 			for(int iel = 0; iel < m->gnelem(); iel++)
@@ -343,5 +336,9 @@ void SteadyBackwardEulerSolver::solve()
 	linsolv->getRunTimes(linwtime, linctime);
 	std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n    Wall time = " << linwtime << ", CPU time = " << linctime << std::endl;
 }
+
+template class SteadyForwardEulerSolver<NVARS>;
+template class SteadyBackwardEulerSolver<NVARS>;
+template class SteadyBackwardEulerSolver<1>;
 
 }	// end namespace

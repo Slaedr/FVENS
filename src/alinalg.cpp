@@ -91,28 +91,29 @@ void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const 
 	}
 }
 
-//template <typename Matrixb>
-IterativeBlockSolver::IterativeBlockSolver(const UMesh2dh* const mesh)
+template <short nvars>
+IterativeBlockSolver<nvars>::IterativeBlockSolver(const UMesh2dh* const mesh)
 	: IterativeSolver(mesh)
 {
 	walltime = 0; cputime = 0;
 }
 
-//template <typename Matrixb>
-void IterativeBlockSolver::setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper)
+template <short nvars>
+void IterativeBlockSolver<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
 	L = lower;
 	U = upper;
 	D = diago;
 }
 
-//template <typename Matrixb>
-PointSGS_Relaxation::PointSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver(mesh), thread_chunk_size(500)
+template <short nvars>
+PointSGS_Relaxation<nvars>::PointSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver<nvars>(mesh), thread_chunk_size(500)
 {
 }
 
-//template <typename Matrixb>
-int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
+template <short nvars>
+int PointSGS_Relaxation<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du)
 {
 #ifdef DEBUG
 	feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
@@ -126,7 +127,7 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
 	// we need an extra array solely to measure convergence
-	Matrix uold(m->gnelem(),NVARS);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> uold(m->gnelem(),nvars);
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
@@ -141,10 +142,10 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 #pragma omp parallel default(shared)
 		{
 #pragma omp for schedule(dynamic, thread_chunk_size)
-			for(a_int ivar = 0; ivar < NVARS*m->gnelem(); ivar++) 
+			for(a_int ivar = 0; ivar < nvars*m->gnelem(); ivar++) 
 			{
-				a_int iel = ivar / NVARS;
-				int i = ivar % NVARS;
+				a_int iel = ivar / nvars;
+				int i = ivar % nvars;
 				//std::cout << iel << " " << i << std::endl;
 				
 				uold(iel,i) = du(iel,i);
@@ -152,7 +153,7 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 
 				for(int j = 0; j < i; j++)
 					inter += D[iel](i,j)*du(iel,j);
-				for(int j = i+1; j < NVARS; j++)
+				for(int j = i+1; j < nvars; j++)
 					inter += D[iel](i,j)*du(iel,j);
 
 				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
@@ -164,12 +165,12 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 					{
 						if(nbdelem > iel) {
 							// upper
-							for(int j = 0; j < NVARS; j++)
+							for(int j = 0; j < nvars; j++)
 								inter += U[face](i,j) * du(nbdelem,j);
 						}
 						else {
 							// lower
-							for(int j = 0; j < NVARS; j++)
+							for(int j = 0; j < nvars; j++)
 								inter += L[face](i,j) * du(nbdelem,j);
 						}
 					}
@@ -181,17 +182,17 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 			
 			// backward sweep
 #pragma omp for schedule(dynamic, thread_chunk_size)
-			for(a_int ivar = NVARS*m->gnelem()-1; ivar >= 0; ivar--)
+			for(a_int ivar = nvars*m->gnelem()-1; ivar >= 0; ivar--)
 			{
-				a_int iel = ivar/NVARS;
-				int i = ivar%NVARS;
+				a_int iel = ivar/nvars;
+				int i = ivar%nvars;
 				//std::cout << iel << " " << i << std::endl;
 				
 				a_real inter = 0;
 
 				for(int j = 0; j < i; j++)
 					inter += D[iel](i,j)*du(iel,j);
-				for(int j = i+1; j < NVARS; j++)
+				for(int j = i+1; j < nvars; j++)
 					inter += D[iel](i,j)*du(iel,j);
 
 				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
@@ -203,12 +204,12 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 					{
 						if(nbdelem > iel) {
 							// upper
-							for(int j = 0; j < NVARS; j++)
+							for(int j = 0; j < nvars; j++)
 								inter += U[face](i,j) * du(nbdelem,j);
 						}
 						else {
 							// lower
-							for(int j = 0; j < NVARS; j++)
+							for(int j = 0; j < nvars; j++)
 								inter += L[face](i,j) * du(nbdelem,j);
 						}
 					}
@@ -243,13 +244,14 @@ int PointSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 	return step;
 }
 
-//template <typename Matrixb>
-BlockSGS_Relaxation::BlockSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver(mesh), thread_chunk_size(200)
+template <short nvars>
+BlockSGS_Relaxation<nvars>::BlockSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver<nvars>(mesh), thread_chunk_size(200)
 {
 }
 
-//template <typename Matrixb>
-void BlockSGS_Relaxation::setLHS(Matrixb *const diago, const Matrixb *const lower, const Matrixb *const upper)
+template <short nvars>
+void BlockSGS_Relaxation<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -269,7 +271,8 @@ void BlockSGS_Relaxation::setLHS(Matrixb *const diago, const Matrixb *const lowe
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
-int BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restrict__ du)
+template <short nvars>
+int BlockSGS_Relaxation<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -279,7 +282,7 @@ int BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
 	// we need an extra array solely to measure convergence
-	Matrix uold(m->gnelem(),NVARS);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> uold(m->gnelem(),nvars);
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
@@ -297,7 +300,7 @@ int BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 			for(int iel = 0; iel < m->gnelem(); iel++) 
 			{
 				uold.row(iel) = du.row(iel);
-				Matrix inter = Matrix::Zero(1,NVARS);
+				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
 				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
 					a_int face = m->gelemface(iel,ifael) - m->gnbface();
@@ -323,7 +326,7 @@ int BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 			// backward sweep
 #pragma omp for schedule(dynamic, thread_chunk_size)
 			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
-				Matrix inter = Matrix::Zero(1,NVARS);
+				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
 				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
 					a_int face = m->gelemface(iel,ifael) - m->gnbface();
@@ -368,5 +371,10 @@ int BlockSGS_Relaxation::solve(const Matrix& __restrict__ res, Matrix& __restric
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 	return step;
 }
+
+template class PointSGS_Relaxation<NVARS>;
+template class BlockSGS_Relaxation<NVARS>;
+template class PointSGS_Relaxation<1>;
+template class BlockSGS_Relaxation<1>;
 
 }

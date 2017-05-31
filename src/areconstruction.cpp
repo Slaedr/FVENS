@@ -20,7 +20,8 @@ ConstantReconstruction::ConstantReconstruction(const UMesh2dh *const mesh, const
 	: Reconstruction(mesh, _rc, _rcg)
 { }
 
-void ConstantReconstruction::compute_gradients(const Matrix*const u, const amat::Array2d<a_real>*const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
+void ConstantReconstruction::compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, const amat::Array2d<a_real>*const ug, 
+		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -39,7 +40,8 @@ GreenGaussReconstruction::GreenGaussReconstruction(const UMesh2dh *const mesh, c
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
  */
-void GreenGaussReconstruction::compute_gradients(const Matrix*const u, const amat::Array2d<a_real>*const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
+void GreenGaussReconstruction::compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, const amat::Array2d<a_real>*const ug, 
+		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
 #pragma omp parallel default(shared)
 	{
@@ -189,7 +191,8 @@ WeightedLeastSquaresReconstruction::WeightedLeastSquaresReconstruction(const UMe
 	}
 }
 
-void WeightedLeastSquaresReconstruction::compute_gradients(const Matrix *const u, const amat::Array2d<a_real> *const ug, amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
+void WeightedLeastSquaresReconstruction::compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug, 
+		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
 	// compute least-squares RHS
 

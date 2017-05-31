@@ -16,27 +16,28 @@
 
 namespace acfd {
 
+template <short nvars>
 class SteadySolver
 {
 protected:
 	const UMesh2dh *const m;
-	Spatial *const eul;
-	Spatial *const starter;
-	Matrix residual;
-	Matrix u;
+	Spatial<nvars> *const eul;
+	Spatial<nvars> *const starter;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> residual;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> u;
 	const short usestarter;
 
 public:
-	SteadySolver(const UMesh2dh *const mesh, Spatial *const euler, Spatial *const starterfv, const short use_starter)
+	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, const short use_starter)
 		: m(mesh), eul(euler), starter(starterfv), usestarter(use_starter)
 	{ }
 
-	const Matrix& residuals() const {
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& residuals() const {
 		return residual;
 	}
 	
 	/// Write access to the conserved variables
-	Matrix& unknowns() {
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns() {
 		return u;
 	}
 
@@ -49,8 +50,16 @@ public:
 /** \note Make sure compute_topological(), compute_face_data() and compute_areas()
  * have been called on the mesh object prior to initialzing an object of this class.
  */
-class SteadyForwardEulerSolver : public SteadySolver
+template <short nvars>
+class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
+	using SteadySolver<nvars>::m;
+	using SteadySolver<nvars>::eul;
+	using SteadySolver<nvars>::starter;
+	using SteadySolver<nvars>::residual;
+	using SteadySolver<nvars>::u;
+	using SteadySolver<nvars>::usestarter;
+
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
 	const double tol;
 	const int maxiter;
@@ -61,7 +70,7 @@ class SteadyForwardEulerSolver : public SteadySolver
 	const double startcfl;
 
 public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial *const euler, Spatial *const starterfv, 
+	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, 
 			const short use_starter, const double toler, const int maxits, const double cfl,
 			const double ftoler, const int fmaxits, const double fcfl);
 	~SteadyForwardEulerSolver();
@@ -71,14 +80,22 @@ public:
 };
 
 /// Implicit pseudo-time iteration to steady state
-class SteadyBackwardEulerSolver : public SteadySolver
+template <short nvars>
+class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 {
-	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
+	using SteadySolver<nvars>::m;
+	using SteadySolver<nvars>::eul;
+	using SteadySolver<nvars>::starter;
+	using SteadySolver<nvars>::residual;
+	using SteadySolver<nvars>::u;
+	using SteadySolver<nvars>::usestarter;
 
-	IterativeBlockSolver * linsolv;
-	Matrixb* D;
-	Matrixb* L;
-	Matrixb* U;
+	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
+
+	IterativeBlockSolver<nvars> * linsolv;		///< Linear solver context
+	Matrix<a_real,nvars,nvars,RowMajor>* D;
+	Matrix<a_real,nvars,nvars,RowMajor>* L;
+	Matrix<a_real,nvars,nvars,RowMajor>* U;
 
 	const double cflinit;
 	double cflfin;
@@ -95,7 +112,7 @@ class SteadyBackwardEulerSolver : public SteadySolver
 	const double startcfl;
 
 public:
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial *const spatial, Spatial *const starterfv, const short use_starter,
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, const double lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver,
 		const double ftoler, const int fmaxits, const double fcfl);

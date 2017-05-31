@@ -30,7 +30,8 @@ public:
 	
 	virtual ~Reconstruction();
 
-	virtual void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
+	virtual void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, const amat::Array2d<a_real>*const unkg, 
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
 };
 
 /// Simply sets the gradient to zero
@@ -38,7 +39,8 @@ class ConstantReconstruction : public Reconstruction
 {
 public:
 	ConstantReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
-	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, const amat::Array2d<a_real>*const unkg, 
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
 /**
@@ -50,7 +52,8 @@ class GreenGaussReconstruction : public Reconstruction
 {
 public:
 	GreenGaussReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
-	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, const amat::Array2d<a_real>*const unkg, 
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
 
@@ -66,7 +69,8 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 public:
 	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
 
-	void compute_gradients(const Matrix*const unk, const amat::Array2d<a_real>*const unkg, amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, const amat::Array2d<a_real>*const unkg, 
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
 

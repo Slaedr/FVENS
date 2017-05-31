@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
 	EulerFV startprob(&m, invflux, "LLF", "NONE", "NONE");
 
-	SteadyForwardEulerSolver time(&m, &prob, &startprob, usestarter, tolerance, maxiter, cfl, firsttolerance, firstmaxiter, firstcfl);
+	SteadyForwardEulerSolver<4> time(&m, &prob, &startprob, usestarter, tolerance, maxiter, cfl, firsttolerance, firstmaxiter, firstcfl);
 	prob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 	startprob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time.unknowns());
 

@@ -37,6 +37,7 @@
 namespace acfd {
 
 /// Base class for finite volume spatial discretization
+template<int nvars>
 class Spatial
 {
 protected:
@@ -67,15 +68,17 @@ public:
 
 	virtual ~Spatial();
 	
-	virtual void compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm) = 0;
+	virtual void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+			amat::Array2d<a_real>& __restrict__ dtm) = 0;
 	
-	virtual void compute_jacobian(const Matrix& u, Matrixb *const D, Matrixb *const L, Matrixb *const U) = 0;
+	virtual void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
 };
 	
 /// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of this class.
  */
-class EulerFV : public Spatial
+class EulerFV : public Spatial<NVARS>
 {
 protected:
 	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
@@ -137,32 +140,34 @@ public:
 	~EulerFV();
 	
 	/// Set simulation data and precompute data needed for reconstruction
-	void loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix& u);
+	void loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix<a_real,Dynamic,Dynamic,RowMajor>& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
-	void compute_residual(const Matrix& __restrict__ u, Matrix& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
+	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+			amat::Array2d<a_real>& __restrict__ dtm);
 
 #if HAVE_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
-	void compute_jacobian(const Matrix& u, const bool blocked, Mat A);
+	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, const bool blocked, Mat A);
 #else
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
 	/** \note D, L and U are not zeroed before use.
 	 */
-	void compute_jacobian(const Matrix& u, Matrixb *const D, Matrixb *const L, Matrixb *const U);
+	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+			Matrix<a_real,NVARS,NVARS,RowMajor> *const D, Matrix<a_real,NVARS,NVARS,RowMajor> *const L, Matrix<a_real,NVARS,NVARS,RowMajor> *const U);
 #endif
 
 	/// Compute cell-centred quantities to export
-	void postprocess_cell(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
+	void postprocess_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 	
 	/// Compute nodal quantities to export, based on area-weighted averaging (which takes into account ghost cells as well)
-	void postprocess_point(const Matrix& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
+	void postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 
 	/// Compute norm of cell-centered entropy production
 	/// Call aftr computing pressure etc \sa postprocess_cell
-	a_real compute_entropy_cell(const Matrix& u);
+	a_real compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u);
 };
 
 }	// end namespace

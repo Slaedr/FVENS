@@ -23,15 +23,9 @@ class FaceDataComputation
 {
 protected:
 	const UMesh2dh* m;
-	const Matrix* u;					///< Cell-centered flow data
-	const amat::Array2d<a_real>* ug;			///< Cell-centered ghost cell flow data
-	const amat::Array2d<a_real>* dudx;
-	const amat::Array2d<a_real>* dudy;
 	const amat::Array2d<a_real>* rb;			///< coords of cell centers of ghost cells
 	const amat::Array2d<a_real>* ri;			///< coords of cell centers of real cells
 	const amat::Array2d<a_real>* gr;		/// coords of gauss points of each face
-	amat::Array2d<a_real>* ufl;			///< left face flow data
-	amat::Array2d<a_real>* ufr;			///< right face flow data
 	int ng;									///< Number of Gauss points
 
 public:
@@ -40,7 +34,7 @@ public:
 			const amat::Array2d<a_real>* gauss_r);
     void setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r);
 
-	virtual void compute_face_values(const Matrix *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
+	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
 			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv,
 			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right) = 0;
 
@@ -57,7 +51,7 @@ public:
 	NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const Matrix *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
 			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv, 
 			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right);
 };
@@ -79,7 +73,7 @@ class WENOLimiter : public FaceDataComputation
 public:
     WENOLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const Matrix *const unknowns, const amat::Array2d<a_real> *const unknow_ghost,
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost,
 			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv,
 			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right);
 
@@ -98,7 +92,7 @@ public:
 	void setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r);
     
 	/// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
-	void compute_face_values(const Matrix *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
 			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv, 
 			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right);
 };

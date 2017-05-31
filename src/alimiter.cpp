@@ -33,7 +33,7 @@ NoLimiter::NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_ce
 	: FaceDataComputation(mesh, ghost_centres, c_centres, gauss_r)
 { }
 
-void NoLimiter::compute_face_values(const Matrix *const u, const amat::Array2d<a_real> *const ug,
+void NoLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug,
 		const amat::Array2d<a_real> *const dudx, const amat::Array2d<a_real> *const dudy, amat::Array2d<a_real> *const ufl, amat::Array2d<a_real> *const ufr)
 {
 	// (a) internal faces
@@ -90,7 +90,7 @@ WENOLimiter::~WENOLimiter()
 	delete ldudy;
 }
 
-void WENOLimiter::compute_face_values(const Matrix *const u, const amat::Array2d<a_real> *const ug,
+void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug,
 		const amat::Array2d<a_real> *const dudx, const amat::Array2d<a_real> *const dudy, amat::Array2d<a_real> *const ufl, amat::Array2d<a_real> *const ufr)
 {
 	// first compute limited derivatives at each cell
@@ -178,7 +178,7 @@ void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* 
 }
 
 /// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
-void VanAlbadaLimiter::compute_face_values(const Matrix *const u, const amat::Array2d<a_real> *const ug,
+void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug,
 		const amat::Array2d<a_real> *const dudx, const amat::Array2d<a_real> *const dudy, amat::Array2d<a_real> *const ufl, amat::Array2d<a_real> *const ufr)
 {
 	//compute_limiters
