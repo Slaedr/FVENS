@@ -37,7 +37,7 @@
 namespace acfd {
 
 /// Base class for finite volume spatial discretization
-template<int nvars>
+template<short nvars>
 class Spatial
 {
 protected:
@@ -70,6 +70,9 @@ public:
 	
 	virtual void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
 			amat::Array2d<a_real>& __restrict__ dtm) = 0;
+
+	virtual void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm) = 0;
 	
 	virtual void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
@@ -159,6 +162,10 @@ public:
 			Matrix<a_real,NVARS,NVARS,RowMajor> *const D, Matrix<a_real,NVARS,NVARS,RowMajor> *const L, Matrix<a_real,NVARS,NVARS,RowMajor> *const U);
 #endif
 
+	/// Does nothing in this class
+	void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
+
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 	
@@ -169,6 +176,36 @@ public:
 	/// Call aftr computing pressure etc \sa postprocess_cell
 	a_real compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u);
 };
+
+/// Spatial discretization of diffusion operator with constant difusivity using the thin-layer model
+template <short nvars>
+class DiffusionThinLayer : public Spatial<nvars>
+{
+	using Spatial<nvars>::m;
+	using Spatial<nvars>::rc;
+	using Spatial<nvars>::rcg;
+	using Spatial<nvars>::gr;
+	const a_real diffusivity;		///< Diffusion coefficient (eg. kinematic viscosity)
+	const a_real bval;				///< Dirichlet boundary value
+	/// Pointer to a function that describes the  source term
+	void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm);
+	std::vector<a_real> h;			///< Size of cells
+	
+	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
+
+public:
+	DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+			void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm));
+	
+	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+			amat::Array2d<a_real>& __restrict__ dtm);
+	
+	void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
+	
+	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
+}
 
 }	// end namespace
 #endif

@@ -8,11 +8,11 @@
 
 namespace acfd {
 
-template<int nvars>
+template<short nvars>
 Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 {
 	rc.setup(m->gnelem(),m->gndim());
-	rcg.setup(m->gnface(),m->gndim());
+	rcg.setup(m->gnbface(),m->gndim());
 	gr = new amat::Array2d<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 		gr[i].setup(NGAUSS, m->gndim());
@@ -37,7 +37,7 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 	compute_ghost_cell_coords_about_midpoint();
 	//compute_ghost_cell_coords_about_face();
 
-	//Calculate and store coordinates of Gauss points (general implementation)
+	//Calculate and store coordinates of Gauss points
 	// Gauss points are uniformly distributed along the face.
 	for(a_int ied = 0; ied < m->gnaface(); ied++)
 	{
@@ -53,7 +53,7 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 	}
 }
 
-template<int nvars>
+template<short nvars>
 Spatial<nvars>::~Spatial()
 {
 	delete [] gr;
@@ -79,7 +79,7 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
 	}
 }
 
-template<int nvars>
+template<short nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_face()
 {
 	a_real x1, y1, x2, y2, xs, ys, xi, yi;
@@ -87,7 +87,6 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face()
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);
-		//a_int jelem = m->gintfac(ied,1);
 		a_real nx = m->ggallfa(ied,0);
 		a_real ny = m->ggallfa(ied,1);
 
@@ -654,6 +653,7 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
 	
+		/// NOTE: the values of L and U get REPLACED here, not added to
 		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[intface](0,0), &U[intface](0,0));
 
 		for(int i = 0; i < NVARS; i++)
@@ -757,6 +757,146 @@ a_real EulerFV::compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	std::cout << "EulerFV:   " << log10(h) << "  " << std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
+}
+
+void EulerFV::add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm),
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm)
+{ }
+
+
+template<short nvars>
+DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+		void (*const sourcefunc)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm))
+	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
+{
+	h.resize(m->gnelem());
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		h[iel] = 0;
+		// max face length
+		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
+			a_int face = m->gelemface(iel,ifael);
+			if(h[iel] < m->ggallfa(face,2)) h[iel] = m->ggallfa(face,2);
+		}
+	}
+}
+
+// Currently, all boundaries are constant Dirichlet
+template<short nvars>
+inline void DiffusionThinLayer<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+{
+	for(int ivar = 0; ivar < nvars; ivar++)
+		bs[ivar] = 2.0*bval - ins[ivar]
+}
+
+template<short nvars>
+void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+		amat::Array2d<a_real>& __restrict__ dtm)
+{
+	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			residual(lelem,ivar) -= (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+#pragma omp atomic
+			residual(relem,ivar) += (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+		}
+	}
+	
+	for(int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real len = m->ggallfa(iface,2);
+		a_real dr[NDIM], dist=0, sn=0, ug[nvars];
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		compute_boundary_state(iface, &u(lelem,0), ug);
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			residual(lelem,ivar) -= (ug[ivar]-u(lelem,ivar))/dist*sn*len;
+		}
+	}
+
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		dtm[iel] = h[iel]*h[iel]/diffusivity;	
+	}
+}
+
+template<short nvars>
+void DiffusionThinLayer::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
+		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
+		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
+{
+	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int intface = iface-m->gnbface();
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real len = m->ggallfa(iface,2);
+
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+			L[intface](ivar,ivar) -= sn*len/dist;
+			U[intface](ivar,ivar) -= sn*len/dist;
+#pragma omp atomic
+			D[lelem](ivar,ivar) += sn*len/dist;
+#pragma omp atomic
+			D[relem](ivar,ivar) += sn*len/dist;
+		}
+	}
+	
+	for(int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real len = m->ggallfa(iface,2);
+
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			D[lelem](ivar,ivar) += sn*len/dist;
+		}
+	}
 }
 
 }	// end namespace

@@ -194,6 +194,15 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 						D[iel](i,j) = 0;
 				}
 			}
+#pragma omp parallel for default(shared)
+			for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
+#pragma omp simd
+				for(int i = 0; i < nvars; i++)
+					for(int j = 0; j < nvars; j++) {
+						L[iface](i,j) = 0;
+						U[iface](i,j) = 0;
+					}
+			}
 			
 			// update residual and local time steps
 			starter->compute_residual(u, residual, dtm);
@@ -258,6 +267,16 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 				for(int j = 0; j < nvars; j++)
 					D[iel](i,j) = 0;
 			}
+		}
+
+#pragma omp parallel for default(shared)
+		for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
+#pragma omp simd
+			for(int i = 0; i < nvars; i++)
+				for(int j = 0; j < nvars; j++) {
+					L[iface](i,j) = 0;
+					U[iface](i,j) = 0;
+				}
 		}
 		
 		// update residual and local time steps
