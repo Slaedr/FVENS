@@ -70,5 +70,8 @@ target_link_libraries(fvense fvens_time)
 add_executable(steadyfvensi steadyimplicitsolver.cpp)
 target_link_libraries(steadyfvensi fvens_time)
 
+add_executable(steadyheat steadyheat.cpp)
+target_link_libraries(steadyheat fvens_time)
+
 #add_executable(steadylufvensi steadyLUimplicitsolver.cpp)
 #target_link_libraries(steadylufvensi fvens_implicit)

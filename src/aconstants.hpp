@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <iomanip>
+#include <functional>
 #include <time.h>
 // Unix only:
 #include <sys/time.h>

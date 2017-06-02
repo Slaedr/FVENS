@@ -59,7 +59,7 @@ Spatial<nvars>::~Spatial()
 	delete [] gr;
 }
 
-template<int nvars>
+template<short nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
 {
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -219,16 +219,16 @@ EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string ja
 	std::cout << "  EulerFV: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
-		rec = new WeightedLeastSquaresReconstruction(m, &rc, &rcg);
+		rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc, &rcg);
 		std::cout << "  EulerFV: Weighted least-squares reconstruction will be used." << std::endl;
 	}
 	else if(reconst == "GREENGAUSS")
 	{
-		rec = new GreenGaussReconstruction(m, &rc, &rcg);
+		rec = new GreenGaussReconstruction<NVARS>(m, &rc, &rcg);
 		std::cout << "  EulerFV: Green-Gauss reconstruction will be used." << std::endl;
 	}
 	else /*if(reconst == "NONE")*/ {
-		rec = new ConstantReconstruction(m, &rc, &rcg);
+		rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
 		std::cout << "  EulerFV: No reconstruction; first order solution." << std::endl;
 		secondOrderRequested = false;
 	}
@@ -759,15 +759,10 @@ a_real EulerFV::compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	return error;
 }
 
-void EulerFV::add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm),
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm)
-{ }
-
 
 template<short nvars>
 DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-		void (*const sourcefunc)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm))
+		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc)
 	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
 {
 	h.resize(m->gnelem());
@@ -781,12 +776,16 @@ DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const 
 	}
 }
 
+template<short nvars>
+DiffusionThinLayer<nvars>::~DiffusionThinLayer()
+{ }
+
 // Currently, all boundaries are constant Dirichlet
 template<short nvars>
 inline void DiffusionThinLayer<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
 {
 	for(int ivar = 0; ivar < nvars; ivar++)
-		bs[ivar] = 2.0*bval - ins[ivar]
+		bs[ivar] = 2.0*bval - ins[ivar];
 }
 
 template<short nvars>
@@ -840,12 +839,17 @@ void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dyn
 	}
 
 	for(int iel = 0; iel < m->gnelem(); iel++) {
-		dtm[iel] = h[iel]*h[iel]/diffusivity;	
+		dtm(iel) = h[iel]*h[iel]/diffusivity;
+
+		// subtract source term
+		a_real sourceterm;
+		source(&rc(iel,0), 0, &u(iel,0), &sourceterm);
+		residual(iel,0) -= sourceterm*m->garea(iel);
 	}
 }
 
 template<short nvars>
-void DiffusionThinLayer::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
@@ -898,5 +902,222 @@ void DiffusionThinLayer::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,Ro
 		}
 	}
 }
+
+template<short nvars>
+void DiffusionThinLayer<nvars>::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up)
+{
+	std::cout << "DiffusionThinLayer: postprocess_point(): Creating output arrays\n";
+	
+	amat::Array2d<a_real> areasum(m->gnpoin(),1);
+	up.setup(m->gnpoin(), nvars);
+	up.zeros();
+	areasum.zeros();
+
+	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
+				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
+			}
+	}
+
+	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(int ivar = 0; ivar < nvars; ivar++)
+			up(ipoin,ivar) /= areasum(ipoin);
+}
+
+template<short nvars>
+DiffusionMG<nvars>::DiffusionMG(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc, std::string reconst)
+	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
+{
+	h.resize(m->gnelem());
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		h[iel] = 0;
+		// max face length
+		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
+			a_int face = m->gelemface(iel,ifael);
+			if(h[iel] < m->ggallfa(face,2)) h[iel] = m->ggallfa(face,2);
+		}
+	}
+	
+	std::cout << "  DiffusionMG: Selected reconstruction scheme is " << reconst << std::endl;
+	if(reconst == "LEASTSQUARES")
+	{
+		rec = new WeightedLeastSquaresReconstruction<nvars>(m, &rc, &rcg);
+		std::cout << "  DiffusionMG: Weighted least-squares reconstruction will be used." << std::endl;
+	}
+	else if(reconst == "GREENGAUSS")
+	{
+		rec = new GreenGaussReconstruction<nvars>(m, &rc, &rcg);
+		std::cout << "  DiffusionMG: Green-Gauss reconstruction will be used." << std::endl;
+	}
+	else /*if(reconst == "NONE")*/ {
+		rec = new ConstantReconstruction<nvars>(m, &rc, &rcg);
+		std::cout << "  DiffusionMG: No reconstruction; first order solution." << std::endl;
+	}
+	
+	dudx.setup(m->gnelem(),nvars);
+	dudy.setup(m->gnelem(),nvars);
+}
+
+template<short nvars>
+DiffusionMG<nvars>::~DiffusionMG()
+{
+	delete rec;
+}
+
+// Currently, all boundaries are constant Dirichlet
+template<short nvars>
+inline void DiffusionMG<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+{
+	for(int ivar = 0; ivar < nvars; ivar++)
+		bs[ivar] = 2.0*bval - ins[ivar];
+}
+
+template<short nvars>
+void DiffusionMG<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+		amat::Array2d<a_real>& __restrict__ dtm)
+{
+	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			residual(lelem,ivar) -= (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+#pragma omp atomic
+			residual(relem,ivar) += (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+		}
+	}
+	
+	for(int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real len = m->ggallfa(iface,2);
+		a_real dr[NDIM], dist=0, sn=0, ug[nvars];
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		compute_boundary_state(iface, &u(lelem,0), ug);
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			residual(lelem,ivar) -= (ug[ivar]-u(lelem,ivar))/dist*sn*len;
+		}
+	}
+
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		dtm(iel) = h[iel]*h[iel]/diffusivity;
+
+		// subtract source term
+		a_real sourceterm;
+		source(&rc(iel,0), 0, &u(iel,0), &sourceterm);
+		residual(iel,0) -= sourceterm*m->garea(iel);
+	}
+}
+
+template<short nvars>
+void DiffusionMG<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
+		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
+		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
+{
+	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int intface = iface-m->gnbface();
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real len = m->ggallfa(iface,2);
+
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+			L[intface](ivar,ivar) -= sn*len/dist;
+			U[intface](ivar,ivar) -= sn*len/dist;
+#pragma omp atomic
+			D[lelem](ivar,ivar) += sn*len/dist;
+#pragma omp atomic
+			D[relem](ivar,ivar) += sn*len/dist;
+		}
+	}
+	
+	for(int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real len = m->ggallfa(iface,2);
+
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			D[lelem](ivar,ivar) += sn*len/dist;
+		}
+	}
+}
+
+template<short nvars>
+void DiffusionMG<nvars>::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up)
+{
+	std::cout << "DiffusionMG: postprocess_point(): Creating output arrays\n";
+	
+	amat::Array2d<a_real> areasum(m->gnpoin(),1);
+	up.setup(m->gnpoin(), nvars);
+	up.zeros();
+	areasum.zeros();
+
+	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
+				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
+			}
+	}
+
+	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(int ivar = 0; ivar < nvars; ivar++)
+			up(ipoin,ivar) /= areasum(ipoin);
+}
+
+template class DiffusionThinLayer<1>;
+template class DiffusionMG<1>;
 
 }	// end namespace

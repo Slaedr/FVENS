@@ -16,6 +16,10 @@
 
 namespace acfd {
 
+/// Base class for steady-state simulations in pseudo-time
+/** Note that the unknowns u and residuals R correspond to the following ODE:
+ * \f$ \frac{du}{dt} + R(u) = 0 \f$. Note that the residual is on the LHS.
+ */
 template <short nvars>
 class SteadySolver
 {

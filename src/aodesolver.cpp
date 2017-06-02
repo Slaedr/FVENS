@@ -358,6 +358,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 
 template class SteadyForwardEulerSolver<NVARS>;
 template class SteadyBackwardEulerSolver<NVARS>;
+template class SteadyForwardEulerSolver<1>;
 template class SteadyBackwardEulerSolver<1>;
 
 }	// end namespace

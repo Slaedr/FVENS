@@ -35,6 +35,7 @@ public:
 };
 
 /// Simply sets the gradient to zero
+template<short nvars>
 class ConstantReconstruction : public Reconstruction
 {
 public:
@@ -48,6 +49,7 @@ public:
  * 
  * An inverse-distance weighted average is used to obtain the conserved variables at the faces.
  */
+template<short nvars>
 class GreenGaussReconstruction : public Reconstruction
 {
 public:
@@ -58,6 +60,7 @@ public:
 
 
 /// Class implementing linear weighted least-squares reconstruction
+template<short nvars>
 class WeightedLeastSquaresReconstruction : public Reconstruction
 {
 	std::vector<amat::Array2d<a_real>> V;		///< LHS of least-squares problem

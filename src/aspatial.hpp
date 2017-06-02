@@ -70,9 +70,6 @@ public:
 	
 	virtual void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
 			amat::Array2d<a_real>& __restrict__ dtm) = 0;
-
-	virtual void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm) = 0;
 	
 	virtual void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
@@ -162,10 +159,6 @@ public:
 			Matrix<a_real,NVARS,NVARS,RowMajor> *const D, Matrix<a_real,NVARS,NVARS,RowMajor> *const L, Matrix<a_real,NVARS,NVARS,RowMajor> *const U);
 #endif
 
-	/// Does nothing in this class
-	void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
-
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
 	
@@ -188,14 +181,15 @@ class DiffusionThinLayer : public Spatial<nvars>
 	const a_real diffusivity;		///< Diffusion coefficient (eg. kinematic viscosity)
 	const a_real bval;				///< Dirichlet boundary value
 	/// Pointer to a function that describes the  source term
-	void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm);
+	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source;
+	//void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm);
 	std::vector<a_real> h;			///< Size of cells
 	
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
 
 public:
 	DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-			void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm));
+			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source);
 	
 	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
 			amat::Array2d<a_real>& __restrict__ dtm);
@@ -205,7 +199,52 @@ public:
 	
 	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
-}
+	
+	void postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up);
+
+	~DiffusionThinLayer();
+};
+
+/// Spatial discretization of diffusion operator with constant diffusivity using `modified gradient' or `corrected gradient' method
+template <short nvars>
+class DiffusionMG : public Spatial<nvars>
+{
+	using Spatial<nvars>::m;
+	using Spatial<nvars>::rc;
+	using Spatial<nvars>::rcg;
+	using Spatial<nvars>::gr;
+	const a_real diffusivity;		///< Diffusion coefficient (eg. kinematic viscosity)
+	const a_real bval;				///< Dirichlet boundary value
+	/// Pointer to a function that describes the  source term
+	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source;
+	//void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm);
+	std::vector<a_real> h;			///< Size of cells
+
+	/// Reconstruction context
+	Reconstruction* rec;
+	
+	amat::Array2d<a_real> dudx;				///< X-gradients at cell centres
+	amat::Array2d<a_real> dudy;				///< Y-gradients at cell centres
+
+	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
+
+public:
+	DiffusionMG(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source, std::string reconst);
+	
+	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+			amat::Array2d<a_real>& __restrict__ dtm);
+	
+	void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
+	
+	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
+	
+	void postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up);
+
+	~DiffusionMG();
+};
 
 }	// end namespace
 #endif
