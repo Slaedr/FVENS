@@ -125,6 +125,7 @@ void SteadyForwardEulerSolver<nvars>::solve()
 
 		step++;
 	}
+	//std::cout << residual << std::endl;
 
 	if(step == maxiter)
 		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;

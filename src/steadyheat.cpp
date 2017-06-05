@@ -76,13 +76,27 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	std::cout << "Setting up spatial scheme.\n";
-	DiffusionThinLayer<1> prob(&m, diffcoeff, bvalue, rhs);
-	DiffusionThinLayer<1> startprob(&m, diffcoeff, bvalue, rhs);
+	Diffusion<1>* prob;
+	Diffusion<1>* startprob;
+	if(visflux == "THINLAYER") {
+		prob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
+		startprob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
+		std::cout << " Thin-layer gradients\n";
+	} else if(visflux == "MA") {
+		prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
+		startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
+		std::cout << " Modified average gradients\n";
+	}
+	else {
+		prob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
+		startprob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
+		std::cout << " Thin-layer gradients\n";
+	}
 
 	Array2d<a_real> outputarr, dummy;
 	
 	if(timesteptype == "IMPLICIT") {
-		SteadyBackwardEulerSolver<1> time(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+		SteadyBackwardEulerSolver<1> time(&m, prob, startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
 				lintol, linmaxiterstart, linmaxiterend, linsolver, firsttolerance, firstmaxiter, firstcfl);
 
 		// computation
@@ -102,10 +116,10 @@ int main(int argc, char* argv[])
 			err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
 		}
 
-		prob.postprocess_point(u, outputarr);
+		prob->postprocess_point(u, outputarr);
 	}
 	else {
-		SteadyForwardEulerSolver<1> time(&m, &prob, &startprob, usestarter, tolerance, maxiter, initcfl,
+		SteadyForwardEulerSolver<1> time(&m, prob, startprob, usestarter, tolerance, maxiter, initcfl,
 				firsttolerance, firstmaxiter, firstcfl);
 
 		// computation
@@ -125,8 +139,11 @@ int main(int argc, char* argv[])
 			err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
 		}
 
-		prob.postprocess_point(u, outputarr);
+		prob->postprocess_point(u, outputarr);
 	}
+
+	delete prob;
+	delete startprob;
 
 	err = sqrt(err);
 	double h = 1.0/sqrt(m.gnelem());

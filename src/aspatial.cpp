@@ -156,7 +156,7 @@ EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string ja
 	integ.setup(m->gnelem(), 1);
 	dudx.setup(m->gnelem(), NVARS);
 	dudy.setup(m->gnelem(), NVARS);
-	ug.setup(m->gnface(),NVARS);
+	ug.setup(m->gnbface(),NVARS);
 	uleft.setup(m->gnaface(), NVARS);
 	uright.setup(m->gnaface(), NVARS);
 
@@ -761,7 +761,7 @@ a_real EulerFV::compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 
 
 template<short nvars>
-DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc)
 	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
 {
@@ -777,22 +777,72 @@ DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const 
 }
 
 template<short nvars>
-DiffusionThinLayer<nvars>::~DiffusionThinLayer()
+Diffusion<nvars>::~Diffusion()
 { }
 
 // Currently, all boundaries are constant Dirichlet
 template<short nvars>
-inline void DiffusionThinLayer<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+inline void Diffusion<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
 {
 	for(int ivar = 0; ivar < nvars; ivar++)
 		bs[ivar] = 2.0*bval - ins[ivar];
 }
 
 template<short nvars>
-void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-		amat::Array2d<a_real>& __restrict__ dtm)
+void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates, amat::Array2d<a_real>& bounstates)
 {
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
+		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
+}
+
+template<short nvars>
+void Diffusion<nvars>::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up)
+{
+	std::cout << "DiffusionThinLayer: postprocess_point(): Creating output arrays\n";
+	
+	amat::Array2d<a_real> areasum(m->gnpoin(),1);
+	up.setup(m->gnpoin(), nvars);
+	up.zeros();
+	areasum.zeros();
+
+	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
+				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
+			}
+	}
+
+	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(int ivar = 0; ivar < nvars; ivar++)
+			up(ipoin,ivar) /= areasum(ipoin);
+}
+
+template<short nvars>
+DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc)
+	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sourcefunc)
+{
+	ug.setup(m->gnbface(),nvars);
+	uleft.setup(m->gnaface(),nvars);
+}
+
+template<short nvars>
+void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+                                                 Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+                                                 amat::Array2d<a_real>& __restrict__ dtm)
+{
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	{
+		a_int ielem = m->gintfac(ied,0);
+		for(int ivar = 0; ivar < nvars; ivar++)
+			uleft(ied,ivar) = u(ielem,ivar);
+	}
+	
+	compute_boundary_states(uleft, ug);
+
 	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
@@ -810,9 +860,9 @@ void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dyn
 
 		for(int ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
-			residual(lelem,ivar) -= (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+			residual(lelem,ivar) -= diffusivity * (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
 #pragma omp atomic
-			residual(relem,ivar) += (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+			residual(relem,ivar) += diffusivity * (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
 		}
 	}
 	
@@ -820,7 +870,8 @@ void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dyn
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_real len = m->ggallfa(iface,2);
-		a_real dr[NDIM], dist=0, sn=0, ug[nvars];
+		a_real dr[NDIM], dist=0, sn=0;
+		//a_real ug[nvars];
 		for(int i = 0; i < NDIM; i++) {
 			dr[i] = rcg(iface,i)-rc(lelem,i);
 			dist += dr[i]*dr[i];
@@ -830,11 +881,11 @@ void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dyn
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
-		compute_boundary_state(iface, &u(lelem,0), ug);
+		//compute_boundary_state(iface, &u(lelem,0), ug);
 
 		for(int ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
-			residual(lelem,ivar) -= (ug[ivar]-u(lelem,ivar))/dist*sn*len;
+			residual(lelem,ivar) -= diffusivity * (ug(iface,ivar)-u(lelem,ivar))/dist*sn*len;
 		}
 	}
 
@@ -872,12 +923,12 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dyn
 		}
 
 		for(int ivar = 0; ivar < nvars; ivar++){
-			L[intface](ivar,ivar) -= sn*len/dist;
-			U[intface](ivar,ivar) -= sn*len/dist;
+			L[intface](ivar,ivar) -= diffusivity * sn*len/dist;
+			U[intface](ivar,ivar) -= diffusivity * sn*len/dist;
 #pragma omp atomic
-			D[lelem](ivar,ivar) += sn*len/dist;
+			D[lelem](ivar,ivar) += diffusivity * sn*len/dist;
 #pragma omp atomic
-			D[relem](ivar,ivar) += sn*len/dist;
+			D[relem](ivar,ivar) += diffusivity * sn*len/dist;
 		}
 	}
 	
@@ -898,96 +949,66 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dyn
 
 		for(int ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
-			D[lelem](ivar,ivar) += sn*len/dist;
+			D[lelem](ivar,ivar) += diffusivity * sn*len/dist;
 		}
 	}
 }
 
 template<short nvars>
-void DiffusionThinLayer<nvars>::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up)
-{
-	std::cout << "DiffusionThinLayer: postprocess_point(): Creating output arrays\n";
-	
-	amat::Array2d<a_real> areasum(m->gnpoin(),1);
-	up.setup(m->gnpoin(), nvars);
-	up.zeros();
-	areasum.zeros();
-
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(int ivar = 0; ivar < nvars; ivar++)
-			{
-				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
-				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
-			}
-	}
-
-	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < nvars; ivar++)
-			up(ipoin,ivar) /= areasum(ipoin);
-}
-
-template<short nvars>
-DiffusionMG<nvars>::DiffusionMG(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc, std::string reconst)
-	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
+	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sourcefunc)
 {
-	h.resize(m->gnelem());
-	for(int iel = 0; iel < m->gnelem(); iel++) {
-		h[iel] = 0;
-		// max face length
-		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
-			a_int face = m->gelemface(iel,ifael);
-			if(h[iel] < m->ggallfa(face,2)) h[iel] = m->ggallfa(face,2);
-		}
-	}
-	
-	std::cout << "  DiffusionMG: Selected reconstruction scheme is " << reconst << std::endl;
+	std::cout << "  DiffusionMA: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
 		rec = new WeightedLeastSquaresReconstruction<nvars>(m, &rc, &rcg);
-		std::cout << "  DiffusionMG: Weighted least-squares reconstruction will be used." << std::endl;
+		std::cout << "  DiffusionMA: Weighted least-squares reconstruction will be used." << std::endl;
 	}
 	else if(reconst == "GREENGAUSS")
 	{
 		rec = new GreenGaussReconstruction<nvars>(m, &rc, &rcg);
-		std::cout << "  DiffusionMG: Green-Gauss reconstruction will be used." << std::endl;
+		std::cout << "  DiffusionMA: Green-Gauss reconstruction will be used." << std::endl;
 	}
 	else /*if(reconst == "NONE")*/ {
 		rec = new ConstantReconstruction<nvars>(m, &rc, &rcg);
-		std::cout << "  DiffusionMG: No reconstruction; first order solution." << std::endl;
+		std::cout << "  DiffusionMA: No reconstruction; first order solution." << std::endl;
 	}
 	
 	dudx.setup(m->gnelem(),nvars);
 	dudy.setup(m->gnelem(),nvars);
+	uleft.setup(m->gnaface(),nvars);
+	uright.setup(m->gnaface(),nvars);
+	ug.setup(m->gnbface(),nvars);
 }
 
 template<short nvars>
-DiffusionMG<nvars>::~DiffusionMG()
+DiffusionMA<nvars>::~DiffusionMA()
 {
 	delete rec;
 }
 
-// Currently, all boundaries are constant Dirichlet
 template<short nvars>
-inline void DiffusionMG<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+void DiffusionMA<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+                                          Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+                                          amat::Array2d<a_real>& __restrict__ dtm)
 {
-	for(int ivar = 0; ivar < nvars; ivar++)
-		bs[ivar] = 2.0*bval - ins[ivar];
-}
-
-template<short nvars>
-void DiffusionMG<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-		amat::Array2d<a_real>& __restrict__ dtm)
-{
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	{
+		a_int ielem = m->gintfac(ied,0);
+		for(int ivar = 0; ivar < nvars; ivar++)
+			uleft(ied,ivar) = u(ielem,ivar);
+	}
+	
+	compute_boundary_states(uleft, ug);
+	rec->compute_gradients(&u, &ug, &dudx, &dudy);
+	
 	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_int relem = m->gintfac(iface,1);
 		a_real len = m->ggallfa(iface,2);
-		a_real dr[NDIM], dist=0, sn=0;
+		a_real dr[NDIM], dist=0, sn=0, gradterm[nvars];
 		for(int i = 0; i < NDIM; i++) {
 			dr[i] = rc(relem,i)-rc(lelem,i);
 			dist += dr[i]*dr[i];
@@ -997,11 +1018,17 @@ void DiffusionMG<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,Ro
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
+		// compute modified gradient
+		for(short ivar = 0; ivar < nvars; ivar++)
+			gradterm[ivar] = 0.5*(dudx(lelem,ivar)+dudx(relem,ivar)) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
+							+0.5*(dudy(lelem,ivar)+dudy(relem,ivar)) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
+
 		for(int ivar = 0; ivar < nvars; ivar++){
+			a_int flux = diffusivity * (gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len;
 #pragma omp atomic
-			residual(lelem,ivar) -= (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+			residual(lelem,ivar) -= flux;
 #pragma omp atomic
-			residual(relem,ivar) += (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+			residual(relem,ivar) += flux;
 		}
 	}
 	
@@ -1009,7 +1036,7 @@ void DiffusionMG<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,Ro
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_real len = m->ggallfa(iface,2);
-		a_real dr[NDIM], dist=0, sn=0, ug[nvars];
+		a_real dr[NDIM], dist=0, sn=0, gradterm[nvars];
 		for(int i = 0; i < NDIM; i++) {
 			dr[i] = rcg(iface,i)-rc(lelem,i);
 			dist += dr[i]*dr[i];
@@ -1018,12 +1045,15 @@ void DiffusionMG<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,Ro
 		for(int i = 0; i < NDIM; i++) {
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
-
-		compute_boundary_state(iface, &u(lelem,0), ug);
+		
+		// compute modified gradient
+		for(short ivar = 0; ivar < nvars; ivar++)
+			gradterm[ivar] = dudx(lelem,ivar) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
+							+dudy(lelem,ivar) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
 
 		for(int ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
-			residual(lelem,ivar) -= (ug[ivar]-u(lelem,ivar))/dist*sn*len;
+			residual(lelem,ivar) -= diffusivity * ( (ug(iface,ivar)-u(lelem,ivar))/dist*sn + gradterm[ivar]) * len;
 		}
 	}
 
@@ -1038,7 +1068,7 @@ void DiffusionMG<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,Ro
 }
 
 template<short nvars>
-void DiffusionMG<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void DiffusionMA<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
@@ -1092,32 +1122,7 @@ void DiffusionMG<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,Ro
 	}
 }
 
-template<short nvars>
-void DiffusionMG<nvars>::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up)
-{
-	std::cout << "DiffusionMG: postprocess_point(): Creating output arrays\n";
-	
-	amat::Array2d<a_real> areasum(m->gnpoin(),1);
-	up.setup(m->gnpoin(), nvars);
-	up.zeros();
-	areasum.zeros();
-
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(int ivar = 0; ivar < nvars; ivar++)
-			{
-				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
-				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
-			}
-	}
-
-	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < nvars; ivar++)
-			up(ipoin,ivar) /= areasum(ipoin);
-}
-
 template class DiffusionThinLayer<1>;
-template class DiffusionMG<1>;
+template class DiffusionMA<1>;
 
 }	// end namespace
