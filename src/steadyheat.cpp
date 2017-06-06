@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 		prob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
 		startprob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
 		std::cout << " Thin-layer gradients\n";
-	} else if(visflux == "MA") {
+	} else if(visflux == "MODIFIEDAVERAGE") {
 		prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
 		startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
 		std::cout << " Modified average gradients\n";

@@ -91,6 +91,52 @@ void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const 
 	}
 }
 
+/* z <- pz + qx.
+ */
+template<short nvars>
+inline void block_axpby(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, 
+		const a_real p, const a_real q,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++) {
+		z.row(iel) = p*z.row(iel) + q*x.row(iel);
+	}
+}
+
+/* Computes z = p b + q Ax */
+template<short nvars>
+void DLU_gaxpby(const UMesh2dh *const m, 
+	const Matrix<a_real,nvars,nvars,RowMajor> *const D, const Matrix<a_real,nvars,nvars,RowMajor> *const L, const Matrix<a_real,nvars,nvars,RowMajor> *const U,
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b, const a_real p, const a_real q,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		z.row(iel) = p*b.row(iel) + q*x.row(iel)*D[iel].transpose();
+
+		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+		{
+			a_int face = m->gelemface(iel,ifael) - m->gnbface();
+			a_int nbdelem = m->gesuel(iel,ifael);
+
+			if(nbdelem < m->gnelem())
+			{
+				if(nbdelem > iel) {
+					// upper
+					z.row(iel) += q*x.row(nbdelem)*U[face].transpose();
+				}
+				else {
+					// lower
+					z.row(iel) += q*x.row(nbdelem)*L[face].transpose();
+				}
+			}
+		}
+	}
+}
+
+
 template <short nvars>
 IterativeBlockSolver<nvars>::IterativeBlockSolver(const UMesh2dh* const mesh)
 	: IterativeSolver(mesh)

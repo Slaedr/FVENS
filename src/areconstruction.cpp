@@ -77,8 +77,8 @@ void GreenGaussReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dyna
 				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
 				dR += (mid[idim]-(*rcg)(iface,idim))*(mid[idim]-(*rcg)(iface,idim));
 			}
-			dL = sqrt(dL);
-			dR = sqrt(dR);
+			dL = 1.0/sqrt(dL);
+			dR = 1.0/sqrt(dR);
 			areainv1 = 1.0/m->garea(ielem);
 			
 			for(int ivar = 0; ivar < nvars; ivar++)
@@ -108,8 +108,8 @@ void GreenGaussReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dyna
 				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
 				dR += (mid[idim]-(*rc)(jelem,idim))*(mid[idim]-(*rc)(jelem,idim));
 			}
-			dL = sqrt(dL);
-			dR = sqrt(dR);
+			dL = 1.0/sqrt(dL);
+			dR = 1.0/sqrt(dR);
 			areainv1 = 1.0/m->garea(ielem);
 			areainv2 = 1.0/m->garea(jelem);
 			

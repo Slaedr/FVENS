@@ -1,7 +1,7 @@
 -mesh_file
 ../testcases/2dcylinder/grids/2dcylinder-fine.msh
 -output_file
-../data/2dcylinder-fine-hll-2-expl.vtu
+../data/2dcylinder-hll-2-expl.vtu
 -M_infinity
 0.38
 -velocity_infinity
@@ -29,6 +29,6 @@ NONE
 -CFL-for-initialization-run
 0.8
 -tolerance-for-initialization
-1e-3
+1e-2
 -max-time-steps-for-initialization
 50000

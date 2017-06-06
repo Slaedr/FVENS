@@ -1,7 +1,7 @@
 -mesh_file
-../testcases/supersonic-vortex/grids/quarterannulus2.msh
+../testcases/supersonic-vortex/grids/quarterannulus4.msh
 -output_file
-../data/quarterannulus2-hll-2-wlsq-expl.vtu
+../data/quarterannulus-hll-2-expl.vtu
 -M_infinity
 2.25
 -velocity_infinity
@@ -21,7 +21,7 @@ NONE
 -CFL
 0.24
 -Tolerance
-1e-6
+1e-5
 -Max-iterations
 900000
 -use-first-order-initial-condition
@@ -29,6 +29,6 @@ NONE
 -CFL-for-initialization-run
 0.8
 -tolerance-for-initialization
-1e-4
+1e-2
 -max-time-steps-for-initialization
 10000
