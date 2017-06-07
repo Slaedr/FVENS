@@ -1,4 +1,5 @@
 #include "alinalg.hpp"
+#include <algorithm>
 #include <Eigen/LU>
 
 #define THREAD_CHUNK_SIZE 200
@@ -154,7 +155,7 @@ void IterativeBlockSolver<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *co
 }
 
 template <short nvars>
-PointSGS_Relaxation<nvars>::PointSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver<nvars>(mesh), thread_chunk_size(500)
+PointSGS_Relaxation<nvars>::PointSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver<nvars>(mesh), thread_chunk_size{500}
 {
 }
 
@@ -192,7 +193,6 @@ int PointSGS_Relaxation<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMaj
 			{
 				a_int iel = ivar / nvars;
 				int i = ivar % nvars;
-				//std::cout << iel << " " << i << std::endl;
 				
 				uold(iel,i) = du(iel,i);
 				a_real inter = 0;
@@ -291,7 +291,7 @@ int PointSGS_Relaxation<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMaj
 }
 
 template <short nvars>
-BlockSGS_Relaxation<nvars>::BlockSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver<nvars>(mesh), thread_chunk_size(200)
+BlockSGS_Relaxation<nvars>::BlockSGS_Relaxation(const UMesh2dh* const mesh) : IterativeBlockSolver<nvars>(mesh), thread_chunk_size{200}
 {
 }
 
@@ -319,6 +319,188 @@ void BlockSGS_Relaxation<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *con
 
 template <short nvars>
 int BlockSGS_Relaxation<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du)
+{
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
+	a_real resnorm = 100.0, bnorm = 0;
+	int step = 0;
+	// we need an extra array solely to measure convergence
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> uold(m->gnelem(),nvars);
+
+	// norm of RHS
+#pragma omp parallel for reduction(+:bnorm) default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		bnorm += res.row(iel).squaredNorm();
+	}
+	bnorm = std::sqrt(bnorm);
+
+	while(resnorm/bnorm > tol && step < maxiter)
+	{
+#pragma omp parallel default(shared)
+		{
+#pragma omp for schedule(dynamic, thread_chunk_size)
+			for(int iel = 0; iel < m->gnelem(); iel++) 
+			{
+				uold.row(iel) = du.row(iel);
+				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+				{
+					a_int face = m->gelemface(iel,ifael) - m->gnbface();
+					a_int nbdelem = m->gesuel(iel,ifael);
+
+					if(nbdelem < m->gnelem())
+					{
+						if(nbdelem > iel) {
+							// upper
+							inter += du.row(nbdelem)*U[face].transpose();
+						}
+						else {
+							// lower
+							inter += du.row(nbdelem)*L[face].transpose();
+						}
+					}
+				}
+				du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
+			}
+
+#pragma omp barrier
+			
+			// backward sweep
+#pragma omp for schedule(dynamic, thread_chunk_size)
+			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
+				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+				{
+					a_int face = m->gelemface(iel,ifael) - m->gnbface();
+					a_int nbdelem = m->gesuel(iel,ifael);
+
+					if(nbdelem < m->gnelem())
+					{
+						if(nbdelem > iel) {
+							// upper
+							inter += du.row(nbdelem)*U[face].transpose();
+						}
+						else {
+							// lower
+							inter += du.row(nbdelem)*L[face].transpose();
+						}
+					}
+				}
+				du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
+			}
+
+#pragma omp barrier
+
+			/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
+			 * to measure convergence.
+			 */
+			resnorm = 0;
+#pragma omp for reduction(+:resnorm)
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				// compute norm
+				resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+			}
+		}
+		resnorm = std::sqrt(resnorm);
+
+		step++;
+	}
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	return step;
+}
+
+template <short nvars>
+ABILU<nvars>::ABILU(const UMesh2dh* const mesh, const unsigned short n_buildsweeps, const unsigned short n_applysweeps) 
+	: IterativeBlockSolver<nvars>(mesh), nbuildsweeps{n_buildsweeps}, napplysweeps{n_applysweeps}, thread_chunk_size{200}
+{
+	luD = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
+	luL = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
+	luU = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
+}
+
+template <short nvars>
+ABILU<nvars>::~ABILU()
+{
+	delete [] luD;
+	delete [] luL;
+	delete [] luU;
+}
+
+template <short nvars>
+void ABILU<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+{
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
+	L = lower;
+	U = upper;
+	D = diago;
+
+	// BILU factorization
+	for(unsigned short isweep = 0; isweep < nbuildsweeps; isweep++)	{
+			
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			// get lists of faces corresponding to blocks in this block-row and
+			// sort by element index
+			
+			struct LIndex { 
+				a_int face;
+				a_int elem;
+			};
+			std::vector<LIndex> lowers; lowers.reserve(m->gnfael(iel));
+			std::vector<LIndex> uppers; uppers.reserve(m->gnfael(iel));
+
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				if(nbdelem < m->gnelem())
+				{
+					if(nbdelem < iel) {
+						LIndex lower; lower.face = face; lower.elem = nbdelem;
+						lowers.push_back(lower);
+					}
+					else {
+						LIndex upper; upper.face = face; upper.elem = nbdelem;
+						uppers.push_back(upper);
+					}
+				}
+			}
+			auto comp = [](LIndex i, LIndex j) { return i.elem < j.elem; }
+			std::sort(lowers.begin(),lowers.end(), comp);
+			std::sort(uppers.begin(),uppers.end(), comp);
+
+			for(int j = 0; j < lowers.size(); j++)
+			{
+				Matrix<a_real,nvars,nvars,RowMajor> sum = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+				for(int k = 0; k < j; k++)
+					sum += luL[lowers[k].face] * luU[SOMEFACE];
+			}
+		}
+	}
+
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+}
+
+template <short nvars>
+int ABILU<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);

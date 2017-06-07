@@ -181,10 +181,13 @@ class ABILU : public IterativeBlockSolver<nvars>
 	Matrix<a_real,nvars,nvars,RowMajor> * luL;
 	Matrix<a_real,nvars,nvars,RowMajor> * luU;
 
-	const int thread_chunk_size;
+	const unsigned short nbuildsweeps;
+	const unsigned short napplysweeps;
+
+	const unsigned int thread_chunk_size;
 
 public:
-	ABILU(const UMesh2dh* const mesh);
+	ABILU(const UMesh2dh* const mesh, const unsigned short n_buildsweeps, const unsigned short n_applysweeps);
 
 	/// Sets D,L,U and computes the ILU factorization
 	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
