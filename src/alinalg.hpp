@@ -180,9 +180,11 @@ class ABILU : public IterativeBlockSolver<nvars>
 	Matrix<a_real,nvars,nvars,RowMajor> * luD;
 	Matrix<a_real,nvars,nvars,RowMajor> * luL;
 	Matrix<a_real,nvars,nvars,RowMajor> * luU;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
 
 	const unsigned short nbuildsweeps;
 	const unsigned short napplysweeps;
+	bool start;										///< True until 1st call to setLHS
 
 	const unsigned int thread_chunk_size;
 
@@ -192,6 +194,9 @@ public:
 	/// Sets D,L,U and computes the ILU factorization
 	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+	
+	/// Solves Mz=r, where M is the preconditioner
+	int apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z);
 
 	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
