@@ -6,11 +6,7 @@
 #ifndef __ALINALG_H
 
 #ifndef __AMESH2DH_H
-#include <amesh2dh.hpp>
-#endif
-
-#ifndef __AEULERFLUX_H
-#include "aeulerflux.hpp"
+#include "amesh2dh.hpp"
 #endif
 
 #define __ALINALG_H
@@ -18,189 +14,191 @@
 namespace acfd {
 
 /// Solves Ax=b for dense A by Gaussian elimination
-void gausselim(amat::Matrix<a_real>& A, amat::Matrix<a_real>& b, amat::Matrix<a_real>& x);
+void gausselim(amat::Array2d<a_real>& A, amat::Array2d<a_real>& b, amat::Array2d<a_real>& x);
 
-/// Factors A into unit lower triangular matrix and upper triangular matrix in place, with partial pivoting
-void LUfactor(amat::Matrix<a_real>& A, amat::Matrix<int>& p);
+/// Factors the dense matrix A into unit lower triangular matrix and upper triangular matrix in place, with partial pivoting
+void LUfactor(amat::Array2d<a_real>& A, amat::Array2d<int>& p);
 
 /// Solve LUx = b
-/** \param A contains L and U
+/** \param A contains L and U which are assumed dense
  * \param p is the permutation array
  * \param b is the RHS
  * \param x will contain the solution
  */
-void LUsolve(const amat::Matrix<a_real>& A, const amat::Matrix<int>& p, const amat::Matrix<a_real>& b, amat::Matrix<a_real>& x);
+void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const amat::Array2d<a_real>& b, amat::Array2d<a_real>& x);
 
-/// Base class for AF (approximate factorization)-type iterative linear solver
-class IterativeSolver
+/// Vector addition in blocks of nvars x 1
+/** z <- pz + qx.
+ */
+template<short nvars>
+void block_axpby(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const a_real p, const a_real q,
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+
+/// Computes a sparse gaxpy when the matrix is passed in block DLU storage
+/** Specifically, computes z = pb+qAx
+ */
+template<short nvars>
+void DLU_gaxpby(const UMesh2dh *const m, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper,
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b, const a_real p, const a_real q,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+
+/// Base class for a linear solver
+class LinearSolver
 {
 protected:
-	const int nvars;								///< Number of conserved variables
 	const UMesh2dh* const m;						///< mesh
-	const amat::Matrix<a_real>* const res;		///< Vector of `residuals' at previous iteration
+
 public:
-	IterativeSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual) 
-		: nvars(num_vars), m(mesh), res(residual)
+	LinearSolver(const UMesh2dh* const mesh) 
+		: m(mesh)
 	{ }
 
-	/// Supposed to carry a single step of the corresponding AF solver and store the correction in the argument
-	virtual void compute_update(amat::Matrix<a_real>* const deltau) = 0;
+	virtual ~LinearSolver()
+	{ }
+};
+
+/// Abstract class for iterative linear solvers
+class IterativeSolver : public LinearSolver
+{
+protected:
+	int maxiter;					///< Max number of iterations
+	double tol;						///< Tolerance
+
+public:
+	IterativeSolver(const UMesh2dh *const mesh)
+		: LinearSolver(mesh)
+	{ }
+
+	/// Set tolerance and max iterations
+	void setParams(const double toler, const int maxits) {
+		maxiter = maxits; tol = toler;
+	}
 
 	virtual ~IterativeSolver()
 	{ }
 };
 
-/// Base class for matrix-free iterative solvers of AF-type
-/** A FluxFunction object allows us to compute inviscid flux corresponding to a given state vector.
- * This is used to compute the action of the lower/upper parts of the (approximate) Jacobian on a given vector.
- * Adapted from reference: 
- * H. Luo, D. Sharov, J.D. Baum, R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Intl. Journal of Computational Fluid Dynamics Vol 14, No 4, pp 253-270. 2001.
+/// Iterative solver in which the LHS is stored in a block D,L,U format
+/** The template parameter nvars is the block size we want to use.
+ * In a finite volume setting, the natural choice is the number of physical variables
+ * or the number of PDEs in the system.
  */
-class MatrixFreeIterativeSolver : public IterativeSolver
+template <short nvars>
+class IterativeBlockSolver : public IterativeSolver
 {
 protected:
-	const Flux* const invf;
-	const amat::Matrix<a_real>* const diag;			///< Diagonal blocks
-	const amat::Matrix<int>* const pa;					///< permuation array of diag after LU factorization
-	const amat::Matrix<a_real>* const lambdaij;		///< Eigenvalue part of the Jacobian
-	const amat::Matrix<a_real>* const elemflux;		///< Flux corresponding to the state at which Jacobian is to be computed
-	const amat::Matrix<a_real>* const u;				///< state at which Jacobian is to be computed
+	Matrix<a_real,nvars,nvars,RowMajor> * D;					///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* L;				///< `Lower' blocks of LHS
+	const Matrix<a_real,nvars,nvars,RowMajor>* U;				///< `Upper' blocks of LHS
+	double walltime;
+	double cputime;
+
 public:
-	MatrixFreeIterativeSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const Flux* const inviscid_flux,
-			const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij, const amat::Matrix<a_real>* const elem_flux,
-			const amat::Matrix<a_real>* const unk)
-		: IterativeSolver(num_vars, mesh, residual), invf(inviscid_flux), diag(diagonal_blocks), pa(perm), lambdaij(lambda_ij), elemflux(elem_flux), u(unk)
-	{
+	IterativeBlockSolver(const UMesh2dh* const mesh);
+
+	/// Sets D,L,U
+	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+
+	/// Solves the linear system
+	/** \param[in] res The right hand side vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
+	 * \param [in|out] du Contains the solution in the same format as res on exit.
+	 * \return Returns the number of solver iterations performed
+	 */
+	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
+
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
 	}
-	
-	virtual void compute_update(amat::Matrix<a_real>* const deltau) = 0;
 };
 
-/// Matrix-free SSOR solver
-/** Adapted from reference: 
- * H. Luo, D. Sharov, J.D. Baum and R. Loehner. "On the Computation of Compressible Turbulent Flows on Unstructured Grids". Internation Journal of Computational Fluid Dynamics Vol14, No 4, pp 253-270.
- * 2001.
+/// Full matrix storage version of the (point) symmetric Gauss-Seidel solver
+template <short nvars>
+class PointSGS_Relaxation : public IterativeBlockSolver<nvars>
+{
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+
+	const int thread_chunk_size;
+
+public:
+	PointSGS_Relaxation(const UMesh2dh* const mesh);
+
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+};
+
+/// Full matrix storage version of the block symmetric Gauss-Seidel solver
+template <short nvars>
+class BlockSGS_Relaxation : public IterativeBlockSolver<nvars>
+{
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+
+	const int thread_chunk_size;
+
+public:
+	BlockSGS_Relaxation(const UMesh2dh* const mesh);
+
+	/// Sets D,L,U and inverts each D
+	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+};
+
+/// Asynchronous block ILU defect-correction solver
+/** Since this is a defect-correction type iteration, we need to have access to the original matrix.
+ * Thus we need to store the LU-factored blocks separately.
  */
-class SSOR_MFSolver : public MatrixFreeIterativeSolver
+template <short nvars>
+class ABILU : public IterativeBlockSolver<nvars>
 {
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
 	
-	amat::Matrix<a_real> f1;
-	amat::Matrix<a_real> f2;
-	amat::Matrix<a_real> uelpdu;
-	amat::Matrix<a_real> elemres;
-	const double w;								///< Over-relaxation factor
-	a_int ielem, jelem, iface;
-	a_real s, sum;
-	a_real n[NDIM];
-	int jfa;
-	int ivar;
-	a_real lambda;
-	
-public:
+	Matrix<a_real,nvars,nvars,RowMajor> * luD;
+	Matrix<a_real,nvars,nvars,RowMajor> * luL;
+	Matrix<a_real,nvars,nvars,RowMajor> * luU;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
 
-	SSOR_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const Flux* const inviscid_flux,
-			const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij, const amat::Matrix<a_real>* const elem_flux,
-			const amat::Matrix<a_real>* const unk, const double omega);
+	const unsigned short nbuildsweeps;
+	const unsigned short napplysweeps;
+	bool start;										///< True until 1st call to setLHS
 
-	/// Carries out a single step (one forward followed by one backward sweep) of SSOR and stores the correction in the argument.
-	/** \note NOTE: Make sure deltau is an array of length nelem of type Matrix<a_real>(nvars,1).
-	 */
-	void compute_update(amat::Matrix<a_real>* const deltau);
-};
-
-/// Block Jacobi solver
-class BJ_MFSolver : public MatrixFreeIterativeSolver
-{
-	
-	amat::Matrix<a_real> f1;
-	amat::Matrix<a_real> f2;
-	amat::Matrix<a_real> uelpdu;
-	amat::Matrix<a_real> elemres;
-	const double w;								///< Over-relaxation factor
-	a_int ielem, jelem, iface;
-	a_real s, sum;
-	a_real n[NDIM];
-	int jfa;
-	int ivar;
-	a_real lambda;
-	
-public:
-
-	BJ_MFSolver(const int num_vars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, const Flux* const inviscid_flux,
-			const amat::Matrix<a_real>* const diagonal_blocks, const amat::Matrix<int>* const perm, const amat::Matrix<a_real>* const lambda_ij, const amat::Matrix<a_real>* const elem_flux,
-			const amat::Matrix<a_real>* const unk, const double omega);
-
-	/// Carries out a single step (one forward followed by one backward sweep) of SSOR and stores the correction in the argument.
-	/** \note NOTE: Make sure deltau is an array of length nelem of type Matrix<a_real>(nvars,1).
-	 */
-	void compute_update(amat::Matrix<a_real>* const deltau);
-};
-
-/// Full matrix storage version of the SSOR solver
-class SSOR_Solver : public IterativeSolver
-{
-	const amat::Matrix<a_real>* const D;
-	const amat::Matrix<int>* const Dpa;
-	const amat::Matrix<a_real>* const U;
-	const amat::Matrix<a_real>* const L;
-	const double w;
-	amat::Matrix<a_real> f1;
-	amat::Matrix<a_real> f2;
-	a_int i, j, ielem, jelem, iface;
+	const unsigned int thread_chunk_size;
 
 public:
-	SSOR_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
-			const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
-			const double omega);
+	ABILU(const UMesh2dh* const mesh, const unsigned short n_buildsweeps, const unsigned short n_applysweeps);
 
-	void compute_update(amat::Matrix<a_real>* const deltau);
-};
-
-/// Full matrix storage version of the BJ solver
-class BJ_Solver : public IterativeSolver
-{
-	const amat::Matrix<a_real>* const D;
-	const amat::Matrix<int>* const Dpa;
-	const double w;
+	/// Sets D,L,U and computes the ILU factorization
+	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 	
-	amat::Matrix<a_real> f1;
-	amat::Matrix<a_real> f2;
-	a_int ielem, jelem, iface;
-	a_real s, sum;
-	a_real n[NDIM];
-	int jfa;
-	int ivar;
+	/// Solves Mz=r, where M is the preconditioner
+	int apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z);
 
-public:
-	BJ_Solver(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
-			const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
-			const double omega);
-
-	void compute_update(amat::Matrix<a_real>* const deltau);
-};
-
-class BJ_Relaxation : public IterativeSolver
-{
-	const amat::Matrix<a_real>* const D;
-	const amat::Matrix<int>* const Dpa;
-	const amat::Matrix<a_real>* const U;
-	const amat::Matrix<a_real>* const L;
-	const double w;
-	
-	amat::Matrix<a_real> f1;
-	amat::Matrix<a_real> f2;
-	a_int ielem, jelem, iface;
-	a_real s, sum;
-	a_real n[NDIM];
-	int jfa;
-	int ivar;
-
-public:
-	BJ_Relaxation(const int nvars, const UMesh2dh* const mesh, const amat::Matrix<a_real>* const residual, 
-			const amat::Matrix<a_real>* const diag, const amat::Matrix<int>* const diagperm, const amat::Matrix<a_real>* const lower, const amat::Matrix<a_real>* const upper,
-			const double omega);
-
-	void compute_update(amat::Matrix<a_real>* const deltau);
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
 }

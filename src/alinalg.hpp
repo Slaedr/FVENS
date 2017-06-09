@@ -44,6 +44,137 @@ void DLU_gaxpby(const UMesh2dh *const m,
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b, const a_real p, const a_real q,
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 
+/// Preconditioner, ie, performs one iteration to solve Mz=r
+template <short nvars>
+class DLUPreconditioner
+{
+protected:
+	const UMesh2dh *const m;
+	Matrix<a_real,nvars,nvars,RowMajor> * D;					///< Diagonal blocks of LHS matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* L;				///< `Lower' blocks of LHS
+	const Matrix<a_real,nvars,nvars,RowMajor>* U;				///< `Upper' blocks of LHS
+	double walltime;
+	double cputime;
+
+public:
+	DLUPreconditioner(const UMesh2dh *const mesh)
+		: m(mesh)
+	{ }
+	
+	virtual ~DLUPreconditioner();
+	
+	/// Sets D,L,U and computes the preconditioning matrix M
+	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper) = 0;
+
+	/// Applies the preconditioner Mz=r
+	/** \param[in] r The right hand side vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
+	 * \param [in|out] z Contains the solution in the same format as r on exit.
+	 */
+	virtual void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z) = 0;
+
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
+	}
+};
+
+/// Do-nothing preconditioner
+template <short nvars>
+class NoPrec : public DLUPreconditioner<nvars>
+{
+public:
+	NoPrec(const UMesh2dh* const mesh) : DLUPreconditioner<nvars>(mesh)
+	{ }
+	
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+	{ }
+};
+
+/// (point) symmetric Gauss-Seidel preconditioner
+template <short nvars>
+class PointSGS : public DLUPreconditioner<nvars>
+{
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+
+	const int thread_chunk_size;
+
+public:
+	PointSGS(const UMesh2dh* const mesh);
+
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+};
+
+/// Block symmetric Gauss-Seidel preconditioner
+template <short nvars>
+class BlockSGS : public DLUPreconditioner<nvars>
+{
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+
+	const int thread_chunk_size;
+
+public:
+	BlockSGS(const UMesh2dh* const mesh);
+
+	/// Sets D,L,U and inverts each D
+	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+};
+
+/// Asynchronous block ILU defect-correction solver
+/** Since this is a defect-correction type iteration, we need to have access to the original matrix.
+ * Thus we need to store the LU-factored blocks separately.
+ */
+template <short nvars>
+class BILU0 : public DLUPreconditioner<nvars>
+{
+	using LinearSolver::m;
+	using IterativeSolver::maxiter;
+	using IterativeSolver::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+	
+	Matrix<a_real,nvars,nvars,RowMajor> * luD;
+	Matrix<a_real,nvars,nvars,RowMajor> * luL;
+	Matrix<a_real,nvars,nvars,RowMajor> * luU;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
+
+	const unsigned short nbuildsweeps;
+	const unsigned short napplysweeps;
+	bool start;										///< True until 1st call to setLHS
+
+	const unsigned int thread_chunk_size;
+
+public:
+	BILU0(const UMesh2dh* const mesh, const unsigned short n_buildsweeps, const unsigned short n_applysweeps);
+
+	/// Sets D,L,U and computes the ILU factorization
+	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+	
+	/// Solves Mz=r, where M is the preconditioner
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z);
+};
+
 /// Base class for a linear solver
 class LinearSolver
 {
@@ -89,14 +220,20 @@ template <short nvars>
 class IterativeBlockSolver : public IterativeSolver
 {
 protected:
-	Matrix<a_real,nvars,nvars,RowMajor> * D;					///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
-	const Matrix<a_real,nvars,nvars,RowMajor>* L;				///< `Lower' blocks of LHS
-	const Matrix<a_real,nvars,nvars,RowMajor>* U;				///< `Upper' blocks of LHS
+	Matrix<a_real,nvars,nvars,RowMajor> * D;				///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* L;			///< `Lower' blocks of LHS
+	const Matrix<a_real,nvars,nvars,RowMajor>* U;			///< `Upper' blocks of LHS
 	double walltime;
 	double cputime;
 
+	/// Preconditioner context
+	DLUPreconditioner<nvars>* prec;
+
 public:
-	IterativeBlockSolver(const UMesh2dh* const mesh);
+	IterativeBlockSolver(const UMesh2dh* const mesh, std::string precond, 
+			const unsigned short param1, const unsigned short param2, const double param3);
+
+	virtual IterativeBlockSolver();
 
 	/// Sets D,L,U
 	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
@@ -115,91 +252,17 @@ public:
 	}
 };
 
-/// Full matrix storage version of the (point) symmetric Gauss-Seidel solver
+/// A solver that just applies the preconditioner repeatedly
 template <short nvars>
-class PointSGS_Relaxation : public IterativeBlockSolver<nvars>
+class RichardsonSolver : public IterativeBlockSolver
 {
-	using LinearSolver::m;
-	using IterativeSolver::maxiter;
-	using IterativeSolver::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
-
-	const int thread_chunk_size;
-
 public:
-	PointSGS_Relaxation(const UMesh2dh* const mesh);
+	RichardsonSolver(const UMesh2dh *const mesh, std::string precond, 
+			const unsigned short param1, const unsigned short param2, const double param3);
 
 	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
-/// Full matrix storage version of the block symmetric Gauss-Seidel solver
-template <short nvars>
-class BlockSGS_Relaxation : public IterativeBlockSolver<nvars>
-{
-	using LinearSolver::m;
-	using IterativeSolver::maxiter;
-	using IterativeSolver::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
-
-	const int thread_chunk_size;
-
-public:
-	BlockSGS_Relaxation(const UMesh2dh* const mesh);
-
-	/// Sets D,L,U and inverts each D
-	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
-			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
-
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
-};
-
-/// Asynchronous block ILU defect-correction solver
-/** Since this is a defect-correction type iteration, we need to have access to the original matrix.
- * Thus we need to store the LU-factored blocks separately.
- */
-template <short nvars>
-class ABILU : public IterativeBlockSolver<nvars>
-{
-	using LinearSolver::m;
-	using IterativeSolver::maxiter;
-	using IterativeSolver::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
-	
-	Matrix<a_real,nvars,nvars,RowMajor> * luD;
-	Matrix<a_real,nvars,nvars,RowMajor> * luL;
-	Matrix<a_real,nvars,nvars,RowMajor> * luU;
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
-
-	const unsigned short nbuildsweeps;
-	const unsigned short napplysweeps;
-	bool start;										///< True until 1st call to setLHS
-
-	const unsigned int thread_chunk_size;
-
-public:
-	ABILU(const UMesh2dh* const mesh, const unsigned short n_buildsweeps, const unsigned short n_applysweeps);
-
-	/// Sets D,L,U and computes the ILU factorization
-	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
-			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
-	
-	/// Solves Mz=r, where M is the preconditioner
-	int apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z);
-
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
-};
 
 }
 #endif
