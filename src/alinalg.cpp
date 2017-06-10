@@ -95,9 +95,8 @@ void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const 
 /* z <- pz + qx.
  */
 template<short nvars>
-inline void block_axpby(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, 
-		const a_real p, const a_real q,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+inline void block_axpby(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++) {
@@ -108,9 +107,12 @@ inline void block_axpby(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dyn
 /* Computes z = p b + q Ax */
 template<short nvars>
 void DLU_gaxpby(const UMesh2dh *const m, 
-	const Matrix<a_real,nvars,nvars,RowMajor> *const D, const Matrix<a_real,nvars,nvars,RowMajor> *const L, const Matrix<a_real,nvars,nvars,RowMajor> *const U,
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b, const a_real p, const a_real q,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+		const a_real p, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b,
+		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -154,123 +156,88 @@ int PointSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __rest
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-	a_real resnorm = 100.0, bnorm = 0;
-	int step = 0;
-	// we need an extra array solely to measure convergence
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> uold(m->gnelem(),nvars);
-
-	// norm of RHS
-#pragma omp parallel for reduction(+:bnorm) default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		bnorm += res.row(iel).squaredNorm();
-	}
-	bnorm = std::sqrt(bnorm);
-
-	while(resnorm/bnorm > tol && step < maxiter)
-	{
 #pragma omp parallel default(shared)
+	{
+#pragma omp for schedule(dynamic, thread_chunk_size)
+		for(a_int ivar = 0; ivar < nvars*m->gnelem(); ivar++) 
 		{
-#pragma omp for schedule(dynamic, thread_chunk_size)
-			for(a_int ivar = 0; ivar < nvars*m->gnelem(); ivar++) 
-			{
-				a_int iel = ivar / nvars;
-				int i = ivar % nvars;
-				
-				uold(iel,i) = z(iel,i);
-				a_real inter = 0;
-
-				for(int j = 0; j < i; j++)
-					inter += D[iel](i,j)*z(iel,j);
-				for(int j = i+1; j < nvars; j++)
-					inter += D[iel](i,j)*z(iel,j);
-
-				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
-				{
-					a_int face = m->gelemface(iel,ifael) - m->gnbface();
-					a_int nbdelem = m->gesuel(iel,ifael);
-
-					if(nbdelem < m->gnelem())
-					{
-						if(nbdelem > iel) {
-							// upper
-							for(int j = 0; j < nvars; j++)
-								inter += U[face](i,j) * z(nbdelem,j);
-						}
-						else {
-							// lower
-							for(int j = 0; j < nvars; j++)
-								inter += L[face](i,j) * z(nbdelem,j);
-						}
-					}
-				}
-				du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
-			}
-
-#pragma omp barrier
+			a_int iel = ivar / nvars;
+			int i = ivar % nvars;
 			
-			// backward sweep
-#pragma omp for schedule(dynamic, thread_chunk_size)
-			for(a_int ivar = nvars*m->gnelem()-1; ivar >= 0; ivar--)
+			uold(iel,i) = z(iel,i);
+			a_real inter = 0;
+
+			for(int j = 0; j < i; j++)
+				inter += D[iel](i,j)*z(iel,j);
+			for(int j = i+1; j < nvars; j++)
+				inter += D[iel](i,j)*z(iel,j);
+
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				a_int iel = ivar/nvars;
-				int i = ivar%nvars;
-				//std::cout << iel << " " << i << std::endl;
-				
-				a_real inter = 0;
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
 
-				for(int j = 0; j < i; j++)
-					inter += D[iel](i,j)*z(iel,j);
-				for(int j = i+1; j < nvars; j++)
-					inter += D[iel](i,j)*z(iel,j);
-
-				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+				if(nbdelem < m->gnelem())
 				{
-					a_int face = m->gelemface(iel,ifael) - m->gnbface();
-					a_int nbdelem = m->gesuel(iel,ifael);
-
-					if(nbdelem < m->gnelem())
-					{
-						if(nbdelem > iel) {
-							// upper
-							for(int j = 0; j < nvars; j++)
-								inter += U[face](i,j) * z(nbdelem,j);
-						}
-						else {
-							// lower
-							for(int j = 0; j < nvars; j++)
-								inter += L[face](i,j) * z(nbdelem,j);
-						}
+					if(nbdelem > iel) {
+						// upper
+						for(int j = 0; j < nvars; j++)
+							inter += U[face](i,j) * z(nbdelem,j);
+					}
+					else {
+						// lower
+						for(int j = 0; j < nvars; j++)
+							inter += L[face](i,j) * z(nbdelem,j);
 					}
 				}
-				du(iel,i) = 1.0/D[iel](i,i) * (-res(iel,i) - inter);
 			}
+			du(iel,i) = 1.0/D[iel](i,i) * (r(iel,i) - inter);
+		}
 
 #pragma omp barrier
+		
+		// backward sweep
+#pragma omp for schedule(dynamic, thread_chunk_size)
+		for(a_int ivar = nvars*m->gnelem()-1; ivar >= 0; ivar--)
+		{
+			a_int iel = ivar/nvars;
+			int i = ivar%nvars;
+			//std::cout << iel << " " << i << std::endl;
+			
+			a_real inter = 0;
 
-			/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
-			 * to measure convergence.
-			 */
-			resnorm = 0;
-#pragma omp for reduction(+:resnorm)
-			for(int iel = 0; iel < m->gnelem(); iel++)
+			for(int j = 0; j < i; j++)
+				inter += D[iel](i,j)*z(iel,j);
+			for(int j = i+1; j < nvars; j++)
+				inter += D[iel](i,j)*z(iel,j);
+
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				// compute norm
-				resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				if(nbdelem < m->gnelem())
+				{
+					if(nbdelem > iel) {
+						// upper
+						for(int j = 0; j < nvars; j++)
+							inter += U[face](i,j) * z(nbdelem,j);
+					}
+					else {
+						// lower
+						for(int j = 0; j < nvars; j++)
+							inter += L[face](i,j) * z(nbdelem,j);
+					}
+				}
 			}
+			du(iel,i) = 1.0/D[iel](i,i) * (r(iel,i) - inter);
 		}
-		resnorm = std::sqrt(resnorm);
-
-		step++;
 	}
-
-	//std::cout << "   PointSGS: Number of steps = " << step << ", rel res = " << resnorm/bnorm << std::endl;
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	return step;
 }
 
 template <short nvars>
@@ -301,28 +268,14 @@ void BlockSGS<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, c
 }
 
 template <short nvars>
-int BlockSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
+void BlockSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-	a_real resnorm = 100.0, bnorm = 0;
-	int step = 0;
-	// we need an extra array solely to measure convergence
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> uold(m->gnelem(),nvars);
-
-	// norm of RHS
-#pragma omp parallel for reduction(+:bnorm) default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		bnorm += res.row(iel).squaredNorm();
-	}
-	bnorm = std::sqrt(bnorm);
-
-	while(resnorm/bnorm > tol && step < maxiter)
-	{
+	for(unsigned isweep = 0; isweep < napplysweeps; isweep++)
 #pragma omp parallel default(shared)
 		{
 #pragma omp for schedule(dynamic, thread_chunk_size)
@@ -347,14 +300,15 @@ int BlockSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __rest
 						}
 					}
 				}
-				du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
+				du.row(iel) = D[iel]*(r.row(iel) - inter).transpose();
 			}
 
 #pragma omp barrier
 			
 			// backward sweep
 #pragma omp for schedule(dynamic, thread_chunk_size)
-			for(int iel = m->gnelem()-1; iel >= 0; iel--) {
+			for(int iel = m->gnelem()-1; iel >= 0; iel--) 
+			{
 				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
 				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 				{
@@ -373,32 +327,14 @@ int BlockSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __rest
 						}
 					}
 				}
-				du.row(iel) = D[iel]*(-res.row(iel) - inter).transpose();
-			}
-
-#pragma omp barrier
-
-			/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
-			 * to measure convergence.
-			 */
-			resnorm = 0;
-#pragma omp for reduction(+:resnorm)
-			for(int iel = 0; iel < m->gnelem(); iel++)
-			{
-				// compute norm
-				resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
+				du.row(iel) = D[iel]*(r.row(iel) - inter).transpose();
 			}
 		}
-		resnorm = std::sqrt(resnorm);
-
-		step++;
-	}
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	return step;
 }
 
 template <short nvars>
@@ -600,51 +536,6 @@ void BILU0<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restri
 }
 
 template <short nvars>
-int BILU0<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ rres, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ rdu)
-{
-	struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
-
-	a_real resnorm = 100.0, bnorm = 0;
-	int step = 0;
-	// we need an extra array solely to measure convergence
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> uold(m->gnelem(),nvars);
-
-	// norm of RHS
-#pragma omp parallel for reduction(+:bnorm) default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		bnorm += res.row(iel).squaredNorm();
-	}
-	bnorm = std::sqrt(bnorm);
-
-	while(resnorm/bnorm > tol && step < maxiter)
-	{
-		/** Computes the `preconditioned' residual norm \f$ x^{n+1}-x^n \f$
-		 * to measure convergence.
-		 */
-		resnorm = 0;
-#pragma omp for reduction(+:resnorm)
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			// compute norm
-			resnorm += (du.row(iel) - uold.row(iel)).squaredNorm();
-		}
-		resnorm = std::sqrt(resnorm);
-
-		step++;
-	}
-	
-	gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
-	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	return step;
-}
-
-template <short nvars>
 IterativeBlockSolver<nvars>::IterativeBlockSolver(const UMesh2dh* const mesh, std::string precond,
 			const unsigned short param1, const unsigned short param2, const double param3)
 	: IterativeSolver(mesh)
@@ -689,12 +580,62 @@ RichardsonSolver<nvars>::RichardsonSolver(const UMesh2dh *const mesh, std::strin
 	: IterativeBlockSolver<nvars>(mesh, precond, param1, param2, param3)
 { }
 
-int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+
+template <short nvars>
+int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
+{
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
+	a_real resnorm = 100.0, bnorm = 0;
+	int step = 0;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(),nvars);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(),nvars);
+
+	// norm of RHS
+#pragma omp parallel for reduction(+:bnorm) default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		bnorm += res.row(iel).squaredNorm();
+	}
+	bnorm = std::sqrt(bnorm);
+
+	while(step < maxiter)
+	{
+		DLU_gaxpby<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
+
+		resnorm = 0;
+#pragma omp for reduction(+:resnorm)
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			// compute norm
+			resnorm += s.row(iel).squaredNorm();
+		}
+		resnorm = std::sqrt(resnorm);
+		if(resnorm/bnorm < tol) break;
+
+		prec->apply(s, ddu);
+
+		block_axpby<nvars>(m, 1.0, du, 1.0, ddu);
+
+		step++;
+	}
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	return step;
+}
 
 
 template class PointSGS<NVARS>;
 template class BlockSGS<NVARS>;
+template class RichardsonSolver<NVARS>;
 template class PointSGS<1>;
 template class BlockSGS<1>;
+template class RichardsonSolver<1>;
 
 }

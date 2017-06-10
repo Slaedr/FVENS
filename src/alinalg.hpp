@@ -31,17 +31,19 @@ void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const 
 /** z <- pz + qx.
  */
 template<short nvars>
-void block_axpby(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const a_real p, const a_real q,
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+void block_axpby(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
 
 /// Computes a sparse gaxpy when the matrix is passed in block DLU storage
 /** Specifically, computes z = pb+qAx
  */
 template<short nvars>
 void DLU_gaxpby(const UMesh2dh *const m, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const upper,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b, const a_real p, const a_real q,
+		const a_real p, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b,
+		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 
 /// Preconditioner, ie, performs one iteration to solve Mz=r
@@ -239,8 +241,8 @@ public:
 	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
-	/// Solves the linear system
-	/** \param[in] res The right hand side vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
+	/// Solves the linear system A du = -r
+	/** \param[in] res The residual vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
 	 * \return Returns the number of solver iterations performed
 	 */
