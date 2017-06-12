@@ -140,8 +140,10 @@ void DLU_gaxpby(const UMesh2dh *const m,
 }
 
 template <short nvars>
-PointSGS<nvars>::PointSGS(const UMesh2dh* const mesh) : DLUPreconditioner<nvars>(mesh), thread_chunk_size{500}
+PointSGS<nvars>::PointSGS(const UMesh2dh* const mesh, const unsigned short n_as) 
+	: DLUPreconditioner<nvars>(mesh), napplysweeps{n_as}, thread_chunk_size{500}
 {
+	y = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
 }
 
 template <short nvars>
@@ -156,53 +158,48 @@ int PointSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __rest
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-#pragma omp parallel default(shared)
+	// forward sweep (D+L)y = r
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{
-#pragma omp for schedule(dynamic, thread_chunk_size)
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int ivar = 0; ivar < nvars*m->gnelem(); ivar++) 
 		{
 			a_int iel = ivar / nvars;
 			int i = ivar % nvars;
 			
-			uold(iel,i) = z(iel,i);
 			a_real inter = 0;
 
 			for(int j = 0; j < i; j++)
-				inter += D[iel](i,j)*z(iel,j);
+				inter += D[iel](i,j)*y(iel,j);
 			for(int j = i+1; j < nvars; j++)
-				inter += D[iel](i,j)*z(iel,j);
+				inter += D[iel](i,j)*y(iel,j);
 
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
 				a_int nbdelem = m->gesuel(iel,ifael);
 
-				if(nbdelem < m->gnelem())
-				{
-					if(nbdelem > iel) {
-						// upper
-						for(int j = 0; j < nvars; j++)
-							inter += U[face](i,j) * z(nbdelem,j);
-					}
-					else {
-						// lower
-						for(int j = 0; j < nvars; j++)
-							inter += L[face](i,j) * z(nbdelem,j);
-					}
-				}
+				// lower
+				if(nbdelem < iel)
+					for(int j = 0; j < nvars; j++)
+						inter += L[face](i,j) * y(nbdelem,j);
 			}
-			du(iel,i) = 1.0/D[iel](i,i) * (r(iel,i) - inter);
+			y(iel,i) = 1.0/D[iel](i,i) * (r(iel,i) - inter);
 		}
+	}
 
-#pragma omp barrier
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+		y.row(iel) = (y.row(iel)*D[iel].transpose()).eval();
 		
-		// backward sweep
-#pragma omp for schedule(dynamic, thread_chunk_size)
+	// backward sweep (D+U)z = Dy
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	{
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int ivar = nvars*m->gnelem()-1; ivar >= 0; ivar--)
 		{
 			a_int iel = ivar/nvars;
 			int i = ivar%nvars;
-			//std::cout << iel << " " << i << std::endl;
 			
 			a_real inter = 0;
 
@@ -230,7 +227,7 @@ int PointSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __rest
 					}
 				}
 			}
-			du(iel,i) = 1.0/D[iel](i,i) * (r(iel,i) - inter);
+			z(iel,i) = 1.0/D[iel](i,i) * (y(iel,i) - inter);
 		}
 	}
 	
@@ -241,12 +238,20 @@ int PointSGS<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __rest
 }
 
 template <short nvars>
-BlockSGS<nvars>::BlockSGS(const UMesh2dh* const mesh) : DLUPreconditioner<nvars>(mesh), thread_chunk_size{200}
+BlockSGS<nvars>::BlockSGS(const UMesh2dh* const mesh, const unsigned short n_as) 
+	: DLUPreconditioner<nvars>(mesh), napplysweeps{n_as}, thread_chunk_size{200}
 {
+	luD = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
+	y = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
 }
 
 template <short nvars>
-void BlockSGS<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+BlockSGS<nvars>::~BlockSGS() {
+	delete [] luD;
+}
+
+template <short nvars>
+void BlockSGS<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
 	struct timeval time1, time2;
@@ -259,7 +264,7 @@ void BlockSGS<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, c
 	D = diago;
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
-		D[iel] = D[iel].inverse().eval();
+		luD[iel] = D[iel].inverse();
 
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
@@ -275,61 +280,45 @@ void BlockSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __res
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-	for(unsigned isweep = 0; isweep < napplysweeps; isweep++)
-#pragma omp parallel default(shared)
+	// forward sweep (D+L)y = r
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	{
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
+		for(int iel = 0; iel < m->gnelem(); iel++) 
 		{
-#pragma omp for schedule(dynamic, thread_chunk_size)
-			for(int iel = 0; iel < m->gnelem(); iel++) 
+			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			for(a_int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
-				uold.row(iel) = z.row(iel);
-				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
-				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
-				{
-					a_int face = m->gelemface(iel,ifael) - m->gnbface();
-					a_int nbdelem = m->gesuel(iel,ifael);
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
 
-					if(nbdelem < m->gnelem())
-					{
-						if(nbdelem > iel) {
-							// upper
-							inter += z.row(nbdelem)*U[face].transpose();
-						}
-						else {
-							// lower
-							inter += z.row(nbdelem)*L[face].transpose();
-						}
-					}
-				}
-				du.row(iel) = D[iel]*(r.row(iel) - inter).transpose();
+				// lower
+				if(nbdelem < iel)
+					inter += y.row(nbdelem)*L[face].transpose();
 			}
-
-#pragma omp barrier
-			
-			// backward sweep
-#pragma omp for schedule(dynamic, thread_chunk_size)
-			for(int iel = m->gnelem()-1; iel >= 0; iel--) 
-			{
-				Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
-				for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
-				{
-					a_int face = m->gelemface(iel,ifael) - m->gnbface();
-					a_int nbdelem = m->gesuel(iel,ifael);
-
-					if(nbdelem < m->gnelem())
-					{
-						if(nbdelem > iel) {
-							// upper
-							inter += z.row(nbdelem)*U[face].transpose();
-						}
-						else {
-							// lower
-							inter += z.row(nbdelem)*L[face].transpose();
-						}
-					}
-				}
-				du.row(iel) = D[iel]*(r.row(iel) - inter).transpose();
-			}
+			y.row(iel) = luD[iel]*(r.row(iel) - inter).transpose();
 		}
+	}
+
+	// backward sweep (D+U)z = Dy
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	{
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
+		for(a_int iel = m->gnelem()-1; iel >= 0; iel--) 
+		{
+			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				// upper
+				if(nbdelem > iel && nbdelem < m->gnelem())
+					inter += z.row(nbdelem)*U[face].transpose();
+			}
+			z.row(iel) = luD[iel]*(y.row(iel)*D[iel].transpose() - inter).transpose();
+		}
+	}
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
@@ -356,6 +345,8 @@ BILU0<nvars>::~BILU0()
 	delete [] luU;
 }
 
+/** TODO: We might need some kind of scaling of the diagonal blocks.
+ */
 template <short nvars>
 void BILU0<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
@@ -390,7 +381,7 @@ void BILU0<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, cons
 			/* Get lists of faces corresponding to blocks in this block-row and
 			 * sort by element index.
 			 * We do all this circus as we want to carry out factorization in
-			 * a `Gaussian elimination' ordering, specifically in this case,
+			 * a `Gaussian elimination' ordering; specifically in this case,
 			 * the lexicographic ordering.
 			 */
 			
@@ -432,8 +423,10 @@ void BILU0<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, cons
 					// first, find U_kj and see if it is non zero
 					a_int otherface = -1;
 					for(int ifael = 0; ifael < m->gnfael(lowers[k].elem); ifael++)
-						if(lowers[j].elem == m->gesuel(lowers[k].elem,ifael))
+						if(lowers[j].elem == m->gesuel(lowers[k].elem,ifael)) {
 							otherface = m->gelemface(lowers[k].elem,ifael);
+							break;
+						}
 
 					// if it's non zero, add its contribution
 					if(otherface != -1)	{
@@ -460,11 +453,13 @@ void BILU0<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, cons
 
 				for(int k = 0; k < lowers.size(); k++)
 				{
-					// first, find U_kj and see if it is non zero
+					// first, find U_kj
 					a_int otherface = -1;
 					for(int ifael = 0; ifael < m->gnfael(lowers[k].elem); ifael++)
-						if(lowers[j].elem == m->gesuel(lowers[k].elem,ifael))
+						if(uppers[j].elem == m->gesuel(lowers[k].elem,ifael)) {
 							otherface = m->gelemface(lowers[k].elem,ifael);
+							break;
+						}
 
 					// if it's non zero, add its contribution
 					if(otherface != -1)	{
@@ -487,9 +482,9 @@ void BILU0<nvars>::setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, cons
 template <short nvars>
 void BILU0<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
 {
-#pragma omp parallel default(shared)
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{
-#pragma omp for schedule(dynamic, thread_chunk_size)
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(int iel = 0; iel < m->gnelem(); iel++) 
 		{
 			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
@@ -498,20 +493,17 @@ void BILU0<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restri
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
 				a_int nbdelem = m->gesuel(iel,ifael);
 
-				if(nbdelem < m->gnelem())
-				{
-					if(nbdelem < iel) {
-						// lower
-						inter += y.row(nbdelem)*luL[face].transpose();
-					}
-				}
+				// lower
+				if(nbdelem < iel)
+					inter += y.row(nbdelem)*luL[face].transpose();
 			}
 			y.row(iel) = r.row(iel) - inter;
 		}
+	}
 
-#pragma omp barrier
-		
-#pragma omp for schedule(dynamic, thread_chunk_size)
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	{	
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(int iel = m->gnelem()-1; iel >= 0; iel--) 
 		{
 			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
@@ -520,18 +512,13 @@ void BILU0<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restri
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
 				a_int nbdelem = m->gesuel(iel,ifael);
 
-				if(nbdelem < m->gnelem())
-				{
-					if(nbdelem > iel) {
-						// upper
-						inter += z.row(nbdelem)*luU[face].transpose();
-					}
+				// upper
+				if(nbdelem > iel && nbdelem < m->gnelem()) {
+					inter += z.row(nbdelem)*luU[face].transpose();
 				}
 			}
-			du.row(iel) = luD[iel].inverse()*(y.row(iel) - inter).transpose();
+			z.row(iel) = luD[iel].inverse()*(y.row(iel) - inter).transpose();
 		}
-
-#pragma omp barrier
 	}
 }
 
@@ -607,7 +594,7 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 		DLU_gaxpby<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
 
 		resnorm = 0;
-#pragma omp for reduction(+:resnorm)
+#pragma omp parallel for default(shared) reduction(+:resnorm)
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
 			// compute norm
@@ -633,6 +620,7 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 
 template class PointSGS<NVARS>;
 template class BlockSGS<NVARS>;
+template class BILU0<NVARS>;
 template class RichardsonSolver<NVARS>;
 template class PointSGS<1>;
 template class BlockSGS<1>;

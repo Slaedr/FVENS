@@ -52,7 +52,7 @@ class DLUPreconditioner
 {
 protected:
 	const UMesh2dh *const m;
-	Matrix<a_real,nvars,nvars,RowMajor> * D;					///< Diagonal blocks of LHS matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* D;				///< Diagonal blocks of LHS matrix
 	const Matrix<a_real,nvars,nvars,RowMajor>* L;				///< `Lower' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* U;				///< `Upper' blocks of LHS
 	double walltime;
@@ -106,10 +106,12 @@ class PointSGS : public DLUPreconditioner<nvars>
 	using IterativeBlockSolver<nvars>::walltime;
 	using IterativeBlockSolver<nvars>::cputime;
 
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
+	const unsigned short napplysweeps;
 	const int thread_chunk_size;
 
 public:
-	PointSGS(const UMesh2dh* const mesh);
+	PointSGS(const UMesh2dh* const mesh, const unsigned short n_applysweeps);
 
 	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 };
@@ -127,10 +129,13 @@ class BlockSGS : public DLUPreconditioner<nvars>
 	using IterativeBlockSolver<nvars>::walltime;
 	using IterativeBlockSolver<nvars>::cputime;
 
+	Matrix<a_real,nvars,nvars,RowMajor> * luD;		///< Inverse of diagonal blocks
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
+	const unsigned short napplysweeps;
 	const int thread_chunk_size;
 
 public:
-	BlockSGS(const UMesh2dh* const mesh);
+	BlockSGS(const UMesh2dh* const mesh, const unsigned short n_applysweeps);
 
 	/// Sets D,L,U and inverts each D
 	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
