@@ -103,6 +103,8 @@ protected:
 	
 	bool secondOrderRequested;
 
+	bool allocflux;
+
 	/// Limiter context
 	FaceDataComputation* lim;
 	

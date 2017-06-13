@@ -136,7 +136,8 @@ void SteadyForwardEulerSolver<nvars>::solve()
 template <short nvars>
 SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver,
+		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver, std::string precond,
+		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
 	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
@@ -147,17 +148,33 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
 
-	if(linearsolver == "BSGS") {
-		linsolv = new BlockSGS_Relaxation<nvars>(m);
-		std::cout << " SteadyBackwardEulerSolver: Selecting Block SGS.\n";
+	if(precond == "PSGS") {
+		prec = new PointSGS<nvars>(mesh, napplysweeps);
+		std::cout << " SteadyBackwardEulerSolver: Selected point SGS preconditioner.\n";
 	}
-	else if(linearsolver == "PSGS") {
-		linsolv = new PointSGS_Relaxation<nvars>(m);
-		std::cout << " SteadyBackwardEulerSolver: Selecting Point SGS.\n";
+	else if(precond == "BJ") {
+		prec = new BlockJacobi<nvars>(mesh);
+		std::cout << " SteadyBackwardEulerSolver: Selected Block Jacobi preconditioner.\n";
+	}
+	else if(precond == "BSGS") {
+		prec = new BlockSGS<nvars>(mesh, napplysweeps);
+		std::cout << " SteadyBackwardEulerSolver: Selected Block SGS preconditioner.\n";
+	}
+	else if(precond == "BILU0") {
+		prec = new BILU0<nvars>(mesh, nbuildsweeps, napplysweeps);
+		std::cout << " SteadyBackwardEulerSolver: Selected Block ILU0 preconditioner.\n";
 	}
 	else {
-		std::cout << " SteadyBackwardEulerSolver: Invalid linear solver! Selecting Block SGS.\n";
-		linsolv = new BlockSGS_Relaxation<nvars>(m);
+		prec = new NoPrec<nvars>(mesh);
+		std::cout << " SteadyBackwardEulerSolver: No preconditioning will be applied.\n";
+	}
+
+	if(linearsolver == "BCGS") {
+		std::cout << " SteadyBackwardEulerSolver: Not available!\n";
+	}
+	else {
+		linsolv = new RichardsonSolver<nvars>(mesh, prec);
+		std::cout << " SteadyBackwardEulerSolver: Richardson iteration selected, ie, no acceleration.\n";
 	}
 
 	D = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
@@ -169,6 +186,7 @@ template <short nvars>
 SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 {
 	delete linsolv;
+	delete prec;
 	delete [] D;
 	delete [] U;
 	delete [] L;

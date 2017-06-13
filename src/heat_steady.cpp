@@ -24,10 +24,11 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, visflux, reconst, linsolver, timesteptype;
-	double initcfl, endcfl, tolerance, lintol, lin_relaxfactor, firstcfl, firsttolerance, diffcoeff, bvalue;
+	string dum, meshfile, outf, visflux, reconst, linsolver, timesteptype, prec;
+	double initcfl, endcfl, tolerance, lintol, firstcfl, firsttolerance, diffcoeff, bvalue;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter;
 	short inittype, usestarter;
+	unsigned short nbuildsweeps, napplysweeps;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -52,7 +53,9 @@ int main(int argc, char* argv[])
 		control >> dum; control >> lintol;
 		control >> dum; control >> linmaxiterstart;
 		control >> dum; control >> linmaxiterend;
-		control >> dum; control >> lin_relaxfactor;
+		control >> dum; control >> prec;
+		control >> dum; control >> nbuildsweeps;
+		control >> dum; control >> napplysweeps;
 	}
 	control.close();
 
@@ -97,7 +100,7 @@ int main(int argc, char* argv[])
 	
 	if(timesteptype == "IMPLICIT") {
 		SteadyBackwardEulerSolver<1> time(&m, prob, startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, firsttolerance, firstmaxiter, firstcfl);
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
 
 		// computation
 		time.solve();

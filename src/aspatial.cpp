@@ -189,27 +189,34 @@ EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string ja
 		std::cout << "  EulerFV: ! Flux scheme not available!" << std::endl;
 	
 	// set inviscid flux scheme for Jacobian
-	if(jacflux == "VANLEER")
+	allocflux = false;
+	if(jacflux == "VANLEER") {
 		jflux = new VanLeerFlux(g, &aflux);
+		allocflux = true;
+	}
 	else if(jacflux == "ROE")
 	{
 		jflux = new RoeFlux(g, &aflux);
 		std::cout << "  EulerFV: Using Roe fluxes for Jacobian." << std::endl;
+		allocflux = true;
 	}
 	else if(jacflux == "HLL")
 	{
 		jflux = new HLLFlux(g, &aflux);
 		std::cout << "  EulerFV: Using HLL fluxes for Jacobian." << std::endl;
+		allocflux = true;
 	}
 	else if(jacflux == "HLLC")
 	{
 		jflux = new HLLCFlux(g, &aflux);
 		std::cout << "  EulerFV: Using HLLC fluxes for Jacobian." << std::endl;
+		allocflux = true;
 	}
 	else if(jacflux == "LLF")
 	{
 		jflux = new LocalLaxFriedrichsFlux(g, &aflux);
 		std::cout << "  EulerFV: Using LLF fluxes for Jacobian." << std::endl;
+		allocflux = true;
 	}
 	else
 		std::cout << "  EulerFV: ! Flux scheme not available!" << std::endl;
@@ -250,7 +257,8 @@ EulerFV::~EulerFV()
 {
 	delete rec;
 	delete inviflux;
-	delete jflux;
+	if(allocflux)
+		delete jflux;
 	delete lim;
 }
 

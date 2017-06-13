@@ -63,10 +63,11 @@ public:
 		: m(mesh)
 	{ }
 	
-	virtual ~DLUPreconditioner();
+	virtual ~DLUPreconditioner()
+	{ }
 	
 	/// Sets D,L,U and computes the preconditioning matrix M
-	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper) = 0;
 
 	/// Applies the preconditioner Mz=r
@@ -89,22 +90,48 @@ public:
 	NoPrec(const UMesh2dh* const mesh) : DLUPreconditioner<nvars>(mesh)
 	{ }
 	
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+	{ }
+	
 	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
 	{ }
+};
+
+/// Block Jacobi
+template <short nvars>
+class BlockJacobi : public DLUPreconditioner<nvars>
+{
+	using DLUPreconditioner<nvars>::m;
+	using DLUPreconditioner<nvars>::D;
+	using DLUPreconditioner<nvars>::L;
+	using DLUPreconditioner<nvars>::U;
+	using DLUPreconditioner<nvars>::walltime;
+	using DLUPreconditioner<nvars>::cputime;
+
+	Matrix<a_real,nvars,nvars,RowMajor> * luD;		///< Inverse of diagonal blocks
+
+public:
+	BlockJacobi(const UMesh2dh* const mesh);
+
+	~BlockJacobi();
+	
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 };
 
 /// (point) symmetric Gauss-Seidel preconditioner
 template <short nvars>
 class PointSGS : public DLUPreconditioner<nvars>
 {
-	using LinearSolver::m;
-	using IterativeSolver::maxiter;
-	using IterativeSolver::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
+	using DLUPreconditioner<nvars>::m;
+	using DLUPreconditioner<nvars>::D;
+	using DLUPreconditioner<nvars>::L;
+	using DLUPreconditioner<nvars>::U;
+	using DLUPreconditioner<nvars>::walltime;
+	using DLUPreconditioner<nvars>::cputime;
 
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
 	const unsigned short napplysweeps;
@@ -112,6 +139,9 @@ class PointSGS : public DLUPreconditioner<nvars>
 
 public:
 	PointSGS(const UMesh2dh* const mesh, const unsigned short n_applysweeps);
+	
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
 	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 };
@@ -120,14 +150,12 @@ public:
 template <short nvars>
 class BlockSGS : public DLUPreconditioner<nvars>
 {
-	using LinearSolver::m;
-	using IterativeSolver::maxiter;
-	using IterativeSolver::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
+	using DLUPreconditioner<nvars>::m;
+	using DLUPreconditioner<nvars>::D;
+	using DLUPreconditioner<nvars>::L;
+	using DLUPreconditioner<nvars>::U;
+	using DLUPreconditioner<nvars>::walltime;
+	using DLUPreconditioner<nvars>::cputime;
 
 	Matrix<a_real,nvars,nvars,RowMajor> * luD;		///< Inverse of diagonal blocks
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;		///< Auxiliary storage for temp vector
@@ -137,8 +165,10 @@ class BlockSGS : public DLUPreconditioner<nvars>
 public:
 	BlockSGS(const UMesh2dh* const mesh, const unsigned short n_applysweeps);
 
+	~BlockSGS();
+
 	/// Sets D,L,U and inverts each D
-	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
 	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
@@ -151,14 +181,12 @@ public:
 template <short nvars>
 class BILU0 : public DLUPreconditioner<nvars>
 {
-	using LinearSolver::m;
-	using IterativeSolver::maxiter;
-	using IterativeSolver::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
+	using DLUPreconditioner<nvars>::m;
+	using DLUPreconditioner<nvars>::D;
+	using DLUPreconditioner<nvars>::L;
+	using DLUPreconditioner<nvars>::U;
+	using DLUPreconditioner<nvars>::walltime;
+	using DLUPreconditioner<nvars>::cputime;
 	
 	Matrix<a_real,nvars,nvars,RowMajor> * luD;
 	Matrix<a_real,nvars,nvars,RowMajor> * luL;
@@ -174,8 +202,10 @@ class BILU0 : public DLUPreconditioner<nvars>
 public:
 	BILU0(const UMesh2dh* const mesh, const unsigned short n_buildsweeps, const unsigned short n_applysweeps);
 
+	~BILU0();
+
 	/// Sets D,L,U and computes the ILU factorization
-	void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 	
 	/// Solves Mz=r, where M is the preconditioner
@@ -227,23 +257,22 @@ template <short nvars>
 class IterativeBlockSolver : public IterativeSolver
 {
 protected:
-	Matrix<a_real,nvars,nvars,RowMajor> * D;				///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* D;			///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
 	const Matrix<a_real,nvars,nvars,RowMajor>* L;			///< `Lower' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* U;			///< `Upper' blocks of LHS
 	double walltime;
 	double cputime;
 
 	/// Preconditioner context
-	DLUPreconditioner<nvars>* prec;
+	DLUPreconditioner<nvars> *const prec;
 
 public:
-	IterativeBlockSolver(const UMesh2dh* const mesh, std::string precond, 
-			const unsigned short param1, const unsigned short param2, const double param3);
+	IterativeBlockSolver(const UMesh2dh* const mesh, DLUPreconditioner<nvars> *const precond);
 
-	virtual IterativeBlockSolver();
+	virtual ~IterativeBlockSolver();
 
 	/// Sets D,L,U
-	virtual void setLHS(Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
 	/// Solves the linear system A du = -r
@@ -261,11 +290,20 @@ public:
 
 /// A solver that just applies the preconditioner repeatedly
 template <short nvars>
-class RichardsonSolver : public IterativeBlockSolver
+class RichardsonSolver : public IterativeBlockSolver<nvars>
 {
+	using IterativeBlockSolver<nvars>::m;
+	using IterativeBlockSolver<nvars>::maxiter;
+	using IterativeBlockSolver<nvars>::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+	using IterativeBlockSolver<nvars>::prec;
+
 public:
-	RichardsonSolver(const UMesh2dh *const mesh, std::string precond, 
-			const unsigned short param1, const unsigned short param2, const double param3);
+	RichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond);
 
 	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };

@@ -97,6 +97,7 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
 
 	IterativeBlockSolver<nvars> * linsolv;		///< Linear solver context
+	DLUPreconditioner<nvars>* prec;				///< preconditioner context
 	Matrix<a_real,nvars,nvars,RowMajor>* D;
 	Matrix<a_real,nvars,nvars,RowMajor>* L;
 	Matrix<a_real,nvars,nvars,RowMajor>* U;
@@ -118,7 +119,8 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 public:
 	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const double lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver,
+		const double toler, const int maxits, const double lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver, std::string precond,
+		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl);
 	
 	~SteadyBackwardEulerSolver();

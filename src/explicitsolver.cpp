@@ -24,18 +24,12 @@ int main(int argc, char* argv[])
 	int maxiter, firstmaxiter;
 	short inittype, usestarter;
 
-	control >> dum;
-	control >> meshfile;
-	control >> dum;
-	control >> outf;
-	control >> dum;
-	control >> M_inf;
-	control >> dum;
-	control >> vinf;
-	control >> dum;
-	control >> alpha;
-	control >> dum;
-	control >> rho_inf;
+	control >> dum; control >> meshfile;
+	control >> dum; control >> outf;
+	control >> dum; control >> M_inf;
+	control >> dum; control >> vinf;
+	control >> dum; control >> alpha;
+	control >> dum; control >> rho_inf;
 	control >> dum; control >> inittype;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
