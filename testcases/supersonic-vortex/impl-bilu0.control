@@ -55,7 +55,7 @@ RICHARDSON
 -Linear-solver-max-iterations-end
 60
 -preconditioner
-BSGS
+BILU0
 -preconditioner-build-sweeps
 2
 -preconditioner-application-sweeps

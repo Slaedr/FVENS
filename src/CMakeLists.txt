@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 2.8)
 # The environment variable EIGEN_DIR needs to be set to the path where
 # the Eigen source directory is present.
 
+# Pass -DOMP=1 to compile with OpenMP
+# Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
+
 project (fvens)
 
 # to compile with OpenMP
@@ -22,6 +25,11 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCH
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftree-vectorizer-verbose=2")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -qopt-report=2")
+endif()
+
+if(MICKNC)
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
+	message(STATUS "Compiling for KNL")
 endif()
 
 # Eigen
