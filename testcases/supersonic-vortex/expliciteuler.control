@@ -1,5 +1,5 @@
 -mesh_file
-../testcases/supersonic-vortex/grids/quarterannulus1.msh
+../testcases/supersonic-vortex/grids/quarterannulus6.msh
 -output_file
 ../data/quarterannulus-hll-2-expl.vtu
 -M_infinity
@@ -23,9 +23,9 @@ NONE
 -time-stepping-type
 EMPLICIT
 -CFL
-0.24
+0.2
 -final-CFL(currently-ignored-for-explicit)
-0.24
+0.2
 -ramp-start-step(currently-ignored-for-explicit)
 0
 -ramp-end-step(currently-ignored-for-explicit)
@@ -33,7 +33,7 @@ EMPLICIT
 -Tolerance
 1e-5
 -Max-iterations
-900000
+5000000
 #################################################################
 -use-first-order-initial-condition
 1
