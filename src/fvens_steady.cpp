@@ -57,6 +57,8 @@ int main(int argc, char* argv[])
 		control >> dum; control >> nbuildsweeps;
 		control >> dum; control >> napplysweeps;
 	}
+	else
+		invfluxjac = invflux;
 	control.close(); 
 
 	// Set up mesh
