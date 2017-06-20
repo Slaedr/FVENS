@@ -34,11 +34,20 @@ template<short nvars>
 void block_axpby(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
 		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
 
-/// Computes a sparse gaxpy when the matrix is passed in block DLU storage
+template<short nvars>
+inline void block_axpbypcz(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y);
+
+/// Dot product
+template<short nvars>
+a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
+
+/// Computes a sparse gemv when the matrix is passed in block DLU storage
 /** Specifically, computes z = pb+qAx
  */
 template<short nvars>
-void DLU_gaxpby(const UMesh2dh *const m, 
+void DLU_gemv(const UMesh2dh *const m, 
 		const a_real p, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b,
 		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 

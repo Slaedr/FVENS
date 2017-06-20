@@ -98,15 +98,42 @@ template<short nvars>
 inline void block_axpby(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
 		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x)
 {
-#pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++) {
-		z.row(iel) = p*z.row(iel) + q*x.row(iel);
+	const a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		zz[i] = p*zz[i] + q*xx[i];
 	}
+}
+
+/* z <- pz + qx + ry
+ */
+template<short nvars>
+inline void block_axpbypcz(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y)
+{
+	const a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
+	}
+}
+
+template<short nvars>
+a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b)
+{
+	a_real sum = 0;
+	const a_real *const aa = &a(0,0); const a_real *const bb = &b(0,0);
+#pragma omp parallel for simd default(shared) reduction(+:sum)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++)
+		sum += a[i]*b[i];
+
+	return sum;
 }
 
 /* Computes z = p b + q Ax */
 template<short nvars>
-void DLU_gaxpby(const UMesh2dh *const m, 
+void DLU_gemv(const UMesh2dh *const m, 
 		const a_real p, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b,
 		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const D, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const L, 
@@ -648,7 +675,7 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 
 	while(step < maxiter)
 	{
-		DLU_gaxpby<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
+		DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
