@@ -34,14 +34,26 @@ template<short nvars>
 void block_axpby(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
 		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
 
+/** z <- pz + qx + ry
+ */
 template<short nvars>
-inline void block_axpbypcz(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+inline void block_axpbypcz(const UMesh2dh *const m, 
+		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
 		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
 		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y);
 
 /// Dot product
 template<short nvars>
 a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
+
+/// Computes z = q Ax
+template<short nvars>
+void DLU_spmv(const UMesh2dh *const m, 
+		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const D, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const L, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const U, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 
 /// Computes a sparse gemv when the matrix is passed in block DLU storage
 /** Specifically, computes z = pb+qAx
@@ -314,7 +326,31 @@ class RichardsonSolver : public IterativeBlockSolver<nvars>
 public:
 	RichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond);
 
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+};
+
+/// H.A. Van der Vorst's stabilized biconjugate gradient solver
+/** Uses left-preconditioning only.
+ */
+template <short nvars>
+class BiCGSTAB : public IterativeBlockSolver<nvars>
+{
+	using IterativeBlockSolver<nvars>::m;
+	using IterativeBlockSolver<nvars>::maxiter;
+	using IterativeBlockSolver<nvars>::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+	using IterativeBlockSolver<nvars>::prec;
+
+public:
+	BiCGSTAB(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond);
+
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
 

@@ -169,8 +169,9 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		std::cout << " SteadyBackwardEulerSolver: No preconditioning will be applied.\n";
 	}
 
-	if(linearsolver == "BCGS") {
-		std::cout << " SteadyBackwardEulerSolver: Not available!\n";
+	if(linearsolver == "BCGSTB") {
+		linsolv = new BiCGSTAB<nvars>(mesh, prec);
+		std::cout << " SteadyBackwardEulerSolver: BiCGSTAB solver selected.\n";
 	}
 	else {
 		linsolv = new RichardsonSolver<nvars>(mesh, prec);
