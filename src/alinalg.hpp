@@ -25,13 +25,15 @@ void LUfactor(amat::Array2d<a_real>& A, amat::Array2d<int>& p);
  * \param b is the RHS
  * \param x will contain the solution
  */
-void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, const amat::Array2d<a_real>& b, amat::Array2d<a_real>& x);
+void LUsolve(const amat::Array2d<a_real>& A, const amat::Array2d<int>& p, 
+		const amat::Array2d<a_real>& b, amat::Array2d<a_real>& x);
 
 /// Vector addition in blocks of nvars x 1
 /** z <- pz + qx.
  */
 template<short nvars>
-void block_axpby(const UMesh2dh *const m, const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+void block_axpby(const UMesh2dh *const m, 
+		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
 		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
 
 /** z <- pz + qx + ry
@@ -44,7 +46,8 @@ inline void block_axpbypcz(const UMesh2dh *const m,
 
 /// Dot product
 template<short nvars>
-a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
+a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
 
 /// Computes z = q Ax
 template<short nvars>
@@ -293,15 +296,18 @@ public:
 	virtual ~IterativeBlockSolver();
 
 	/// Sets D,L,U
-	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
 	/// Solves the linear system A du = -r
-	/** \param[in] res The residual vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
+	/** \param[in] res The residual vector stored as a 2D array of size nelem x nvars 
+	 * (nelem x 4 for 2D Euler)
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
 	 * \return Returns the number of solver iterations performed
 	 */
-	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
+	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {

@@ -33,6 +33,11 @@ void SteadyForwardEulerSolver<nvars>::solve()
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
+	
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
 	if(usestarter == 1) {
 		while(resi/initres > starttol && step < startmaxiter)
@@ -126,10 +131,17 @@ void SteadyForwardEulerSolver<nvars>::solve()
 		step++;
 	}
 	//std::cout << residual << std::endl;
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 
 	if(step == maxiter)
 		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
-	std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << std::endl;
+	std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << std::endl << std::endl;
+	std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
+	std::cout << "                                   CPU time = " << cputime << ", wall time = " << walltime << std::endl << std::endl;
 }
 
 
@@ -201,6 +213,11 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> du = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
+	
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
 	if(usestarter == 1) {
 		while(resi/initres > starttol && step < startmaxiter)
@@ -367,13 +384,21 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		step++;
 	}
 
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+
 	if(step == maxiter)
 		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
 	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " << resi/initres << std::endl;
 
 	double linwtime, linctime;
 	linsolv->getRunTimes(linwtime, linctime);
-	std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n    Wall time = " << linwtime << ", CPU time = " << linctime << std::endl;
+	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
+	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
+	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
+	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << std::endl << std::endl;
 }
 
 template class SteadyForwardEulerSolver<NVARS>;

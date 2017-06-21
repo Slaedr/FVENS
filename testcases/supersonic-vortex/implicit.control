@@ -38,7 +38,7 @@ IMPLICIT
 -use-first-order-initial-condition
 1
 -CFL-for-initialization-run
-10.0
+50.0
 -tolerance-for-initialization
 1e-2
 -max-time-steps-for-initialization
@@ -47,9 +47,9 @@ IMPLICIT
 -inviscid-flux-Jacobian
 HLL
 -linear-solver
-RICHARDSON
+BCGSTB
 -Linear-solver-tolerance
-1e-1
+1e-2
 -Linear-solver-max-iterations-initial
 200
 -Linear-solver-max-iterations-end
@@ -57,6 +57,6 @@ RICHARDSON
 -preconditioner
 BSGS
 -preconditioner-build-sweeps
-3
+1
 -preconditioner-application-sweeps
-3
+1

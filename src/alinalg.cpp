@@ -682,7 +682,6 @@ IterativeBlockSolver<nvars>::IterativeBlockSolver(const UMesh2dh* const mesh,
 template <short nvars>
 IterativeBlockSolver<nvars>::~IterativeBlockSolver()
 {
-	std::cout << " IterativeBlockSolver: CPU time = " << cputime << ", walltime = " << walltime << std::endl;
 }
 
 template <short nvars>
@@ -763,38 +762,41 @@ template <short nvars>
 int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
 {
-	struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
-
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
 
 	a_real omega = 1.0, rho, rhoold = 1.0, alpha = 1.0, beta;
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> r(m->gnelem(),nvars);
-	DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, r);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> rhat = r;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> rhat(m->gnelem(), nvars);
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> p
 		= Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(),nvars);
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> v
 		= Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> g(m->gnelem(),nvars);
+	//Matrix<a_real,Dynamic,Dynamic,RowMajor> g(m->gnelem(),nvars);
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> y(m->gnelem(),nvars);
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> z(m->gnelem(),nvars);
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> t(m->gnelem(),nvars);
+
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
+	// r := -res - A du
+	DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, r);
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		bnorm += res.row(iel).squaredNorm();
+		rhat.row(iel) = r.row(iel);
 	}
 	bnorm = std::sqrt(bnorm);
 
 	while(step < maxiter)
 	{
-		// rho = rhat . r
+		// rho := rhat . r
 		rho = block_dot<nvars>(m, rhat, r);
 		beta = rho*alpha/(rhoold*omega);
 		
@@ -810,7 +812,22 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 		alpha = rho/block_dot<nvars>(m,rhat,v);
 
 		// s <- r - alpha v, but reuse storage of r
-		block_axpbypcz<nvars>(m, 1.0,r, 1.0,r, -alpha,v);
+		block_axpby<nvars>(m, 1.0,r, -alpha,v);
+
+		prec->apply(r, z);
+		
+		// t <- A z
+		DLU_spmv<nvars>(m, 1.0, D,L,U, z, t);
+
+		//prec->apply(t,g);
+
+		//omega = block_dot<nvars>(m,g,z)/block_dot<nvars>(m,g,g);
+		omega = block_dot<nvars>(m,t,r)/block_dot<nvars>(m,t,t);
+
+		// du <- du + alpha y + omega z
+		block_axpbypcz<nvars>(m, 1.0,du, alpha,y, omega,z);
+
+		block_axpby<nvars>(m, 1.0,r, -omega,t);
 
 		// check convergence or `lucky' breakdown
 		resnorm = 0;
@@ -823,25 +840,11 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 		resnorm = std::sqrt(resnorm);
 		if(resnorm/bnorm < tol) break;
 
-		prec->apply(r, z);
-		
-		// t <- A z
-		DLU_spmv<nvars>(m, 1.0, D,L,U, z, t);
-
-		prec->apply(t,g);
-
-		omega = block_dot<nvars>(m,g,z)/block_dot<nvars>(m,g,g);
-
-		// du <- du + alpha y + omega z
-		block_axpbypcz<nvars>(m, 1.0,du, alpha,y, omega,z);
-
-		block_axpbypcz<nvars>(m, 0.0,r, 1.0,r, -omega,t);
-
 		rhoold = rho;
 		step++;
 	}
 	
-	block_axpby<nvars>(m, 1.0,du, alpha,y);
+	//block_axpby<nvars>(m, 1.0,du, alpha,y);
 
 	if(step == maxiter)
 		std::cout << " ! BiCGSTAB: Hit max iterations!\n";

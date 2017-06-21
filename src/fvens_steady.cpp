@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
 	}
 	else {
 		time = new SteadyForwardEulerSolver<4>(&m, &prob, &startprob, usestarter, tolerance, maxiter, initcfl, firsttolerance, firstmaxiter, firstcfl);
-		std::cout << "Setting up eplicit forward Euler temporal scheme.\n";
+		std::cout << "Setting up explicit forward Euler temporal scheme.\n";
 	}
 	
 	startprob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time->unknowns());

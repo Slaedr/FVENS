@@ -30,10 +30,14 @@ protected:
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> residual;
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> u;
 	const short usestarter;
+	double cputime;
+	double walltime;
 
 public:
-	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, const short use_starter)
-		: m(mesh), eul(euler), starter(starterfv), usestarter(use_starter)
+	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, 
+			Spatial<nvars> *const starterfv, const short use_starter)
+		: m(mesh), eul(euler), starter(starterfv), usestarter(use_starter), 
+			cputime{0.0}, walltime{0.0}
 	{ }
 
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& residuals() const {
@@ -45,12 +49,17 @@ public:
 		return u;
 	}
 
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
+	}
+
 	virtual void solve() = 0;
 
 	virtual ~SteadySolver() {}
 };
 	
-/// A driver class for explicit time-stepping solution to steady state using forward Euler time integration
+/// A driver class for explicit time-stepping to steady state using forward Euler time integration
 /** \note Make sure compute_topological(), compute_face_data() and compute_areas()
  * have been called on the mesh object prior to initialzing an object of this class.
  */
@@ -63,6 +72,8 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::residual;
 	using SteadySolver<nvars>::u;
 	using SteadySolver<nvars>::usestarter;
+	using SteadySolver<nvars>::cputime;
+	using SteadySolver<nvars>::walltime;
 
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
 	const double tol;
@@ -74,12 +85,13 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	const double startcfl;
 
 public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, 
+	SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
+			Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, 
 			const short use_starter, const double toler, const int maxits, const double cfl,
 			const double ftoler, const int fmaxits, const double fcfl);
 	~SteadyForwardEulerSolver();
 
-	/// Solves a steady problem by an explicit method first order in time, using local time-stepping
+	/// Solves the steady problem by a first-order explicit method, using local time-stepping
 	void solve();
 };
 
@@ -93,6 +105,8 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::residual;
 	using SteadySolver<nvars>::u;
 	using SteadySolver<nvars>::usestarter;
+	using SteadySolver<nvars>::cputime;
+	using SteadySolver<nvars>::walltime;
 
 	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
 

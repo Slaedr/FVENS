@@ -1,5 +1,5 @@
 -mesh_file
-../testcases/supersonic-vortex/grids/quarterannulus1.msh
+../testcases/supersonic-vortex/grids/quarterannulus2.msh
 -output_file
 ../data/quarterannulus-hll-2-bcgstb-bsgs.vtu
 -M_infinity
@@ -38,7 +38,7 @@ IMPLICIT
 -use-first-order-initial-condition
 1
 -CFL-for-initialization-run
-50.0
+100.0
 -tolerance-for-initialization
 1e-2
 -max-time-steps-for-initialization
@@ -47,7 +47,7 @@ IMPLICIT
 -inviscid-flux-Jacobian
 HLL
 -linear-solver
-BCGSTB
+RICHARDSON
 -Linear-solver-tolerance
 1e-1
 -Linear-solver-max-iterations-initial
@@ -57,6 +57,6 @@ BCGSTB
 -preconditioner
 BSGS
 -preconditioner-build-sweeps
-1
+2
 -preconditioner-application-sweeps
-1
+3
