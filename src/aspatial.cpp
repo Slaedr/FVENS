@@ -5,6 +5,7 @@
  */
 
 #include "aspatial.hpp"
+#include "alinalg.hpp"
 
 namespace acfd {
 
@@ -143,8 +144,8 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 	vy = vmag*sin(theta);
 }
 
-EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter) 
-	: Spatial<NVARS>(mesh), g(1.4), aflux(g)
+EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter, const bool matrixfree_implicit) 
+	: Spatial<NVARS>(mesh), g(1.4), aflux(g), matrix_free_implicit{matrixfree_implicit}, eps{sqrt(ZERO_TOL)}
 {
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
@@ -159,6 +160,8 @@ EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string ja
 	ug.setup(m->gnbface(),NVARS);
 	uleft.setup(m->gnaface(), NVARS);
 	uright.setup(m->gnaface(), NVARS);
+	if(matrixfree_implicit)
+		aux.resize(m->gnelem(),NVARS);
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
@@ -394,7 +397,7 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 }
 
 void EulerFV::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-		amat::Array2d<a_real>& __restrict__ dtm)
+		const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
 {
 #pragma omp parallel default(shared)
 	{
@@ -499,11 +502,12 @@ void EulerFV::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 		}
 
 #pragma omp barrier
+		if(gettimesteps)
 #pragma omp for simd
-		for(int iel = 0; iel < m->gnelem(); iel++)
-		{
-			dtm(iel) = m->garea(iel)/integ(iel);
-		}
+			for(int iel = 0; iel < m->gnelem(); iel++)
+			{
+				dtm(iel) = m->garea(iel)/integ(iel);
+			}
 	} // end parallel region
 }
 
@@ -676,6 +680,37 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 	}
 }
 
+void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+{
+	a_real vnorm = block_dot<NVARS>(m, v,v);
+	vnorm = sqrt(vnorm);
+	
+	// compute the perturbed state and store in aux
+	block_axpbypcz<NVARS>(m, 0.0,aux, 1.0,u, eps/vnorm,v);
+	
+	// compute residual at the perturbed state and store in the output variable prod
+	amat::Array2d<a_real> _dtm;		// dummy
+	compute_residual(aux, prod, false, _dtm);
+	
+	// compute the Jacobian vector product
+	a_real *const prodarr = &prod(0,0); 
+	const a_real *const resuarr = &resu(0,0);
+	const a_real *const auxarr = &aux(0,0);
+#pragma omp parallel for simd default(shared)
+	for(int i = 0; i < m->gnelem()*NVARS; i++)
+		prodarr[i] = (prodarr[i] - resu[i]) / (eps/vnorm);
+
+	// add time term to the output vector if necessary
+	if(add_time_deriv) {
+#pragma omp parallel for simd default(shared)
+		for(int iel = 0; iel < m->gnelem(); iel++)
+			for(int ivar = 0 ivar < NVARS; ivar++)
+				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
+	}
+}
+
 #endif
 
 void EulerFV::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
@@ -840,7 +875,7 @@ DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const 
 template<short nvars>
 void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
                                                  Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-                                                 amat::Array2d<a_real>& __restrict__ dtm)
+                                                 const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
@@ -898,7 +933,8 @@ void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dyn
 	}
 
 	for(int iel = 0; iel < m->gnelem(); iel++) {
-		dtm(iel) = h[iel]*h[iel]/diffusivity;
+		if(gettimesteps)
+			dtm(iel) = h[iel]*h[iel]/diffusivity;
 
 		// subtract source term
 		a_real sourceterm;
@@ -999,7 +1035,7 @@ DiffusionMA<nvars>::~DiffusionMA()
 template<short nvars>
 void DiffusionMA<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
                                           Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-                                          amat::Array2d<a_real>& __restrict__ dtm)
+                                          const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
@@ -1066,7 +1102,8 @@ void DiffusionMA<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,Ro
 	}
 
 	for(int iel = 0; iel < m->gnelem(); iel++) {
-		dtm(iel) = h[iel]*h[iel]/diffusivity;
+		if(gettimesteps)
+			dtm(iel) = h[iel]*h[iel]/diffusivity;
 
 		// subtract source term
 		a_real sourceterm;

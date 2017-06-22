@@ -69,10 +69,15 @@ public:
 	virtual ~Spatial();
 	
 	virtual void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-			amat::Array2d<a_real>& __restrict__ dtm) = 0;
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm) = 0;
 	
 	virtual void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
+
+	virtual void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
 };
 	
 /// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
@@ -124,6 +129,10 @@ protected:
 	amat::Array2d<a_real> uleft;			///< Left state at faces
 	amat::Array2d<a_real> uright;			///< Right state at faces
 
+	bool matrix_free_implicit;						///< True if matrix-free implicit time-stepping is being used
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> aux;	///< Temporary storage needed for matrix free
+	a_real eps;										///< step length for finite difference Jacobian
+
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
 	 * \param[out] bounstates will contain the right state of boundary faces
@@ -137,7 +146,7 @@ protected:
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
 
 public:
-	EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+	EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter, const bool matrixfree_implicit);
 	
 	~EulerFV();
 	
@@ -148,7 +157,7 @@ public:
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
 	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-			amat::Array2d<a_real>& __restrict__ dtm);
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm);
 
 #if HAVE_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
@@ -159,6 +168,11 @@ public:
 	 */
 	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,NVARS,NVARS,RowMajor> *const D, Matrix<a_real,NVARS,NVARS,RowMajor> *const L, Matrix<a_real,NVARS,NVARS,RowMajor> *const U);
+
+	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 #endif
 
 	/// Compute cell-centred quantities to export
@@ -231,7 +245,7 @@ public:
 			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source);
 	
 	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-			amat::Array2d<a_real>& __restrict__ dtm);
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm);
 	
 	void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);

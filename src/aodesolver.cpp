@@ -49,7 +49,7 @@ void SteadyForwardEulerSolver<nvars>::solve()
 			}
 
 			// update residual
-			starter->compute_residual(u, residual, dtm);
+			starter->compute_residual(u, residual, true, dtm);
 
 			a_real errmass = 0;
 
@@ -97,7 +97,7 @@ void SteadyForwardEulerSolver<nvars>::solve()
 		}
 
 		// update residual
-		eul->compute_residual(u, residual, dtm);
+		eul->compute_residual(u, residual, true, dtm);
 
 		a_real errmass = 0;
 
@@ -242,7 +242,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			}
 			
 			// update residual and local time steps
-			starter->compute_residual(u, residual, dtm);
+			starter->compute_residual(u, residual, true, dtm);
 
 			starter->compute_jacobian(u, D, L, U);
 
@@ -317,7 +317,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		}
 		
 		// update residual and local time steps
-		eul->compute_residual(u, residual, dtm);
+		eul->compute_residual(u, residual, true, dtm);
 
 		eul->compute_jacobian(u, D, L, U);
 		
