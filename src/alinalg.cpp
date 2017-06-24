@@ -856,6 +856,89 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 	return step;
 }
 
+template <short nvars>
+MFIterativeBlockSolver<nvars>::MFIterativeBlockSolver(const UMesh2dh* const mesh, 
+		DLUPreconditioner<nvars> *const precond)
+	: IterativeSolver(mesh), prec(precond)
+{
+	walltime = 0; cputime = 0;
+}
+
+template <short nvars>
+MFIterativeBlockSolver<nvars>::~MFIterativeBlockSolver()
+{
+}
+
+template <short nvars>
+void MFIterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+{
+	L = lower;
+	U = upper;
+	D = diago;
+	prec->setLHS(diago, lower, upper);
+}
+
+// Richardson iteration
+template <short nvars>
+MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
+		DLUPreconditioner<nvars> *const precond)
+	: MFIterativeBlockSolver<nvars>(mesh, precond)
+{ }
+
+template <short nvars>
+int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
+{
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
+	a_real resnorm = 100.0, bnorm = 0;
+	int step = 0;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(),nvars);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(),nvars);
+
+	// norm of RHS
+#pragma omp parallel for reduction(+:bnorm) default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+	{
+		bnorm += res.row(iel).squaredNorm();
+	}
+	bnorm = std::sqrt(bnorm);
+
+	while(step < maxiter)
+	{
+		DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
+
+		resnorm = 0;
+#pragma omp parallel for default(shared) reduction(+:resnorm)
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			// compute norm
+			resnorm += s.row(iel).squaredNorm();
+		}
+		resnorm = std::sqrt(resnorm);
+		if(resnorm/bnorm < tol) break;
+
+		prec->apply(s, ddu);
+
+		block_axpby<nvars>(m, 1.0, du, 1.0, ddu);
+
+		step++;
+	}
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	return step;
+}
+
+
 
 template class NoPrec<NVARS>;
 template class BlockJacobi<NVARS>;

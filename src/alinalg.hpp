@@ -91,14 +91,17 @@ public:
 	{ }
 	
 	/// Sets D,L,U and computes the preconditioning matrix M
-	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper) = 0;
 
 	/// Applies the preconditioner Mz=r
-	/** \param[in] r The right hand side vector stored as a 2D array of size nelem x nvars (nelem x 4 for 2D Euler)
+	/** \param[in] r The right hand side vector stored as a 2D array 
+	 * of size nelem x nvars (nelem x 4 for 2D Euler)
 	 * \param [in|out] z Contains the solution in the same format as r on exit.
 	 */
-	virtual void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z) = 0;
+	virtual void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z) = 0;
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
@@ -357,6 +360,77 @@ public:
 
 	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+};
+
+/// Base class for matrix-free solvers
+/** Note that subclasses are matrix-free only with regard to the top-level solver,
+ * usually a Krylov subspace solver. The preconditioning matrix is still computed and stored.
+ */
+template <short nvars>
+class MFIterativeBlockSolver : public IterativeSolver
+{
+protected:
+	/// (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* D;
+	///< `Lower' blocks of LHS
+	const Matrix<a_real,nvars,nvars,RowMajor>* L;
+	///< `Upper' blocks of LHS
+	const Matrix<a_real,nvars,nvars,RowMajor>* U;
+	
+	double walltime;
+	double cputime;
+
+	/// Preconditioner context
+	DLUPreconditioner<nvars> *const prec;
+
+public:
+	MFIterativeBlockSolver(const UMesh2dh* const mesh, DLUPreconditioner<nvars> *const precond);
+
+	virtual ~MFIterativeBlockSolver();
+
+	/// Sets D,L,U for preconditioner
+	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+
+	/// Solves the linear system A du = -r
+	/** \param[in] u The state at which the Jacobian and RHS res have been computed
+	 * \param[in] res The residual vector stored as a 2D array of size nelem x nvars 
+	 * (nelem x 4 for 2D Euler)
+	 * \param [in|out] du Contains the solution in the same format as res on exit.
+	 * \return Returns the number of solver iterations performed
+	 */
+	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
+
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
+	}
+};
+
+/// A matrix-free solver that just applies the preconditioner repeatedly
+/// in a defect-correction iteration.
+template <short nvars>
+class MFRichardsonSolver : public MFIterativeBlockSolver<nvars>
+{
+	using IterativeBlockSolver<nvars>::m;
+	using IterativeBlockSolver<nvars>::maxiter;
+	using IterativeBlockSolver<nvars>::tol;
+	using IterativeBlockSolver<nvars>::D;
+	using IterativeBlockSolver<nvars>::L;
+	using IterativeBlockSolver<nvars>::U;
+	using IterativeBlockSolver<nvars>::walltime;
+	using IterativeBlockSolver<nvars>::cputime;
+	using IterativeBlockSolver<nvars>::prec;
+
+public:
+	MFRichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond);
+
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
 

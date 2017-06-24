@@ -697,7 +697,7 @@ void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __r
 	// compute the Jacobian vector product
 	a_real *const prodarr = &prod(0,0); 
 	const a_real *const resuarr = &resu(0,0);
-	const a_real *const auxarr = &aux(0,0);
+	a_real *const auxarr = &aux(0,0);
 #pragma omp parallel for simd default(shared)
 	for(int i = 0; i < m->gnelem()*NVARS; i++)
 		prodarr[i] = (prodarr[i] - resu[i]) / (eps/vnorm);
@@ -998,6 +998,11 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dyn
 	}
 }
 
+void DiffusionThinLayer::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+{ }
+
 template<short nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc, std::string reconst)
@@ -1166,6 +1171,11 @@ void DiffusionMA<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,Ro
 		}
 	}
 }
+
+void DiffusionMA::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+{ }
 
 template class DiffusionThinLayer<1>;
 template class DiffusionMA<1>;

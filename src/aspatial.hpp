@@ -68,15 +68,37 @@ public:
 
 	virtual ~Spatial();
 	
+	/// Computes the residual and local time steps
+	/** \param[in] u The state at which the residual is to be computed
+	 * \param[in|out] residual The residual is added to this
+	 * \param[in] gettimesteps Whether time-step computation is required
+	 * \param[out] dtm Local time steps are stored in this
+	 */
 	virtual void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm) = 0;
 	
+	/// Computes the Jacobian matrix of the residual in DLU format
 	virtual void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
 
+	/// Computes the Frechet derivative of the residual along a given direction using finite difference
+	/** \param[in] resu The residual vector at the state at which the derivative is to be computed
+	 * \param[in] u The state at which the derivative is to be computed
+	 * \param[in] v The direction in which the derivative is to be computed
+	 * \param[in] add_time_deriv Whether or not time-derivative term is to be added
+	 * \param[in] dtm Vector of local time steps for time derivative term
+	 * \param[out] prod The vector containing the directional derivative
+	 */
 	virtual void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
+	
+	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
+	virtual void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
 };
 	
@@ -169,9 +191,16 @@ public:
 	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,NVARS,NVARS,RowMajor> *const D, Matrix<a_real,NVARS,NVARS,RowMajor> *const L, Matrix<a_real,NVARS,NVARS,RowMajor> *const U);
 
+	/// Computes first order directional derivative using real-step finite difference
 	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+	
+	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 #endif
 
@@ -215,6 +244,17 @@ public:
 	
 	virtual void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
+
+	virtual void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
+	
+	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 	
 	virtual void postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up);
 
@@ -252,6 +292,17 @@ public:
 	
 	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
+
+	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+	
+	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 	
 	using Diffusion<nvars>::postprocess_point;
 };
@@ -291,6 +342,17 @@ public:
 	
 	void compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
+
+	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+	
+	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 
 	~DiffusionMA();
 	
