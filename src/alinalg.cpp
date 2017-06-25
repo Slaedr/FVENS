@@ -858,8 +858,8 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 
 template <short nvars>
 MFIterativeBlockSolver<nvars>::MFIterativeBlockSolver(const UMesh2dh* const mesh, 
-		DLUPreconditioner<nvars> *const precond)
-	: IterativeSolver(mesh), prec(precond)
+		DLUPreconditioner<nvars> *const precond, const Spatial *const spatial)
+	: IterativeSolver(mesh), prec(precond), space(spatial)
 {
 	walltime = 0; cputime = 0;
 }
@@ -883,12 +883,13 @@ void MFIterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMa
 // Richardson iteration
 template <short nvars>
 MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
-		DLUPreconditioner<nvars> *const precond)
-	: MFIterativeBlockSolver<nvars>(mesh, precond)
+		DLUPreconditioner<nvars> *const precond, const Spatial *const spatial)
+	: MFIterativeBlockSolver<nvars>(mesh, precond, spatial)
 { }
 
 template <short nvars>
-int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u,
+		const amat::Array2d<a_real>& dtm,
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
 {
@@ -899,7 +900,10 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
+
+	// linear system residual
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(),nvars);
+	// linear system defect
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(),nvars);
 
 	// norm of RHS
@@ -912,7 +916,10 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 
 	while(step < maxiter)
 	{
-		DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
+		//DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
+
+		// compute -ve of dir derivative in the direction du, add -ve of residual, and store in s
+		space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, s);
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)

@@ -200,7 +200,7 @@ public:
 	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ w,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 #endif
 

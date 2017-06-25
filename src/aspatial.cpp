@@ -711,6 +711,42 @@ void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __r
 	}
 }
 
+// Computes a([M du/dt +] dR/du) v + b w and stores in prod
+void EulerFV::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ w,
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+{
+	a_real vnorm = block_dot<NVARS>(m, v,v);
+	vnorm = sqrt(vnorm);
+	
+	// compute the perturbed state and store in aux
+	block_axpbypcz<NVARS>(m, 0.0,aux, 1.0,u, eps/vnorm,v);
+	
+	// compute residual at the perturbed state and store in the output variable prod
+	amat::Array2d<a_real> _dtm;		// dummy
+	compute_residual(aux, prod, false, _dtm);
+	
+	// compute the Jacobian vector product and vector add
+	a_real *const prodarr = &prod(0,0); 
+	const a_real *const resuarr = &resu(0,0);
+	a_real *const auxarr = &aux(0,0);
+	const a_real *const warr = &w(0,0);
+#pragma omp parallel for simd default(shared)
+	for(int i = 0; i < m->gnelem()*NVARS; i++)
+		prodarr[i] = a*(prodarr[i] - resu[i]) / (eps/vnorm) + b*w[i];
+
+	// add time term to the output vector if necessary
+	if(add_time_deriv) {
+#pragma omp parallel for simd default(shared)
+		for(int iel = 0; iel < m->gnelem(); iel++)
+			for(int ivar = 0 ivar < NVARS; ivar++)
+				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
+	}
+}
+
 #endif
 
 void EulerFV::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)

@@ -9,6 +9,10 @@
 #include "amesh2dh.hpp"
 #endif
 
+#ifndef __ASPATIAL_H
+#include "aspatial.hpp"
+#endif
+
 #define __ALINALG_H
 
 namespace acfd {
@@ -372,10 +376,12 @@ class MFIterativeBlockSolver : public IterativeSolver
 protected:
 	/// (Inverted) diagonal blocks of LHS (Jacobian) matrix
 	const Matrix<a_real,nvars,nvars,RowMajor>* D;
-	///< `Lower' blocks of LHS
+	/// `Lower' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* L;
-	///< `Upper' blocks of LHS
+	/// `Upper' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* U;
+	/// Spatial discretization context needed for matrix-vector product
+	const Spatial* const space;
 	
 	double walltime;
 	double cputime;
@@ -384,7 +390,8 @@ protected:
 	DLUPreconditioner<nvars> *const prec;
 
 public:
-	MFIterativeBlockSolver(const UMesh2dh* const mesh, DLUPreconditioner<nvars> *const precond);
+	MFIterativeBlockSolver(const UMesh2dh* const mesh, DLUPreconditioner<nvars> *const precond,
+			const Spatial *const spatial);
 
 	virtual ~MFIterativeBlockSolver();
 
@@ -401,8 +408,9 @@ public:
 	 * \return Returns the number of solver iterations performed
 	 */
 	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
+		const amat::Array2d<a_real>& dtm,
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
@@ -429,8 +437,9 @@ public:
 	MFRichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond);
 
 	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+		const amat::Array2d<a_real>& dtm,
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
 };
 
 
