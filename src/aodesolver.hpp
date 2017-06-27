@@ -142,5 +142,53 @@ public:
 	void solve();
 };
 
+/// Implicit pseudo-time iteration to steady state using a martrix-free linear solver
+template <short nvars>
+class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
+{
+	using SteadySolver<nvars>::m;
+	using SteadySolver<nvars>::eul;
+	using SteadySolver<nvars>::starter;
+	using SteadySolver<nvars>::residual;
+	using SteadySolver<nvars>::u;
+	using SteadySolver<nvars>::usestarter;
+	using SteadySolver<nvars>::cputime;
+	using SteadySolver<nvars>::walltime;
+
+	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
+
+	MFIterativeBlockSolver<nvars> * startlinsolv;	///< Linear solver context for starting run
+	MFIterativeBlockSolver<nvars> * linsolv;		///< Linear solver context for main run
+	DLUPreconditioner<nvars>* prec;					///< preconditioner context
+	Matrix<a_real,nvars,nvars,RowMajor>* D;
+	Matrix<a_real,nvars,nvars,RowMajor>* L;
+	Matrix<a_real,nvars,nvars,RowMajor>* U;
+
+	const double cflinit;
+	double cflfin;
+	int rampstart;
+	int rampend;
+	double tol;
+	int maxiter;
+	double lintol;
+	int linmaxiterstart;
+	int linmaxiterend;
+	
+	const double starttol;
+	const int startmaxiter;
+	const double startcfl;
+
+public:
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter,
+		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
+		const double toler, const int maxits, const double lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver, std::string precond,
+		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
+		const double ftoler, const int fmaxits, const double fcfl);
+	
+	~SteadyBackwardEulerSolver();
+
+	void solve();
+};
+
 }	// end namespace
 #endif
