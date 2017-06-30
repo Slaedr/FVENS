@@ -458,6 +458,7 @@ template <short nvars>
 SteadyMFBackwardEulerSolver<nvars>::~SteadyMFBackwardEulerSolver()
 {
 	delete linsolv;
+	delete startlinsolv;
 	delete prec;
 	delete [] D;
 	delete [] U;
