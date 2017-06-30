@@ -179,13 +179,13 @@ class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
 	const double startcfl;
 
 public:
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter,
+	SteadyMFBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, const double lin_tol, const int linmaxiterstart, const int linmaxiterend, std::string linearsolver, std::string precond,
 		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl);
 	
-	~SteadyBackwardEulerSolver();
+	~SteadyMFBackwardEulerSolver();
 
 	void solve();
 };

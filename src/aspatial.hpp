@@ -92,14 +92,14 @@ public:
 	virtual void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
 	
 	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
 	virtual void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
 };
 	
 /// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
@@ -195,13 +195,13 @@ public:
 	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 	
 	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ w,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 #endif
 
 	/// Compute cell-centred quantities to export
@@ -248,13 +248,13 @@ public:
 	virtual void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
 	
-	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	virtual void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod) = 0;
 	
 	virtual void postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up);
 
@@ -296,13 +296,13 @@ public:
 	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 	
 	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 	
 	using Diffusion<nvars>::postprocess_point;
 };
@@ -335,7 +335,7 @@ public:
 			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source, std::string reconst);
 	
 	void compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
-			amat::Array2d<a_real>& __restrict__ dtm);
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm);
 	
 	void add_source(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
@@ -346,13 +346,13 @@ public:
 	void compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 	
 	void compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 			const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-			const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
 
 	~DiffusionMA();
 	

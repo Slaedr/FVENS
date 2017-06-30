@@ -43,7 +43,7 @@ void block_axpby(const UMesh2dh *const m,
 /** z <- pz + qx + ry
  */
 template<short nvars>
-inline void block_axpbypcz(const UMesh2dh *const m, 
+void block_axpbypcz(const UMesh2dh *const m, 
 		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
 		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
 		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y);
@@ -381,7 +381,7 @@ protected:
 	/// `Upper' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* U;
 	/// Spatial discretization context needed for matrix-vector product
-	const Spatial* const space;
+	const Spatial<nvars>* const space;
 	
 	double walltime;
 	double cputime;
@@ -391,7 +391,7 @@ protected:
 
 public:
 	MFIterativeBlockSolver(const UMesh2dh* const mesh, DLUPreconditioner<nvars> *const precond,
-			const Spatial *const spatial);
+			const Spatial<nvars> *const spatial);
 
 	virtual ~MFIterativeBlockSolver();
 
@@ -423,18 +423,20 @@ public:
 template <short nvars>
 class MFRichardsonSolver : public MFIterativeBlockSolver<nvars>
 {
-	using IterativeBlockSolver<nvars>::m;
-	using IterativeBlockSolver<nvars>::maxiter;
-	using IterativeBlockSolver<nvars>::tol;
-	using IterativeBlockSolver<nvars>::D;
-	using IterativeBlockSolver<nvars>::L;
-	using IterativeBlockSolver<nvars>::U;
-	using IterativeBlockSolver<nvars>::walltime;
-	using IterativeBlockSolver<nvars>::cputime;
-	using IterativeBlockSolver<nvars>::prec;
+	using MFIterativeBlockSolver<nvars>::m;
+	using MFIterativeBlockSolver<nvars>::maxiter;
+	using MFIterativeBlockSolver<nvars>::tol;
+	using MFIterativeBlockSolver<nvars>::D;
+	using MFIterativeBlockSolver<nvars>::L;
+	using MFIterativeBlockSolver<nvars>::U;
+	using MFIterativeBlockSolver<nvars>::walltime;
+	using MFIterativeBlockSolver<nvars>::cputime;
+	using MFIterativeBlockSolver<nvars>::prec;
+	using MFIterativeBlockSolver<nvars>::space;
 
 public:
-	MFRichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond);
+	MFRichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond,
+			const Spatial<nvars> *const spatial);
 
 	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		const amat::Array2d<a_real>& dtm,

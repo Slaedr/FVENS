@@ -402,7 +402,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 }
 
 template <short nvars>
-SteadyMFBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
+SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver, std::string precond,
 		const unsigned short nbuildsweeps, const unsigned short napplysweeps,

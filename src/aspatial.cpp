@@ -682,7 +682,7 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 
 void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 {
 	a_real vnorm = block_dot<NVARS>(m, v,v);
 	vnorm = sqrt(vnorm);
@@ -697,16 +697,15 @@ void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __r
 	// compute the Jacobian vector product
 	a_real *const prodarr = &prod(0,0); 
 	const a_real *const resuarr = &resu(0,0);
-	a_real *const auxarr = &aux(0,0);
 #pragma omp parallel for simd default(shared)
 	for(int i = 0; i < m->gnelem()*NVARS; i++)
-		prodarr[i] = (prodarr[i] - resu[i]) / (eps/vnorm);
+		prodarr[i] = (prodarr[i] - resuarr[i]) / (eps/vnorm);
 
 	// add time term to the output vector if necessary
 	if(add_time_deriv) {
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
-			for(int ivar = 0 ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
 	}
 }
@@ -717,7 +716,7 @@ void EulerFV::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynam
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ w,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod);
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 {
 	a_real vnorm = block_dot<NVARS>(m, v,v);
 	vnorm = sqrt(vnorm);
@@ -732,17 +731,16 @@ void EulerFV::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynam
 	// compute the Jacobian vector product and vector add
 	a_real *const prodarr = &prod(0,0); 
 	const a_real *const resuarr = &resu(0,0);
-	a_real *const auxarr = &aux(0,0);
 	const a_real *const warr = &w(0,0);
 #pragma omp parallel for simd default(shared)
 	for(int i = 0; i < m->gnelem()*NVARS; i++)
-		prodarr[i] = a*(prodarr[i] - resu[i]) / (eps/vnorm) + b*w[i];
+		prodarr[i] = a*(prodarr[i] - resuarr[i]) / (eps/vnorm) + b*warr[i];
 
 	// add time term to the output vector if necessary
 	if(add_time_deriv) {
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
-			for(int ivar = 0 ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
 	}
 }
@@ -1034,11 +1032,22 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dyn
 	}
 }
 
-void DiffusionThinLayer::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+template<short nvars>
+void DiffusionThinLayer<nvars>::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 { }
 
+template<short nvars>
+void DiffusionThinLayer<nvars>::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+{ }
+	
 template<short nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc, std::string reconst)
@@ -1208,10 +1217,24 @@ void DiffusionMA<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,Ro
 	}
 }
 
-void DiffusionMA::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+template<short nvars>
+void DiffusionMA<nvars>::compute_jac_vec (
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod )
 { }
+
+template<short nvars>
+void DiffusionMA<nvars>::compute_jac_gemv(const a_real a, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+{ }	
 
 template class DiffusionThinLayer<1>;
 template class DiffusionMA<1>;

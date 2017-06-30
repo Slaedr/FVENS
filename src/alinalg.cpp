@@ -858,7 +858,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 
 template <short nvars>
 MFIterativeBlockSolver<nvars>::MFIterativeBlockSolver(const UMesh2dh* const mesh, 
-		DLUPreconditioner<nvars> *const precond, const Spatial *const spatial)
+		DLUPreconditioner<nvars> *const precond, const Spatial<nvars> *const spatial)
 	: IterativeSolver(mesh), prec(precond), space(spatial)
 {
 	walltime = 0; cputime = 0;
@@ -883,7 +883,7 @@ void MFIterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMa
 // Richardson iteration
 template <short nvars>
 MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
-		DLUPreconditioner<nvars> *const precond, const Spatial *const spatial)
+		DLUPreconditioner<nvars> *const precond, const Spatial<nvars> *const spatial)
 	: MFIterativeBlockSolver<nvars>(mesh, precond, spatial)
 { }
 
