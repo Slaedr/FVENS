@@ -736,6 +736,7 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 			resnorm += s.row(iel).squaredNorm();
 		}
 		resnorm = std::sqrt(resnorm);
+		//	std::cout << "   RichardsonSolver: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
 		prec->apply(s, ddu);
@@ -838,6 +839,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 			resnorm += r.row(iel).squaredNorm();
 		}
 		resnorm = std::sqrt(resnorm);
+		//	std::cout << "   BiCGSTAB: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
 		rhoold = rho;
@@ -853,7 +855,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	return step;
+	return step+1;
 }
 
 template <short nvars>
@@ -930,6 +932,9 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 			resnorm += s.row(iel).squaredNorm();
 		}
 		resnorm = std::sqrt(resnorm);
+		
+		std::cout << "   MFRichardsonSolver: Lin res = " << resnorm << std::endl;
+		
 		if(resnorm/bnorm < tol) break;
 
 		prec->apply(s, ddu);
@@ -943,7 +948,7 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	return step;
+	return step+1;
 }
 
 
@@ -964,4 +969,16 @@ template class BILU0<1>;
 template class RichardsonSolver<1>;
 template class BiCGSTAB<1>;
 
+template void block_axpby<NVARS>(const UMesh2dh *const m, 
+		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
+
+template void block_axpbypcz<NVARS>(const UMesh2dh *const m, 
+		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y);
+
+template a_real block_dot<NVARS>(const UMesh2dh *const m, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
 }

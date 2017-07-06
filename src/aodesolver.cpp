@@ -279,7 +279,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			if(step == 0)
 				initres = resi;
 
-			if(step % 10 == 0) {
+			if(step % 5 == 0) {
 				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 				std::cout << "      CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 			}
@@ -376,7 +376,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		if(step == 0)
 			initres = resi;
 
-		if(step % 10 == 0) {
+		if(step % 5 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 		}
@@ -474,6 +474,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> du = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
+	du(0,0) = 1.0;
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -541,10 +542,10 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 			if(step == 0)
 				initres = resi;
 
-			if(step % 10 == 0) {
+			//if(step % 10 == 0) {
 				std::cout << "  SteadyMFBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 				std::cout << "      CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
-			}
+			//}
 
 			step++;
 		}

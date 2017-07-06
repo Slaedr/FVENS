@@ -145,7 +145,7 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 }
 
 EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter)
-	: Spatial<NVARS>(mesh), g(1.4), aflux(g), eps{sqrt(ZERO_TOL)}
+	: Spatial<NVARS>(mesh), g(1.4), aflux(g), eps{sqrt(ZERO_TOL)/10.0}
 {
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
