@@ -380,18 +380,17 @@ protected:
 	const Matrix<a_real,nvars,nvars,RowMajor>* L;
 	/// `Upper' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* U;
+	/// Preconditioner context
+	DLUPreconditioner<nvars> *const prec;
 	/// Spatial discretization context needed for matrix-vector product
-	const Spatial<nvars>* const space;
+	Spatial<nvars>* const space;
 	
 	double walltime;
 	double cputime;
 
-	/// Preconditioner context
-	DLUPreconditioner<nvars> *const prec;
-
 public:
 	MFIterativeBlockSolver(const UMesh2dh* const mesh, DLUPreconditioner<nvars> *const precond,
-			const Spatial<nvars> *const spatial);
+		Spatial<nvars> *const spatial);
 
 	virtual ~MFIterativeBlockSolver();
 
@@ -404,13 +403,15 @@ public:
 	/** \param[in] u The state at which the Jacobian and RHS res have been computed
 	 * \param[in] res The residual vector stored as a 2D array of size nelem x nvars 
 	 * (nelem x 4 for 2D Euler)
+	 * \param aux Temporary storage needed for matrix-free evaluation of Jacobian-vector products
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
 	 * \return Returns the number of solver iterations performed
 	 */
-	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 		const amat::Array2d<a_real>& dtm,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du) = 0;
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
@@ -436,12 +437,13 @@ class MFRichardsonSolver : public MFIterativeBlockSolver<nvars>
 
 public:
 	MFRichardsonSolver(const UMesh2dh *const mesh, DLUPreconditioner<nvars> *const precond,
-			const Spatial<nvars> *const spatial);
+			Spatial<nvars> *const spatial);
 
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 		const amat::Array2d<a_real>& dtm,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du);
 };
 
 

@@ -452,6 +452,7 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 	D = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
 	L = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
 	U = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
+	aux.resize(m->gnelem(),nvars);
 }
 
 template <short nvars>
@@ -518,7 +519,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 			// setup and solve linear system for the update du
 			startlinsolv->setLHS(D,L,U);
 			startlinsolv->setParams(lintol, linmaxiterstart);
-			int linstepsneeded = startlinsolv->solve(u, dtm, residual, du);
+			int linstepsneeded = startlinsolv->solve(u, dtm, residual, aux, du);
 
 			a_real errmass = 0;
 
@@ -615,7 +616,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 		// setup and solve linear system for the update du
 		linsolv->setLHS(D,L,U);
 		linsolv->setParams(lintol, curlinmaxiter);
-		int linstepsneeded = linsolv->solve(u, dtm, residual, du);
+		int linstepsneeded = linsolv->solve(u, dtm, residual, aux, du);
 
 		a_real errmass = 0;
 

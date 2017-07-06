@@ -144,8 +144,8 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 	vy = vmag*sin(theta);
 }
 
-EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter, const bool matrixfree_implicit) 
-	: Spatial<NVARS>(mesh), g(1.4), aflux(g), matrix_free_implicit{matrixfree_implicit}, eps{sqrt(ZERO_TOL)}
+EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter)
+	: Spatial<NVARS>(mesh), g(1.4), aflux(g), eps{sqrt(ZERO_TOL)}
 {
 	/// TODO: Take the two values below as input from control file, rather than hardcoding
 	solid_wall_id = 2;
@@ -160,8 +160,6 @@ EulerFV::EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string ja
 	ug.setup(m->gnbface(),NVARS);
 	uleft.setup(m->gnaface(), NVARS);
 	uright.setup(m->gnaface(), NVARS);
-	if(matrixfree_implicit)
-		aux.resize(m->gnelem(),NVARS);
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
@@ -682,6 +680,7 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 
 void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
 	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 {
 	a_real vnorm = block_dot<NVARS>(m, v,v);
@@ -716,6 +715,7 @@ void EulerFV::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynam
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
 		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ w,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 {
 	a_real vnorm = block_dot<NVARS>(m, v,v);
@@ -1037,15 +1037,17 @@ void DiffusionThinLayer<nvars>::compute_jac_vec(const Matrix<a_real,Dynamic,Dyna
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
 	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 { }
 
 template<short nvars>
 void DiffusionThinLayer<nvars>::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
-		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 { }
 	
 template<short nvars>
@@ -1223,17 +1225,19 @@ void DiffusionMA<nvars>::compute_jac_vec (
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
 	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod )
 { }
 
 template<short nvars>
 void DiffusionMA<nvars>::compute_jac_gemv(const a_real a, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
-		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
+	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
 { }	
 
 template class DiffusionThinLayer<1>;

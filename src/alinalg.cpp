@@ -858,7 +858,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 
 template <short nvars>
 MFIterativeBlockSolver<nvars>::MFIterativeBlockSolver(const UMesh2dh* const mesh, 
-		DLUPreconditioner<nvars> *const precond, const Spatial<nvars> *const spatial)
+		DLUPreconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: IterativeSolver(mesh), prec(precond), space(spatial)
 {
 	walltime = 0; cputime = 0;
@@ -883,15 +883,16 @@ void MFIterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMa
 // Richardson iteration
 template <short nvars>
 MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
-		DLUPreconditioner<nvars> *const precond, const Spatial<nvars> *const spatial)
+		DLUPreconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: MFIterativeBlockSolver<nvars>(mesh, precond, spatial)
 { }
 
 template <short nvars>
-int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u,
+int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
 		const amat::Array2d<a_real>& dtm,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -919,7 +920,7 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 		//DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
 
 		// compute -ve of dir derivative in the direction du, add -ve of residual, and store in s
-		space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, s);
+		space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, aux, s);
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
@@ -954,6 +955,7 @@ template class BlockSGS<NVARS>;
 template class BILU0<NVARS>;
 template class RichardsonSolver<NVARS>;
 template class BiCGSTAB<NVARS>;
+template class MFRichardsonSolver<NVARS>;
 template class NoPrec<1>;
 template class BlockJacobi<1>;
 template class PointSGS<1>;

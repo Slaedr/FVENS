@@ -16,11 +16,12 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype;
+	string dum, meshfile, outf, invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
 	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, firstcfl, firsttolerance;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
+	bool use_matrix_free;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -49,6 +50,7 @@ int main(int argc, char* argv[])
 	if(timesteptype == "IMPLICIT") {
 		control >> dum;
 		control >> dum; control >> invfluxjac;
+		control >> dum; control >> usemf;
 		control >> dum; control >> linsolver;
 		control >> dum; control >> lintol;
 		control >> dum; control >> linmaxiterstart;
@@ -59,7 +61,12 @@ int main(int argc, char* argv[])
 	}
 	else
 		invfluxjac = invflux;
-	control.close(); 
+	control.close();
+
+	if(usemf == "YES")
+		use_matrix_free = true;
+	else
+		use_matrix_free = false;
 
 	// Set up mesh
 
@@ -79,8 +86,12 @@ int main(int argc, char* argv[])
 	
 	SteadySolver<4>* time;
 	if(timesteptype == "IMPLICIT") {
-		time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-			lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
+		if(use_matrix_free)
+			time = new SteadyMFBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
+		else
+			time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
 		std::cout << "Setting up backward Euler temporal scheme.\n";
 	}
 	else {

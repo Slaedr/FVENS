@@ -163,6 +163,7 @@ class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
 	Matrix<a_real,nvars,nvars,RowMajor>* D;
 	Matrix<a_real,nvars,nvars,RowMajor>* L;
 	Matrix<a_real,nvars,nvars,RowMajor>* U;
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> aux;	///< Temporary storage needed for matrix free
 
 	const double cflinit;
 	double cflfin;
