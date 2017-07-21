@@ -5,7 +5,7 @@ srad = 0.5;
 // far field
 ffs = 40*srad;
 // mesh size at cylinder
-hc = 0.025;
+hc = 0.00625;
 // mesh size at far field
 hf = 40*hc;
 
@@ -30,7 +30,7 @@ Circle(31)  = {31, 1, 32};
 Circle(32)  = {32, 1, 31};
 Line Loop(8) = {31,32};
 Plane Surface(8) = {8,7};
-Recombine Surface{8};
+//Recombine Surface{8};
 
 //physical 
 Physical Line(2) = {1,2,3,4};

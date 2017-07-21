@@ -338,17 +338,19 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 		bs[3] = ins[3];
 	}
 
-	/** Right now, whether the flow is subsonic or supersonic at the boundary
+	/** Ghost cell values are always free-stream values.
+	 * Commented: Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
+	 * Commented below: Kind of according to FUN3D BCs paper
 	 * TODO: \todo Instead, the Mach number based on the Riemann solution state should be used.
 	 */
 	if(m->ggallfa(ied,3) == inflow_outflow_id)
 	{
-		if(Mni <= 0)
-		{
+		/*if(Mni <= 0)
+		{*/
 			for(int i = 0; i < NVARS; i++)
 				bs[i] = uinf(0,i);
-		}
+		/*}
 		else if(Mni <= 1)
 		{
 			a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
@@ -361,7 +363,8 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 		{
 			for(int i = 0; i < NVARS; i++)
 				bs[i] = ins[i];
-		}
+		}*/
+		
 		/*if(Mni <= -1.0)
 		{
 			for(int i = 0; i < NVARS; i++)

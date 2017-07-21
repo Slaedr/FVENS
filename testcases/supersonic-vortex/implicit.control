@@ -38,7 +38,7 @@ IMPLICIT
 -use-first-order-initial-condition
 1
 -CFL-for-initialization-run
-20.0
+15.0
 -tolerance-for-initialization
 1e-2
 -max-time-steps-for-initialization
@@ -49,9 +49,9 @@ HLL
 -Use-matrix-free-(YES-for-matrix-free)
 NO
 -linear-solver
-BCGSTB
+RICHARDSON
 -Linear-solver-tolerance
-1e-3
+1e-2
 -Linear-solver-max-iterations-initial
 200
 -Linear-solver-max-iterations-end
