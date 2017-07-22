@@ -46,7 +46,8 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *cons
 	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
 }
 
-void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, 
+		a_real *const __restrict__ dfdl, a_real *const __restrict__ dfdr)
 {
 	// first, get common max eig
 	
@@ -62,8 +63,7 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
 	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
-	eig = fabs(vni)+ci > fabs(vnj)+cj ? fabs(vni)+ci : fabs(vnj)+cj;
-	eig = 2*eig;
+	eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
 
 	// get flux jacobians
 	aflux->evaluate_normal_jacobian(ul, n, dfdl);
