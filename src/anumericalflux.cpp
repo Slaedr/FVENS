@@ -8,19 +8,26 @@
 
 namespace acfd {
 
-InviscidFlux::InviscidFlux(const a_real gamma, const EulerFlux *const analyticalflux) : g(gamma), aflux(analyticalflux)
+InviscidFlux::InviscidFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
+	: g(gamma), aflux(analyticalflux)
 { }
 
-void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, 
+		const a_real* const n, 
+		a_real *const dfdl, a_real *const dfdr)
 { }
 
 InviscidFlux::~InviscidFlux()
 { }
 
-LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
+LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux)
+	: InviscidFlux(gamma, analyticalflux)
 { }
 
-void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul, 
+		const a_real *const __restrict__ ur, 
+		const a_real* const __restrict__ n, 
+		a_real *const __restrict__ flux)
 {
 	a_real vni, vnj, pi, pj, ci, cj, eig;
 
@@ -46,11 +53,11 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul, const
 	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
 }
 
-void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, 
+void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, 
+		const a_real *const __restrict__ ur,
+		const a_real* const __restrict__ n, 
 		a_real *const __restrict__ dfdl, a_real *const __restrict__ dfdr)
 {
-	// first, get common max eig
-	
 	a_real vni, vnj, pi, pj, ci, cj, eig;
 
 	//calculate presures from u
@@ -81,12 +88,12 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, c
 
 	// linearization of the dissipation term
 	
-	a_real ctermi = -1.0 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
-	a_real ctermj = -1.0 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
+	a_real ctermi = 0.5 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
+	a_real ctermj = 0.5 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
 	a_real dedu[NVARS];
 	
 	if(leftismax) {
-		dedu[0] = -std::fabs(vni/ul[0]) + ctermi*g*(g-1)*( -ul[3]/(ul[0]*ul[0]) + (ul[1]*ul[1]+ul[2]*ul[2])/(ul[0]*ul[0]*ul[0]) );
+		dedu[0] = -std::fabs(vni/(ul[0]*ul[0])) + ctermi*g*(g-1)*( -ul[3]/(ul[0]*ul[0]) + (ul[1]*ul[1]+ul[2]*ul[2])/(ul[0]*ul[0]*ul[0]) );
 		dedu[1] = (vni>0 ? n[0]/ul[0] : -n[0]/ul[0]) + ctermi*g*(g-1)*(-ul[1]/ul[0]);
 		dedu[2] = (vni>0 ? n[1]/ul[0] : -n[1]/ul[0]) + ctermi*g*(g-1)*(-ul[2]/ul[0]);
 		dedu[3] = ctermi*g*(g-1)/ul[0];
@@ -108,7 +115,7 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, c
 		for(int i = 0; i < NVARS; i++)
 			dedu[i] = 0;
 	} else {
-		dedu[0] = -std::fabs(vnj/ur[0]) + ctermj*g*(g-1)*( -ur[3]/(ur[0]*ur[0]) + (ur[1]*ur[1]+ur[2]*ur[2])/(ur[0]*ur[0]*ur[0]) );
+		dedu[0] = -std::fabs(vnj/(ur[0]*ur[0])) + ctermj*g*(g-1)*( -ur[3]/(ur[0]*ur[0]) + (ur[1]*ur[1]+ur[2]*ur[2])/(ur[0]*ur[0]*ur[0]) );
 		dedu[1] = (vnj>0 ? n[0]/ur[0] : -n[0]/ur[0]) + ctermj*g*(g-1)*(-ur[1]/ur[0]);
 		dedu[2] = (vnj>0 ? n[1]/ur[0] : -n[1]/ur[0]) + ctermj*g*(g-1)*(-ur[2]/ur[0]);
 		dedu[3] = ctermj*g*(g-1)/ur[0];
@@ -122,6 +129,12 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, c
 			dfdr[i*NVARS+j] -= dedu[j]*(ur[i]-ul[i]);
 	}
 
+	/*for(int i = 0; i < NVARS; i++)
+	{
+		dfdl[i*NVARS+i] += eig;
+		dfdr[i*NVARS+i] -= eig;
+	}*/
+
 	for(int i = 0; i < NVARS; i++)
 		for(int j = 0; j < NVARS; j++)
 		{
@@ -132,11 +145,13 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, c
 		}
 }
 
-VanLeerFlux::VanLeerFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
+VanLeerFlux::VanLeerFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
+	: InviscidFlux(gamma, analyticalflux)
 {
 }
 
-void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur,
+		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
 	a_real nx, ny, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
 	a_real fiplus[NVARS], fjminus[NVARS];
@@ -202,15 +217,18 @@ void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *co
 		flux[i] = fiplus[i] + fjminus[i];
 }
 
-void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
 {
 	std::cout << " ! VanLeerFlux: Not implemented!\n";
 }
 
-RoeFlux::RoeFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
+RoeFlux::RoeFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
+	: InviscidFlux(gamma, analyticalflux)
 { }
 
-void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur,
+		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
 	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
 	int ivar;
@@ -317,19 +335,23 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	}
 }
 
-void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
 {
 	std::cout << " ! RoeFlux: Not implemented!\n";
 }
 
-HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
+HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
+	: InviscidFlux(gamma, analyticalflux)
 {
 }
 
-/** Ref: P. Batten, M.A. Lechziner, U.C. Goldberg. Average-state Jacobians and implicit methods for conmpressible viscous and turbulent flows.
+/** Ref: P. Batten, M.A. Lechziner, U.C. Goldberg. Average-state Jacobians and implicit methods 
+ * for compressible viscous and turbulent flows.
  * JCP 137, pages 38--78. 1997.
  */
-void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
+		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
 	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
 
@@ -382,7 +404,8 @@ void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 /** Automatically differentiated Jacobian w.r.t. left state, generated by Tapenade 3.12 (r6213) - 13 Oct 2016 10:54.
  * Modified to remove the runtime parameter nbdirs and the change in ul. Also changed the array shape of Jacobian.
  */
-void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real *const __restrict__ n, 
+void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
+		const a_real *const __restrict__ n, 
 		a_real *const __restrict__ flux, a_real *const __restrict__ fluxd)
 {
     a_real uld[NVARS][NVARS];
