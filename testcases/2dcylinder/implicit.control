@@ -38,7 +38,7 @@ IMPLICIT
 -use-first-order-initial-condition
 1
 -CFL-for-initialization-run
-5.0
+10.0
 -tolerance-for-initialization
 1e-2
 -max-time-steps-for-initialization
@@ -51,7 +51,7 @@ NO
 -linear-solver
 RICHARDSON
 -Linear-solver-tolerance
-1e-2
+1e-1
 -Linear-solver-max-iterations-initial
 60
 -Linear-solver-max-iterations-end

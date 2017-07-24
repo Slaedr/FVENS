@@ -20,7 +20,7 @@ InviscidFlux::~InviscidFlux()
 LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
 { }
 
-void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux)
+void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
 	a_real vni, vnj, pi, pj, ci, cj, eig;
 
@@ -63,11 +63,65 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, c
 	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
 	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
-	eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
+	bool leftismax;
+	if( std::fabs(vni)+ci >= std::fabs(vnj)+cj )
+	{
+		eig = std::fabs(vni)+ci;
+		leftismax = true;
+	}
+	else
+	{
+		eig = std::fabs(vnj)+cj;
+		leftismax = false;
+	}
 
 	// get flux jacobians
 	aflux->evaluate_normal_jacobian(ul, n, dfdl);
 	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+
+	// linearization of the dissipation term
+	
+	a_real ctermi = -1.0 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
+	a_real ctermj = -1.0 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
+	a_real dedu[NVARS];
+	
+	if(leftismax) {
+		dedu[0] = -std::fabs(vni/ul[0]) + ctermi*g*(g-1)*( -ul[3]/(ul[0]*ul[0]) + (ul[1]*ul[1]+ul[2]*ul[2])/(ul[0]*ul[0]*ul[0]) );
+		dedu[1] = (vni>0 ? n[0]/ul[0] : -n[0]/ul[0]) + ctermi*g*(g-1)*(-ul[1]/ul[0]);
+		dedu[2] = (vni>0 ? n[1]/ul[0] : -n[1]/ul[0]) + ctermi*g*(g-1)*(-ul[2]/ul[0]);
+		dedu[3] = ctermi*g*(g-1)/ul[0];
+	} 
+	else {
+		for(int i = 0; i < NVARS; i++)
+			dedu[i] = 0;
+	}
+
+	// add contributions to left derivative
+	for(int i = 0; i < NVARS; i++)
+	{
+		dfdl[i*NVARS+i] -= -eig;
+		for(int j = 0; j < NVARS; j++)
+			dfdl[i*NVARS+j] -= dedu[j]*(ur[i]-ul[i]);
+	}
+
+	if(leftismax) {
+		for(int i = 0; i < NVARS; i++)
+			dedu[i] = 0;
+	} else {
+		dedu[0] = -std::fabs(vnj/ur[0]) + ctermj*g*(g-1)*( -ur[3]/(ur[0]*ur[0]) + (ur[1]*ur[1]+ur[2]*ur[2])/(ur[0]*ur[0]*ur[0]) );
+		dedu[1] = (vnj>0 ? n[0]/ur[0] : -n[0]/ur[0]) + ctermj*g*(g-1)*(-ur[1]/ur[0]);
+		dedu[2] = (vnj>0 ? n[1]/ur[0] : -n[1]/ur[0]) + ctermj*g*(g-1)*(-ur[2]/ur[0]);
+		dedu[3] = ctermj*g*(g-1)/ur[0];
+	}
+
+	// add contributions to right derivarive
+	for(int i = 0; i < NVARS; i++)
+	{
+		dfdr[i*NVARS+i] -= eig;
+		for(int j = 0; j < NVARS; j++)
+			dfdr[i*NVARS+j] -= dedu[j]*(ur[i]-ul[i]);
+	}
+
 	for(int i = 0; i < NVARS; i++)
 		for(int j = 0; j < NVARS; j++)
 		{
@@ -76,12 +130,6 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, c
 			// upper block
 			dfdr[i*NVARS+j] =  0.5*dfdr[i*NVARS+j];
 		}
-	for(int i = 0; i < NVARS; i++) {
-		// lower:
-		dfdl[i*NVARS+i] = dfdl[i*NVARS+i] - 0.5*eig;
-		// upper:
-		dfdr[i*NVARS+i] = dfdr[i*NVARS+i] - 0.5*eig;
-	}
 }
 
 VanLeerFlux::VanLeerFlux(const a_real gamma, const EulerFlux *const analyticalflux) : InviscidFlux(gamma, analyticalflux)
