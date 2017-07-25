@@ -279,7 +279,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			if(step == 0)
 				initres = resi;
 
-			if(step % 5 == 0) {
+			if(step % 10 == 0) {
 				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 				std::cout << "      CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 			}
@@ -294,6 +294,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	}
 
 	std::cout << " SteadyBackwardEulerSolver: solve(): Starting main solver.\n";
+	unsigned int avglinsteps = 0;
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for default(shared)
@@ -356,6 +357,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		linsolv->setParams(lintol, curlinmaxiter);
 		int linstepsneeded = linsolv->solve(residual, du);
 
+		avglinsteps += linstepsneeded;
 		a_real errmass = 0;
 
 #pragma omp parallel default(shared)
@@ -376,7 +378,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		if(step == 0)
 			initres = resi;
 
-		if(step % 5 == 0) {
+		if(step % 10 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
 			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 		}
@@ -388,6 +390,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	avglinsteps /= step;
 
 	if(step == maxiter)
 		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
@@ -397,6 +400,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	linsolv->getRunTimes(linwtime, linctime);
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
 	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
+	std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
 	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << std::endl << std::endl;
 }
