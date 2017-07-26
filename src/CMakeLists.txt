@@ -29,7 +29,7 @@ endif()
 
 if(MICKNC)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
-	message(STATUS "Compiling for KNL")
+	message(STATUS "Compiling for KNC")
 endif()
 
 # Eigen
