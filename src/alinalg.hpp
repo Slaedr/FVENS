@@ -20,7 +20,8 @@ namespace acfd {
 /// Solves Ax=b for dense A by Gaussian elimination
 void gausselim(amat::Array2d<a_real>& A, amat::Array2d<a_real>& b, amat::Array2d<a_real>& x);
 
-/// Factors the dense matrix A into unit lower triangular matrix and upper triangular matrix in place, with partial pivoting
+/// Factors the dense matrix A into unit lower triangular matrix and upper triangular matrix, 
+/// in place, with partial pivoting
 void LUfactor(amat::Array2d<a_real>& A, amat::Array2d<int>& p);
 
 /// Solve LUx = b
@@ -121,11 +122,13 @@ public:
 	NoPrec(const UMesh2dh* const mesh) : DLUPreconditioner<nvars>(mesh)
 	{ }
 	
-	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 	{ }
 	
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
 	{ }
 };
 
@@ -147,10 +150,12 @@ public:
 
 	~BlockJacobi();
 	
-	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 };
 
 /// (point) symmetric Gauss-Seidel preconditioner
@@ -171,10 +176,12 @@ class PointSGS : public DLUPreconditioner<nvars>
 public:
 	PointSGS(const UMesh2dh* const mesh, const unsigned short n_applysweeps);
 	
-	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 };
 
 /// Block symmetric Gauss-Seidel preconditioner
@@ -199,10 +206,12 @@ public:
 	~BlockSGS();
 
 	/// Sets D,L,U and inverts each D
-	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
 };
 
 /// Asynchronous block ILU defect-correction solver
@@ -236,11 +245,13 @@ public:
 	~BILU0();
 
 	/// Sets D,L,U and computes the ILU factorization
-	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+	void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
 	
 	/// Solves Mz=r, where M is the preconditioner
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z);
+	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, 
+			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z);
 };
 
 /// Base class for a linear solver
@@ -288,7 +299,8 @@ template <short nvars>
 class IterativeBlockSolver : public IterativeSolver
 {
 protected:
-	const Matrix<a_real,nvars,nvars,RowMajor>* D;			///< (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	/// (Inverted) diagonal blocks of LHS (Jacobian) matrix
+	const Matrix<a_real,nvars,nvars,RowMajor>* D;
 	const Matrix<a_real,nvars,nvars,RowMajor>* L;			///< `Lower' blocks of LHS
 	const Matrix<a_real,nvars,nvars,RowMajor>* U;			///< `Upper' blocks of LHS
 	double walltime;

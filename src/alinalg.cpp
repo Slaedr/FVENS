@@ -908,6 +908,8 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(),nvars);
 	// linear system defect
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(),nvars);
+	// dummy
+	amat::Array2d<a_real> dum;
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
@@ -919,10 +921,19 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 
 	while(step < maxiter)
 	{
-		//DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
-
 		// compute -ve of dir derivative in the direction du, add -ve of residual, and store in s
-		space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, aux, s);
+		//space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, aux, s);
+
+		/* compute the linear residual as follows:
+		 *  b - Ax
+		 *  = -r(u) - V/dt*du - dr/du(u) du
+		 *  = -V/dt*du - r(u+du)
+		 */
+		block_axpbypcz<nvars>(m, 0.0, aux, 1.0, u, 1.0, du);
+		space->compute_residual(aux, s, false, dum);
+		for(a_int i = 0; i < m->gnelem(); i++) {
+			s.row(i) = -s.row(i) - m->garea(i)/dtm(i)*du.row(i);
+		}
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
@@ -948,7 +959,7 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	return step+1;
+	return step;
 }
 
 

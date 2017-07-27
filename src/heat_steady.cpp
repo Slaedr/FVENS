@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
 	control >> dum; control >> firsttolerance;
 	control >> dum; control >> firstmaxiter;
 	if(timesteptype == "IMPLICIT") {
+		control >> dum;
 		control >> dum; control >> linsolver;
 		control >> dum; control >> lintol;
 		control >> dum; control >> linmaxiterstart;
