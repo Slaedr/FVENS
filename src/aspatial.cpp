@@ -322,10 +322,10 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 	a_real ny = m->ggallfa(ied,1);
 
 	a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
-	a_real pi = (g-1.0)*(ins[3] - 0.5*(pow(ins[1],2)+pow(ins[2],2))/ins[0]);
+	/*a_real pi = (g-1.0)*(ins[3] - 0.5*(pow(ins[1],2)+pow(ins[2],2))/ins[0]);
 	a_real ci = sqrt(g*pi/ins[0]);
 	a_real Mni = vni/ci;
-	/*a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
+	a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
 	a_real cinf = sqrt(g*pinf/uinf(0,0));
 	a_real vninf = (uinf(0,1)*nx + uinf(0,2)*ny)/uinf(0,0);
 	a_real Mninf = vninf/cinf;*/

@@ -478,7 +478,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> du = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
-	du(0,0) = 1.0;
+	du(0,0) = 1e-8;
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);

@@ -905,9 +905,11 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	int step = 0;
 
 	// linear system residual
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(),nvars);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(), nvars);
+
 	// linear system defect
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(),nvars);
+	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(), nvars);
+		//= Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
 	// dummy
 	amat::Array2d<a_real> dum;
 
@@ -921,30 +923,36 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 
 	while(step < maxiter)
 	{
+#pragma omp parallel for simd default(shared)
+		for(int i = 0; i < m->gnelem()*nvars; i++)
+			(&s(0,0))[i] = 0.0;
+
 		// compute -ve of dir derivative in the direction du, add -ve of residual, and store in s
-		//space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, aux, s);
+		space->compute_jac_gemv(-1.0,res,u, du, true, dtm, -1.0,res, aux, s);
 
 		/* compute the linear residual as follows:
 		 *  b - Ax
 		 *  = -r(u) - V/dt*du - dr/du(u) du
 		 *  = -V/dt*du - r(u+du)
 		 */
-		block_axpbypcz<nvars>(m, 0.0, aux, 1.0, u, 1.0, du);
-		space->compute_residual(aux, s, false, dum);
-		for(a_int i = 0; i < m->gnelem(); i++) {
-			s.row(i) = -s.row(i) - m->garea(i)/dtm(i)*du.row(i);
-		}
+		// aux := u+du
+		/*block_axpbypcz<nvars>(m, 0.0, aux, 1.0, u, 1.0, du);
+		// s := r(u+du)
+		space->compute_residual(aux, s, false, dum);*/
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
+			// s := -V/dt du - r(u+du)
+			//s.row(iel) = -s.row(iel) - m->garea(iel)/dtm(iel)*du.row(iel);
+
 			// compute norm
 			resnorm += s.row(iel).squaredNorm();
 		}
 		resnorm = std::sqrt(resnorm);
 		
-		std::cout << "   MFRichardsonSolver: Lin res = " << resnorm << std::endl;
+		std::cout << "   MFRichardsonSolver: Lin res = " << resnorm/bnorm << std::endl;
 		
 		if(resnorm/bnorm < tol) break;
 
