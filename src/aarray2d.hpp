@@ -6,9 +6,8 @@
  * @author Aditya Kashi
  * @date Feb 10, 2015
  *
- * 2016-04-17: Removed all storage-order stuff. Everything is row-major now.
+ * 2016-04-17: Removed variable storage-order. Everything is row-major now.
  * Further, all indexing is now by a_int rather than int.
- * Renamed file to amatrix.hpp from amatrix2.hpp.
  */
 
 /**
@@ -18,13 +17,6 @@
 
 #ifndef __AARRAY2D_H
 #define __AARRAY2D_H
-
-/*#ifdef _OPENMP
-	#ifndef OMP_H
-		#include <omp.h>
-		#define nthreads_m 4
-	#endif
-#endif*/
 
 #ifndef __ACONSTANTS_H
 #include <aconstants.hpp>
@@ -43,9 +35,6 @@ using acfd::a_real;
 using acfd::a_int;
 
 const int WIDTH = 10;		// width of field for printing matrices
-
-template <class T>
-class Array2d;
 
 inline a_real dabs(a_real x)
 {

@@ -4,8 +4,6 @@ namespace acfd {
 
 UMesh2dh::UMesh2dh() { 
 	alloc_jacobians = false;
-	alloc_lambda = false;
-	neleminlambda = 3;
 }
 
 UMesh2dh::UMesh2dh(const UMesh2dh& other)
@@ -87,14 +85,11 @@ UMesh2dh& UMesh2dh::operator=(const UMesh2dh& other)
 
 UMesh2dh::~UMesh2dh()
 {
-	if(alloc_lambda)
-		delete [] lambda;
 }
 
-/** Reads Professor Luo's mesh file, which I call the 'domn' format.
+/** (Deprecated) Reads Professor Luo's mesh file, which I call the 'domn' format.
    NOTE: Make sure nnofa is mentioned after ndim and ntype in the mesh file. ntype makes no sense for us now.
-   Can only be used for linear mesh for now.
-   MODIFIED FOR READING NON-HYBRID MESH FOR NOW.
+   Can only be used for linear mesh having all cells of the same shape.
 */
 void UMesh2dh::readDomn(std::string mfile)
 {
@@ -404,7 +399,10 @@ void UMesh2dh::readGmsh2(std::string mfile, int dimensions)
 	inpoel.setup(nelem, maxnnode);
 	vol_regions.setup(nelem, ndtag);
 
-	std::cout << "UMesh2dh: readGmsh2(): Done. No. of points: " << npoin << ", number of elements: " << nelem << ", number of boundary faces " << nface << ",\n max number of nodes per element: " << maxnnode << ", number of nodes per face: " << nnofa << ", max number of faces per element: " << maxnfael << std::endl;
+	std::cout << "UMesh2dh: readGmsh2(): No. of points: " << npoin 
+		<< ", number of elements: " << nelem << ", number of boundary faces " << nface 
+		<< ",\n max no. of nodes per element: " << maxnnode << ", no. of nodes per face: " << nnofa 
+		<< ", max faces per element: " << maxnfael << std::endl;
 
 	// write into inpoel and bface
 	// the first nface rows to be read are boundary faces
@@ -528,7 +526,8 @@ void UMesh2dh::compute_boundary_points()
 
 void UMesh2dh::printmeshstats()
 {
-	std::cout << "UMesh2dh: No. of points: " << npoin << ", number of elements: " << nelem << ", number of boundary faces " << nface << ", max number of nodes per element: " << maxnnode << ", number of nodes per face: " << nnofa << ", max number of faces per element: " << maxnfael << std::endl;
+	std::cout << "UMesh2dh: No. of points: " << npoin << ", no. of elements: " << nelem << ", no. of boundary faces " << nface 
+		<< ", max no. of nodes per element: " << maxnnode << ", no. of nodes per face: " << nnofa << ", max no. of faces per element: " << maxnfael << std::endl;
 }
 
 void UMesh2dh::writeGmsh2(std::string mfile)
@@ -619,22 +618,6 @@ void UMesh2dh::compute_jacobians()
 	}
 }
 
-// computes areas of linear triangles and quads
-void UMesh2dh::compute_areas()
-{
-	area.setup(nelem,1);
-	for(int i = 0; i < nelem; i++)
-	{
-		if(nnode[i] == 3)
-			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) - gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)-gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
-		else if(nnode[i]==4)
-		{
-			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) - gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)-gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
-			area(i,0) += 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,3),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,2),0)-gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1) - gcoords(ginpoel(i,3),0)*gcoords(ginpoel(i,2),1));
-		}
-	}
-}
-
 void UMesh2dh::detect_negative_jacobians(std::ofstream& out)
 {
 	bool flagj = false;
@@ -648,6 +631,22 @@ void UMesh2dh::detect_negative_jacobians(std::ofstream& out)
 		}
 	}
 	if(flagj == true) std::cout << "UMesh2d: detect_negative_jacobians(): There exist " << nneg << " element(s) with negative jacobian!!\n";
+}
+
+// Computes areas of linear triangles and quads
+void UMesh2dh::compute_areas()
+{
+	area.setup(nelem,1);
+	for(int i = 0; i < nelem; i++)
+	{
+		if(nnode[i] == 3)
+			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) - gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)-gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
+		else if(nnode[i]==4)
+		{
+			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) - gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)-gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
+			area(i,0) += 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,2),1) - gcoords(ginpoel(i,3),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,2),0)-gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1) - gcoords(ginpoel(i,3),0)*gcoords(ginpoel(i,2),1));
+		}
+	}
 }
 
 /// \todo: TODO: There is an issue with psup for some boundary nodes belonging to elements of different types. Correct this.
@@ -726,7 +725,8 @@ void UMesh2dh::compute_topological()
 			else if(nnode[ielem] == 4)
 				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
 				{
-					if(jnode == perm(0,nnode[ielem]-1,inode,1) || jnode == perm(0,nnode[ielem]-1, inode, -1))
+					//if(jnode == perm(0,nnode[ielem]-1,inode,1) || jnode == perm(0,nnode[ielem]-1, inode, -1))
+					if(jnode == (inode + 1) % nnode[ielem] || jnode == (inode + nnode[ielem]-1) % nnode[ielem])
 						nbd[jnode] = true;
 				}
 
@@ -778,7 +778,8 @@ void UMesh2dh::compute_topological()
 			else if(nnode[ielem] == 4)
 				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
 				{
-					if(jnode == perm(0,nnode[ielem]-1,inode,1) || jnode == perm(0,nnode[ielem]-1, inode, -1))
+					//if(jnode == perm(0,nnode[ielem]-1,inode,1) || jnode == perm(0,nnode[ielem]-1, inode, -1))
+					if(jnode == (inode + 1) % nnode[ielem] || jnode == (inode + nnode[ielem]-1) % nnode[ielem])
 						nbd[jnode] = true;
 				}
 

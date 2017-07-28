@@ -60,7 +60,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
-add_library(fvens_base aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp adatastructures.cpp)
+add_library(fvens_base aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp)
 
 add_library(fvens_time aodesolver.cpp alinalg.cpp)
 target_link_libraries(fvens_time fvens_base)

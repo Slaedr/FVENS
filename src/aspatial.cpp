@@ -625,7 +625,7 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
  * then \f$ L_{ij} = -\frac{\partial F_{ij}}{\partial u_i} \f$ and
  * \f$ U_{ij} = \frac{\partial F_{ij}}{\partial u_j} \f$.
  * Also, the contribution of face ij to diagonal blocks are 
- * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rigtharrow D_{jj} -U_{ij} \f$.
+ * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
 void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
 		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ D, 

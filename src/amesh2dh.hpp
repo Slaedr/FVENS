@@ -13,9 +13,6 @@
 #ifndef __AARRAY2D_H
 #include "aarray2d.hpp"
 #endif
-#ifndef __ADATASTRUCTURES_H
-#include "adatastructures.hpp"
-#endif
 
 namespace acfd {
 
@@ -86,18 +83,6 @@ private:
 	amat::Array2d<double > jacobians;		///< Contains jacobians of each (linear triangular) element
 	amat::Array2d<a_real> area;			///< Contains area of each element (either triangle or quad)
 	amat::Array2d<a_real> gallfa;			///< Stores lengths and normals for linear mesh faces
-	
-	/// Contains Knupp's node-local areas for each node of each element. 
-	/** If the elements are triangles, it contains just 1 value for each element. If elements are quads, there are 4 values for each element, one associated with each node. */
-	amat::Array2d<double > alpha;
-
-	/// Contains Knupp's 3 coeffs of metric tensor for each node of each element. 
-	/** In case of triangles, it just contains 3 coeffs for each element. In case of quads, we need to store 3 coeffs for each node of each element. */
-	amat::Array2d<double >* lambda;
-
-	std::vector<int> nmtens;				///< number of metric tensors required for each element - 1 for triangles and 4 for quads.
-	int neleminlambda;				///< number of coeffs in lambda per element per node.
-	bool alloc_lambda;				///< Contains true if alpha and lambda have been allocated.
 
 public:
 	UMesh2dh();
@@ -155,7 +140,7 @@ public:
 	int gnbpoin() const { return nbpoin; }
 
 	/* Functions to set some mesh data structures. */
-	/// set coordinates of a certain point; 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
+	/// Set coordinates of a certain point; 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
 	void scoords(const a_int pointno, const int dim, const a_real value)
 	{
 		coords(pointno,dim) = value;
@@ -191,7 +176,7 @@ public:
 	void compute_jacobians();
 	void detect_negative_jacobians(std::ofstream& out);
 	
-	/// computes areas of linear triangles and quads
+	/// Computes areas of linear triangles and quads
 	void compute_areas();
 	
 	/** Computes data structures for 
@@ -231,6 +216,7 @@ public:
 	*/
 	UMesh2dh convertLinearToQuadratic();
 
+	/// Converts quads in a mesh to triangles
 	UMesh2dh convertQuadToTri() const;
 };
 

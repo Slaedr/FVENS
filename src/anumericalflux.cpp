@@ -29,23 +29,22 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul,
 		const a_real* const __restrict__ n, 
 		a_real *const __restrict__ flux)
 {
-	a_real vni, vnj, pi, pj, ci, cj, eig;
+	//a_real vni, vnj, pi, pj, ci, cj, eig;
 
 	//calculate presures from u
-	pi = (g-1)*(ul[3] - 0.5*(std::pow(ul[1],2)+std::pow(ul[2],2))/ul[0]);
-	pj = (g-1)*(ur[3] - 0.5*(std::pow(ur[1],2)+std::pow(ur[2],2))/ur[0]);
+	const a_real pi = (g-1)*(ul[3] - 0.5*(std::pow(ul[1],2)+std::pow(ul[2],2))/ul[0]);
+	const a_real pj = (g-1)*(ur[3] - 0.5*(std::pow(ur[1],2)+std::pow(ur[2],2))/ur[0]);
 	//calculate speeds of sound
-	ci = std::sqrt(g*pi/ul[0]);
-	cj = std::sqrt(g*pj/ur[0]);
+	const a_real ci = std::sqrt(g*pi/ul[0]);
+	const a_real cj = std::sqrt(g*pj/ur[0]);
 	//calculate normal velocities
-	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
-	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
+	const a_real vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
+	const a_real vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
 	/*a_real vmagl = std::sqrt(ul[1]*ul[1]+ul[2]*ul[2])/ul[0];
 	a_real vmagr = std::sqrt(ur[1]*ur[1]+ur[2]*ur[2])/ur[0];
 	eig = vmagl+ci > vmagr+cj ? vmagl+ci : vmagr+cj;*/
-	eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
-	eig = 2*eig;
+	const a_real eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
 	
 	flux[0] = 0.5*( ul[0]*vni + ur[0]*vnj - eig*(ur[0]-ul[0]) );
 	flux[1] = 0.5*( vni*ul[1]+pi*n[0] + vnj*ur[1]+pj*n[0] - eig*(ur[1]-ul[1]) );
@@ -58,17 +57,104 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul,
 		const a_real* const __restrict__ n, 
 		a_real *const __restrict__ dfdl, a_real *const __restrict__ dfdr)
 {
-	a_real vni, vnj, pi, pj, ci, cj, eig;
+	a_real eig;
 
 	//calculate presures from u
-	pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
-	pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
+	const a_real pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
+	const a_real pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
 	//calculate speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
 	//calculate normal velocities
-	vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
-	vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
+	const a_real vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
+	const a_real vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
+	// max eigenvalue
+	//bool leftismax;
+	if( std::fabs(vni)+ci >= std::fabs(vnj)+cj )
+	{
+		eig = std::fabs(vni)+ci;
+		//leftismax = true;
+	}
+	else
+	{
+		eig = std::fabs(vnj)+cj;
+		//leftismax = false;
+	}
+
+	// get flux jacobians
+	aflux->evaluate_normal_jacobian(ul, n, dfdl);
+	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+
+	// linearization of the dissipation term
+	
+	/*const a_real ctermi = 0.5 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
+	const a_real ctermj = 0.5 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
+	a_real dedu[NVARS];
+	
+	if(leftismax) {
+		dedu[0] = -std::fabs(vni/(ul[0]*ul[0])) + ctermi*g*(g-1)*( -ul[3]/(ul[0]*ul[0]) + (ul[1]*ul[1]+ul[2]*ul[2])/(ul[0]*ul[0]*ul[0]) );
+		dedu[1] = (vni>0 ? n[0]/ul[0] : -n[0]/ul[0]) + ctermi*g*(g-1)*(-ul[1]/ul[0]);
+		dedu[2] = (vni>0 ? n[1]/ul[0] : -n[1]/ul[0]) + ctermi*g*(g-1)*(-ul[2]/ul[0]);
+		dedu[3] = ctermi*g*(g-1)/ul[0];
+	} 
+	else {
+		for(int i = 0; i < NVARS; i++)
+			dedu[i] = 0;
+	}*/
+
+	// add contributions to left derivative
+	for(int i = 0; i < NVARS; i++)
+	{
+		dfdl[i*NVARS+i] -= -eig;
+		/*for(int j = 0; j < NVARS; j++)
+			dfdl[i*NVARS+j] -= dedu[j]*(ur[i]-ul[i]);*/
+	}
+
+	/*if(leftismax) {
+		for(int i = 0; i < NVARS; i++)
+			dedu[i] = 0;
+	} else {
+		dedu[0] = -std::fabs(vnj/(ur[0]*ur[0])) + ctermj*g*(g-1)*( -ur[3]/(ur[0]*ur[0]) + (ur[1]*ur[1]+ur[2]*ur[2])/(ur[0]*ur[0]*ur[0]) );
+		dedu[1] = (vnj>0 ? n[0]/ur[0] : -n[0]/ur[0]) + ctermj*g*(g-1)*(-ur[1]/ur[0]);
+		dedu[2] = (vnj>0 ? n[1]/ur[0] : -n[1]/ur[0]) + ctermj*g*(g-1)*(-ur[2]/ur[0]);
+		dedu[3] = ctermj*g*(g-1)/ur[0];
+	}*/
+
+	// add contributions to right derivarive
+	for(int i = 0; i < NVARS; i++)
+	{
+		dfdr[i*NVARS+i] -= eig;
+		/*for(int j = 0; j < NVARS; j++)
+			dfdr[i*NVARS+j] -= dedu[j]*(ur[i]-ul[i]);*/
+	}
+
+	for(int i = 0; i < NVARS; i++)
+		for(int j = 0; j < NVARS; j++)
+		{
+			// lower block
+			dfdl[i*NVARS+j] = -0.5*dfdl[i*NVARS+j];
+			// upper block
+			dfdr[i*NVARS+j] =  0.5*dfdr[i*NVARS+j];
+		}
+}
+
+void LLF_get_jacobian(const a_real *const __restrict__ ul, 
+		const a_real *const __restrict__ ur,
+		const a_real* const __restrict__ n, 
+		a_real *const __restrict__ dfdl, a_real *const __restrict__ dfdr)
+{
+	a_real eig; 
+	a_real g=-1000000000000000000;
+
+	//calculate presures from u
+	const a_real pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
+	const a_real pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
+	//calculate speeds of sound
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
+	//calculate normal velocities
+	const a_real vni = (ul[1]*n[0] + ul[2]*n[1])/ul[0];
+	const a_real vnj = (ur[1]*n[0] + ur[2]*n[1])/ur[0];
 	// max eigenvalue
 	bool leftismax;
 	if( std::fabs(vni)+ci >= std::fabs(vnj)+cj )
@@ -83,13 +169,13 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul,
 	}
 
 	// get flux jacobians
-	aflux->evaluate_normal_jacobian(ul, n, dfdl);
-	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	//aflux->evaluate_normal_jacobian(ul, n, dfdl);
+	//aflux->evaluate_normal_jacobian(ur, n, dfdr);
 
 	// linearization of the dissipation term
 	
-	a_real ctermi = 0.5 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
-	a_real ctermj = 0.5 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
+	const a_real ctermi = 0.5 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
+	const a_real ctermj = 0.5 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
 	a_real dedu[NVARS];
 	
 	if(leftismax) {
@@ -129,12 +215,6 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul,
 			dfdr[i*NVARS+j] -= dedu[j]*(ur[i]-ul[i]);
 	}
 
-	/*for(int i = 0; i < NVARS; i++)
-	{
-		dfdl[i*NVARS+i] += eig;
-		dfdr[i*NVARS+i] -= eig;
-	}*/
-
 	for(int i = 0; i < NVARS; i++)
 		for(int j = 0; j < NVARS; j++)
 		{
@@ -153,25 +233,24 @@ VanLeerFlux::VanLeerFlux(const a_real gamma, const EulerFlux *const analyticalfl
 void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur,
 		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	a_real nx, ny, pi, ci, vni, Mni, pj, cj, vnj, Mnj, vmags;
 	a_real fiplus[NVARS], fjminus[NVARS];
 
-	nx = n[0];
-	ny = n[1];
+	const a_real nx = n[0];
+	const a_real ny = n[1];
 
 	//calculate presures from u
-	pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
-	pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
+	const a_real pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
+	const a_real pj = (g-1)*(ur[3] - 0.5*(pow(ur[1],2)+pow(ur[2],2))/ur[0]);
 	//calculate speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
 	//calculate normal velocities
-	vni = (ul[1]*nx +ul[2]*ny)/ul[0];
-	vnj = (ur[1]*nx + ur[2]*ny)/ur[0];
+	const a_real vni = (ul[1]*nx +ul[2]*ny)/ul[0];
+	const a_real vnj = (ur[1]*nx + ur[2]*ny)/ur[0];
 
 	//Normal mach numbers
-	Mni = vni/ci;
-	Mnj = vnj/cj;
+	const a_real Mni = vni/ci;
+	const a_real Mnj = vnj/cj;
 
 	//Calculate split fluxes
 	if(Mni < -1.0)
@@ -186,7 +265,7 @@ void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *co
 	}
 	else
 	{
-		vmags = pow(ul[1]/ul[0], 2) + pow(ul[2]/ul[0], 2);	// square of velocity magnitude
+		const a_real vmags = pow(ul[1]/ul[0], 2) + pow(ul[2]/ul[0], 2);
 		fiplus[0] = ul[0]*ci*pow(Mni+1, 2)/4.0;
 		fiplus[1] = fiplus[0] * (ul[1]/ul[0] + nx*(2.0*ci - vni)/g);
 		fiplus[2] = fiplus[0] * (ul[2]/ul[0] + ny*(2.0*ci - vni)/g);
@@ -205,7 +284,7 @@ void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *co
 	}
 	else
 	{
-		vmags = pow(ur[1]/ur[0], 2) + pow(ur[2]/ur[0], 2);	// square of velocity magnitude
+		const a_real vmags = pow(ur[1]/ur[0], 2) + pow(ur[2]/ur[0], 2);	// square of velocity magnitude
 		fjminus[0] = -ur[0]*cj*pow(Mnj-1, 2)/4.0;
 		fjminus[1] = fjminus[0] * (ur[1]/ur[0] + nx*(-2.0*cj - vnj)/g);
 		fjminus[2] = fjminus[0] * (ur[2]/ur[0] + ny*(-2.0*cj - vnj)/g);
@@ -230,36 +309,32 @@ RoeFlux::RoeFlux(const a_real gamma, const EulerFlux *const analyticalflux)
 void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur,
 		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
-	int ivar;
-
-	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
-	vxj = ur[1]/ur[0]; vyj = ur[2]/ur[0];
-	vni = vxi*n[0] + vyi*n[1];
-	vnj = vxj*n[0] + vyj*n[1];
-	vmag2i = vxi*vxi + vyi*vyi;
-	vmag2j = vxj*vxj + vyj*vyj;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
 	// pressures
-	pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
-	pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
 	// speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
 	// enthalpies  ( NOT E + p/rho = u(3)/u(0) + p/u(0) )
-	Hi = g/(g-1.0)* pi/ul[0] + 0.5*vmag2i;
-	Hj = g/(g-1.0)* pj/ur[0] + 0.5*vmag2j;
+	const a_real Hi = g/(g-1.0)* pi/ul[0] + 0.5*vmag2i;
+	const a_real Hj = g/(g-1.0)* pj/ur[0] + 0.5*vmag2j;
 
 	// compute Roe-averages
 	
-	a_real Rij, rhoij, vxij, vyij, Hij, cij, vm2ij, vnij;
-	Rij = sqrt(ur[0]/ul[0]);
-	rhoij = Rij*ul[0];
-	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
-	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
-	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
-	vm2ij = vxij*vxij + vyij*vyij;
-	vnij = vxij*n[0] + vyij*n[1];
-	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+	const a_real Rij = sqrt(ur[0]/ul[0]);
+	const a_real rhoij = Rij*ul[0];
+	const a_real vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	const a_real vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	const a_real Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	const a_real vm2ij = vxij*vxij + vyij*vyij;
+	const a_real vnij = vxij*n[0] + vyij*n[1];
+	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
 	// eigenvalues
 	a_real l[4];
@@ -303,7 +378,7 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	r(2,1) = (vyj-vyi) - n[1]*(vnj-vni);
 	r(3,1) = vxij*(vxj-vxi) + vyij*(vyj-vyi) - vnij*(vnj-vni);*/
 	
-	for(ivar = 0; ivar < 4; ivar++)
+	for(int ivar = 0; ivar < 4; ivar++)
 	{
 		r[ivar][2] *= rhoij/(2.0*cij);
 		r[ivar][3] *= rhoij/(2.0*cij);
@@ -325,11 +400,10 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	fj[3] = vni*(ul[3] + pi);				fj[3] = vnj*(ur[3] + pj);
 
 	// finally compute fluxes
-	a_real sum; int j;
-	for(ivar = 0; ivar < NVARS; ivar++)
+	for(int ivar = 0; ivar < NVARS; ivar++)
 	{
-		sum = 0;
-		for(j = 0; j < NVARS; j++)
+		a_real sum = 0;
+		for(int j = 0; j < NVARS; j++)
 			sum += fabs(l[j])*dw[j]*r[ivar][j];
 		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - sum);
 	}
@@ -353,48 +427,44 @@ HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux)
 void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
 		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
-
-	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
-	vxj = ur[1]/ur[0]; vyj = ur[2]/ur[0];
-	vni = vxi*n[0] + vyi*n[1];
-	vnj = vxj*n[0] + vyj*n[1];
-	vmag2i = vxi*vxi + vyi*vyi;
-	vmag2j = vxj*vxj + vyj*vyj;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
 	// pressures
-	pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
-	pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
 	// speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
 	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
-	Hi = (ul[3] + pi)/ul[0];
-	Hj = (ur[3] + pj)/ur[0];
+	const a_real Hi = (ul[3] + pi)/ul[0];
+	const a_real Hj = (ur[3] + pj)/ur[0];
 
 	// compute Roe-averages
-	a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
-	Rij = sqrt(ur[0]/ul[0]);
-	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
-	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
-	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
-	vm2ij = vxij*vxij + vyij*vyij;
-	vnij = vxij*n[0] + vyij*n[1];
-	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+	const a_real Rij = sqrt(ur[0]/ul[0]);
+	const a_real vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	const a_real vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	const a_real Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	const a_real vm2ij = vxij*vxij + vyij*vyij;
+	const a_real vnij = vxij*n[0] + vyij*n[1];
+	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
 	// Einfeldt estimate for signal speeds
-	a_real sr, sl, sr0, sl0;
-	sl = vni - ci;
+	a_real sl = vni - ci;
 	if (sl > vnij-cij)
 		sl = vnij-cij;
-	sr = vnj+cj;
+	a_real sr = vnj+cj;
 	if(sr < vnij+cij)
 		sr = vnij+cij;
-	sr0 = sr > 0 ? 0 : sr;
-	sl0 = sl > 0 ? 0 : sl;
+	const a_real sr0 = sr > 0 ? 0 : sr;
+	const a_real sl0 = sl > 0 ? 0 : sl;
 
 	// flux
-	a_real t1, t2, t3;
-	t1 = (sr0 - sl0)/(sr-sl); t2 = 1.0 - t1; t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
+	const a_real t1 = (sr0 - sl0)/(sr-sl); const a_real t2 = 1.0 - t1; 
+	const a_real t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
 	flux[0] = t1*vnj*ur[0] + t2*vni*ul[0]                     - t3*(ur[0]-ul[0]);
 	flux[1] = t1*(vnj*ur[1]+pj*n[0]) + t2*(vni*ul[1]+pi*n[0]) - t3*(ur[1]-ul[1]);
 	flux[2] = t1*(vnj*ur[2]+pj*n[1]) + t2*(vni*ul[2]+pi*n[1]) - t3*(ur[2]-ul[2]);
@@ -404,8 +474,9 @@ void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 /** Automatically differentiated Jacobian w.r.t. left state, generated by Tapenade 3.12 (r6213) - 13 Oct 2016 10:54.
  * Modified to remove the runtime parameter nbdirs and the change in ul. Also changed the array shape of Jacobian.
  */
-void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
-		const a_real *const __restrict__ n, 
+void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul, 
+		                      const a_real *const __restrict__ ur, 
+		                      const a_real *const __restrict__ n, 
 		a_real *const __restrict__ flux, a_real *const __restrict__ fluxd)
 {
     a_real uld[NVARS][NVARS];
@@ -749,46 +820,44 @@ void HLLFlux::get_flux_jacobian(const a_real *const __restrict__ ul, const a_rea
  */
 void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const dfdl, a_real *const dfdr)
 {
-	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
-
-	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
-	vxj = ur[1]/ur[0]; vyj = ur[2]/ur[0];
-	vni = vxi*n[0] + vyi*n[1];
-	vnj = vxj*n[0] + vyj*n[1];
-	vmag2i = vxi*vxi + vyi*vyi;
-	vmag2j = vxj*vxj + vyj*vyj;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
 	// pressures
-	pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
-	pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
 	// speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
 	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
-	Hi = (ul[3] + pi)/ul[0];
-	Hj = (ur[3] + pj)/ur[0];
+	const a_real Hi = (ul[3] + pi)/ul[0];
+	const a_real Hj = (ur[3] + pj)/ur[0];
 
 	// compute Roe-averages
-	a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
-	Rij = sqrt(ur[0]/ul[0]);
-	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
-	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
-	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
-	vm2ij = vxij*vxij + vyij*vyij;
-	vnij = vxij*n[0] + vyij*n[1];
-	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+	const a_real Rij = sqrt(ur[0]/ul[0]);
+	const a_real vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	const a_real vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	const a_real Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	const a_real vm2ij = vxij*vxij + vyij*vyij;
+	const a_real vnij = vxij*n[0] + vyij*n[1];
+	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
 	// Einfeldt estimate for signal speeds
-	a_real sr, sl, sr0, sl0;
+	a_real sr, sl;
 	sl = vni - ci;
 	if (sl > vnij-cij)
 		sl = vnij-cij;
 	sr = vnj+cj;
 	if(sr < vnij+cij)
 		sr = vnij+cij;
-	sr0 = sr > 0 ? 0 : sr;
-	sl0 = sl > 0 ? 0 : sl;
-	a_real t1, t2, t3;
-	t1 = (sr0 - sl0)/(sr-sl); t2 = 1.0 - t1; t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
+	const a_real sr0 = sr > 0 ? 0 : sr;
+	const a_real sl0 = sl > 0 ? 0 : sl;
+	const a_real t1 = (sr0 - sl0)/(sr-sl); 
+	const a_real t2 = 1.0 - t1; 
+	const a_real t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
 	
 	// get flux jacobians
 	aflux->evaluate_normal_jacobian(ul, n, dfdl);
@@ -817,46 +886,43 @@ HLLCFlux::HLLCFlux(const a_real gamma, const EulerFlux *const analyticalflux) : 
  */
 void HLLCFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, const a_real* const __restrict__ n, a_real *const __restrict__ flux)
 {
-	a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj, pstar;
 	a_real utemp[NVARS];
-	int ivar;
 
-	vxi = ul[1]/ul[0]; vyi = ul[2]/ul[0];
-	vxj = ur[1]/ur[0]; vyj = ur[2]/ur[0];
-	vni = vxi*n[0] + vyi*n[1];
-	vnj = vxj*n[0] + vyj*n[1];
-	vmag2i = vxi*vxi + vyi*vyi;
-	vmag2j = vxj*vxj + vyj*vyj;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
 	// pressures
-	pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
-	pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
 	// speeds of sound
-	ci = sqrt(g*pi/ul[0]);
-	cj = sqrt(g*pj/ur[0]);
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
 	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
-	Hi = (ul[3] + pi)/ul[0];
-	Hj = (ur[3] + pj)/ur[0];
+	const a_real Hi = (ul[3] + pi)/ul[0];
+	const a_real Hj = (ur[3] + pj)/ur[0];
 
 	// compute Roe-averages
-	a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
-	Rij = sqrt(ur[0]/ul[0]);
+	const a_real Rij = sqrt(ur[0]/ul[0]);
 	//rhoij = Rij*ul[0];
-	vxij = (Rij*vxj + vxi)/(Rij + 1.0);
-	vyij = (Rij*vyj + vyi)/(Rij + 1.0);
-	Hij = (Rij*Hj + Hi)/(Rij + 1.0);
-	vm2ij = vxij*vxij + vyij*vyij;
-	vnij = vxij*n[0] + vyij*n[1];
-	cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+	const a_real vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	const a_real vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	const a_real Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	const a_real vm2ij = vxij*vxij + vyij*vyij;
+	const a_real vnij = vxij*n[0] + vyij*n[1];
+	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
 	// estimate signal speeds (classical; not Remaki corrected)
-	a_real sr, sl, sm;
+	a_real sr, sl;
 	sl = vni - ci;
 	if (sl > vnij-cij)
 		sl = vnij-cij;
 	sr = vnj+cj;
 	if(sr < vnij+cij)
 		sr = vnij+cij;
-	sm = ( ur[0]*vnj*(sr-vnj) - ul[0]*vni*(sl-vni) + pi-pj ) / ( ur[0]*(sr-vnj) - ul[0]*(sl-vni) );
+	const a_real sm = ( ur[0]*vnj*(sr-vnj) - ul[0]*vni*(sl-vni) + pi-pj ) / ( ur[0]*(sr-vnj) - ul[0]*(sl-vni) );
 
 	// compute fluxes
 	
@@ -874,13 +940,13 @@ void HLLCFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const
 		flux[2] = vni*ul[2] + pi*n[1];
 		flux[3] = vni*(ul[3] + pi);
 
-		pstar = ul[0]*(vni-sl)*(vni-sm) + pi;
+		const a_real pstar = ul[0]*(vni-sl)*(vni-sm) + pi;
 		utemp[0] = ul[0] * (sl - vni)/(sl-sm);
 		utemp[1] = ( (sl-vni)*ul[1] + (pstar-pi)*n[0] )/(sl-sm);
 		utemp[2] = ( (sl-vni)*ul[2] + (pstar-pi)*n[1] )/(sl-sm);
 		utemp[3] = ( (sl-vni)*ul[3] - pi*vni + pstar*sm )/(sl-sm);
 
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
 			flux[ivar] += sl * ( utemp[ivar] - ul[ivar]);
 	}
 	else if(sm <= 0 && sr >= 0)
@@ -890,13 +956,13 @@ void HLLCFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const
 		flux[2] = vnj*ur[2] + pj*n[1];
 		flux[3] = vnj*(ur[3] + pj);
 
-		pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
+		const a_real pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
 		utemp[0] = ur[0] * (sr - vnj)/(sr-sm);
 		utemp[1] = ( (sr-vnj)*ur[1] + (pstar-pj)*n[0] )/(sr-sm);
 		utemp[2] = ( (sr-vnj)*ur[2] + (pstar-pj)*n[1] )/(sr-sm);
 		utemp[3] = ( (sr-vnj)*ur[3] - pj*vnj + pstar*sm )/(sr-sm);
 
-		for(ivar = 0; ivar < NVARS; ivar++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
 			flux[ivar] += sr * ( utemp[ivar] - ur[ivar]);
 	}
 	else
