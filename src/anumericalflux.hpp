@@ -98,7 +98,7 @@ public:
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
-/** From Remaki et. al., "Aerodynamic computations using FVM and HLLC".
+/** Implemented as described by Remaki et al. \cite invflux_remaki
  */
 class HLLCFlux : public InviscidFlux
 {

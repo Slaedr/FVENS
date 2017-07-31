@@ -420,9 +420,7 @@ HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux)
 {
 }
 
-/** Ref: P. Batten, M.A. Lechziner, U.C. Goldberg. Average-state Jacobians and implicit methods 
- * for compressible viscous and turbulent flows.
- * JCP 137, pages 38--78. 1997.
+/** \cite invflux_batten
  */
 void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
 		const a_real* const __restrict__ n, a_real *const __restrict__ flux)

@@ -595,7 +595,7 @@ void UMesh2dh::writeGmsh2(std::string mfile)
 
 /** \brief Computes area of linear triangular elements. So it can't be used for hybrid meshes.
  * 
- * \todo TODO: Generalize so that it works for quadrilateral meshes also
+ * \deprecated Does not work for quadrilateral meshes
 */
 void UMesh2dh::compute_jacobians()
 {
@@ -618,6 +618,8 @@ void UMesh2dh::compute_jacobians()
 	}
 }
 
+/** \deprecated Does not work for quadrilaterals
+ */
 void UMesh2dh::detect_negative_jacobians(std::ofstream& out)
 {
 	bool flagj = false;
