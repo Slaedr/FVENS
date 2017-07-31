@@ -221,30 +221,30 @@ void BlockJacobi<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 	
 	D = diago;
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
 		luD[iel] = D[iel].inverse();
 
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 template <short nvars>
 void BlockJacobi<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
 {
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++) 
@@ -252,10 +252,10 @@ void BlockJacobi<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 		z.row(iel) = luD[iel] * r.row(iel).transpose();
 	}
 	
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 // SGS
@@ -271,19 +271,19 @@ void PointSGS<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const di
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 	
 	D = diago;
 	U = upper;
 	L = lower;
 
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 template <short nvars>
@@ -294,10 +294,10 @@ void PointSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __res
 	feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
 #endif
 
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 
 	// forward sweep (D+L)y = r
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
@@ -372,10 +372,10 @@ void PointSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __res
 		}
 	}
 	
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 // Block SGS
@@ -397,10 +397,10 @@ void BlockSGS<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const di
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 	
 	L = lower;
 	U = upper;
@@ -409,20 +409,20 @@ void BlockSGS<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const di
 	for(int iel = 0; iel < m->gnelem(); iel++)
 		luD[iel] = D[iel].inverse();
 
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 template <short nvars>
 void BlockSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
 {
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 
 	// forward sweep (D+L)y = r
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
@@ -464,10 +464,10 @@ void BlockSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __res
 		}
 	}
 	
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 // Block ILU0
@@ -499,10 +499,10 @@ void BILU0<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;*/
 	
 	L = lower;
 	U = upper;
@@ -621,10 +621,10 @@ void BILU0<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago
 		}
 	}
 
-	gettimeofday(&time2, NULL);
+	/*gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);*/
 }
 
 template <short nvars>
@@ -689,10 +689,20 @@ void IterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajo
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
 	L = lower;
 	U = upper;
 	D = diago;
 	prec->setLHS(diago, lower, upper);
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
 // Richardson iteration
@@ -876,10 +886,20 @@ void MFIterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMa
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
 	L = lower;
 	U = upper;
 	D = diago;
 	prec->setLHS(diago, lower, upper);
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 }
 
 // Richardson iteration
