@@ -172,12 +172,6 @@ void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __rest
 }
 
 template <size_t bs>
-void DLUMatrix<bs>::allocTempVector()
-{
-	y = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(),bs);
-}
-
-template <size_t bs>
 void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restrict zz) const
 {
 	Eigen::Map<const Matrix<a_real,Dynamic,Dynamic,RowMajor>> r(rr, m->gnelem(),bs);
@@ -229,23 +223,282 @@ template <size_t bs>
 void DLUMatrix<bs>::precILUSetup()
 {
 	if(!luD)
-	{
 		luD = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
+	if(!luL)
+		luL = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
+	if(!luU)
+		luU = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
+
+}
+
+template <size_t bs>
+void DLUMatrix<bs>::precILUApply(const a_real *const r, a_real *const __restrict z) const;
+
+}
+
+namespace acfd {
+
+/* z <- pz + qx.
+ */
+template<short nvars>
+inline void block_axpby(const UMesh2dh *const m, 
+	const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+	const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x)
+{
+	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		zz[i] = p*zz[i] + q*xx[i];
+	}
+}
+
+/* z <- pz + qx + ry
+ */
+template<short nvars>
+inline void block_axpbypcz(const UMesh2dh *const m, 
+	const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
+	const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+	const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y)
+{
+	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
+	}
+}
+
+template<short nvars>
+a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
+	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b)
+{
+	a_real sum = 0;
+	const a_real *const aa = &a(0,0); const a_real *const bb = &b(0,0);
+#pragma omp parallel for simd default(shared) reduction(+:sum)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++)
+		sum += aa[i]*bb[i];
+
+	return sum;
+}
+
+/* Computes z = q Ax */
+template<short nvars>
+void DLU_spmv(const UMesh2dh *const m, 
+		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const D, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const L, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const U, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		z.row(iel) = q*x.row(iel)*D[iel].transpose();
+
+		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+		{
+			a_int face = m->gelemface(iel,ifael) - m->gnbface();
+			a_int nbdelem = m->gesuel(iel,ifael);
+
+			if(nbdelem < m->gnelem())
+			{
+				if(nbdelem > iel) {
+					// upper
+					z.row(iel) += q*x.row(nbdelem)*U[face].transpose();
+				}
+				else {
+					// lower
+					z.row(iel) += q*x.row(nbdelem)*L[face].transpose();
+				}
+			}
+		}
+	}
+}
+
+/* Computes z = p b + q Ax */
+template<short nvars>
+void DLU_gemv(const UMesh2dh *const m, 
+		const a_real p, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b,
+		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const D, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const L, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const U, 
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		z.row(iel) = p*b.row(iel) + q*x.row(iel)*D[iel].transpose();
+
+		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+		{
+			a_int face = m->gelemface(iel,ifael) - m->gnbface();
+			a_int nbdelem = m->gesuel(iel,ifael);
+
+			if(nbdelem < m->gnelem())
+			{
+				if(nbdelem > iel) {
+					// upper
+					z.row(iel) += q*x.row(nbdelem)*U[face].transpose();
+				}
+				else {
+					// lower
+					z.row(iel) += q*x.row(nbdelem)*L[face].transpose();
+				}
+			}
+		}
+	}
+}
+
+// Block Jacobi
+template <short nvars>
+BlockJacobi<nvars>::BlockJacobi(const UMesh2dh* const mesh) : DLUPreconditioner<nvars>(mesh)
+{
+	luD = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
+}
+
+template <short nvars>
+BlockJacobi<nvars>::~BlockJacobi() {
+	delete [] luD;
+}
+
+template <short nvars>
+void BlockJacobi<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+{
+	D = diago;
+#pragma omp parallel for default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+		luD[iel] = D[iel].inverse();
+}
+
+template <short nvars>
+void BlockJacobi<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict z)
+{
+
+#pragma omp parallel for default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++) 
+	{
+		z.row(iel) = luD[iel] * r.row(iel).transpose();
+	}
+}
+
+// Block SGS
+template <short nvars>
+BlockSGS<nvars>::BlockSGS(const UMesh2dh* const mesh, const unsigned short n_as) 
+	: DLUPreconditioner<nvars>(mesh), napplysweeps{n_as}, thread_chunk_size{200}
+{
+	luD = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
+	y = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
+}
+
+template <short nvars>
+BlockSGS<nvars>::~BlockSGS() {
+	delete [] luD;
+}
+
+template <short nvars>
+void BlockSGS<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+{
+	L = lower;
+	U = upper;
+	D = diago;
+#pragma omp parallel for default(shared)
+	for(int iel = 0; iel < m->gnelem(); iel++)
+		luD[iel] = D[iel].inverse();
+}
+
+template <short nvars>
+void BlockSGS<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
+{
+	// forward sweep (D+L)y = r
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	{
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
+		for(int iel = 0; iel < m->gnelem(); iel++) 
+		{
+			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			for(a_int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				// lower
+				if(nbdelem < iel)
+					inter += y.row(nbdelem)*L[face].transpose();
+			}
+			y.row(iel) = luD[iel]*(r.row(iel) - inter).transpose();
+		}
+	}
+
+	// backward sweep (D+U)z = Dy
+	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	{
+#pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
+		for(a_int iel = m->gnelem()-1; iel >= 0; iel--) 
+		{
+			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				a_int face = m->gelemface(iel,ifael) - m->gnbface();
+				a_int nbdelem = m->gesuel(iel,ifael);
+
+				// upper
+				if(nbdelem > iel && nbdelem < m->gnelem())
+					inter += z.row(nbdelem)*U[face].transpose();
+			}
+			z.row(iel) = luD[iel]*(y.row(iel)*D[iel].transpose() - inter).transpose();
+		}
+	}
+}
+
+// Block ILU0
+template <short nvars>
+BILU0<nvars>::BILU0(const UMesh2dh* const mesh, 
+		const unsigned short n_buildsweeps, const unsigned short n_applysweeps) 
+	: DLUPreconditioner<nvars>(mesh), 
+	nbuildsweeps{n_buildsweeps}, napplysweeps{n_applysweeps}, thread_chunk_size{200}
+{
+	luD = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
+	luL = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
+	luU = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
+	y.resize(m->gnelem(),nvars);
+	start = true;
+}
+
+template <short nvars>
+BILU0<nvars>::~BILU0()
+{
+	delete [] luD;
+	delete [] luL;
+	delete [] luU;
+}
+
+/** TODO: We might need some kind of scaling of the diagonal blocks.
+ */
+template <short nvars>
+void BILU0<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+{
+	L = lower;
+	U = upper;
+	D = diago;
+
+	if(start) {
+		// copy L,D,U for initial factorization guesses
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			luD[iel] = D[iel];
-	}
-	if(!luL)
-	{
-		luL = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
-		for(a_int iface = 0; iface < m->gnaface()-m->gnbface(); iface++)
-			luL[iface] = L[iface];
-	}
-	if(!luU)
-	{
-		luU = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
 		for(a_int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
+			luL[iface] = L[iface];
 			luU[iface] = U[iface];
 		}
+
+		start = false;
 	}
 
 	// BILU factorization
@@ -292,7 +545,7 @@ void DLUMatrix<bs>::precILUSetup()
 			// L_ij := A_ij - sum_{k= 1 to j-1}(L_ik U_kj) U_jj^(-1)
 			for(size_t j = 0; j < lowers.size(); j++)
 			{
-				Matrix<a_real,nvars,nvars,RowMajor> sum=Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+				Matrix<a_real,nvars,nvars,RowMajor> sum= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 				
 				for(size_t k = 0; k < j; k++) 
 				{
@@ -325,7 +578,7 @@ void DLUMatrix<bs>::precILUSetup()
 			// U_ij := A_ij - sum_{k= 1 to i-1} L_ik U_kj
 			for(size_t j = 0; j < uppers.size(); j++)
 			{
-				Matrix<a_real,nvars,nvars,RowMajor> sum=Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+				Matrix<a_real,nvars,nvars,RowMajor> sum= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 
 				for(size_t k = 0; k < lowers.size(); k++)
 				{
@@ -350,13 +603,10 @@ void DLUMatrix<bs>::precILUSetup()
 	}
 }
 
-template <size_t bs>
-void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restrict zz) const;
+template <short nvars>
+void BILU0<nvars>::apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ r, 
+		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ z)
 {
-	Eigen::Map<const Matrix<a_real,Dynamic,Dynamic,RowMajor>> r(rr, m->gnelem(),bs);
-	Eigen::Map<Matrix<a_real,Dynamic,Dynamic,RowMajor>> z(zz, m->gnelem(),bs);
-	constexpr size_t bs2 = bs*bs;
-	
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
@@ -397,74 +647,33 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 	}
 }
 
-} // end blasted namespace
-
-namespace acfd {
-
-/* z <- pz + qx.
- */
-template<short nvars>
-inline void block_axpby(const UMesh2dh *const m, 
-	const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-	const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x)
-{
-	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
-		zz[i] = p*zz[i] + q*xx[i];
-	}
-}
-
-/* z <- pz + qx + ry
- */
-template<short nvars>
-inline void block_axpbypcz(const UMesh2dh *const m, 
-	const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-	const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
-	const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y)
-{
-	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
-		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
-	}
-}
-
-template<short nvars>
-a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b)
-{
-	a_real sum = 0;
-	const a_real *const aa = &a(0,0); const a_real *const bb = &b(0,0);
-#pragma omp parallel for simd default(shared) reduction(+:sum)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++)
-		sum += aa[i]*bb[i];
-
-	return sum;
-}
-
 template <short nvars>
-IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh, 
-		Preconditioner<nvars> *const precond)
-	: LinearSolver(mesh), prec(precond)
+IterativeBlockSolver<nvars>::IterativeBlockSolver(const UMesh2dh* const mesh, 
+		DLUPreconditioner<nvars> *const precond)
+	: IterativeSolver(mesh), prec(precond)
 {
 	walltime = 0; cputime = 0;
 }
 
 template <short nvars>
-IterativeSolver<nvars>::~IterativeSolver()
+IterativeBlockSolver<nvars>::~IterativeBlockSolver()
 {
 }
 
 template <short nvars>
-void IterativeSolver<nvars>::setupPreconditioner()
+void IterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
+		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
-	prec->compute();
+	L = lower;
+	U = upper;
+	D = diago;
+	prec->setLHS(diago, lower, upper);
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
@@ -475,8 +684,8 @@ void IterativeSolver<nvars>::setupPreconditioner()
 // Richardson iteration
 template <short nvars>
 RichardsonSolver<nvars>::RichardsonSolver(const UMesh2dh *const mesh, 
-		Preconditioner<nvars> *const precond)
-	: IterativeSolver<nvars>(mesh, precond)
+		DLUPreconditioner<nvars> *const precond)
+	: IterativeBlockSolver<nvars>(mesh, precond)
 { }
 
 template <short nvars>
@@ -503,7 +712,7 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 
 	while(step < maxiter)
 	{
-		A->gemv3(-1.0,du, -1.0,res, s);
+		DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, s);
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
@@ -532,8 +741,8 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 
 template <short nvars>
 BiCGSTAB<nvars>::BiCGSTAB(const UMesh2dh *const mesh, 
-		Preconditioner<nvars> *const precond)
-	: IterativeSolver<nvars>(mesh, precond)
+		DLUPreconditioner<nvars> *const precond)
+	: IterativeBlockSolver<nvars>(mesh, precond)
 { }
 
 template <short nvars>
@@ -561,7 +770,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
 	// r := -res - A du
-	A->gemv3(-1.0,du, -1.0,res, r);
+	DLU_gemv<nvars>(m, -1.0, res, -1.0, D,L,U, du, r);
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
@@ -585,7 +794,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 		prec->apply(p, y);
 		
 		// v <- A y
-		A->apply(1.0,y, v);
+		DLU_spmv<nvars>(m, 1.0, D,L,U, y, v);
 
 		alpha = rho/block_dot<nvars>(m,rhat,v);
 
@@ -595,7 +804,7 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 		prec->apply(r, z);
 		
 		// t <- A z
-		A->apply(1.0,z, t);
+		DLU_spmv<nvars>(m, 1.0, D,L,U, z, t);
 
 		//prec->apply(t,g);
 
@@ -636,20 +845,20 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 }
 
 template <short nvars>
-MFIterativeSolver<nvars>::MFIterativeSolver(const UMesh2dh* const mesh, 
-		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
+MFIterativeBlockSolver<nvars>::MFIterativeBlockSolver(const UMesh2dh* const mesh, 
+		DLUPreconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: IterativeSolver(mesh), prec(precond), space(spatial)
 {
 	walltime = 0; cputime = 0;
 }
 
 template <short nvars>
-MFIterativeSolver<nvars>::~MFIterativeSolver()
+MFIterativeBlockSolver<nvars>::~MFIterativeBlockSolver()
 {
 }
 
 template <short nvars>
-void MFIterativeSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
+void MFIterativeBlockSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
 		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
 {
@@ -672,8 +881,8 @@ void MFIterativeSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> 
 // Richardson iteration
 template <short nvars>
 MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
-		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
-	: MFIterativeSolver<nvars>(mesh, precond, spatial)
+		DLUPreconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
+	: MFIterativeBlockSolver<nvars>(mesh, precond, spatial)
 { }
 
 template <short nvars>
@@ -756,6 +965,7 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 	return step;
 }
+
 
 
 template class NoPrec<NVARS>;

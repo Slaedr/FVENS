@@ -110,11 +110,9 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 
 	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
 
-	IterativeBlockSolver<nvars> * linsolv;		///< Linear solver context
-	DLUPreconditioner<nvars>* prec;				///< preconditioner context
-	Matrix<a_real,nvars,nvars,RowMajor>* D;
-	Matrix<a_real,nvars,nvars,RowMajor>* L;
-	Matrix<a_real,nvars,nvars,RowMajor>* U;
+	IterativeSolver<nvars> * linsolv;			///< Linear solver context
+	Preconditioner<nvars>* prec;				///< preconditioner context
+	LinearOperator* A;							///< Sparse matrix to hold the Jacobian or LHS
 
 	const double cflinit;
 	double cflfin;
@@ -155,14 +153,12 @@ class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 
-	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
+	amat::Array2d<a_real> dtm;						///< Stores allowable local time step for each cell
 
-	MFIterativeBlockSolver<nvars> * startlinsolv;	///< Linear solver context for starting run
-	MFIterativeBlockSolver<nvars> * linsolv;		///< Linear solver context for main run
+	MFIterativeSolver<nvars> * startlinsolv;		///< Linear solver context for starting run
+	MFIterativeSolver<nvars> * linsolv;				///< Linear solver context for main run
 	DLUPreconditioner<nvars>* prec;					///< preconditioner context
-	Matrix<a_real,nvars,nvars,RowMajor>* D;
-	Matrix<a_real,nvars,nvars,RowMajor>* L;
-	Matrix<a_real,nvars,nvars,RowMajor>* U;
+	LinearOperator* M;								///< Preconditioning matrix
 	Matrix<a_real,Dynamic,Dynamic,RowMajor> aux;	///< Temporary storage needed for matrix free
 
 	const double cflinit;
