@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
 	bool use_matrix_free;
+	char mattype;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -51,6 +52,7 @@ int main(int argc, char* argv[])
 		control >> dum;
 		control >> dum; control >> invfluxjac;
 		control >> dum; control >> usemf;
+		control >> dum; control >> mattype;
 		control >> dum; control >> linsolver;
 		control >> dum; control >> lintol;
 		control >> dum; control >> linmaxiterstart;
@@ -91,7 +93,7 @@ int main(int argc, char* argv[])
 				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
 		else
 			time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
+				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
 		std::cout << "Setting up backward Euler temporal scheme.\n";
 	}
 	else {

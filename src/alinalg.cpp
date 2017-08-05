@@ -33,8 +33,37 @@ DLUMatrix<bs>::~DLUMatrix()
 }
 
 template <size_t bs>
-void DLUMatrix<bs>::submitBlock(const index starti, const index faceid, 
-	const size_t lud, const size_t bsizej, const a_real *const buffer)
+DLUMatrix<bs>::setAllZero()
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(int i = 0; i < bs; i++)
+			for(int j = 0; j < bs; j++)
+				D[iel](i,j) = 0;
+#pragma omp parallel for default(shared)
+	for(a_int ifa = 0; ifa < m->gnaface()-m->gnbface(); ifa++)
+		for(int i = 0; i < bs; i++)
+			for(int j = 0; j < bs; j++)
+			{
+				L[ifa](i,j) = 0;
+				U[ifa](i,j) = 0;
+			}
+}
+
+template <size_t bs>
+DLUMatrix<bs>::setDiagZero()
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(int i = 0; i < bs; i++)
+			for(int j = 0; j < bs; j++)
+				D[iel](i,j) = 0;
+}
+
+template <size_t bs>
+void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
+			const a_real *const buffer,
+			const size_t lud, const size_t face_id)
 {
 	constexpr size_t bs2 = bs*bs;
 	if(lud == 0)
@@ -52,43 +81,45 @@ void DLUMatrix<bs>::submitBlock(const index starti, const index faceid,
 }
 
 template <size_t bs>
-void DLUMatrix<bs>::updateBlock(const index starti, const index faceid, 
-	const size_t lud, const size_t bsizej, const a_real *const buffer)
+void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
+			const a_real *const buffer,
+			const size_t lud, const size_t face_id)
 {
 	constexpr size_t bs2 = bs*bs;
+	const a_int startr = starti/bs;
 	if(lud == 0)
 		for(size_t i = 0; i < bs2; i++)
 #pragma omp atomic update
-			D[starti] += buffer[i];
+			D[startr].data()[i] += buffer[i];
 	else if(lud == 1)
 		for(size_t i = 0; i < bs2; i++)
 #pragma omp atomic update
-			L[faceid] += buffer[i];
+			L[faceid].data()[i] += buffer[i];
 	else if(lud == 2)
 		for(size_t i = 0; i < bs2; i++)
 #pragma omp atomic update
-			U[faceid] += buffer[i];
+			U[faceid].data()[i] += buffer[i];
 	else {
 		std::cout << "! DLUMatrix: submitBlock: Error in face index!!\n";
 	}
 }
 
 template <size_t bs>
-void DLUMatrix<bs>::updateDiagBlock(const index starti, const size_t bsizei, 
-		const size_t bsizej, const a_real *const buffer)
+void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer)
 {
 	constexpr size_t bs2 = bs*bs;
+	const a_int startr = starti/bs;
 	for(int i = 0; i < bs2; i++)
 #pragma omp atomic update
-		D[starti] += buffer[i];
+		D[startr].data()[i] += buffer[i];
 }
 
 template <size_t bs>
 void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx, 
                                              a_real *const __restrict zz) const
 {
-	Eigen::Map<const Matrix<a_real,Dynamic,Dynamic,RowMajor>> x(xx, m->gnelem(),bs);
-	Eigen::Map<Matrix<a_real,Dynamic,Dynamic,RowMajor>> z(zz, m->gnelem(),bs);
+	Eigen::Map<const MVector> x(xx, m->gnelem(),bs);
+	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -160,8 +191,8 @@ void DLUMatrix<bs>::precJacobiSetup()
 template <size_t bs>
 void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __restrict zz) const
 {
-	Eigen::Map<const Matrix<a_real,Dynamic,Dynamic,RowMajor>> r(rr, m->gnelem(),bs);
-	Eigen::Map<Matrix<a_real,Dynamic,Dynamic,RowMajor>> z(zz, m->gnelem(),bs);
+	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
+	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 	constexpr size_t bs2 = bs*bs;
 
 #pragma omp parallel for default(shared)
@@ -174,14 +205,14 @@ void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __rest
 template <size_t bs>
 void DLUMatrix<bs>::allocTempVector()
 {
-	y = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(),bs);
+	y = MVector::Zero(m->gnelem(),bs);
 }
 
 template <size_t bs>
 void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restrict zz) const
 {
-	Eigen::Map<const Matrix<a_real,Dynamic,Dynamic,RowMajor>> r(rr, m->gnelem(),bs);
-	Eigen::Map<Matrix<a_real,Dynamic,Dynamic,RowMajor>> z(zz, m->gnelem(),bs);
+	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
+	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 	constexpr size_t bs2 = bs*bs;
 
 	// forward sweep (D+L)y = r
@@ -353,8 +384,8 @@ void DLUMatrix<bs>::precILUSetup()
 template <size_t bs>
 void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restrict zz) const;
 {
-	Eigen::Map<const Matrix<a_real,Dynamic,Dynamic,RowMajor>> r(rr, m->gnelem(),bs);
-	Eigen::Map<Matrix<a_real,Dynamic,Dynamic,RowMajor>> z(zz, m->gnelem(),bs);
+	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
+	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 	constexpr size_t bs2 = bs*bs;
 	
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
@@ -403,60 +434,75 @@ namespace acfd {
 
 /* z <- pz + qx.
  */
-template<short nvars>
-inline void block_axpby(const UMesh2dh *const m, 
-	const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-	const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x)
+inline void axpby(const a_real p, MVector& z, 
+	const a_real q, const MVector& x)
 {
+#ifdef DEBUG
+	if(z.rows() != x.rows() || z.cols() != x.cols())
+		std::cout << "! axpby: Dimension mismatch between z and x!!\n";
+#endif
+	
 	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
 #pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+	for(a_int i = 0; i < z.size(); i++) {
 		zz[i] = p*zz[i] + q*xx[i];
 	}
 }
 
 /* z <- pz + qx + ry
  */
-template<short nvars>
-inline void block_axpbypcz(const UMesh2dh *const m, 
-	const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-	const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
-	const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y)
+inline void axpbypcz(const a_real p, MVector& z, 
+	const a_real q, const MVector& x,
+	const a_real r, const MVector& y)
 {
+#ifdef DEBUG
+	if(z.rows() != x.rows() || z.cols() != x.cols())
+		std::cout << "! axpbypcz: Dimension mismatch between z and x!!\n";
+	if(x.rows() != y.rows() || x.cols() != y.cols())
+		std::cout << "! axpbypcz: Dimension mismatch between y and x!!\n";
+#endif
+	
 	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
 #pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+	for(a_int i = 0; i < z.size(); i++) {
 		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
 	}
 }
 
-template<short nvars>
-a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b)
+inline a_real dot(const MVector& a, 
+	const MVector& b)
 {
+#ifdef DEBUG
+	if(a.rows() != b.rows() || b.cols() != b.cols())
+		std::cout << "! dot: Dimension mismatch!!\n";
+#endif
+
 	a_real sum = 0;
-	const a_real *const aa = &a(0,0); const a_real *const bb = &b(0,0);
 #pragma omp parallel for simd default(shared) reduction(+:sum)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++)
-		sum += aa[i]*bb[i];
+	for(a_int i = 0; i < a.size(); i++)
+		sum += a.data()[i]*b.data()[i];
 
 	return sum;
 }
 
-template <short nvars>
-IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh, 
-		Preconditioner<nvars> *const precond)
-	: LinearSolver(mesh), prec(precond)
+IterativeSolverBase::IterativeSolverBase(const UMesh2dh *const mesh)
+	: LinearSolver(mesh)
 {
 	walltime = 0; cputime = 0;
 }
 
-template <short nvars>
+template <unsigned short nvars>
+IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh, 
+		LinearOperator<a_real,a_int>* const mat, 
+		Preconditioner<nvars> *const precond)
+	: IterativeSolverBase(mesh), A(mat), prec(precond)
+
+/*template <unsigned short nvars>
 IterativeSolver<nvars>::~IterativeSolver()
 {
-}
+}*/
 
-template <short nvars>
+template <unsigned short nvars>
 void IterativeSolver<nvars>::setupPreconditioner()
 {
 	struct timeval time1, time2;
@@ -473,15 +519,16 @@ void IterativeSolver<nvars>::setupPreconditioner()
 }
 
 // Richardson iteration
-template <short nvars>
+template <unsigned short nvars>
 RichardsonSolver<nvars>::RichardsonSolver(const UMesh2dh *const mesh, 
+		LinearOperator<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond)
-	: IterativeSolver<nvars>(mesh, precond)
+	: IterativeSolver<nvars>(mesh, mat, precond)
 { }
 
-template <short nvars>
-int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
+template <unsigned short nvars>
+int RichardsonSolver<nvars>::solve(const MVector& res, 
+		MVector& __restrict du) const
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -490,16 +537,11 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(),nvars);
+	MVector s(m->gnelem(),nvars);
+	MVector ddu(m->gnelem(),nvars);
 
 	// norm of RHS
-#pragma omp parallel for reduction(+:bnorm) default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		bnorm += res.row(iel).squaredNorm();
-	}
-	bnorm = std::sqrt(bnorm);
+	bnorm = std::sqrt(dot(res,res));
 
 	while(step < maxiter)
 	{
@@ -512,13 +554,13 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 			// compute norm
 			resnorm += s.row(iel).squaredNorm();
 		}
-		resnorm = std::sqrt(resnorm);
+		resnorm = std::sqrt(dot(s,s));
 		//	std::cout << "   RichardsonSolver: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
 		prec->apply(s, ddu);
 
-		block_axpby<nvars>(m, 1.0, du, 1.0, ddu);
+		axpby(1.0, du, 1.0, ddu);
 
 		step++;
 	}
@@ -530,30 +572,29 @@ int RichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>
 	return step;
 }
 
-template <short nvars>
+template <unsigned short nvars>
 BiCGSTAB<nvars>::BiCGSTAB(const UMesh2dh *const mesh, 
+		LinearOperator<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond)
-	: IterativeSolver<nvars>(mesh, precond)
+	: IterativeSolver<nvars>(mesh, mat, precond)
 { }
 
-template <short nvars>
-int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du)
+template <unsigned short nvars>
+int BiCGSTAB<nvars>::solve(const MVector& res, 
+		MVector& __restrict du) const
 {
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
 
 	a_real omega = 1.0, rho, rhoold = 1.0, alpha = 1.0, beta;
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> r(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> rhat(m->gnelem(), nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> p
-		= Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> v
-		= Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(),nvars);
-	//Matrix<a_real,Dynamic,Dynamic,RowMajor> g(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> y(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> z(m->gnelem(),nvars);
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> t(m->gnelem(),nvars);
+	MVector r(m->gnelem(),nvars);
+	MVector rhat(m->gnelem(), nvars);
+	MVector p = MVector::Zero(m->gnelem(),nvars);
+	MVector v = MVector::Zero(m->gnelem(),nvars);
+	//MVector g(m->gnelem(),nvars);
+	MVector y(m->gnelem(),nvars);
+	MVector z(m->gnelem(),nvars);
+	MVector t(m->gnelem(),nvars);
 
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -575,11 +616,11 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 	while(step < maxiter)
 	{
 		// rho := rhat . r
-		rho = block_dot<nvars>(m, rhat, r);
+		rho = dot(rhat, r);
 		beta = rho*alpha/(rhoold*omega);
 		
 		// p <- r + beta p - beta omega v
-		block_axpbypcz<nvars>(m, beta,p, 1.0,r, -beta*omega,v);
+		axpbypcz(beta,p, 1.0,r, -beta*omega,v);
 		
 		// y <- Minv p
 		prec->apply(p, y);
@@ -587,10 +628,10 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 		// v <- A y
 		A->apply(1.0,y, v);
 
-		alpha = rho/block_dot<nvars>(m,rhat,v);
+		alpha = rho/dot(rhat,v);
 
 		// s <- r - alpha v, but reuse storage of r
-		block_axpby<nvars>(m, 1.0,r, -alpha,v);
+		axpby(1.0,r, -alpha,v);
 
 		prec->apply(r, z);
 		
@@ -600,12 +641,12 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 		//prec->apply(t,g);
 
 		//omega = block_dot<nvars>(m,g,z)/block_dot<nvars>(m,g,g);
-		omega = block_dot<nvars>(m,t,r)/block_dot<nvars>(m,t,t);
+		omega = dot(t,r)/dot(t,t);
 
 		// du <- du + alpha y + omega z
-		block_axpbypcz<nvars>(m, 1.0,du, alpha,y, omega,z);
+		axpbypcz(1.0,du, alpha,y, omega,z);
 
-		block_axpby<nvars>(m, 1.0,r, -omega,t);
+		axpby(1.0,r, -omega,t);
 
 		// check convergence or `lucky' breakdown
 		resnorm = 0;
@@ -635,33 +676,26 @@ int BiCGSTAB<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res,
 	return step+1;
 }
 
-template <short nvars>
+template <unsigned short nvars>
 MFIterativeSolver<nvars>::MFIterativeSolver(const UMesh2dh* const mesh, 
 		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
-	: IterativeSolver(mesh), prec(precond), space(spatial)
-{
-	walltime = 0; cputime = 0;
-}
+	: IterativeSolverBase(mesh), prec(precond), space(spatial)
+{ }
 
-template <short nvars>
+/*template <unsigned short nvars>
 MFIterativeSolver<nvars>::~MFIterativeSolver()
 {
-}
+}*/
 
-template <short nvars>
-void MFIterativeSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const upper)
+template <unsigned short nvars>
+void MFIterativeSolver<nvars>::setupPreconditioner()
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
-	L = lower;
-	U = upper;
-	D = diago;
-	prec->setLHS(diago, lower, upper);
+	prec->compute();
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
@@ -670,18 +704,18 @@ void MFIterativeSolver<nvars>::setLHS(const Matrix<a_real,nvars,nvars,RowMajor> 
 }
 
 // Richardson iteration
-template <short nvars>
+template <unsigned short nvars>
 MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
 		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: MFIterativeSolver<nvars>(mesh, precond, spatial)
 { }
 
-template <short nvars>
-int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u,
+template <unsigned short nvars>
+int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 		const amat::Array2d<a_real>& dtm,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du)
+		const MVector& __restrict__ res, 
+		MVector& __restrict__ aux,
+		MVector& __restrict__ du) const
 {
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -692,11 +726,11 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	int step = 0;
 
 	// linear system residual
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> s(m->gnelem(), nvars);
+	MVector s(m->gnelem(), nvars);
 
 	// linear system defect
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> ddu(m->gnelem(), nvars);
-		//= Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
+	MVector ddu(m->gnelem(), nvars);
+		//= MVector::Zero(m->gnelem(), nvars);
 	// dummy
 	amat::Array2d<a_real> dum;
 
@@ -745,7 +779,7 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 
 		prec->apply(s, ddu);
 
-		block_axpby<nvars>(m, 1.0, du, 1.0, ddu);
+		axpby(1.0, du, 1.0, ddu);
 
 		step++;
 	}
@@ -757,33 +791,20 @@ int MFRichardsonSolver<nvars>::solve(const Matrix<a_real,Dynamic,Dynamic,RowMajo
 	return step;
 }
 
-
-template class NoPrec<NVARS>;
-template class BlockJacobi<NVARS>;
-template class PointSGS<NVARS>;
-template class BlockSGS<NVARS>;
-template class BILU0<NVARS>;
+template class DLUMatrix<NVARS>;
 template class RichardsonSolver<NVARS>;
 template class BiCGSTAB<NVARS>;
 template class MFRichardsonSolver<NVARS>;
-template class NoPrec<1>;
-template class BlockJacobi<1>;
-template class PointSGS<1>;
-template class BlockSGS<1>;
-template class BILU0<1>;
+template class DLUMatrix<1>;
 template class RichardsonSolver<1>;
 template class BiCGSTAB<1>;
 
-template void block_axpby<NVARS>(const UMesh2dh *const m, 
-		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
+template void axpby(const a_real p, MVector& z, const a_real q, const MVector& x);
 
-template void block_axpbypcz<NVARS>(const UMesh2dh *const m, 
-		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
-		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y);
+template void axpbypcz(const a_real p, MVector& z, 
+		const a_real q, const MVector& x,
+		const a_real r, const MVector& y);
 
-template a_real block_dot<NVARS>(const UMesh2dh *const m, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
+template a_real dot(const MVector& a, const MVector& b);
+
 }

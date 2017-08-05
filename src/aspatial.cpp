@@ -270,7 +270,7 @@ EulerFV::~EulerFV()
  * \param rhoinf Free stream density
  * \param u conserved variable array
  */
-void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, Matrix<a_real,Dynamic,Dynamic,RowMajor>& u)
+void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, MVector& u)
 {
 	// Note that reference density and reference velocity are the values at infinity
 	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
@@ -397,7 +397,7 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 	}
 }
 
-void EulerFV::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+void EulerFV::compute_residual(const MVector& __restrict__ u, MVector& __restrict__ residual, 
 		const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
 {
 #pragma omp parallel default(shared)
@@ -514,7 +514,7 @@ void EulerFV::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 
 #if HAVE_PETSC==1
 
-void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, const bool blocked, Mat A)
+void EulerFV::compute_jacobian(const MVector& __restrict__ u, const bool blocked, Mat A)
 {
 	if(blocked)
 	{
@@ -627,10 +627,8 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
-void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ D, 
-		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ L, 
-		Matrix<a_real,NVARS,NVARS,RowMajor> *const __restrict__ U)
+void EulerFV::compute_jacobian(const MVector& u, 
+				LinearOperator<a_real,a_int> *const __restrict A)
 {
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -647,12 +645,16 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 		compute_boundary_state(iface, &u(lelem,0), uface);
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 		
-		for(int i = 0; i < NVARS; i++)
+		// multiply by length of face and negate, as -ve of L is added to D
+		left = -len*left;
+		A->updateDiagBlock(lelem*NVARS, left.data());
+
+		/*for(int i = 0; i < NVARS; i++)
 			for(int j = 0; j < NVARS; j++) {
 				left(i,j) *= len;
 #pragma omp atomic update
 				D[lelem](i,j) -= left(i,j);
-			}
+			}*/
 	}
 
 #pragma omp parallel for default(shared)
@@ -665,11 +667,14 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 		n[0] = m->ggallfa(iface,0);
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
+		Matrix<a_real,NVARS,NVARS,RowMajor> L;
+		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
 		/// NOTE: the values of L and U get REPLACED here, not added to
-		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[intface](0,0), &U[intface](0,0));
+		//jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[intface](0,0), &U[intface](0,0));
+		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
 
-		for(int i = 0; i < NVARS; i++)
+		/*for(int i = 0; i < NVARS; i++)
 			for(int j = 0; j < NVARS; j++) {
 				L[intface](i,j) *= len;
 				U[intface](i,j) *= len;
@@ -677,20 +682,29 @@ void EulerFV::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __
 				D[lelem](i,j) -= L[intface](i,j);
 #pragma omp atomic update
 				D[relem](i,j) -= U[intface](i,j);
-			}
+			}*/
+		
+		L *= len; U *= len;
+		A->submitBlock(relem*NVARS,lelem*NVARS, L.data(), 1,intface);
+		A->submitBlock(lelem*NVARS,relem*NVARS, U.data(), 2,intface);
+
+		// negative L and U contribute to diagonal blocks
+		L *= -1.0; U *= 1.0;
+		A->updateDiagBlock(lelem*NVARS, L.data());
+		A->updateDiagBlock(relem*NVARS, U.data());
 	}
 }
 
-void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+void EulerFV::compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u, 
+	const MVector& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	MVector& __restrict__ aux,
+	MVector& __restrict__ prod)
 {
-	a_real vnorm = block_dot<NVARS>(m, v,v);
+	a_real vnorm = dot(v,v);
 	vnorm = sqrt(vnorm);
 	
 	// compute the perturbed state and store in aux
-	block_axpbypcz<NVARS>(m, 0.0,aux, 1.0,u, eps/vnorm,v);
+	axpbypcz(0.0,aux, 1.0,u, eps/vnorm,v);
 	
 	// compute residual at the perturbed state and store in the output variable prod
 	amat::Array2d<a_real> _dtm;		// dummy
@@ -713,19 +727,19 @@ void EulerFV::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __r
 }
 
 // Computes a([M du/dt +] dR/du) v + b w and stores in prod
-void EulerFV::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+void EulerFV::compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, 
+		const MVector& __restrict__ u, 
+		const MVector& __restrict__ v,
 		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-		const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ w,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+		const a_real b, const MVector& __restrict__ w,
+		MVector& __restrict__ aux,
+		MVector& __restrict__ prod)
 {
-	a_real vnorm = block_dot<NVARS>(m, v,v);
+	a_real vnorm = dot(v,v);
 	vnorm = sqrt(vnorm);
 	
 	// compute the perturbed state and store in aux
-	block_axpbypcz<NVARS>(m, 0.0,aux, 1.0,u, eps/vnorm,v);
+	axpbypcz(0.0,aux, 1.0,u, eps/vnorm,v);
 	
 	// compute residual at the perturbed state and store in the output variable prod
 	amat::Array2d<a_real> _dtm;		// dummy
@@ -750,7 +764,7 @@ void EulerFV::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynam
 
 #endif
 
-void EulerFV::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
+void EulerFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_point(): Creating output arrays...\n";
 	scalars.setup(m->gnpoin(),3);
@@ -793,7 +807,7 @@ void EulerFV::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u
 	std::cout << "EulerFV: postprocess_point(): Done.\n";
 }
 
-void EulerFV::postprocess_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
+void EulerFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
 {
 	std::cout << "EulerFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.setup(m->gnelem(), 3);
@@ -816,7 +830,7 @@ void EulerFV::postprocess_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u,
 	std::cout << "EulerFV: postprocess_cell(): Done.\n";
 }
 
-a_real EulerFV::compute_entropy_cell(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u)
+a_real EulerFV::compute_entropy_cell(const MVector& u)
 {
 	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
 	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
@@ -876,7 +890,7 @@ void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& inst
 }
 
 template<short nvars>
-void Diffusion<nvars>::postprocess_point(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, amat::Array2d<a_real>& up)
+void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up)
 {
 	std::cout << "DiffusionThinLayer: postprocess_point(): Creating output arrays\n";
 	
@@ -910,8 +924,8 @@ DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const 
 }
 
 template<short nvars>
-void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-                                                 Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+void DiffusionThinLayer<nvars>::compute_residual(const MVector& __restrict__ u, 
+                                                 MVector& __restrict__ residual, 
                                                  const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -981,7 +995,7 @@ void DiffusionThinLayer<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dyn
 }
 
 template<short nvars>
-void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
@@ -1036,21 +1050,21 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dyn
 }
 
 template<short nvars>
-void DiffusionThinLayer<nvars>::compute_jac_vec(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+void DiffusionThinLayer<nvars>::compute_jac_vec(const MVector& __restrict__ resu, 
+	const MVector& __restrict__ u, 
+	const MVector& __restrict__ v, 
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+	MVector& __restrict__ aux,
+	MVector& __restrict__ prod)
 { }
 
 template<short nvars>
-void DiffusionThinLayer<nvars>::compute_jac_gemv(const a_real a, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+void DiffusionThinLayer<nvars>::compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
+	const MVector& __restrict__ v,
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+	const a_real b, const MVector& w,
+	MVector& __restrict__ aux,
+	MVector& __restrict__ prod)
 { }
 	
 template<short nvars>
@@ -1088,8 +1102,8 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<short nvars>
-void DiffusionMA<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-                                          Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ residual, 
+void DiffusionMA<nvars>::compute_residual(const MVector& __restrict__ u, 
+                                          MVector& __restrict__ residual, 
                                           const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -1168,7 +1182,7 @@ void DiffusionMA<nvars>::compute_residual(const Matrix<a_real,Dynamic,Dynamic,Ro
 }
 
 template<short nvars>
-void DiffusionMA<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void DiffusionMA<nvars>::compute_jacobian(const MVector& u, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
 		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
@@ -1224,23 +1238,23 @@ void DiffusionMA<nvars>::compute_jacobian(const Matrix<a_real,Dynamic,Dynamic,Ro
 
 template<short nvars>
 void DiffusionMA<nvars>::compute_jac_vec (
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v, 
+	const MVector& __restrict__ resu, 
+	const MVector& __restrict__ u, 
+	const MVector& __restrict__ v, 
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod )
+	MVector& __restrict__ aux,
+	MVector& __restrict__ prod )
 { }
 
 template<short nvars>
 void DiffusionMA<nvars>::compute_jac_gemv(const a_real a, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ resu, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
-	const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ v,
+	const MVector& __restrict__ resu, 
+	const MVector& __restrict__ u, 
+	const MVector& __restrict__ v,
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	const a_real b, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& w,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-	Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ prod)
+	const a_real b, const MVector& w,
+	MVector& __restrict__ aux,
+	MVector& __restrict__ prod)
 { }	
 
 template class DiffusionThinLayer<1>;

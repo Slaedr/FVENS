@@ -21,7 +21,11 @@ namespace blasted {
 
 using acfd::a_real;
 using acfd::a_int;
+using acfd::MVector;
 
+/// A sparse matrix stored in a `DLU' format
+/** Includes some BLAS 2 and preconditioning operations
+ */
 template <size_t bs>
 class DLUMatrix : public LinearOperator<a_real,a_int>
 {
@@ -53,43 +57,51 @@ protected:
 	const unsigned int thread_chunk_size;
 
 	/// Temporary array for triangular solves
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> y;
+	MVector y;
 
 public:
 	DLUMatrix(const acfd::UMesh2dh *const mesh, 
 			const unsigned short nbuildsweeps, const unsigned int napplysweeps);
 
 	/// De-allocates memory
-	virtual ~BSRMatrix();
+	virtual ~DLUMatrix();
+
+	/// Sets storage D, L and U to zero
+	void setAllZero();
+
+	/// Sets diagonal blocks D to zero
+	void setDiagZero();
 	
 	/// Insert a block of values into the L or U not thread-safe
 	/** \warning NOT thread safe! The caller is responsible for ensuring that no two threads
 	 * write to the same location at the same time. As such, this function is expected to be used
 	 * for populating lower and upper blocks only.
 	 *
-	 * \param[in] starti The block-row index, ie, cell index of the block
-	 * \param[in] faceid The face index of the face shared between cells i and j
-	 * \param[in] lud 0, 1 or 2, depending on whether the block being added is in the
-	 *   diagonal, lower or upper part of the matrix
-	 * \param[in] bsizej Dummy parameter, not used
+	 * \param[in] starti The row index, ie, cell index of the block times nvars
+	 * \param[in] startj The column index
 	 * \param[in] buffer The block of values to be inserted in ROW-MAJOR ordering
+	 * \param[in] lud 0, 1 or 2, depending on whether the block being updated is in the
+	 *   diagonal, lower or upper part of the matrix
+	 * \param[in] faceid The INTERIOR face index of the face shared between cells i and j
 	 */
-	void submitBlock(const index starti, const index faceid, 
-			const size_t lud, const size_t bsizej, const a_real *const buffer);
+	void submitBlock(const a_int starti, const a_int startj, 
+			const a_real *const buffer,
+			const size_t lud, const size_t face_id);
 
 	/// Update a (contiguous) block of values into the matrix
 	/** This is function is thread-safe: each location that needs to be updated is updated
 	 * atomically.
 	 *
-	 * \param[in] starti The block-row index, ie, cell index of the block
-	 * \param[in] faceid The INTERIOR face index of the face shared between cells i and j
+	 * \param[in] starti The row index, ie, cell index of the block times nvars
+	 * \param[in] startj The column index
+	 * \param[in] buffer The block of values to be inserted in ROW-MAJOR ordering
 	 * \param[in] lud 0, 1 or 2, depending on whether the block being updated is in the
 	 *   diagonal, lower or upper part of the matrix
-	 * \param[in] bsizej Dummy parameter, not used
-	 * \param[in] buffer The block of values to be inserted in ROW-MAJOR ordering
+	 * \param[in] faceid The INTERIOR face index of the face shared between cells i and j
 	 */
-	void updateBlock(const index starti, const index faceid, 
-			const size_t lud, const size_t bsizej, const a_real *const buffer);
+	void updateBlock(const a_int starti, const a_int startj, 
+			const a_real *const buffer,
+			const size_t lud, const size_t face_id);
 	
 	/// Updates the diagonal block of the specified block-row
 	/** This function is thread-safe. It's also redundant, as it's no more efficient
@@ -99,8 +111,7 @@ public:
 	 * \param[in] bsizej Dummy
 	 * \param[in] buffer The values, in ROW-MAJOR order, making up the block to be added
 	 */
-	void updateDiagBlock(const index starti, const size_t bsizei, const size_t bsizej, 
-			const a_real *const buffer);
+	void updateDiagBlock(const a_int starti, const a_real *const buffer);
 
 	/// Computes the matrix vector product of this matrix with one vector-- y := a Ax
 	void apply(const a_real a, const a_real *const x, a_real *const __restrict y) const;
@@ -133,47 +144,21 @@ public:
 
 namespace acfd {
 
-/// Vector addition in blocks of nvars x 1
+/// Vector or matrix addition
 /** z <- pz + qx.
  */
-template<short nvars>
-void block_axpby(const UMesh2dh *const m, 
-		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x);
+void axpby(const a_real p, MVector& z, 
+		const a_real q, const MVector& x);
 
-/** z <- pz + qx + ry
+/** z <- pz + qx + ry for vectors and matrices
  */
-template<short nvars>
-void block_axpbypcz(const UMesh2dh *const m, 
-		const a_real p, Matrix<a_real,Dynamic,Dynamic,RowMajor>& z, 
-		const a_real q, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
-		const a_real r, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& y);
+void axpbypcz(const a_real p, MVector& z, 
+		const a_real q, const MVector& x,
+		const a_real r, const MVector& y);
 
-/// Dot product
-template<short nvars>
-a_real block_dot(const UMesh2dh *const m, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& a, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b);
-
-/// Computes z = q Ax
-template<short nvars>
-void DLU_spmv(const UMesh2dh *const m, 
-		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const D, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const L, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const U, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
-
-/// Computes a sparse gemv when the matrix is passed in block DLU storage
-/** Specifically, computes z = pb+qAx
- */
-template<short nvars>
-void DLU_gemv(const UMesh2dh *const m, 
-		const a_real p, const Matrix<a_real,Dynamic,Dynamic,RowMajor>& b,
-		const a_real q, const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
-		const Matrix<a_real,nvars,nvars,RowMajor> *const upper, 
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& x,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& z);
+/// Dot product of vectors or `double dot' product of matrices
+a_real dot(const MVector& a, 
+		const MVector& b);
 
 /// Preconditioner, ie, performs one iteration to solve M z = r
 /** Note that subclasses do not directly perform any computation but
@@ -181,7 +166,7 @@ void DLU_gemv(const UMesh2dh *const m,
  * As such, the precise preconditioning operation applied depends on 
  * which kind of matrix the LHS is stored as.
  */
-template <short nvars>
+template <unsigned short nvars>
 class Preconditioner
 {
 protected:
@@ -203,12 +188,12 @@ public:
 	 * of size nelem x nvars (nelem x 4 for 2D Euler)
 	 * \param [in|out] z Contains the solution in the same format as r on exit.
 	 */
-	virtual void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z) = 0;
+	virtual void apply(const MVector& r, 
+			MVector& z) = 0;
 };
 
 /// Do-nothing preconditioner
-template <short nvars>
+template <unsigned short nvars>
 class NoPrec : public Preconditioner<nvars>
 {
 public:
@@ -218,13 +203,13 @@ public:
 	void compute()
 	{ }
 	
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& z)
+	void apply(const MVector& r, 
+			MVector& z)
 	{ }
 };
 
 /// Jacobi preconditioner
-template <short nvars>
+template <unsigned short nvars>
 class BlockJacobi : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
@@ -236,14 +221,14 @@ public:
 		A->precJacobiSetup();
 	}
 
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict z) {
+	void apply(const MVector& r, 
+			MVector& __restrict z) {
 		A->precJacobiApply(&r(0,0), &z(0,0));
 	}
 };
 
 /// Symmetric Gauss-Seidel preconditioner
-template <short nvars>
+template <unsigned short nvars>
 class BlockSGS : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
@@ -256,14 +241,14 @@ public:
 		A->precJacobiSetup();
 	}
 
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict z) {
+	void apply(const MVector& r, 
+			MVector& __restrict z) {
 		A->precSGSApply(&r(0,0), &z(0,0));
 	}
 };
 
 /// ILU0 preconditioner
-template <short nvars>
+template <unsigned short nvars>
 class BILU0 : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
@@ -279,8 +264,8 @@ public:
 	}
 	
 	/// Solves Mz=r, where M is the preconditioner
-	void apply(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& r, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict z) {
+	void apply(const MVector& r, 
+			MVector& __restrict z) {
 		A->precILUApply(&r(0,0), &z(0,0));
 	}
 };
@@ -300,33 +285,51 @@ public:
 	{ }
 };
 
-/// Preconditioned iterative solver
-/** The template parameter nvars is the block size we want to use.
- * In a finite volume setting, the natural choice is the number of physical variables
- * or the number of PDEs in the system.
- */
-template <short nvars>
-class IterativeSolver : public LinearSolver
+/// Abstract preconditioned iterative solver
+class IterativeSolverBase : public LinearSolver
 {
 protected:
-	LinearOperator *const A;        ///< The LHS matrix context
-	int maxiter;                    ///< Max number of iterations
-	double tol;                     ///< Tolerance
-	double walltime;                ///< Stores wall-clock time measurement of solver
-	double cputime;                 ///< Stores CPU time measurement of the solver
-
-	/// Preconditioner context
-	Preconditioner<nvars> *const prec;
+	int maxiter;                                  ///< Max number of iterations
+	double tol;                                   ///< Tolerance
+	double walltime;                              ///< Stores wall-clock time measurement of solver
+	double cputime;                               ///< Stores CPU time measurement of the solver
 
 public:
-	IterativeSolver(const UMesh2dh* const mesh, Preconditioner<nvars> *const precond);
+	IterativeSolverBase(const UMesh2dh* const mesh);
 
-	virtual ~IterativeSolver();
+	//virtual ~IterativeSolverBase();
 	
 	/// Set tolerance and max iterations
 	void setParams(const double toler, const int maxits) {
 		maxiter = maxits; tol = toler;
 	}
+
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
+	}
+};
+
+/// Preconditioned iterative solver that relies on a stored LHS matrix
+/** The template parameter nvars is the block size we want to use.
+ * In a finite volume setting, the natural choice is the number of physical variables
+ * or the number of PDEs in the system.
+ */
+template <unsigned short nvars>
+class IterativeSolver : public IterativeSolverBase
+{
+protected:
+	LinearOperator<a_real,a_int> *const A;        ///< The LHS matrix context
+
+	/// Preconditioner context
+	Preconditioner<nvars> *const prec;
+
+public:
+	IterativeSolver(const UMesh2dh* const mesh, 
+			LinearOperator<a_real,a_int>* const mat, 
+			Preconditioner<nvars> *const precond);
+
+	//virtual ~IterativeSolver();
 
 	/// Compute the preconditioner
 	virtual void setupPreconditioner();
@@ -337,17 +340,12 @@ public:
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
 	 * \return Returns the number of solver iterations performed
 	 */
-	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-			Matrix<a_real,Dynamic,Dynamic,RowMajor>& du) = 0;
-
-	/// Get timing data
-	void getRunTimes(double& wall_time, double& cpu_time) const {
-		wall_time = walltime; cpu_time = cputime;
-	}
+	virtual int solve(const MVector& res, 
+			MVector& __restrict du) const = 0;
 };
 
 /// A solver that just applies the preconditioner repeatedly
-template <short nvars>
+template <unsigned short nvars>
 class RichardsonSolver : public IterativeSolver<nvars>
 {
 	using IterativeSolver<nvars>::m;
@@ -359,16 +357,18 @@ class RichardsonSolver : public IterativeSolver<nvars>
 	using IterativeSolver<nvars>::prec;
 
 public:
-	RichardsonSolver(const UMesh2dh *const mesh, Preconditioner<nvars> *const precond);
+	RichardsonSolver(const UMesh2dh* const mesh, 
+			const LinearOperator<a_real,a_int>* const mat, 
+			Preconditioner<nvars> *const precond);
 
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+	int solve(const MVector& res, 
+		MVector& du) const;
 };
 
 /// H.A. Van der Vorst's stabilized biconjugate gradient solver
 /** Uses left-preconditioning only.
  */
-template <short nvars>
+template <unsigned short nvars>
 class BiCGSTAB : public IterativeSolver<nvars>
 {
 	using IterativeSolver<nvars>::m;
@@ -380,18 +380,20 @@ class BiCGSTAB : public IterativeSolver<nvars>
 	using IterativeSolver<nvars>::prec;
 
 public:
-	BiCGSTAB(const UMesh2dh *const mesh, Preconditioner<nvars> *const precond);
+	BiCGSTAB(const UMesh2dh* const mesh, 
+			const LinearOperator<a_real,a_int>* const mat, 
+			Preconditioner<nvars> *const precond);
 
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& du);
+	int solve(const MVector& res, 
+		MVector& __restrict du) const;
 };
 
 /// Base class for matrix-free solvers
 /** Note that subclasses are matrix-free only with regard to the top-level solver,
  * usually a Krylov subspace solver. The preconditioning matrix is still computed and stored.
  */
-template <short nvars>
-class MFIterativeSolver : public IterativeSolver
+template <unsigned short nvars>
+class MFIterativeSolver : public IterativeSolverBase
 {
 protected:
 	/// (Inverted) diagonal blocks of LHS (Jacobian) matrix
@@ -404,20 +406,15 @@ protected:
 	Preconditioner<nvars> *const prec;
 	/// Spatial discretization context needed for matrix-vector product
 	Spatial<nvars>* const space;
-	
-	double walltime;
-	double cputime;
 
 public:
 	MFIterativeSolver(const UMesh2dh* const mesh, Preconditioner<nvars> *const precond,
 		Spatial<nvars> *const spatial);
 
-	virtual ~MFIterativeSolver();
+	//virtual ~MFIterativeSolver();
 
 	/// Sets D,L,U for preconditioner
-	virtual void setLHS(const Matrix<a_real,nvars,nvars,RowMajor> *const diago, 
-			const Matrix<a_real,nvars,nvars,RowMajor> *const lower, 
-			const Matrix<a_real,nvars,nvars,RowMajor> *const upper);
+	virtual void setupPreconditioner();
 
 	/// Solves the linear system A du = -r
 	/** \param[in] u The state at which the Jacobian and RHS res have been computed
@@ -427,21 +424,16 @@ public:
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
 	 * \return Returns the number of solver iterations performed
 	 */
-	virtual int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	virtual int solve(const MVector& __restrict__ u, 
 		const amat::Array2d<a_real>& dtm,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du) = 0;
-
-	/// Get timing data
-	void getRunTimes(double& wall_time, double& cpu_time) const {
-		wall_time = walltime; cpu_time = cputime;
-	}
+		const MVector& __restrict__ res, 
+		MVector& __restrict__ aux,
+		MVector& __restrict__ du) const = 0;
 };
 
 /// A matrix-free solver that just applies the preconditioner repeatedly
 /// in a defect-correction iteration.
-template <short nvars>
+template <unsigned short nvars>
 class MFRichardsonSolver : public MFIterativeSolver<nvars>
 {
 	using MFIterativeSolver<nvars>::m;
@@ -459,11 +451,11 @@ public:
 	MFRichardsonSolver(const UMesh2dh *const mesh, Preconditioner<nvars> *const precond,
 			Spatial<nvars> *const spatial);
 
-	int solve(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ u, 
+	int solve(const MVector& __restrict__ u, 
 		const amat::Array2d<a_real>& dtm,
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ res, 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ aux,
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& __restrict__ du);
+		const MVector& __restrict__ res, 
+		MVector& __restrict__ aux,
+		MVector& __restrict__ du) const;
 };
 
 

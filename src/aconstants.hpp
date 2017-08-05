@@ -37,7 +37,12 @@
 
 namespace acfd
 {
+	/// The floating-point type to use for all float computations
 	typedef double a_real;
+
+	/// Integer type to use for indexing etc
+	/** \todo Consider replacing indices with size_t.
+	 */
 	typedef int a_int;
 }
 
@@ -47,8 +52,16 @@ namespace acfd {
 	using Eigen::Dynamic;
 	using Eigen::RowMajor;
 	using Eigen::Matrix;
-	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> Matrixd;
+
+	/// Multi-vector type, used for storing mesh functions like the residual
+	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
 }
 #endif
+
+// sparse matrix library
+#include <linearoperator.hpp>
+namespace acfd {
+	using blasted::LinearOperator;
+}
 
 #endif

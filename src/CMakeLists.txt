@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 # The environment variable EIGEN_DIR needs to be set to the path where
 # the Eigen source directory is present.
+# The environment variable BLASTED_DIR needs to set to the root of the BLASTed linear algebra library.
 
 # Pass -DOMP=1 to compile with OpenMP
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
@@ -35,6 +36,9 @@ endif()
 # Eigen
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_DONT_PARALLELIZE")
 include_directories($ENV{EIGEN_DIR})
+
+# BLASTed
+include_directories($ENV{BLASTED_DIR}/src)
 
 # PETSc
 if(WITH_PETSC)

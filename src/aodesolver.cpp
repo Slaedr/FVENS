@@ -148,11 +148,13 @@ void SteadyForwardEulerSolver<nvars>::solve()
 template <short nvars>
 SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver, std::string precond,
+		const double toler, const int maxits, 
+		const char mattype, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
+		std::string linearsolver, std::string precond,
 		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
-	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
+	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), A(nullptr), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
 	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
 	/* NOTE: the number of columns here MUST match the static number of columns, which is nvars. */
@@ -160,39 +162,44 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
 
-	if(precond == "PSGS") {
-		prec = new PointSGS<nvars>(mesh, napplysweeps);
-		std::cout << " SteadyBackwardEulerSolver: Selected point SGS preconditioner.\n";
+	// set Jacobian storage
+	if(mattype == 'p') {
+		// TODO: point matrix format
 	}
-	else if(precond == "BJ") {
-		prec = new BlockJacobi<nvars>(mesh);
+	else if(mattype == 'd') {
+		// DLU matrix
+		A = new blasted::DLUMatrix<NVARS>(m, nbuildsweeps, napplysweeps);
+	}
+	else {
+		// TODO
+		//A = new blasted::BSRMatrix();
+	}
+
+	if(precond == "BJ") {
+		prec = new BlockJacobi<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected Block Jacobi preconditioner.\n";
 	}
 	else if(precond == "BSGS") {
-		prec = new BlockSGS<nvars>(mesh, napplysweeps);
+		prec = new BlockSGS<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected Block SGS preconditioner.\n";
 	}
 	else if(precond == "BILU0") {
-		prec = new BILU0<nvars>(mesh, nbuildsweeps, napplysweeps);
+		prec = new BILU0<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected Block ILU0 preconditioner.\n";
 	}
 	else {
-		prec = new NoPrec<nvars>(mesh);
+		prec = new NoPrec<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: No preconditioning will be applied.\n";
 	}
 
 	if(linearsolver == "BCGSTB") {
-		linsolv = new BiCGSTAB<nvars>(mesh, prec);
+		linsolv = new BiCGSTAB<nvars>(m, A, prec);
 		std::cout << " SteadyBackwardEulerSolver: BiCGSTAB solver selected.\n";
 	}
 	else {
-		linsolv = new RichardsonSolver<nvars>(mesh, prec);
+		linsolv = new RichardsonSolver<nvars>(mesh, A, prec);
 		std::cout << " SteadyBackwardEulerSolver: Richardson iteration selected, ie, no acceleration.\n";
 	}
-
-	D = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
-	L = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
-	U = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
 }
 
 template <short nvars>
@@ -200,9 +207,8 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 {
 	delete linsolv;
 	delete prec;
-	delete [] D;
-	delete [] U;
-	delete [] L;
+	if(A)
+		delete A;
 }
 
 template <short nvars>
@@ -212,7 +218,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> du = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
+	MVector du = MVector::Zero(m->gnelem(), nvars);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -227,35 +233,31 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 #pragma omp simd
 				for(int i = 0; i < nvars; i++) {
 					residual(iel,i) = 0;
-					for(int j = 0; j < nvars; j++)
-						D[iel](i,j) = 0;
 				}
 			}
-#pragma omp parallel for default(shared)
-			for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
-#pragma omp simd
-				for(int i = 0; i < nvars; i++)
-					for(int j = 0; j < nvars; j++) {
-						L[iface](i,j) = 0;
-						U[iface](i,j) = 0;
-					}
-			}
+
+			A->setDiagZero();
 			
 			// update residual and local time steps
 			starter->compute_residual(u, residual, true, dtm);
 
-			starter->compute_jacobian(u, D, L, U);
+			starter->compute_jacobian(u, A);
 
 			// add pseudo-time terms to diagonal blocks
-#pragma omp parallel for simd default(shared)
+#pragma omp parallel for default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
+				Matrix<a_real,nvars,nvars,RowMajor> db 
+					= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+
 				for(int i = 0; i < nvars; i++)
-					D[iel](i,i) += m->garea(iel) / (startcfl*dtm(iel));
+					db(i,i) = m->garea(iel) / (startcfl*dtm(iel));
+				
+				A->updateDiagBlock(iel*nvars, db.data());
 			}
 
 			// setup and solve linear system for the update du
-			linsolv->setLHS(D,L,U);
+			linsolv->setupPreconditioner();
 			linsolv->setParams(lintol, linmaxiterstart);
 			int linstepsneeded = linsolv->solve(residual, du);
 
@@ -302,25 +304,15 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 #pragma omp simd
 			for(int i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
-				for(int j = 0; j < nvars; j++)
-					D[iel](i,j) = 0;
 			}
 		}
 
-#pragma omp parallel for default(shared)
-		for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
-#pragma omp simd
-			for(int i = 0; i < nvars; i++)
-				for(int j = 0; j < nvars; j++) {
-					L[iface](i,j) = 0;
-					U[iface](i,j) = 0;
-				}
-		}
+		A->setDiagZero();
 		
 		// update residual and local time steps
 		eul->compute_residual(u, residual, true, dtm);
 
-		eul->compute_jacobian(u, D, L, U);
+		eul->compute_jacobian(u, A);
 		
 		// compute ramped quantities
 		if(step < rampstart) {
@@ -348,12 +340,17 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
+			Matrix<a_real,nvars,nvars,RowMajor> db 
+				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+
 			for(int i = 0; i < nvars; i++)
-				D[iel](i,i) += m->garea(iel) / (curCFL*dtm(iel));
+				db(i,i) = m->garea(iel) / (curCFL*dtm(iel));
+			
+			A->updateDiagBlock(iel*nvars, db.data());
 		}
 
 		// setup and solve linear system for the update du
-		linsolv->setLHS(D,L,U);
+		linsolv->setupPreconditioner();
 		linsolv->setParams(lintol, curlinmaxiter);
 		int linstepsneeded = linsolv->solve(residual, du);
 
@@ -421,24 +418,20 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
 
-	if(precond == "PSGS") {
-		prec = new PointSGS<nvars>(mesh, napplysweeps);
-		std::cout << " SteadyMFBackwardEulerSolver: Selected point SGS preconditioner.\n";
-	}
-	else if(precond == "BJ") {
-		prec = new BlockJacobi<nvars>(mesh);
+	if(precond == "BJ") {
+		prec = new BlockJacobi<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: Selected Block Jacobi preconditioner.\n";
 	}
 	else if(precond == "BSGS") {
-		prec = new BlockSGS<nvars>(mesh, napplysweeps);
+		prec = new BlockSGS<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: Selected Block SGS preconditioner.\n";
 	}
 	else if(precond == "BILU0") {
-		prec = new BILU0<nvars>(mesh, nbuildsweeps, napplysweeps);
+		prec = new BILU0<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: Selected Block ILU0 preconditioner.\n";
 	}
 	else {
-		prec = new NoPrec<nvars>(mesh);
+		prec = new NoPrec<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: No preconditioning will be applied.\n";
 	}
 
@@ -453,9 +446,6 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 		std::cout << " SteadyMFBackwardEulerSolver: Richardson iteration selected, ie, no acceleration.\n";
 	}
 
-	D = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnelem()];
-	L = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
-	U = new Matrix<a_real,nvars,nvars,RowMajor>[m->gnaface()-m->gnbface()];
 	aux.resize(m->gnelem(),nvars);
 }
 
@@ -465,11 +455,9 @@ SteadyMFBackwardEulerSolver<nvars>::~SteadyMFBackwardEulerSolver()
 	delete linsolv;
 	delete startlinsolv;
 	delete prec;
-	delete [] D;
-	delete [] U;
-	delete [] L;
 }
 
+/// \fixme FIXME: Broken by matrices storage changes
 template <short nvars>
 void SteadyMFBackwardEulerSolver<nvars>::solve()
 {
@@ -477,7 +465,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
-	Matrix<a_real,Dynamic,Dynamic,RowMajor> du = Matrix<a_real,Dynamic,Dynamic,RowMajor>::Zero(m->gnelem(), nvars);
+	MVector du = MVector::Zero(m->gnelem(), nvars);
 	du(0,0) = 1e-8;
 	
 	struct timeval time1, time2;
@@ -511,7 +499,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 			starter->compute_residual(u, residual, true, dtm);
 
 			// compute first-order Jacobian for preconditioner
-			starter->compute_jacobian(u, D, L, U);
+			starter->compute_jacobian(u, M);
 
 			// add pseudo-time terms to diagonal blocks
 #pragma omp parallel for simd default(shared)
@@ -522,7 +510,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 			}
 
 			// setup and solve linear system for the update du
-			startlinsolv->setLHS(D,L,U);
+			startlinsolv->setupPreconditioner();
 			startlinsolv->setParams(lintol, linmaxiterstart);
 			int linstepsneeded = startlinsolv->solve(u, dtm, residual, aux, du);
 
@@ -586,7 +574,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 		// update residual and local time steps
 		eul->compute_residual(u, residual, true, dtm);
 
-		eul->compute_jacobian(u, D, L, U);
+		eul->compute_jacobian(u, M);
 		
 		// compute ramped quantities
 		if(step < rampstart) {
@@ -619,7 +607,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 		}
 
 		// setup and solve linear system for the update du
-		linsolv->setLHS(D,L,U);
+		linsolv->setupPreconditioner();
 		linsolv->setParams(lintol, curlinmaxiter);
 		int linstepsneeded = linsolv->solve(u, dtm, residual, aux, du);
 
