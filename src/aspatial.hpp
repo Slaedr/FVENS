@@ -37,7 +37,7 @@
 namespace acfd {
 
 /// Base class for finite volume spatial discretization
-template<short nvars>
+template<unsigned short nvars>
 class Spatial
 {
 protected:
@@ -224,7 +224,7 @@ public:
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity
-template <short nvars>
+template <unsigned short nvars>
 class Diffusion : public Spatial<nvars>
 {
 protected:
@@ -251,7 +251,7 @@ public:
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm) = 0;
 	
 	virtual void compute_jacobian(const MVector& u, 
-			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U) = 0;
+			LinearOperator<a_real,a_int> *const A) = 0;
 
 	virtual void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
 			const MVector& __restrict__ v, 
@@ -272,7 +272,7 @@ public:
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity using the thin-layer model
-template <short nvars>
+template <unsigned short nvars>
 class DiffusionThinLayer : public Diffusion<nvars>
 {
 	using Spatial<nvars>::m;
@@ -301,7 +301,7 @@ public:
 			MVector& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
 	
 	void compute_jacobian(const MVector& u, 
-			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
+			LinearOperator<a_real,a_int> *const A);
 
 	void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
 			const MVector& __restrict__ v, 
@@ -320,7 +320,7 @@ public:
 };
 
 /// Spatial discretization of diffusion operator with constant diffusivity using `modified gradient' or `corrected gradient' method
-template <short nvars>
+template <unsigned short nvars>
 class DiffusionMA : public Diffusion<nvars>
 {
 	using Spatial<nvars>::m;
@@ -353,7 +353,7 @@ public:
 			MVector& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
 	
 	void compute_jacobian(const MVector& u, 
-			Matrix<a_real,nvars,nvars,RowMajor> *const D, Matrix<a_real,nvars,nvars,RowMajor> *const L, Matrix<a_real,nvars,nvars,RowMajor> *const U);
+			LinearOperator<a_real,a_int> *const A);
 
 	void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
 			const MVector& __restrict__ v, 

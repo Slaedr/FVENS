@@ -88,7 +88,7 @@ public:
 	 */
 	void submitBlock(const a_int starti, const a_int startj, 
 			const a_real *const buffer,
-			const size_t lud, const size_t face_id);
+			const long lud, const long face_id);
 
 	/// Update a (contiguous) block of values into the matrix
 	/** This is function is thread-safe: each location that needs to be updated is updated
@@ -103,7 +103,7 @@ public:
 	 */
 	void updateBlock(const a_int starti, const a_int startj, 
 			const a_real *const buffer,
-			const size_t lud, const size_t face_id);
+			const long lud, const long face_id);
 	
 	/// Updates the diagonal block of the specified block-row
 	/** This function is thread-safe. It's also redundant, as it's no more efficient

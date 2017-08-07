@@ -16,6 +16,9 @@ DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh,
 	D = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
 	L = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
 	U = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
+#ifdef DEBUG
+	std::cout << " DLUMatrix: Setting up\n";
+#endif
 }
 
 template <size_t bs>
@@ -64,12 +67,13 @@ void DLUMatrix<bs>::setDiagZero()
 template <size_t bs>
 void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
-			const size_t lud, const size_t faceid)
+			const long lud, const long faceid)
 {
 	constexpr size_t bs2 = bs*bs;
+	const a_int startr = starti/bs;
 	if(lud == 0)
 		for(size_t i = 0; i < bs2; i++)
-			D[starti].data()[i] = buffer[i];
+			D[startr].data()[i] = buffer[i];
 	else if(lud == 1)
 		for(size_t i = 0; i < bs2; i++)
 			L[faceid].data()[i] = buffer[i];
@@ -84,7 +88,7 @@ void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 template <size_t bs>
 void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
-			const size_t lud, const size_t faceid)
+			const long lud, const long faceid)
 {
 	constexpr size_t bs2 = bs*bs;
 	const a_int startr = starti/bs;
@@ -185,11 +189,13 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, con
 template <size_t bs>
 void DLUMatrix<bs>::precJacobiSetup()
 {
-	if(!luD)
+	if(!luD) {
 		luD = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
+		std::cout << " *DLUMatrix: allocating lu D\n";
+	}
 
 #pragma omp parallel for default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
 		luD[iel] = D[iel].inverse();
 }
 
@@ -200,7 +206,7 @@ void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __rest
 	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 
 #pragma omp parallel for default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++) 
+	for(a_int iel = 0; iel < m->gnelem(); iel++) 
 	{
 		z.row(iel) = luD[iel] * r.row(iel).transpose();
 	}
@@ -210,6 +216,7 @@ template <size_t bs>
 void DLUMatrix<bs>::allocTempVector()
 {
 	y = MVector::Zero(m->gnelem(),bs);
+	//y.resize(m->gnelem(),bs);
 }
 
 template <size_t bs>
@@ -222,7 +229,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
-		for(int iel = 0; iel < m->gnelem(); iel++) 
+		for(a_int iel = 0; iel < m->gnelem(); iel++) 
 		{
 			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(a_int ifael = 0; ifael < m->gnfael(iel); ifael++)
@@ -234,7 +241,8 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 				if(nbdelem < iel)
 					inter += y.row(nbdelem)*L[face].transpose();
 			}
-			y.row(iel).noalias() = luD[iel]*(r.row(iel) - inter).transpose();
+			y.row(iel) = luD[iel]*(r.row(iel) - inter).transpose();
+			//z.row(iel) = r.row(iel) - inter;
 		}
 	}
 
@@ -393,7 +401,7 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
-		for(int iel = 0; iel < m->gnelem(); iel++) 
+		for(a_int iel = 0; iel < m->gnelem(); iel++) 
 		{
 			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
@@ -412,7 +420,7 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{	
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
-		for(int iel = m->gnelem()-1; iel >= 0; iel--) 
+		for(a_int iel = m->gnelem()-1; iel >= 0; iel--) 
 		{
 			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
@@ -554,12 +562,12 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 		A->gemv3(-1.0,du.data(), -1.0,res.data(), s.data());
 
 		resnorm = 0;
-#pragma omp parallel for default(shared) reduction(+:resnorm)
-		for(int iel = 0; iel < m->gnelem(); iel++)
+/*#pragma omp parallel for default(shared) reduction(+:resnorm)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			// compute norm
 			resnorm += s.row(iel).squaredNorm();
-		}
+		}*/
 		resnorm = std::sqrt(dot(s,s));
 		//	std::cout << "   RichardsonSolver: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
@@ -612,7 +620,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		bnorm += res.row(iel).squaredNorm();
 		rhat.row(iel) = r.row(iel);
@@ -657,7 +665,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		// check convergence or `lucky' breakdown
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			// compute norm
 			resnorm += r.row(iel).squaredNorm();
@@ -742,7 +750,7 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		bnorm += res.row(iel).squaredNorm();
 	}
@@ -751,7 +759,7 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 	while(step < maxiter)
 	{
 #pragma omp parallel for simd default(shared)
-		for(int i = 0; i < m->gnelem()*nvars; i++)
+		for(a_int i = 0; i < m->gnelem()*nvars; i++)
 			(&s(0,0))[i] = 0.0;
 
 		// compute -ve of dir derivative in the direction du, add -ve of residual, and store in s
@@ -769,7 +777,7 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			// s := -V/dt du - r(u+du)
 			//s.row(iel) = -s.row(iel) - m->garea(iel)/dtm(iel)*du.row(iel);

@@ -52,7 +52,7 @@ endif()
 # flags and stuff
 
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -ggdb -DDEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "-Wall -O3 -UDEBUG -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -UDEBUG -DNDEBUG -Wall -Winline")
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS "Debug mode")

@@ -45,7 +45,8 @@ namespace acfd
 	typedef double a_real;
 
 	/// Integer type to use for indexing etc
-	/** \todo Consider replacing indices with size_t.
+	/** Using signed types for this might be better than using unsigned types,
+	 * eg., to iterate backwards over an entire array (down to index 0).
 	 */
 	typedef int a_int;
 	

@@ -268,7 +268,7 @@ void UMesh2dh::readGmsh2(std::string mfile, int dimensions)
 	/// elmtype is the standard element type in the Gmsh 2 mesh format - of either faces or elements
 	ndtag = 0; nbtag = 0;
 	infile >> nelm;
-	amat::Array2d<int > elms(nelm,width_elms);
+	amat::Array2d<a_int > elms(nelm,width_elms);
 	nface = 0; nelem = 0;
 	std::vector<int> nnodes(nelm,0);
 	std::vector<int> nfaels(nelm,0);

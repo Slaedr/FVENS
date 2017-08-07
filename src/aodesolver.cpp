@@ -43,8 +43,8 @@ void SteadyForwardEulerSolver<nvars>::solve()
 		while(resi/initres > starttol && step < startmaxiter)
 		{
 #pragma omp parallel for simd default(shared)
-			for(int iel = 0; iel < m->gnelem(); iel++) {
-				for(int i = 0; i < nvars; i++)
+			for(a_int iel = 0; iel < m->gnelem(); iel++) {
+				for(unsigned short i = 0; i < nvars; i++)
 					residual(iel,i) = 0;
 			}
 
@@ -56,9 +56,9 @@ void SteadyForwardEulerSolver<nvars>::solve()
 #pragma omp parallel default(shared)
 			{
 #pragma omp for simd
-				for(int iel = 0; iel < m->gnelem(); iel++)
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
 				{
-					for(int i = 0; i < nvars; i++)
+					for(short i = 0; i < nvars; i++)
 					{
 						//uold(iel,i) = u(iel,i);
 						u(iel,i) -= startcfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
@@ -66,7 +66,7 @@ void SteadyForwardEulerSolver<nvars>::solve()
 				}
 
 #pragma omp for simd reduction(+:errmass)
-				for(int iel = 0; iel < m->gnelem(); iel++)
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
 				{
 					errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 				}
@@ -91,8 +91,8 @@ void SteadyForwardEulerSolver<nvars>::solve()
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for simd default(shared)
-		for(int iel = 0; iel < m->gnelem(); iel++) {
-			for(int i = 0; i < nvars; i++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++) {
+			for(short i = 0; i < nvars; i++)
 				residual(iel,i) = 0;
 		}
 
@@ -104,9 +104,9 @@ void SteadyForwardEulerSolver<nvars>::solve()
 #pragma omp parallel default(shared)
 		{
 #pragma omp for simd
-			for(int iel = 0; iel < m->gnelem(); iel++)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(int i = 0; i < nvars; i++)
+				for(short i = 0; i < nvars; i++)
 				{
 					//uold(iel,i) = u(iel,i);
 					u(iel,i) -= cfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
@@ -114,7 +114,7 @@ void SteadyForwardEulerSolver<nvars>::solve()
 			}
 
 #pragma omp for simd reduction(+:errmass)
-			for(int iel = 0; iel < m->gnelem(); iel++)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
 				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 			}
@@ -168,13 +168,14 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	}
 	else if(mattype == 'd') {
 		// DLU matrix
-		A = new blasted::DLUMatrix<NVARS>(m, nbuildsweeps, napplysweeps);
+		A = new blasted::DLUMatrix<nvars>(m, nbuildsweeps, napplysweeps);
 	}
 	else {
 		// TODO
 		//A = new blasted::BSRMatrix();
 	}
 
+	// select preconditioner
 	if(precond == "BJ") {
 		prec = new BlockJacobi<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected Block Jacobi preconditioner.\n";
@@ -182,10 +183,12 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	else if(precond == "BSGS") {
 		prec = new BlockSGS<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected Block SGS preconditioner.\n";
+		A->allocTempVector();
 	}
 	else if(precond == "BILU0") {
 		prec = new BILU0<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected Block ILU0 preconditioner.\n";
+		A->allocTempVector();
 	}
 	else {
 		prec = new NoPrec<nvars>(A);
@@ -229,9 +232,9 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		while(resi/initres > starttol && step < startmaxiter)
 		{
 #pragma omp parallel for default(shared)
-			for(int iel = 0; iel < m->gnelem(); iel++) {
+			for(a_int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-				for(int i = 0; i < nvars; i++) {
+				for(short i = 0; i < nvars; i++) {
 					residual(iel,i) = 0;
 				}
 			}
@@ -245,12 +248,12 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 
 			// add pseudo-time terms to diagonal blocks
 #pragma omp parallel for default(shared)
-			for(int iel = 0; iel < m->gnelem(); iel++)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
 				Matrix<a_real,nvars,nvars,RowMajor> db 
 					= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 
-				for(int i = 0; i < nvars; i++)
+				for(short i = 0; i < nvars; i++)
 					db(i,i) = m->garea(iel) / (startcfl*dtm(iel));
 				
 				A->updateDiagBlock(iel*nvars, db.data());
@@ -266,11 +269,11 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel default(shared)
 			{
 #pragma omp for
-				for(int iel = 0; iel < m->gnelem(); iel++) {
+				for(a_int iel = 0; iel < m->gnelem(); iel++) {
 					u.row(iel) += du.row(iel);
 				}
 #pragma omp for simd reduction(+:errmass)
-				for(int iel = 0; iel < m->gnelem(); iel++)
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
 				{
 					errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 				}
@@ -300,9 +303,9 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for default(shared)
-		for(int iel = 0; iel < m->gnelem(); iel++) {
+		for(a_int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-			for(int i = 0; i < nvars; i++) {
+			for(short i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
 			}
 		}
@@ -338,12 +341,12 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 
 		// add pseudo-time terms to diagonal blocks
 #pragma omp parallel for simd default(shared)
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			Matrix<a_real,nvars,nvars,RowMajor> db 
 				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 
-			for(int i = 0; i < nvars; i++)
+			for(short i = 0; i < nvars; i++)
 				db(i,i) = m->garea(iel) / (curCFL*dtm(iel));
 			
 			A->updateDiagBlock(iel*nvars, db.data());
@@ -360,11 +363,11 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel default(shared)
 		{
 #pragma omp for
-			for(int iel = 0; iel < m->gnelem(); iel++) {
+			for(a_int iel = 0; iel < m->gnelem(); iel++) {
 				u.row(iel) += du.row(iel);
 			}
 #pragma omp for simd reduction(+:errmass)
-			for(int iel = 0; iel < m->gnelem(); iel++)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
 				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
 			}
@@ -479,17 +482,17 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-				for(int i = 0; i < nvars; i++) {
+				for(unsigned short i = 0; i < nvars; i++) {
 					residual(iel,i) = 0;
-					for(int j = 0; j < nvars; j++)
+					for(unsigned short j = 0; j < nvars; j++)
 						D[iel](i,j) = 0;
 				}
 			}
 #pragma omp parallel for default(shared)
 			for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
 #pragma omp simd
-				for(int i = 0; i < nvars; i++)
-					for(int j = 0; j < nvars; j++) {
+				for(unsigned short i = 0; i < nvars; i++)
+					for(unsigned short j = 0; j < nvars; j++) {
 						L[iface](i,j) = 0;
 						U[iface](i,j) = 0;
 					}
@@ -505,7 +508,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for simd default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(int i = 0; i < nvars; i++)
+				for(unsigned short i = 0; i < nvars; i++)
 					D[iel](i,i) += m->garea(iel) / (startcfl*dtm(iel));
 			}
 
@@ -554,9 +557,9 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-			for(int i = 0; i < nvars; i++) {
+			for(unsigned short i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
-				for(int j = 0; j < nvars; j++)
+				for(unsigned short j = 0; j < nvars; j++)
 					D[iel](i,j) = 0;
 			}
 		}
@@ -564,7 +567,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for default(shared)
 		for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
 #pragma omp simd
-			for(int i = 0; i < nvars; i++)
+			for(unsigned short i = 0; i < nvars; i++)
 				for(int j = 0; j < nvars; j++) {
 					L[iface](i,j) = 0;
 					U[iface](i,j) = 0;
@@ -602,7 +605,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
-			for(int i = 0; i < nvars; i++)
+			for(unsigned short i = 0; i < nvars; i++)
 				D[iel](i,i) += m->garea(iel) / (curCFL*dtm(iel));
 		}
 

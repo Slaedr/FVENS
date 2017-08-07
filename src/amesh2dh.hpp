@@ -20,47 +20,47 @@ namespace acfd {
 class UMesh2dh
 {
 private:
-	int npoin;					///< Number of nodes
-	int nelem;					///< Number of elements
-	int nface;					///< Number of boundary faces
-	int ndim;					///< Dimension of the mesh
-	std::vector<int> nnode;		///< number of nodes to an element, for each element
-	int maxnnode;				///< Maximum number of nodes per element for any element
-	std::vector<int> nfael;		///< number of faces to an element (equal to number of edges to an element in 2D) for each element
-	int maxnfael;				///< Maximum number of faces per element for any element
-	int nnofa;					///< number of nodes in a face
-	int naface;					///< total number of (internal and boundary) faces
-	int nbface;					///< number of boundary faces as calculated by compute_face_data(), as opposed to nface which is read from file
-	int nbpoin;					///< number of boundary points
-	int nbtag;					///< number of tags for each boundary face
-	int ndtag;					///< number of tags for each element
+	a_int npoin;					///< Number of nodes
+	a_int nelem;					///< Number of elements
+	a_int nface;					///< Number of boundary faces
+	int ndim;						///< \deprecated Dimension of the mesh
+	std::vector<int> nnode;			///< number of nodes to an element, for each element
+	int maxnnode;					///< Maximum number of nodes per element for any element
+	std::vector<int> nfael;			///< number of faces to an element (equal to number of edges to an element in 2D) for each element
+	int maxnfael;					///< Maximum number of faces per element for any element
+	int nnofa;						///< number of nodes in a face
+	a_int naface;					///< total number of (internal and boundary) faces
+	a_int nbface;					///< number of boundary faces as calculated by compute_face_data(), as opposed to nface which is read from file
+	a_int nbpoin;					///< number of boundary points
+	int nbtag;						///< number of tags for each boundary face
+	int ndtag;						///< number of tags for each element
 	amat::Array2d<double > coords;				///< Specifies coordinates of each node
-	amat::Array2d<int > inpoel;				///< Interconnectivity matrix: lists node numbers of nodes in each element
-	amat::Array2d<int > bface;					///< Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
-	amat::Array2d<double > vol_regions;		///< to hold volume region markers, if any
-	amat::Array2d<a_real > flag_bpoin;		///< Holds 1 or 0 for each point depending on whether or not that point is a boundary point
+	amat::Array2d<a_int > inpoel;				///< Interconnectivity matrix: lists node numbers of nodes in each element
+	amat::Array2d<a_int > bface;				///< Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
+	amat::Array2d<double > vol_regions;			///< to hold volume region markers, if any
+	amat::Array2d<a_real > flag_bpoin;			///< Holds 1 or 0 for each point depending on whether or not that point is a boundary point
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
-	amat::Array2d<int > esup_p;
+	amat::Array2d<a_int > esup_p;
 	/// List of elements surrounding points. 
 	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p). */
-	amat::Array2d<int > esup;
+	amat::Array2d<a_int > esup;
 	/// Lists of indices of psup corresponding to nodes (points)
-	amat::Array2d<int > psup_p;
+	amat::Array2d<a_int > psup_p;
 	
 	/// List of nodes surrounding nodes
 	/** Integers pointing to particular nodes' node lists are stored in [psup_p](@ref psup_p)
 	 */
-	amat::Array2d<int > psup;
+	amat::Array2d<a_int > psup;
 	
 	/// Elements surrounding elements
-	amat::Array2d<int > esuel;
+	amat::Array2d<a_int > esuel;
 	/// Face data structure - contains info about elements and nodes associated with a face
-	amat::Array2d<int > intfac;
+	amat::Array2d<a_int > intfac;
 	/// Holds boundary tags (markers) corresponding to intfac
 	amat::Array2d<int > intfacbtags;
 	/// Holds face numbers of faces making up an element
-	amat::Array2d<int> elemface;
+	amat::Array2d<a_int> elemface;
 	
 	/** @brief Boundary points list
 	 * 
@@ -96,11 +96,11 @@ public:
 	{
 		return coords.get(pointno,dim);
 	}
-	int ginpoel(int elemno, int locnode) const
+	a_int ginpoel(int elemno, int locnode) const
 	{
 		return inpoel.get(elemno, locnode);
 	}
-	int gbface(int faceno, int val) const
+	a_int gbface(int faceno, int val) const
 	{
 		return bface.get(faceno, val);
 	}
@@ -108,31 +108,31 @@ public:
 	amat::Array2d<double >* getcoords()
 	{ return &coords; }
 
-	int gesup(int i) const { return esup.get(i); }
-	int gesup_p(int i) const { return esup_p.get(i); }
-	int gpsup(int i) const { return psup.get(i); }
-	int gpsup_p(int i) const { return psup_p.get(i); }
-	int gesuel(int ielem, int jnode) const { return esuel.get(ielem, jnode); }
+	a_int gesup(a_int i) const { return esup.get(i); }
+	a_int gesup_p(a_int i) const { return esup_p.get(i); }
+	a_int gpsup(a_int i) const { return psup.get(i); }
+	a_int gpsup_p(a_int i) const { return psup_p.get(i); }
+	a_int gesuel(a_int ielem, int jnode) const { return esuel.get(ielem, jnode); }
 	a_int gelemface(a_int ielem, int inode) const { return elemface.get(ielem,inode); }
-	int gintfac(int face, int i) const { return intfac.get(face,i); }
-	int gintfacbtags(int face, int i) const { return intfacbtags.get(face,i); }
-	int gbpoints(int poin, int i) const { return bpoints.get(poin,i); }
-	int gbpointsb(int poin, int i) const { return bpointsb.get(poin,i); }
-	int gbfacebp(int iface, int i) const { return bfacebp.get(iface,i); }
-	int gbifmap(int intfacno) const { return bifmap.get(intfacno); }
-	int gifbmap(int bfaceno) const { return ifbmap.get(bfaceno); }
-	double gjacobians(int ielem) const { return jacobians.get(ielem,0); }
+	a_int gintfac(a_int face, int i) const { return intfac.get(face,i); }
+	int gintfacbtags(a_int face, int i) const { return intfacbtags.get(face,i); }
+	int gbpoints(a_int poin, int i) const { return bpoints.get(poin,i); }
+	int gbpointsb(a_int poin, int i) const { return bpointsb.get(poin,i); }
+	int gbfacebp(a_int iface, int i) const { return bfacebp.get(iface,i); }
+	int gbifmap(a_int intfacno) const { return bifmap.get(intfacno); }
+	int gifbmap(a_int bfaceno) const { return ifbmap.get(bfaceno); }
+	double gjacobians(a_int ielem) const { return jacobians.get(ielem,0); }
 	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
 	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
-	int gnpoin() const { return npoin; }
-	int gnelem() const { return nelem; }
-	int gnface() const { return nface; }
-	int gnbface() const { return nbface; }
+	a_int gnpoin() const { return npoin; }
+	a_int gnelem() const { return nelem; }
+	a_int gnface() const { return nface; }
+	a_int gnbface() const { return nbface; }
 	int gnnode(int ielem) const { return nnode[ielem]; }
 	int gndim() const { return ndim; }
-	int gnaface() const {return naface; }
+	a_int gnaface() const {return naface; }
 	int gnfael(int ielem) const { return nfael[ielem]; }
 	int gnnofa() const { return nnofa; }
 	int gnbtag() const{ return nbtag; }
@@ -165,6 +165,9 @@ public:
 	void readDomn(std::string mfile);
 
 	/// Reads mesh from Gmsh 2 format file
+	/** TODO: When reading the file, check whether the number of cells is less than (2^32/2)/nvars for a 32-bit int storage etc
+	 * in order to avoid overflow later.
+	 */
 	void readGmsh2(std::string mfile, int dimensions);
 	
 	/// Stores (in array bpointsb) for each boundary point: the associated global point number and the two bfaces associated with it.

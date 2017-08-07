@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
+	char mattype;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -50,6 +51,7 @@ int main(int argc, char* argv[])
 	control >> dum; control >> firstmaxiter;
 	if(timesteptype == "IMPLICIT") {
 		control >> dum;
+		control >> dum; control >> mattype;
 		control >> dum; control >> linsolver;
 		control >> dum; control >> lintol;
 		control >> dum; control >> linmaxiterstart;
@@ -101,7 +103,7 @@ int main(int argc, char* argv[])
 	
 	if(timesteptype == "IMPLICIT") {
 		SteadyBackwardEulerSolver<1> time(&m, prob, startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
+				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
 
 		// computation
 		time.solve();

@@ -9,7 +9,7 @@
 
 namespace acfd {
 
-template<short nvars>
+template<unsigned short nvars>
 Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 {
 	rc.setup(m->gnelem(),m->gndim());
@@ -20,14 +20,12 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 
 	// get cell centers (real and ghost)
 	
-	int idim, inode;
-
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(idim = 0; idim < m->gndim(); idim++)
+		for(unsigned short idim = 0; idim < m->gndim(); idim++)
 		{
 			rc(ielem,idim) = 0;
-			for(inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int inode = 0; inode < m->gnnode(ielem); inode++)
 				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
 			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
 		}
@@ -46,7 +44,7 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 		y1 = m->gcoords(m->gintfac(ied,2),1);
 		x2 = m->gcoords(m->gintfac(ied,3),0);
 		y2 = m->gcoords(m->gintfac(ied,3),1);
-		for(short ig = 0; ig < NGAUSS; ig++)
+		for(unsigned short ig = 0; ig < NGAUSS; ig++)
 		{
 			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
 			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
@@ -54,13 +52,13 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 	}
 }
 
-template<short nvars>
+template<unsigned short nvars>
 Spatial<nvars>::~Spatial()
 {
 	delete [] gr;
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
 {
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -70,17 +68,17 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
 		a_int ip2 = m->gintfac(iface,3);
 		a_real midpoint[NDIM];
 
-		for(short idim = 0; idim < NDIM; idim++)
+		for(unsigned short idim = 0; idim < NDIM; idim++)
 		{
 			midpoint[idim] = 0.5 * (m->gcoords(ip1,idim) + m->gcoords(ip2,idim));
 		}
 
-		for(short idim = 0; idim < NDIM; idim++)
+		for(unsigned short idim = 0; idim < NDIM; idim++)
 			rcg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
 	}
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_face()
 {
 	a_real x1, y1, x2, y2, xs, ys, xi, yi;
@@ -91,8 +89,8 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face()
 		a_real nx = m->ggallfa(ied,0);
 		a_real ny = m->ggallfa(ied,1);
 
-		xi = rc.get(ielem,0);
-		yi = rc.get(ielem,1);
+		xi = rc(ielem,0);
+		yi = rc(ielem,1);
 
 		// Note: The ghost cell is a direct reflection of the boundary cell about the boundary-face
 		//       It is NOT the reflection about the midpoint of the boundary-face
@@ -283,7 +281,7 @@ void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a,
 	uinf(0,3) = p/(g-1) + 0.5*rhoinf*vinf*vinf;
 
 	if(inittype == 1)
-		for(int i = 0; i < m->gnelem(); i++)
+		for(a_int i = 0; i < m->gnelem(); i++)
 		{
 			// call supersonic vortex initialzation
 			a_real x = 0, y = 0;
@@ -300,8 +298,8 @@ void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a,
 		}
 	else
 		//initial values are equal to boundary values
-		for(int i = 0; i < m->gnelem(); i++)
-			for(int j = 0; j < NVARS; j++)
+		for(a_int i = 0; i < m->gnelem(); i++)
+			for(short j = 0; j < NVARS; j++)
 				u(i,j) = uinf(0,j);
 	
 	std::cout << "EulerFV: loaddata(): Initial data calculated.\n";
@@ -310,7 +308,7 @@ void EulerFV::loaddata(const short inittype, a_real Minf, a_real vinf, a_real a,
 void EulerFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
 {
 #pragma omp parallel for default(shared)
-	for(int ied = 0; ied < m->gnbface(); ied++)
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
 	}
@@ -348,7 +346,7 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 	{
 		/*if(Mni <= 0)
 		{*/
-			for(int i = 0; i < NVARS; i++)
+			for(short i = 0; i < NVARS; i++)
 				bs[i] = uinf(0,i);
 		/*}
 		else if(Mni <= 1)
@@ -403,7 +401,7 @@ void EulerFV::compute_residual(const MVector& __restrict__ u, MVector& __restric
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			integ(iel) = 0.0;
 		}
@@ -413,7 +411,7 @@ void EulerFV::compute_residual(const MVector& __restrict__ u, MVector& __restric
 		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
-			for(int ivar = 0; ivar < NVARS; ivar++)
+			for(short ivar = 0; ivar < NVARS; ivar++)
 				uleft(ied,ivar) = u(ielem,ivar);
 		}
 	}
@@ -436,7 +434,7 @@ void EulerFV::compute_residual(const MVector& __restrict__ u, MVector& __restric
 		{
 			a_int ielem = m->gintfac(ied,0);
 			a_int jelem = m->gintfac(ied,1);
-			for(int ivar = 0; ivar < NVARS; ivar++)
+			for(short ivar = 0; ivar < NVARS; ivar++)
 			{
 				uleft(ied,ivar) = u(ielem,ivar);
 				uright(ied,ivar) = u(jelem,ivar);
@@ -471,7 +469,7 @@ void EulerFV::compute_residual(const MVector& __restrict__ u, MVector& __restric
 			inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, fluxes);
 
 			// integrate over the face
-			for(int ivar = 0; ivar < NVARS; ivar++)
+			for(short ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] *= len;
 
 			//calculate presures from u
@@ -505,7 +503,7 @@ void EulerFV::compute_residual(const MVector& __restrict__ u, MVector& __restric
 #pragma omp barrier
 		if(gettimesteps)
 #pragma omp for simd
-			for(int iel = 0; iel < m->gnelem(); iel++)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
 				dtm(iel) = m->garea(iel)/integ(iel);
 			}
@@ -714,13 +712,13 @@ void EulerFV::compute_jac_vec(const MVector& __restrict__ resu, const MVector& _
 	a_real *const prodarr = &prod(0,0); 
 	const a_real *const resuarr = &resu(0,0);
 #pragma omp parallel for simd default(shared)
-	for(int i = 0; i < m->gnelem()*NVARS; i++)
+	for(a_int i = 0; i < m->gnelem()*NVARS; i++)
 		prodarr[i] = (prodarr[i] - resuarr[i]) / (eps/vnorm);
 
 	// add time term to the output vector if necessary
 	if(add_time_deriv) {
 #pragma omp parallel for simd default(shared)
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < NVARS; ivar++)
 				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
 	}
@@ -750,13 +748,13 @@ void EulerFV::compute_jac_gemv(const a_real a, const MVector& __restrict__ resu,
 	const a_real *const resuarr = &resu(0,0);
 	const a_real *const warr = &w(0,0);
 #pragma omp parallel for simd default(shared)
-	for(int i = 0; i < m->gnelem()*NVARS; i++)
+	for(a_int i = 0; i < m->gnelem()*NVARS; i++)
 		prodarr[i] = a*(prodarr[i] - resuarr[i]) / (eps/vnorm) + b*warr[i];
 
 	// add time term to the output vector if necessary
 	if(add_time_deriv) {
 #pragma omp parallel for simd default(shared)
-		for(int iel = 0; iel < m->gnelem(); iel++)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < NVARS; ivar++)
 				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
 	}
@@ -775,7 +773,7 @@ void EulerFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars
 	up.zeros();
 	areasum.zeros();
 
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(int inode = 0; inode < m->gnnode(ielem); inode++)
 			for(int ivar = 0; ivar < NVARS; ivar++)
@@ -785,11 +783,11 @@ void EulerFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars
 			}
 	}
 
-	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < NVARS; ivar++)
+	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(short ivar = 0; ivar < NVARS; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 	
-	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 	{
 		scalars(ipoin,0) = up(ipoin,0);
 		velocities(ipoin,0) = up(ipoin,1)/up(ipoin,0);
@@ -813,11 +811,11 @@ void EulerFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars,
 	scalars.setup(m->gnelem(), 3);
 	velocities.setup(m->gnelem(), 2);
 
-	for(int iel = 0; iel < m->gnelem(); iel++) {
+	for(a_int iel = 0; iel < m->gnelem(); iel++) {
 		scalars(iel,0) = u(iel,0);
 	}
 
-	for(int iel = 0; iel < m->gnelem(); iel++)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		velocities(iel,0) = u(iel,1)/u(iel,0);
 		velocities(iel,1) = u(iel,2)/u(iel,0);
@@ -837,7 +835,7 @@ a_real EulerFV::compute_entropy_cell(const MVector& u)
 
 	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
-	for(int iel = 0; iel < m->gnelem(); iel++)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		a_real p = (g-1) * ( u(iel,3) - 0.5*(u(iel,1)*u(iel,1)+u(iel,2)*u(iel,2))/u(iel,0) );
 		s_err(iel) = (p / pow(u(iel,0),g) - sinf) / sinf;
@@ -854,13 +852,13 @@ a_real EulerFV::compute_entropy_cell(const MVector& u)
 }
 
 
-template<short nvars>
+template<unsigned short nvars>
 Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc)
 	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
 {
 	h.resize(m->gnelem());
-	for(int iel = 0; iel < m->gnelem(); iel++) {
+	for(a_int iel = 0; iel < m->gnelem(); iel++) {
 		h[iel] = 0;
 		// max face length
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
@@ -870,26 +868,26 @@ Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, 
 	}
 }
 
-template<short nvars>
+template<unsigned short nvars>
 Diffusion<nvars>::~Diffusion()
 { }
 
 // Currently, all boundaries are constant Dirichlet
-template<short nvars>
+template<unsigned short nvars>
 inline void Diffusion<nvars>::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
 {
-	for(int ivar = 0; ivar < nvars; ivar++)
+	for(unsigned short ivar = 0; ivar < nvars; ivar++)
 		bs[ivar] = 2.0*bval - ins[ivar];
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates, amat::Array2d<a_real>& bounstates)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up)
 {
 	std::cout << "DiffusionThinLayer: postprocess_point(): Creating output arrays\n";
@@ -899,22 +897,22 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 	up.zeros();
 	areasum.zeros();
 
-	for(int ielem = 0; ielem < m->gnelem(); ielem++)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(int ivar = 0; ivar < nvars; ivar++)
+			for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			{
 				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
 				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
 			}
 	}
 
-	for(int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < nvars; ivar++)
+	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 }
 
-template<short nvars>
+template<unsigned short nvars>
 DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sourcefunc)
@@ -923,7 +921,7 @@ DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, const 
 	uleft.setup(m->gnaface(),nvars);
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void DiffusionThinLayer<nvars>::compute_residual(const MVector& __restrict__ u, 
                                                  MVector& __restrict__ residual, 
                                                  const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
@@ -931,13 +929,13 @@ void DiffusionThinLayer<nvars>::compute_residual(const MVector& __restrict__ u,
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);
-		for(int ivar = 0; ivar < nvars; ivar++)
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 	
 	compute_boundary_states(uleft, ug);
 
-	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_int relem = m->gintfac(iface,1);
@@ -952,7 +950,7 @@ void DiffusionThinLayer<nvars>::compute_residual(const MVector& __restrict__ u,
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
-		for(int ivar = 0; ivar < nvars; ivar++){
+		for(unsigned short ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
 			residual(lelem,ivar) -= diffusivity * (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
 #pragma omp atomic
@@ -977,7 +975,7 @@ void DiffusionThinLayer<nvars>::compute_residual(const MVector& __restrict__ u,
 
 		//compute_boundary_state(iface, &u(lelem,0), ug);
 
-		for(int ivar = 0; ivar < nvars; ivar++){
+		for(unsigned short ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
 			residual(lelem,ivar) -= diffusivity * (ug(iface,ivar)-u(lelem,ivar))/dist*sn*len;
 		}
@@ -994,15 +992,13 @@ void DiffusionThinLayer<nvars>::compute_residual(const MVector& __restrict__ u,
 	}
 }
 
-template<short nvars>
-void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u, 
-		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
-		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
-		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
+template<unsigned short nvars>
+void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
+		LinearOperator<a_real,a_int> *const A)
 {
-	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		a_int intface = iface-m->gnbface();
+		//a_int intface = iface-m->gnbface();
 		a_int lelem = m->gintfac(iface,0);
 		a_int relem = m->gintfac(iface,1);
 		a_real len = m->ggallfa(iface,2);
@@ -1017,17 +1013,34 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
-		for(int ivar = 0; ivar < nvars; ivar++){
+		/*for(int ivar = 0; ivar < nvars; ivar++){
 			L[intface](ivar,ivar) -= diffusivity * sn*len/dist;
 			U[intface](ivar,ivar) -= diffusivity * sn*len/dist;
 #pragma omp atomic
 			D[lelem](ivar,ivar) += diffusivity * sn*len/dist;
 #pragma omp atomic
 			D[relem](ivar,ivar) += diffusivity * sn*len/dist;
+		}*/
+
+		a_real ll[nvars*nvars];
+		for(unsigned short ivar = 0; ivar < nvars; ivar++) {
+			for(unsigned short jvar = 0; jvar < nvars; jvar++)
+				ll[ivar*nvars+jvar] = 0;
+			
+			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
 		}
+
+		A->submitBlock(relem*nvars,lelem*nvars,ll,0,0);
+		A->submitBlock(lelem*nvars,relem*nvars,ll,0,0);
+		
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
+			ll[ivar*nvars+ivar] *= -1;
+
+		A->updateDiagBlock(lelem*nvars,ll);
+		A->updateDiagBlock(relem*nvars,ll);
 	}
 	
-	for(int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_real len = m->ggallfa(iface,2);
@@ -1042,14 +1055,24 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
-		for(int ivar = 0; ivar < nvars; ivar++){
+		/*for(int ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
 			D[lelem](ivar,ivar) += diffusivity * sn*len/dist;
+		}*/
+
+		a_real ll[nvars*nvars];
+		for(unsigned short ivar = 0; ivar < nvars; ivar++) {
+			for(unsigned short jvar = 0; jvar < nvars; jvar++)
+				ll[ivar*nvars+jvar] = 0;
+			
+			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
 		}
+
+		A->updateDiagBlock(lelem*nvars,ll);
 	}
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void DiffusionThinLayer<nvars>::compute_jac_vec(const MVector& __restrict__ resu, 
 	const MVector& __restrict__ u, 
 	const MVector& __restrict__ v, 
@@ -1058,7 +1081,7 @@ void DiffusionThinLayer<nvars>::compute_jac_vec(const MVector& __restrict__ resu
 	MVector& __restrict__ prod)
 { }
 
-template<short nvars>
+template<unsigned short nvars>
 void DiffusionThinLayer<nvars>::compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
 	const MVector& __restrict__ v,
 	const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
@@ -1067,7 +1090,7 @@ void DiffusionThinLayer<nvars>::compute_jac_gemv(const a_real a, const MVector& 
 	MVector& __restrict__ prod)
 { }
 	
-template<short nvars>
+template<unsigned short nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> sourcefunc, std::string reconst)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sourcefunc)
@@ -1095,13 +1118,13 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoe
 	ug.setup(m->gnbface(),nvars);
 }
 
-template<short nvars>
+template<unsigned short nvars>
 DiffusionMA<nvars>::~DiffusionMA()
 {
 	delete rec;
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void DiffusionMA<nvars>::compute_residual(const MVector& __restrict__ u, 
                                           MVector& __restrict__ residual, 
                                           const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm)
@@ -1109,7 +1132,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& __restrict__ u,
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);
-		for(int ivar = 0; ivar < nvars; ivar++)
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 	
@@ -1132,11 +1155,11 @@ void DiffusionMA<nvars>::compute_residual(const MVector& __restrict__ u,
 		}
 
 		// compute modified gradient
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			gradterm[ivar] = 0.5*(dudx(lelem,ivar)+dudx(relem,ivar)) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
 							+0.5*(dudy(lelem,ivar)+dudy(relem,ivar)) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
 
-		for(int ivar = 0; ivar < nvars; ivar++){
+		for(unsigned short ivar = 0; ivar < nvars; ivar++){
 			a_int flux = diffusivity * (gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len;
 #pragma omp atomic
 			residual(lelem,ivar) -= flux;
@@ -1160,7 +1183,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& __restrict__ u,
 		}
 		
 		// compute modified gradient
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			gradterm[ivar] = dudx(lelem,ivar) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
 							+dudy(lelem,ivar) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
 
@@ -1181,15 +1204,14 @@ void DiffusionMA<nvars>::compute_residual(const MVector& __restrict__ u,
 	}
 }
 
-template<short nvars>
-void DiffusionMA<nvars>::compute_jacobian(const MVector& u, 
-		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ D, 
-		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ L, 
-		Matrix<a_real,nvars,nvars,RowMajor> *const __restrict__ U)
+/// For now, this is the same as the thin-layer Jacobian
+template<unsigned short nvars>
+void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
+		LinearOperator<a_real,a_int> *const A)
 {
-	for(int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		a_int intface = iface-m->gnbface();
+		//a_int intface = iface-m->gnbface();
 		a_int lelem = m->gintfac(iface,0);
 		a_int relem = m->gintfac(iface,1);
 		a_real len = m->ggallfa(iface,2);
@@ -1204,17 +1226,25 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
-		for(int ivar = 0; ivar < nvars; ivar++){
-			L[intface](ivar,ivar) -= sn*len/dist;
-			U[intface](ivar,ivar) -= sn*len/dist;
-#pragma omp atomic
-			D[lelem](ivar,ivar) += sn*len/dist;
-#pragma omp atomic
-			D[relem](ivar,ivar) += sn*len/dist;
+		a_real ll[nvars*nvars];
+		for(unsigned short ivar = 0; ivar < nvars; ivar++) {
+			for(unsigned short jvar = 0; jvar < nvars; jvar++)
+				ll[ivar*nvars+jvar] = 0;
+			
+			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
 		}
+
+		A->submitBlock(relem*nvars,lelem*nvars,ll,0,0);
+		A->submitBlock(lelem*nvars,relem*nvars,ll,0,0);
+		
+		for(unsigned short ivar = 0; ivar < nvars; ivar++)
+			ll[ivar*nvars+ivar] *= -1;
+
+		A->updateDiagBlock(lelem*nvars,ll);
+		A->updateDiagBlock(relem*nvars,ll);
 	}
 	
-	for(int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_real len = m->ggallfa(iface,2);
@@ -1229,14 +1259,19 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 			sn += dr[i]/dist * m->ggallfa(iface,i);
 		}
 
-		for(int ivar = 0; ivar < nvars; ivar++){
-#pragma omp atomic
-			D[lelem](ivar,ivar) += sn*len/dist;
+		a_real ll[nvars*nvars];
+		for(unsigned short ivar = 0; ivar < nvars; ivar++) {
+			for(unsigned short jvar = 0; jvar < nvars; jvar++)
+				ll[ivar*nvars+jvar] = 0;
+			
+			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
 		}
+
+		A->updateDiagBlock(lelem*nvars,ll);
 	}
 }
 
-template<short nvars>
+template<unsigned short nvars>
 void DiffusionMA<nvars>::compute_jac_vec (
 	const MVector& __restrict__ resu, 
 	const MVector& __restrict__ u, 
@@ -1246,7 +1281,7 @@ void DiffusionMA<nvars>::compute_jac_vec (
 	MVector& __restrict__ prod )
 { }
 
-template<short nvars>
+template<unsigned short nvars>
 void DiffusionMA<nvars>::compute_jac_gemv(const a_real a, 
 	const MVector& __restrict__ resu, 
 	const MVector& __restrict__ u, 
