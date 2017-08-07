@@ -7,6 +7,8 @@
 
 #include <linearoperator.hpp>
 
+#include "aconstants.hpp"
+
 #ifndef __AMESH2DH_H
 #include "amesh2dh.hpp"
 #endif
@@ -51,13 +53,13 @@ protected:
 	const unsigned short nbuildsweeps;
 
 	/// Number of sweeps used to apply preconditioners
-	const unsigned short napplyweeps;
+	const unsigned short napplysweeps;
 
 	/// Thread chunk size for OpenMP parallelism
 	const unsigned int thread_chunk_size;
 
 	/// Temporary array for triangular solves
-	MVector y;
+	mutable MVector y;
 
 public:
 	DLUMatrix(const acfd::UMesh2dh *const mesh, 
@@ -256,8 +258,6 @@ class BILU0 : public Preconditioner<nvars>
 public:
 	BILU0(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
 
-	~BILU0();
-
 	/// Sets D,L,U and computes the ILU factorization
 	void compute() {
 		A->precILUSetup();
@@ -291,8 +291,8 @@ class IterativeSolverBase : public LinearSolver
 protected:
 	int maxiter;                                  ///< Max number of iterations
 	double tol;                                   ///< Tolerance
-	double walltime;                              ///< Stores wall-clock time measurement of solver
-	double cputime;                               ///< Stores CPU time measurement of the solver
+	mutable double walltime;                      ///< Stores wall-clock time measurement of solver
+	mutable double cputime;                       ///< Stores CPU time measurement of the solver
 
 public:
 	IterativeSolverBase(const UMesh2dh* const mesh);
@@ -358,7 +358,7 @@ class RichardsonSolver : public IterativeSolver<nvars>
 
 public:
 	RichardsonSolver(const UMesh2dh* const mesh, 
-			const LinearOperator<a_real,a_int>* const mat, 
+			LinearOperator<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond);
 
 	int solve(const MVector& res, 
@@ -381,7 +381,7 @@ class BiCGSTAB : public IterativeSolver<nvars>
 
 public:
 	BiCGSTAB(const UMesh2dh* const mesh, 
-			const LinearOperator<a_real,a_int>* const mat, 
+			LinearOperator<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond);
 
 	int solve(const MVector& res, 

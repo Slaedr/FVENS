@@ -8,8 +8,9 @@ namespace blasted {
 
 template <size_t bs>
 DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh, 
-	const unsigned short nbuildsweeps, const unsigned int napplysweeps)
+	const unsigned short n_buildsweeps, const unsigned int n_applysweeps)
 	: m(mesh), D(nullptr), L(nullptr), U(nullptr), luD(nullptr), luL(nullptr), luU(nullptr),
+	  nbuildsweeps(n_buildsweeps), napplysweeps(n_applysweeps),
 	  thread_chunk_size(200)
 {
 	D = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
@@ -33,17 +34,17 @@ DLUMatrix<bs>::~DLUMatrix()
 }
 
 template <size_t bs>
-DLUMatrix<bs>::setAllZero()
+void DLUMatrix<bs>::setAllZero()
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
-		for(int i = 0; i < bs; i++)
-			for(int j = 0; j < bs; j++)
+		for(size_t i = 0; i < bs; i++)
+			for(size_t j = 0; j < bs; j++)
 				D[iel](i,j) = 0;
 #pragma omp parallel for default(shared)
 	for(a_int ifa = 0; ifa < m->gnaface()-m->gnbface(); ifa++)
-		for(int i = 0; i < bs; i++)
-			for(int j = 0; j < bs; j++)
+		for(size_t i = 0; i < bs; i++)
+			for(size_t j = 0; j < bs; j++)
 			{
 				L[ifa](i,j) = 0;
 				U[ifa](i,j) = 0;
@@ -51,30 +52,30 @@ DLUMatrix<bs>::setAllZero()
 }
 
 template <size_t bs>
-DLUMatrix<bs>::setDiagZero()
+void DLUMatrix<bs>::setDiagZero()
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
-		for(int i = 0; i < bs; i++)
-			for(int j = 0; j < bs; j++)
+		for(size_t i = 0; i < bs; i++)
+			for(size_t j = 0; j < bs; j++)
 				D[iel](i,j) = 0;
 }
 
 template <size_t bs>
 void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
-			const size_t lud, const size_t face_id)
+			const size_t lud, const size_t faceid)
 {
 	constexpr size_t bs2 = bs*bs;
 	if(lud == 0)
 		for(size_t i = 0; i < bs2; i++)
-			D[starti] = buffer[i];
+			D[starti].data()[i] = buffer[i];
 	else if(lud == 1)
 		for(size_t i = 0; i < bs2; i++)
-			L[faceid] = buffer[i];
+			L[faceid].data()[i] = buffer[i];
 	else if(lud == 2)
 		for(size_t i = 0; i < bs2; i++)
-			U[faceid] = buffer[i];
+			U[faceid].data()[i] = buffer[i];
 	else {
 		std::cout << "! DLUMatrix: submitBlock: Error in face index!!\n";
 	}
@@ -83,7 +84,7 @@ void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 template <size_t bs>
 void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
-			const size_t lud, const size_t face_id)
+			const size_t lud, const size_t faceid)
 {
 	constexpr size_t bs2 = bs*bs;
 	const a_int startr = starti/bs;
@@ -109,7 +110,7 @@ void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buff
 {
 	constexpr size_t bs2 = bs*bs;
 	const a_int startr = starti/bs;
-	for(int i = 0; i < bs2; i++)
+	for(size_t i = 0; i < bs2; i++)
 #pragma omp atomic update
 		D[startr].data()[i] += buffer[i];
 }
@@ -148,14 +149,18 @@ void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx,
 
 
 template <size_t bs>
-void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict x, const a_real b, 
-		const a_real *const y,
-		a_real *const z) const
+void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, const a_real b, 
+		const a_real *const yy,
+		a_real *const zz) const
 {
+	Eigen::Map<const MVector> x(xx, m->gnelem(),bs);
+	Eigen::Map<const MVector> y(yy, m->gnelem(),bs);
+	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
+
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		z.row(iel) = p*b.row(iel) + q*x.row(iel)*D[iel].transpose();
+		z.row(iel) = b*y.row(iel) + a*x.row(iel)*D[iel].transpose();
 
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 		{
@@ -166,11 +171,11 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict x, cons
 			{
 				if(nbdelem > iel) {
 					// upper
-					z.row(iel) += q*x.row(nbdelem)*U[face].transpose();
+					z.row(iel) += a*x.row(nbdelem)*U[face].transpose();
 				}
 				else {
 					// lower
-					z.row(iel) += q*x.row(nbdelem)*L[face].transpose();
+					z.row(iel) += a*x.row(nbdelem)*L[face].transpose();
 				}
 			}
 		}
@@ -193,7 +198,6 @@ void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __rest
 {
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
 	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
-	constexpr size_t bs2 = bs*bs;
 
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++) 
@@ -213,7 +217,6 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 {
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
 	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
-	constexpr size_t bs2 = bs*bs;
 
 	// forward sweep (D+L)y = r
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
@@ -221,7 +224,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(int iel = 0; iel < m->gnelem(); iel++) 
 		{
-			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(a_int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
@@ -231,7 +234,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 				if(nbdelem < iel)
 					inter += y.row(nbdelem)*L[face].transpose();
 			}
-			y.row(iel) = luD[iel]*(r.row(iel) - inter).transpose();
+			y.row(iel).noalias() = luD[iel]*(r.row(iel) - inter).transpose();
 		}
 	}
 
@@ -241,7 +244,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int iel = m->gnelem()-1; iel >= 0; iel--) 
 		{
-			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
@@ -251,7 +254,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 				if(nbdelem > iel && nbdelem < m->gnelem())
 					inter += z.row(nbdelem)*U[face].transpose();
 			}
-			z.row(iel) = luD[iel]*(y.row(iel)*D[iel].transpose() - inter).transpose();
+			z.row(iel).noalias() = luD[iel]*(y.row(iel)*D[iel].transpose() - inter).transpose();
 		}
 	}
 }
@@ -323,7 +326,7 @@ void DLUMatrix<bs>::precILUSetup()
 			// L_ij := A_ij - sum_{k= 1 to j-1}(L_ik U_kj) U_jj^(-1)
 			for(size_t j = 0; j < lowers.size(); j++)
 			{
-				Matrix<a_real,nvars,nvars,RowMajor> sum=Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+				Matrix<a_real,bs,bs,RowMajor> sum=Matrix<a_real,bs,bs,RowMajor>::Zero();
 				
 				for(size_t k = 0; k < j; k++) 
 				{
@@ -346,7 +349,7 @@ void DLUMatrix<bs>::precILUSetup()
 			}
 
 			// D_ii := A_ii - sum_{k= 1 to i-1} L_ik U_ki
-			Matrix<a_real,nvars,nvars,RowMajor> sum = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+			Matrix<a_real,bs,bs,RowMajor> sum = Matrix<a_real,bs,bs,RowMajor>::Zero();
 			for(size_t k = 0; k < lowers.size(); k++) 
 			{
 				sum += luL[lowers[k].face] * luU[lowers[k].face];
@@ -356,7 +359,7 @@ void DLUMatrix<bs>::precILUSetup()
 			// U_ij := A_ij - sum_{k= 1 to i-1} L_ik U_kj
 			for(size_t j = 0; j < uppers.size(); j++)
 			{
-				Matrix<a_real,nvars,nvars,RowMajor> sum=Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+				Matrix<a_real,bs,bs,RowMajor> sum=Matrix<a_real,bs,bs,RowMajor>::Zero();
 
 				for(size_t k = 0; k < lowers.size(); k++)
 				{
@@ -382,18 +385,17 @@ void DLUMatrix<bs>::precILUSetup()
 }
 
 template <size_t bs>
-void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restrict zz) const;
+void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restrict zz) const
 {
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
 	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
-	constexpr size_t bs2 = bs*bs;
 	
 	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(int iel = 0; iel < m->gnelem(); iel++) 
 		{
-			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
@@ -412,7 +414,7 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(int iel = m->gnelem()-1; iel >= 0; iel--) 
 		{
-			Matrix<a_real,1,nvars> inter = Matrix<a_real,1,nvars>::Zero();
+			Matrix<a_real,1,bs> inter = Matrix<a_real,1,bs>::Zero();
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 			{
 				a_int face = m->gelemface(iel,ifael) - m->gnbface();
@@ -427,6 +429,9 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 		}
 	}
 }
+
+template class DLUMatrix<NVARS>;
+template class DLUMatrix<1>;
 
 } // end blasted namespace
 
@@ -496,6 +501,7 @@ IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh,
 		LinearOperator<a_real,a_int>* const mat, 
 		Preconditioner<nvars> *const precond)
 	: IterativeSolverBase(mesh), A(mat), prec(precond)
+{ }
 
 /*template <unsigned short nvars>
 IterativeSolver<nvars>::~IterativeSolver()
@@ -545,7 +551,7 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 
 	while(step < maxiter)
 	{
-		A->gemv3(-1.0,du, -1.0,res, s);
+		A->gemv3(-1.0,du.data(), -1.0,res.data(), s.data());
 
 		resnorm = 0;
 #pragma omp parallel for default(shared) reduction(+:resnorm)
@@ -602,7 +608,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
 	// r := -res - A du
-	A->gemv3(-1.0,du, -1.0,res, r);
+	A->gemv3(-1.0,du.data(), -1.0,res.data(), r.data());
 
 	// norm of RHS
 #pragma omp parallel for reduction(+:bnorm) default(shared)
@@ -626,7 +632,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		prec->apply(p, y);
 		
 		// v <- A y
-		A->apply(1.0,y, v);
+		A->apply(1.0,y.data(), v.data());
 
 		alpha = rho/dot(rhat,v);
 
@@ -636,7 +642,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		prec->apply(r, z);
 		
 		// t <- A z
-		A->apply(1.0,z, t);
+		A->apply(1.0,z.data(), t.data());
 
 		//prec->apply(t,g);
 
@@ -791,20 +797,10 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 	return step;
 }
 
-template class DLUMatrix<NVARS>;
 template class RichardsonSolver<NVARS>;
 template class BiCGSTAB<NVARS>;
 template class MFRichardsonSolver<NVARS>;
-template class DLUMatrix<1>;
 template class RichardsonSolver<1>;
 template class BiCGSTAB<1>;
-
-template void axpby(const a_real p, MVector& z, const a_real q, const MVector& x);
-
-template void axpbypcz(const a_real p, MVector& z, 
-		const a_real q, const MVector& x,
-		const a_real r, const MVector& y);
-
-template a_real dot(const MVector& a, const MVector& b);
 
 }

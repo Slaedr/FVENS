@@ -35,6 +35,10 @@
 #define MESHDATA_DOUBLE_PRECISION 20
 #endif
 
+#ifndef EIGEN_CORE_H
+#include <Eigen/Core>
+#endif
+
 namespace acfd
 {
 	/// The floating-point type to use for all float computations
@@ -44,11 +48,7 @@ namespace acfd
 	/** \todo Consider replacing indices with size_t.
 	 */
 	typedef int a_int;
-}
-
-#ifndef EIGEN_CORE_H
-#include <Eigen/Core>
-namespace acfd {
+	
 	using Eigen::Dynamic;
 	using Eigen::RowMajor;
 	using Eigen::Matrix;
@@ -56,7 +56,6 @@ namespace acfd {
 	/// Multi-vector type, used for storing mesh functions like the residual
 	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
 }
-#endif
 
 // sparse matrix library
 #include <linearoperator.hpp>
