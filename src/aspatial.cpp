@@ -687,7 +687,7 @@ void EulerFV::compute_jacobian(const MVector& u,
 		A->submitBlock(lelem*NVARS,relem*NVARS, U.data(), 2,intface);
 
 		// negative L and U contribute to diagonal blocks
-		L *= -1.0; U *= 1.0;
+		L *= -1.0; U *= -1.0;
 		A->updateDiagBlock(lelem*NVARS, L.data());
 		A->updateDiagBlock(relem*NVARS, U.data());
 	}

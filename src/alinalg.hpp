@@ -28,7 +28,7 @@ using acfd::MVector;
 /// A sparse matrix stored in a `DLU' format
 /** Includes some BLAS 2 and preconditioning operations
  */
-template <size_t bs>
+template <int bs>
 class DLUMatrix : public LinearOperator<a_real,a_int>
 {
 protected:
@@ -140,6 +140,9 @@ public:
 
 	/// Applies a block LU factorization
 	void precILUApply(const a_real *const r, a_real *const __restrict z) const;
+	
+	/// Prints diagonal, L or U blocks depending on the argument
+	void printDiagnostic(const char choice) const;
 };
 
 }

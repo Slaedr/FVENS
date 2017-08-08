@@ -6,7 +6,7 @@
 
 namespace blasted {
 
-template <size_t bs>
+template <int bs>
 DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh, 
 	const unsigned short n_buildsweeps, const unsigned int n_applysweeps)
 	: m(mesh), D(nullptr), L(nullptr), U(nullptr), luD(nullptr), luL(nullptr), luU(nullptr),
@@ -21,7 +21,7 @@ DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh,
 #endif
 }
 
-template <size_t bs>
+template <int bs>
 DLUMatrix<bs>::~DLUMatrix()
 {
 	delete [] D;
@@ -36,72 +36,72 @@ DLUMatrix<bs>::~DLUMatrix()
 	D=L=U=luD=luU=luL = nullptr;
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::setAllZero()
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
-		for(size_t i = 0; i < bs; i++)
-			for(size_t j = 0; j < bs; j++)
+		for(int i = 0; i < bs; i++)
+			for(int j = 0; j < bs; j++)
 				D[iel](i,j) = 0;
 #pragma omp parallel for default(shared)
 	for(a_int ifa = 0; ifa < m->gnaface()-m->gnbface(); ifa++)
-		for(size_t i = 0; i < bs; i++)
-			for(size_t j = 0; j < bs; j++)
+		for(int i = 0; i < bs; i++)
+			for(int j = 0; j < bs; j++)
 			{
 				L[ifa](i,j) = 0;
 				U[ifa](i,j) = 0;
 			}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::setDiagZero()
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
-		for(size_t i = 0; i < bs; i++)
-			for(size_t j = 0; j < bs; j++)
+		for(int i = 0; i < bs; i++)
+			for(int j = 0; j < bs; j++)
 				D[iel](i,j) = 0;
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
 			const long lud, const long faceid)
 {
-	constexpr size_t bs2 = bs*bs;
+	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;
 	if(lud == 0)
-		for(size_t i = 0; i < bs2; i++)
+		for(int i = 0; i < bs2; i++)
 			D[startr].data()[i] = buffer[i];
 	else if(lud == 1)
-		for(size_t i = 0; i < bs2; i++)
+		for(int i = 0; i < bs2; i++)
 			L[faceid].data()[i] = buffer[i];
 	else if(lud == 2)
-		for(size_t i = 0; i < bs2; i++)
+		for(int i = 0; i < bs2; i++)
 			U[faceid].data()[i] = buffer[i];
 	else {
 		std::cout << "! DLUMatrix: submitBlock: Error in face index!!\n";
 	}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
 			const long lud, const long faceid)
 {
-	constexpr size_t bs2 = bs*bs;
+	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;
 	if(lud == 0)
-		for(size_t i = 0; i < bs2; i++)
+		for(int i = 0; i < bs2; i++)
 #pragma omp atomic update
 			D[startr].data()[i] += buffer[i];
 	else if(lud == 1)
-		for(size_t i = 0; i < bs2; i++)
+		for(int i = 0; i < bs2; i++)
 #pragma omp atomic update
 			L[faceid].data()[i] += buffer[i];
 	else if(lud == 2)
-		for(size_t i = 0; i < bs2; i++)
+		for(int i = 0; i < bs2; i++)
 #pragma omp atomic update
 			U[faceid].data()[i] += buffer[i];
 	else {
@@ -109,17 +109,17 @@ void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 	}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer)
 {
-	constexpr size_t bs2 = bs*bs;
+	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;
-	for(size_t i = 0; i < bs2; i++)
+	for(int i = 0; i < bs2; i++)
 #pragma omp atomic update
 		D[startr].data()[i] += buffer[i];
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx, 
                                              a_real *const __restrict zz) const
 {
@@ -152,7 +152,7 @@ void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx,
 }
 
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, const a_real b, 
 		const a_real *const yy,
 		a_real *const zz) const
@@ -186,7 +186,7 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, con
 	}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::precJacobiSetup()
 {
 	if(!luD) {
@@ -199,7 +199,7 @@ void DLUMatrix<bs>::precJacobiSetup()
 		luD[iel] = D[iel].inverse();
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __restrict zz) const
 {
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
@@ -212,14 +212,14 @@ void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __rest
 	}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::allocTempVector()
 {
 	y = MVector::Zero(m->gnelem(),bs);
 	//y.resize(m->gnelem(),bs);
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restrict zz) const
 {
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
@@ -267,7 +267,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 	}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::precILUSetup()
 {
 	if(!luD)
@@ -392,7 +392,7 @@ void DLUMatrix<bs>::precILUSetup()
 	}
 }
 
-template <size_t bs>
+template <int bs>
 void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restrict zz) const
 {
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
@@ -436,6 +436,22 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 			z.row(iel) = luD[iel].inverse()*(y.row(iel) - inter).transpose();
 		}
 	}
+}
+
+template <int bs>
+void DLUMatrix<bs>::printDiagnostic(const char choice) const
+{
+	if(choice == 'd')
+		for(a_int i = 0; i < m->gnelem(); i++)
+			std::cout << D[i] << std::endl << std::endl;
+	else if(choice == 'l')
+		for(a_int i = 0; i < m->gnaface()-m->gnbface(); i++)
+			std::cout << L[i] << std::endl << std::endl;
+	else if(choice == 'u')
+		for(a_int i = 0; i < m->gnaface()-m->gnbface(); i++)
+			std::cout << U[i] << std::endl << std::endl;
+	else
+		std::cout << "! DLUMatrix: printDiagnostics: Invalid choice!\n";
 }
 
 template class DLUMatrix<NVARS>;
