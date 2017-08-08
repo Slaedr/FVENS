@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 # The environment variable EIGEN_DIR needs to be set to the path where
 # the Eigen source directory is present.
 # The environment variable BLASTED_DIR needs to set to the root of the BLASTed linear algebra library.
+# It is assumed that the BLASTed binary is ${BLASTED_DIR}/build/libblasted.a
 
 # Pass -DOMP=1 to compile with OpenMP
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
@@ -34,7 +35,6 @@ if(MICKNC)
 endif()
 
 # Eigen
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_DONT_PARALLELIZE")
 include_directories($ENV{EIGEN_DIR})
 
 # BLASTed
@@ -52,7 +52,7 @@ endif()
 # flags and stuff
 
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -ggdb -DDEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -UDEBUG -DNDEBUG -Wall -Winline")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -UDEBUG -DNDEBUG -Wall")
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS "Debug mode")
@@ -64,21 +64,19 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
-add_library(fvens_base aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp)
+add_library(fvens_base aodesolver.cpp alinalg.cpp aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp)
 
-add_library(fvens_time aodesolver.cpp alinalg.cpp)
-target_link_libraries(fvens_time fvens_base)
 #if(WITH_PETSC)
 #	target_link_libraries(fvens_time ${PETSC_LIB})
 #endif()
 
 # for the final executable(s)
 
-add_subdirectory(utilities)
+#add_subdirectory(utilities)
 
 add_executable(fvens_steady fvens_steady.cpp)
-target_link_libraries(fvens_steady fvens_time)
+target_link_libraries(fvens_steady fvens_base)
 
-add_executable(heat_steady heat_steady.cpp)
-target_link_libraries(heat_steady fvens_time)
+#add_executable(heat_steady heat_steady.cpp)
+#target_link_libraries(heat_steady fvens_base)
 

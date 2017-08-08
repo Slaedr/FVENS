@@ -216,7 +216,6 @@ template <int bs>
 void DLUMatrix<bs>::allocTempVector()
 {
 	y = MVector::Zero(m->gnelem(),bs);
-	//y.resize(m->gnelem(),bs);
 }
 
 template <int bs>
@@ -242,7 +241,6 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 					inter += y.row(nbdelem)*L[face].transpose();
 			}
 			y.row(iel) = luD[iel]*(r.row(iel) - inter).transpose();
-			//z.row(iel) = r.row(iel) - inter;
 		}
 	}
 
@@ -461,59 +459,6 @@ template class DLUMatrix<1>;
 
 namespace acfd {
 
-/* z <- pz + qx.
- */
-inline void axpby(const a_real p, MVector& z, 
-	const a_real q, const MVector& x)
-{
-#ifdef DEBUG
-	if(z.rows() != x.rows() || z.cols() != x.cols())
-		std::cout << "! axpby: Dimension mismatch between z and x!!\n";
-#endif
-	
-	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < z.size(); i++) {
-		zz[i] = p*zz[i] + q*xx[i];
-	}
-}
-
-/* z <- pz + qx + ry
- */
-inline void axpbypcz(const a_real p, MVector& z, 
-	const a_real q, const MVector& x,
-	const a_real r, const MVector& y)
-{
-#ifdef DEBUG
-	if(z.rows() != x.rows() || z.cols() != x.cols())
-		std::cout << "! axpbypcz: Dimension mismatch between z and x!!\n";
-	if(x.rows() != y.rows() || x.cols() != y.cols())
-		std::cout << "! axpbypcz: Dimension mismatch between y and x!!\n";
-#endif
-	
-	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < z.size(); i++) {
-		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
-	}
-}
-
-inline a_real dot(const MVector& a, 
-	const MVector& b)
-{
-#ifdef DEBUG
-	if(a.rows() != b.rows() || b.cols() != b.cols())
-		std::cout << "! dot: Dimension mismatch!!\n";
-#endif
-
-	a_real sum = 0;
-#pragma omp parallel for simd default(shared) reduction(+:sum)
-	for(a_int i = 0; i < a.size(); i++)
-		sum += a.data()[i]*b.data()[i];
-
-	return sum;
-}
-
 IterativeSolverBase::IterativeSolverBase(const UMesh2dh *const mesh)
 	: LinearSolver(mesh)
 {
@@ -526,11 +471,6 @@ IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh,
 		Preconditioner<nvars> *const precond)
 	: IterativeSolverBase(mesh), A(mat), prec(precond)
 { }
-
-/*template <unsigned short nvars>
-IterativeSolver<nvars>::~IterativeSolver()
-{
-}*/
 
 template <unsigned short nvars>
 void IterativeSolver<nvars>::setupPreconditioner()

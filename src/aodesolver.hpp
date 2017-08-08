@@ -59,7 +59,7 @@ public:
 	virtual ~SteadySolver() {}
 };
 	
-/// A driver class for explicit time-stepping to steady state using forward Euler time integration
+/// A driver class for explicit time-stepping to steady state using forward Euler integration
 /** \note Make sure compute_topological(), compute_face_data() and compute_areas()
  * have been called on the mesh object prior to initialzing an object of this class.
  * 
@@ -116,11 +116,11 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 
-	amat::Array2d<a_real> dtm;					///< Stores allowable local time step for each cell
+	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
 
-	IterativeSolver<nvars> * linsolv;			///< Linear solver context
-	Preconditioner<nvars>* prec;				///< preconditioner context
-	LinearOperator<a_real,a_int>* A;			///< Sparse matrix to hold the Jacobian or LHS
+	IterativeSolver<nvars> * linsolv;        ///< Linear solver context
+	Preconditioner<nvars>* prec;             ///< preconditioner context
+	LinearOperator<a_real,a_int>* A;         ///< Sparse matrix to hold the Jacobian or LHS
 
 	const double cflinit;
 	double cflfin;
@@ -146,12 +146,14 @@ public:
 	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
 	 * \param[in] cfl_init CFL to be used when the main solver starts
 	 * \param[in] cfl_fin Final CFL number attained at \ref ramp_end iterations
-	 * \param[in] ramp_start Iteration number of main solver at which CFL number begins to linearly increase
+	 * \param[in] ramp_start Iteration number of main solver at which 
+	 *            CFL number begins to linearly increase
 	 * \param[in] ramp_end Iteration number of the main solver at which CFL ramping ends
 	 * \param[in] toler Relative residual tolerance for the ODE solver for the main solver
 	 * \param[in] maxits Maximum number of pseudo-time steps for the main solver
 	 * \param[in] mat_type A character which selects the matrix storage scheme for the Jacobian.
-	 *              Possible values: 'p' (point CSR storage), 'b' (block CSR storage) or 'd' ('DLU' storage)
+	 *            Possible values: 'p' (point CSR storage), 'b' (block CSR storage) 
+	 *            or 'd' ('DLU' storage)
 	 * \param[in] linmaxiterstart Maximum iterations per time step for the linear solver
 	 *              both for the starting ODE solver and initially for the main ODE solver
 	 * \param[in] linmaxiterend Maximum iterations per time step at the end of the CFL ramping
@@ -160,13 +162,16 @@ public:
 	 *              "RICHARDSON", "BCGSTB" (BiCGStab)
 	 * \param[in] precond Selects preconditioner to use for the linear solver; possible values:
 	 *              "BSGS", "BILU0", "BJ"
-	 * \param[in] nbuildsweeps Number of sweeps to use while asynchronously building the ILU0 preconditioner
-	 * \param[in] napplysweeps Number of sweeps to use for each asynchronous loop during application of preconditioners
+	 * \param[in] nbuildsweeps Number of sweeps to use while asynchronously building 
+	 *            the ILU0 preconditioner
+	 * \param[in] napplysweeps Number of sweeps to use for each asynchronous loop 
+	 *            during application of preconditioners
 	 * \param[in] ftoler Tolerance for the starting ODE solver
 	 * \param[in] fmaxits Maximum iterations for the starting ODE solver
 	 * \param[in] fcfl CFL number to use for starting ODE solver
 	 */
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter,
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, 
+		Spatial<nvars> *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
 		const char mat_type, const double lin_tol, const int linmaxiterstart, 
@@ -193,13 +198,16 @@ class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 
-	amat::Array2d<a_real> dtm;						///< Stores allowable local time step for each cell
+	/// Stores allowable local time step for each cell
+	amat::Array2d<a_real> dtm; 
 
-	MFIterativeSolver<nvars> * startlinsolv;		///< Linear solver context for starting run
-	MFIterativeSolver<nvars> * linsolv;				///< Linear solver context for main run
-	Preconditioner<nvars>* prec;					///< preconditioner context
-	LinearOperator<a_real,a_int>* M;				///< Preconditioning matrix
-	MVector aux;                                    ///< Temporary storage needed for matrix free
+	MFIterativeSolver<nvars> * startlinsolv;    ///< Linear solver context for starting run
+	MFIterativeSolver<nvars> * linsolv;         ///< Linear solver context for main run
+	Preconditioner<nvars>* prec;                ///< preconditioner context
+	LinearOperator<a_real,a_int>* M;            ///< Preconditioning matrix
+
+	/// Temporary storage needed for matrix-free derivative evaluation
+	MVector aux;
 
 	// TEMPORARY - REMOVE!
 	Matrix<a_real,nvars,nvars,RowMajor>* D;
@@ -222,7 +230,7 @@ class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
 
 public:
 	SteadyMFBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, 
-			Spatial<nvars> *const starterfv, const short use_starter,
+		Spatial<nvars> *const starterfv, const short use_starter,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
 		const double lin_tol, const int linmaxiterstart, const int linmaxiterend, 

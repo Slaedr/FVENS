@@ -23,6 +23,11 @@ namespace blasted {
 
 using acfd::a_real;
 using acfd::a_int;
+
+using Eigen::Dynamic;
+using Eigen::RowMajor;
+using Eigen::Matrix;
+
 using acfd::MVector;
 
 /// A sparse matrix stored in a `DLU' format
@@ -152,18 +157,58 @@ namespace acfd {
 /// Vector or matrix addition
 /** z <- pz + qx.
  */
-void axpby(const a_real p, MVector& z, 
-		const a_real q, const MVector& x);
+inline void axpby(const a_real p, MVector& z, 
+	const a_real q, const MVector& x)
+{
+#ifdef DEBUG
+	if(z.rows() != x.rows() || z.cols() != x.cols())
+		std::cout << "! axpby: Dimension mismatch between z and x!!\n";
+#endif
+	
+	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < z.size(); i++) {
+		zz[i] = p*zz[i] + q*xx[i];
+	}
+}
 
 /** z <- pz + qx + ry for vectors and matrices
  */
-void axpbypcz(const a_real p, MVector& z, 
-		const a_real q, const MVector& x,
-		const a_real r, const MVector& y);
+inline void axpbypcz(const a_real p, MVector& z, 
+	const a_real q, const MVector& x,
+	const a_real r, const MVector& y)
+{
+#ifdef DEBUG
+	if(z.rows() != x.rows() || z.cols() != x.cols())
+		std::cout << "! axpbypcz: Dimension mismatch between z and x!!\n";
+	if(x.rows() != y.rows() || x.cols() != y.cols())
+		std::cout << "! axpbypcz: Dimension mismatch between y and x!!\n";
+#endif
+	
+	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < z.size(); i++) {
+		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
+	}
+}
 
 /// Dot product of vectors or `double dot' product of matrices
-a_real dot(const MVector& a, 
-		const MVector& b);
+inline a_real dot(const MVector& a, 
+	const MVector& b)
+{
+#ifdef DEBUG
+	if(a.rows() != b.rows() || b.cols() != b.cols())
+		std::cout << "! dot: Dimension mismatch!!\n";
+#endif
+
+	a_real sum = 0;
+#pragma omp parallel for simd default(shared) reduction(+:sum)
+	for(a_int i = 0; i < a.size(); i++)
+		sum += a.data()[i]*b.data()[i];
+
+	return sum;
+}
+
 
 /// Preconditioner, ie, performs one iteration to solve M z = r
 /** Note that subclasses do not directly perform any computation but

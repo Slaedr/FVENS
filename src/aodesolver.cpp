@@ -1,5 +1,6 @@
 /** @file aodesolver.cpp
- * @brief Implements driver class(es) for solution of ODEs arising from Euler/Navier-Stokes equations.
+ * @brief Implements driver class(es) for solution of ODEs arising from 
+ * Euler/Navier-Stokes equations.
  * @author Aditya Kashi
  * @date Feb 24, 2016
  *
@@ -8,14 +9,20 @@
  */
 
 #include "aodesolver.hpp"
+#include <blockmatrices.hpp>
+#include <algorithm>
 
 namespace acfd {
 
 template<short nvars>
-SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, Spatial<nvars> *const starterfv,
-		const short use_starter, const double toler, const int maxits, const double cfl_n, const double ftoler, const int fmaxits, const double fcfl_n)
+SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
+		Spatial<nvars> *const euler, Spatial<nvars> *const starterfv,const short use_starter, 
+		const double toler, const int maxits, const double cfl_n, 
+		const double ftoler, const int fmaxits, const double fcfl_n)
 
-	: SteadySolver<nvars>(mesh, euler, starterfv, use_starter), tol(toler), maxiter(maxits), cfl(cfl_n), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
+	: SteadySolver<nvars>(mesh, euler, starterfv, use_starter), 
+	tol(toler), maxiter(maxits), cfl(cfl_n), 
+	starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
 	residual.resize(m->gnelem(),nvars);
 	u.resize(m->gnelem(), nvars);
@@ -78,7 +85,8 @@ void SteadyForwardEulerSolver<nvars>::solve()
 				initres = resi;
 
 			if(step % 50 == 0)
-				std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+				std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step 
+					<< ", rel residual " << resi/initres << std::endl;
 
 			step++;
 		}
@@ -126,7 +134,8 @@ void SteadyForwardEulerSolver<nvars>::solve()
 			initres = resi;
 
 		if(step % 50 == 0)
-			std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
+			std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step 
+				<< ", rel residual " << resi/initres << std::endl;
 
 		step++;
 	}
@@ -138,26 +147,34 @@ void SteadyForwardEulerSolver<nvars>::solve()
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 
 	if(step == maxiter)
-		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
-	std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << std::endl << std::endl;
+		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
+	std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
 	std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
-	std::cout << "                                   CPU time = " << cputime << ", wall time = " << walltime << std::endl << std::endl;
+	std::cout << "                                   CPU time = " << cputime 
+		<< ", wall time = " << walltime << std::endl << std::endl;
 }
 
-
+/** By default, the Jacobian is stored in a block sparse row format.
+ */
 template <short nvars>
-SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
+SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, 
+		Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, 
+		const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
-		const char mattype, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
+		const char mattype, const double lin_tol, 
+		const int linmaxiter_start, const int linmaxiter_end, 
 		std::string linearsolver, std::string precond,
 		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
-	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), A(nullptr), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
-	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
+	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), A(nullptr), 
+	cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), 
+	tol(toler), maxiter(maxits), 
+	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), 
+	starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
-	/* NOTE: the number of columns here MUST match the static number of columns, which is nvars. */
+	// NOTE: the number of columns here MUST match the static number of columns, which is nvars.
 	residual.resize(m->gnelem(),nvars);
 	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
@@ -171,8 +188,53 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		A = new blasted::DLUMatrix<nvars>(m, nbuildsweeps, napplysweeps);
 	}
 	else {
-		// TODO
-		//A = new blasted::BSRMatrix();
+		// construct non-zero structure for block sparse format
+
+		a_int* bcolinds, * browptr;
+		browptr = new a_int[m->gnelem()+1];
+		bcolinds = new a_int[m->gnelem()+m->gnaface()-m->gnbface()];
+		for(a_int i = 0; i < m->gnelem()+1; i++)
+			browptr[i] = 1;
+
+		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		{
+			// each face represents an interaction between the two cells on either side
+			// we add the nonzero block, shifted by 1 position, to browptr
+			browptr[m->gintfac(iface,0)+1] += 1;
+			browptr[m->gintfac(iface,1)+1] += 1;
+		}
+		for(a_int i = 2; i < m->gnelem()+1; i++)
+			browptr[i] += browptr[i-1];
+		browptr[0] = 0;
+
+		if(browptr[m->gnelem()] != m->gnelem() + m->gnaface() - m->gnbface())
+			std::cout << "! SteadyBackwardEulerSolver: Row pointer computation is wrong!!\n";
+
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			std::vector<a_int> cinds; 
+			cinds.reserve(browptr[iel+1]-browptr[iel]);
+			cinds.push_back(iel);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
+				a_int nbdelem = m->gesuel(iel,ifael);
+				if(nbdelem < m->gnelem())
+					cinds.push_back(nbdelem);
+			}
+
+			size_t csize = browptr[iel+1]-browptr[iel];
+			if(cinds.size() != csize)
+				std::cout << "! SteadyBackwardEulerSolver: Block-column indices are wrong!!\n";
+
+			std::sort(cinds.begin(),cinds.end());
+			for(size_t i = 0; i < cinds.size(); i++)
+				bcolinds[browptr[iel]+i] = cinds[i];
+		}
+
+		// Create the matrix
+		A = new blasted::BSRMatrix<a_real,a_int,nvars> (
+				m->gnelem(), bcolinds,browptr, nbuildsweeps,napplysweeps );
+		delete [] browptr;
+		delete [] bcolinds;
 	}
 
 	// select preconditioner
@@ -201,7 +263,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	}
 	else {
 		linsolv = new RichardsonSolver<nvars>(mesh, A, prec);
-		std::cout << " SteadyBackwardEulerSolver: Richardson iteration selected, ie, no acceleration.\n";
+		std::cout << " SteadyBackwardEulerSolver: Richardson iteration selected, no acceleration.\n";
 	}
 }
 
@@ -285,14 +347,17 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 				initres = resi;
 
 			if(step % 10 == 0) {
-				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
-				std::cout << "      CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
+				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
+					<< ", rel residual " << resi/initres << std::endl;
+				std::cout << "      CFL = " << startcfl << ", Lin max iters = " 
+					<< linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 			}
 
 			step++;
 		}
 
-		std::cout << " SteadyBackwardEulerSolver: solve(): Initial solve done, steps = " << step << ", rel residual " << resi/initres << ".\n";
+		std::cout << " SteadyBackwardEulerSolver: solve(): Initial solve done, steps = " << step 
+			<< ", rel residual " << resi/initres << ".\n";
 		step = 0;
 		resi = 1.0;
 		initres = 1.0;
@@ -379,8 +444,10 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			initres = resi;
 
 		if(step % 10 == 0) {
-			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
-			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
+			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
+				<< ", rel residual " << resi/initres << std::endl;
+			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart 
+				<< ", iters used = " << linstepsneeded << std::endl;
 		}
 
 		step++;
@@ -393,8 +460,9 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	avglinsteps /= step;
 
 	if(step == maxiter)
-		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
-	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " << resi/initres << std::endl;
+		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
+	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " 
+		<< resi/initres << std::endl;
 
 	double linwtime, linctime;
 	linsolv->getRunTimes(linwtime, linctime);
@@ -402,20 +470,26 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
 	std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << std::endl << std::endl;
+	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n\n";
 }
 
 template <short nvars>
-SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
+SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*const mesh, 
+		Spatial<nvars> *const spatial, Spatial<nvars> *const starterfv, const short use_starter, 
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, std::string linearsolver, std::string precond,
+		const double toler, const int maxits, 
+		const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
+		std::string linearsolver, std::string precond,
 		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
-	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), tol(toler), maxiter(maxits), 
-	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
+	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), 
+	cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), 
+	tol(toler), maxiter(maxits), lintol(lin_tol), 
+	linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), 
+	starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
-	/* NOTE: the number of columns here MUST match the static number of columns, which is nvars. */
+	// NOTE: the number of columns here MUST match the static number of columns, which is nvars.
 	std::cout << " Using matrix-free implicit solver.\n";
 	residual.resize(m->gnelem(),nvars);
 	u.resize(m->gnelem(), nvars);
@@ -446,7 +520,7 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 	else {
 		startlinsolv = new MFRichardsonSolver<nvars>(mesh, prec, starter);
 		linsolv = new MFRichardsonSolver<nvars>(mesh, prec, eul);
-		std::cout << " SteadyMFBackwardEulerSolver: Richardson iteration selected, ie, no acceleration.\n";
+		std::cout << " SteadyMFBackwardEulerSolver: Richardson solver selected, no acceleration.\n";
 	}
 
 	aux.resize(m->gnelem(),nvars);
@@ -538,14 +612,17 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 				initres = resi;
 
 			//if(step % 10 == 0) {
-				std::cout << "  SteadyMFBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
-				std::cout << "      CFL = " << startcfl << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
+				std::cout << "  SteadyMFBackwardEulerSolver: solve(): Step " << step 
+					<< ", rel residual " << resi/initres << std::endl;
+				std::cout << "      CFL = " << startcfl << ", Lin max iters = " 
+					<< linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
 			//}
 
 			step++;
 		}
 
-		std::cout << " SteadyMFBackwardEulerSolver: solve(): Initial solve done, steps = " << step << ", rel residual " << resi/initres << ".\n";
+		std::cout << " SteadyMFBackwardEulerSolver: solve(): Initial solve done, steps = " 
+			<< step << ", rel residual " << resi/initres << ".\n";
 		step = 0;
 		resi = 1.0;
 		initres = 1.0;
@@ -635,8 +712,10 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 			initres = resi;
 
 		if(step % 10 == 0) {
-			std::cout << "  SteadyMFBackwardEulerSolver: solve(): Step " << step << ", rel residual " << resi/initres << std::endl;
-			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart << ", iters used = " << linstepsneeded << std::endl;
+			std::cout << "  SteadyMFBackwardEulerSolver: solve(): Step " << step 
+				<< ", rel residual " << resi/initres << std::endl;
+			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart 
+				<< ", iters used = " << linstepsneeded << std::endl;
 		}
 
 		step++;
@@ -648,22 +727,23 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 
 	if(step == maxiter)
-		std::cout << "! SteadyMFBackwardEulerSolver: solve(): Exceeded max iterations!" << std::endl;
-	std::cout << " SteadyMFBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " << resi/initres << std::endl;
+		std::cout << "! SteadyMFBackwardEulerSolver: solve(): Exceeded max iterations!\n";
+	std::cout << " SteadyMFBackwardEulerSolver: solve(): Done, steps = " << step 
+		<< ", rel residual " << resi/initres << std::endl;
 
 	double linwtime, linctime;
 	linsolv->getRunTimes(linwtime, linctime);
 	std::cout << "\n SteadyMFBackwardEulerSolver: solve(): Time taken by linear solver:\n";
 	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
 	std::cout << "\n SteadyMFBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << std::endl << std::endl;
+	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n\n";
 }
 
 
 template class SteadyForwardEulerSolver<NVARS>;
 template class SteadyBackwardEulerSolver<NVARS>;
 template class SteadyMFBackwardEulerSolver<NVARS>;
-template class SteadyForwardEulerSolver<1>;
-template class SteadyBackwardEulerSolver<1>;
+//template class SteadyForwardEulerSolver<1>;
+//template class SteadyBackwardEulerSolver<1>;
 
 }	// end namespace

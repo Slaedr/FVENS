@@ -35,6 +35,9 @@
 #define MESHDATA_DOUBLE_PRECISION 20
 #endif
 
+// We don't want any built-in threading in Eigen interfering with ours
+#define EIGEN_DONT_PARALLELIZE
+
 #ifndef EIGEN_CORE_H
 #include <Eigen/Core>
 #endif
