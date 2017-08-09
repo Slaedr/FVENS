@@ -645,7 +645,7 @@ void EulerFV::compute_jacobian(const MVector& u,
 		
 		// multiply by length of face and negate, as -ve of L is added to D
 		left = -len*left;
-		A->updateDiagBlock(lelem*NVARS, left.data());
+		A->updateDiagBlock(lelem*NVARS, left.data(), NVARS);
 
 		/*for(int i = 0; i < NVARS; i++)
 			for(int j = 0; j < NVARS; j++) {
@@ -688,15 +688,15 @@ void EulerFV::compute_jacobian(const MVector& u,
 
 		// negative L and U contribute to diagonal blocks
 		L *= -1.0; U *= -1.0;
-		A->updateDiagBlock(lelem*NVARS, L.data());
-		A->updateDiagBlock(relem*NVARS, U.data());
+		A->updateDiagBlock(lelem*NVARS, L.data(), NVARS);
+		A->updateDiagBlock(relem*NVARS, U.data(), NVARS);
 	}
 }
 
-void EulerFV::compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-	const MVector& __restrict__ v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	MVector& __restrict__ aux,
-	MVector& __restrict__ prod)
+void EulerFV::compute_jac_vec(const MVector& resu, const MVector& u, 
+	const MVector& v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
+	MVector& __restrict aux,
+	MVector& __restrict prod)
 {
 	a_real vnorm = dot(v,v);
 	vnorm = sqrt(vnorm);
@@ -725,13 +725,12 @@ void EulerFV::compute_jac_vec(const MVector& __restrict__ resu, const MVector& _
 }
 
 // Computes a([M du/dt +] dR/du) v + b w and stores in prod
-void EulerFV::compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, 
-		const MVector& __restrict__ u, 
-		const MVector& __restrict__ v,
+void EulerFV::compute_jac_gemv(const a_real a, const MVector& resu, 
+		const MVector& u, const MVector& v,
 		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-		const a_real b, const MVector& __restrict__ w,
-		MVector& __restrict__ aux,
-		MVector& __restrict__ prod)
+		const a_real b, const MVector& w,
+		MVector& __restrict aux,
+		MVector& __restrict prod)
 {
 	a_real vnorm = dot(v,v);
 	vnorm = sqrt(vnorm);
@@ -1030,14 +1029,14 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
 			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
 		}
 
-		A->submitBlock(relem*nvars,lelem*nvars,ll,0,0);
-		A->submitBlock(lelem*nvars,relem*nvars,ll,0,0);
+		A->submitBlock(relem*nvars,lelem*nvars, ll, nvars,nvars);
+		A->submitBlock(lelem*nvars,relem*nvars, ll, nvars,nvars);
 		
 		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			ll[ivar*nvars+ivar] *= -1;
 
-		A->updateDiagBlock(lelem*nvars,ll);
-		A->updateDiagBlock(relem*nvars,ll);
+		A->updateDiagBlock(lelem*nvars, ll, nvars);
+		A->updateDiagBlock(relem*nvars, ll, nvars);
 	}
 	
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1068,7 +1067,7 @@ void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
 			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
 		}
 
-		A->updateDiagBlock(lelem*nvars,ll);
+		A->updateDiagBlock(lelem*nvars, ll, nvars);
 	}
 }
 
@@ -1240,8 +1239,8 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		for(unsigned short ivar = 0; ivar < nvars; ivar++)
 			ll[ivar*nvars+ivar] *= -1;
 
-		A->updateDiagBlock(lelem*nvars,ll);
-		A->updateDiagBlock(relem*nvars,ll);
+		A->updateDiagBlock(lelem*nvars, ll, nvars);
+		A->updateDiagBlock(relem*nvars, ll, nvars);
 	}
 	
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1267,7 +1266,7 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
 		}
 
-		A->updateDiagBlock(lelem*nvars,ll);
+		A->updateDiagBlock(lelem*nvars, ll, nvars);
 	}
 }
 

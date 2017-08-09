@@ -318,7 +318,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 				for(short i = 0; i < nvars; i++)
 					db(i,i) = m->garea(iel) / (startcfl*dtm(iel));
 				
-				A->updateDiagBlock(iel*nvars, db.data());
+				A->updateDiagBlock(iel*nvars, db.data(), nvars);
 			}
 
 			// setup and solve linear system for the update du
@@ -414,7 +414,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			for(short i = 0; i < nvars; i++)
 				db(i,i) = m->garea(iel) / (curCFL*dtm(iel));
 			
-			A->updateDiagBlock(iel*nvars, db.data());
+			A->updateDiagBlock(iel*nvars, db.data(), nvars);
 		}
 
 		// setup and solve linear system for the update du
@@ -743,7 +743,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 template class SteadyForwardEulerSolver<NVARS>;
 template class SteadyBackwardEulerSolver<NVARS>;
 template class SteadyMFBackwardEulerSolver<NVARS>;
-//template class SteadyForwardEulerSolver<1>;
-//template class SteadyBackwardEulerSolver<1>;
+template class SteadyForwardEulerSolver<1>;
+template class SteadyBackwardEulerSolver<1>;
 
 }	// end namespace

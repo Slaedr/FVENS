@@ -110,7 +110,7 @@ void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 }
 
 template <int bs>
-void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer)
+void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer, const long dum)
 {
 	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;

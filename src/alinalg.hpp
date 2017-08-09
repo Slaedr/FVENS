@@ -114,11 +114,10 @@ public:
 	/** This function is thread-safe. It's also redundant, as it's no more efficient
 	 * than \ref updateBlock .
 	 * \param[in] starti The block-row whose diagonal block is to be updated
-	 * \param[in] bsizei Dummy
-	 * \param[in] bsizej Dummy
 	 * \param[in] buffer The values, in ROW-MAJOR order, making up the block to be added
+	 * \param[in] dummy Any integer value, not used.
 	 */
-	void updateDiagBlock(const a_int starti, const a_real *const buffer);
+	void updateDiagBlock(const a_int starti, const a_real *const buffer, const long dummy);
 
 	/// Computes the matrix vector product of this matrix with one vector-- y := a Ax
 	void apply(const a_real a, const a_real *const x, a_real *const __restrict y) const;
