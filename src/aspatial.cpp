@@ -628,6 +628,9 @@ void EulerFV::compute_jacobian(const MVector& __restrict__ u, const bool blocked
 void EulerFV::compute_jacobian(const MVector& u, 
 				LinearOperator<a_real,a_int> *const __restrict A)
 {
+	/** \todo TODO : Add cases to handle DLU format separately.
+	 */
+
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
@@ -995,6 +998,8 @@ template<unsigned short nvars>
 void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
 		LinearOperator<a_real,a_int> *const A)
 {
+	/** \todo TODO : Add code to handle DLU format correctly.
+	 */
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		//a_int intface = iface-m->gnbface();
@@ -1208,6 +1213,8 @@ template<unsigned short nvars>
 void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		LinearOperator<a_real,a_int> *const A)
 {
+	/** \todo TODO : Add code to handle DLU format correctly.
+	 */
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		//a_int intface = iface-m->gnbface();
