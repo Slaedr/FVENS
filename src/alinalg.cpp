@@ -238,7 +238,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 
 	// forward sweep (D+L)y = r
-	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	for(short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int iel = 0; iel < m->gnelem(); iel++) 
@@ -258,7 +258,7 @@ void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restric
 	}
 
 	// backward sweep (D+U)z = Dy
-	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	for(short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int iel = m->gnelem()-1; iel >= 0; iel--) 
@@ -304,7 +304,7 @@ void DLUMatrix<bs>::precILUSetup()
 	}
 
 	// BILU factorization
-	for(unsigned short isweep = 0; isweep < nbuildsweeps; isweep++)	
+	for(short isweep = 0; isweep < nbuildsweeps; isweep++)	
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -411,7 +411,7 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 	Eigen::Map<const MVector> r(rr, m->gnelem(),bs);
 	Eigen::Map<MVector> z(zz, m->gnelem(),bs);
 	
-	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	for(short isweep = 0; isweep < napplysweeps; isweep++)
 	{
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int iel = 0; iel < m->gnelem(); iel++) 
@@ -430,7 +430,7 @@ void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restric
 		}
 	}
 
-	for(unsigned short isweep = 0; isweep < napplysweeps; isweep++)
+	for(short isweep = 0; isweep < napplysweeps; isweep++)
 	{	
 #pragma omp parallel for default(shared) schedule(dynamic, thread_chunk_size)
 		for(a_int iel = m->gnelem()-1; iel >= 0; iel--) 
@@ -480,14 +480,14 @@ IterativeSolverBase::IterativeSolverBase(const UMesh2dh *const mesh)
 	walltime = 0; cputime = 0;
 }
 
-template <unsigned short nvars>
+template <short nvars>
 IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh, 
 		LinearOperator<a_real,a_int>* const mat, 
 		Preconditioner<nvars> *const precond)
 	: IterativeSolverBase(mesh), A(mat), prec(precond)
 { }
 
-template <unsigned short nvars>
+template <short nvars>
 void IterativeSolver<nvars>::setupPreconditioner()
 {
 	struct timeval time1, time2;
@@ -504,14 +504,14 @@ void IterativeSolver<nvars>::setupPreconditioner()
 }
 
 // Richardson iteration
-template <unsigned short nvars>
+template <short nvars>
 RichardsonSolver<nvars>::RichardsonSolver(const UMesh2dh *const mesh, 
 		LinearOperator<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond)
 	: IterativeSolver<nvars>(mesh, mat, precond)
 { }
 
-template <unsigned short nvars>
+template <short nvars>
 int RichardsonSolver<nvars>::solve(const MVector& res, 
 		MVector& __restrict du) const
 {
@@ -557,14 +557,14 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 	return step;
 }
 
-template <unsigned short nvars>
+template <short nvars>
 BiCGSTAB<nvars>::BiCGSTAB(const UMesh2dh *const mesh, 
 		LinearOperator<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond)
 	: IterativeSolver<nvars>(mesh, mat, precond)
 { }
 
-template <unsigned short nvars>
+template <short nvars>
 int BiCGSTAB<nvars>::solve(const MVector& res, 
 		MVector& __restrict du) const
 {
@@ -661,18 +661,18 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 	return step+1;
 }
 
-template <unsigned short nvars>
+template <short nvars>
 MFIterativeSolver<nvars>::MFIterativeSolver(const UMesh2dh* const mesh, 
 		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: IterativeSolverBase(mesh), prec(precond), space(spatial)
 { }
 
-/*template <unsigned short nvars>
+/*template <short nvars>
 MFIterativeSolver<nvars>::~MFIterativeSolver()
 {
 }*/
 
-template <unsigned short nvars>
+template <short nvars>
 void MFIterativeSolver<nvars>::setupPreconditioner()
 {
 	struct timeval time1, time2;
@@ -689,13 +689,13 @@ void MFIterativeSolver<nvars>::setupPreconditioner()
 }
 
 // Richardson iteration
-template <unsigned short nvars>
+template <short nvars>
 MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, 
 		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: MFIterativeSolver<nvars>(mesh, precond, spatial)
 { }
 
-template <unsigned short nvars>
+template <short nvars>
 int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 		const amat::Array2d<a_real>& dtm,
 		const MVector& __restrict__ res, 

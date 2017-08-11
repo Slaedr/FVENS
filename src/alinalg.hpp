@@ -215,7 +215,7 @@ inline a_real dot(const MVector& a,
  * As such, the precise preconditioning operation applied depends on 
  * which kind of matrix the LHS is stored as.
  */
-template <unsigned short nvars>
+template <short nvars>
 class Preconditioner
 {
 protected:
@@ -242,7 +242,7 @@ public:
 };
 
 /// Do-nothing preconditioner
-template <unsigned short nvars>
+template <short nvars>
 class NoPrec : public Preconditioner<nvars>
 {
 public:
@@ -258,7 +258,7 @@ public:
 };
 
 /// Jacobi preconditioner
-template <unsigned short nvars>
+template <short nvars>
 class BlockJacobi : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
@@ -277,7 +277,7 @@ public:
 };
 
 /// Symmetric Gauss-Seidel preconditioner
-template <unsigned short nvars>
+template <short nvars>
 class BlockSGS : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
@@ -297,7 +297,7 @@ public:
 };
 
 /// ILU0 preconditioner
-template <unsigned short nvars>
+template <short nvars>
 class BILU0 : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
@@ -362,7 +362,7 @@ public:
  * In a finite volume setting, the natural choice is the number of physical variables
  * or the number of PDEs in the system.
  */
-template <unsigned short nvars>
+template <short nvars>
 class IterativeSolver : public IterativeSolverBase
 {
 protected:
@@ -392,7 +392,7 @@ public:
 };
 
 /// A solver that just applies the preconditioner repeatedly
-template <unsigned short nvars>
+template <short nvars>
 class RichardsonSolver : public IterativeSolver<nvars>
 {
 	using IterativeSolver<nvars>::m;
@@ -415,7 +415,7 @@ public:
 /// H.A. Van der Vorst's stabilized biconjugate gradient solver
 /** Uses left-preconditioning only.
  */
-template <unsigned short nvars>
+template <short nvars>
 class BiCGSTAB : public IterativeSolver<nvars>
 {
 	using IterativeSolver<nvars>::m;
@@ -439,7 +439,7 @@ public:
 /** Note that subclasses are matrix-free only with regard to the top-level solver,
  * usually a Krylov subspace solver. The preconditioning matrix is still computed and stored.
  */
-template <unsigned short nvars>
+template <short nvars>
 class MFIterativeSolver : public IterativeSolverBase
 {
 protected:
@@ -480,7 +480,7 @@ public:
 
 /// A matrix-free solver that just applies the preconditioner repeatedly
 /// in a defect-correction iteration.
-template <unsigned short nvars>
+template <short nvars>
 class MFRichardsonSolver : public MFIterativeSolver<nvars>
 {
 	using MFIterativeSolver<nvars>::m;

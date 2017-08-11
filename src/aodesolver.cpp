@@ -209,7 +209,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 		{
 			// each face represents an interaction between the two cells on either side
-			// we add the nonzero block to browptr but in a row shifter by 1
+			// we add the nonzero block to browptr but in a row shifted by 1
 			for(int i = 0; i < nvars; i++) {
 				rowptr[m->gintfac(iface,0)*nvars+i + 1] += nvars;
 				rowptr[m->gintfac(iface,1)*nvars+i + 1] += nvars;
@@ -243,9 +243,13 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 
 			std::sort(bcinds.begin(),bcinds.end());
 
-			for(size_t i = 0; i < bcinds.size(); i++)
-				for(int j = 0; j < nvars; j++)
-					colinds[(rowptr[iel]+i)*nvars + j] = bcinds[i]*nvars+j;
+			// i th row in element iel's block-row
+			for(size_t i = 0; i < nvars; i++)
+				// j th block of the block-row: element iel and its neighbors
+				for(size_t j = 0; j < bcinds.size(); j++)
+					// k th column in the j th block
+					for(int k = 0; k < nvars; k++)
+						colinds[rowptr[iel*nvars+i] + j*nvars + k] = bcinds[j]*nvars+k;
 		}
 
 		// Create the point matrix
