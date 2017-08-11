@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	double initcfl, endcfl, tolerance, lintol, firstcfl, firsttolerance, diffcoeff, bvalue;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter;
 	short inittype, usestarter;
-	unsigned short nbuildsweeps, napplysweeps;
+	short nbuildsweeps, napplysweeps;
 	char mattype;
 
 	control >> dum; control >> meshfile;

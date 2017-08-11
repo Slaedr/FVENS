@@ -55,10 +55,10 @@ protected:
 	Matrix<a_real,bs,bs,RowMajor>* luU;
 	
 	/// Number of sweeps used to build preconditioners
-	const unsigned short nbuildsweeps;
+	const short nbuildsweeps;
 
 	/// Number of sweeps used to apply preconditioners
-	const unsigned short napplysweeps;
+	const short napplysweeps;
 
 	/// Thread chunk size for OpenMP parallelism
 	const unsigned int thread_chunk_size;
@@ -68,7 +68,7 @@ protected:
 
 public:
 	DLUMatrix(const acfd::UMesh2dh *const mesh, 
-			const unsigned short nbuildsweeps, const unsigned int napplysweeps);
+			const short nbuildsweeps, const short napplysweeps);
 
 	/// De-allocates memory
 	virtual ~DLUMatrix();

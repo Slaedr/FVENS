@@ -37,7 +37,7 @@
 namespace acfd {
 
 /// Base class for finite volume spatial discretization
-template<unsigned short nvars>
+template<short nvars>
 class Spatial
 {
 protected:
@@ -50,7 +50,8 @@ protected:
 	/// Ghost cell centers
 	amat::Array2d<a_real> rcg;
 
-	/// Faces' Gauss points' coords, stored a 3D array of dimensions naface x nguass x ndim (in that order)
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
+	/// naface x nguass x ndim (in that order)
 	amat::Array2d<a_real>* gr;
 	
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
@@ -58,6 +59,9 @@ protected:
 
 	/// computes ghost cell centers assuming symmetry about the face
 	void compute_ghost_cell_coords_about_face();
+
+	/// step length for finite difference Jacobian
+	const a_real eps;
 
 public:
 	/// Common setup required for finite volume discretizations
@@ -74,13 +78,14 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual void compute_residual(const MVector& __restrict__ u, MVector& __restrict__ residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm) = 0;
+	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) = 0;
 	
 	/// Computes the Jacobian matrix of the residual
 	virtual void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) = 0;
 
-	/// Computes the Frechet derivative of the residual along a given direction using finite difference
+	/// Computes the Frechet derivative of the residual along a given direction 
+	/// using finite difference
 	/** \param[in] resu The residual vector at the state at which the derivative is to be computed
 	 * \param[in] u The state at which the derivative is to be computed
 	 * \param[in] v The direction in which the derivative is to be computed
@@ -89,23 +94,25 @@ public:
 	 * \param aux Storage for intermediate state
 	 * \param[out] prod The vector containing the directional derivative
 	 */
-	virtual void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-			const MVector& __restrict__ v,
+	virtual void compute_jac_vec(const MVector& resu, const MVector& u, 
+			const MVector& v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod) = 0;
+			MVector& __restrict aux,
+			MVector& __restrict prod);
 	
 	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
-	virtual void compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-			const MVector& __restrict__ v,
+	virtual void compute_jac_gemv(const a_real a, const MVector& resu, const MVector& u, 
+			const MVector& v,
 			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 			const a_real b, const MVector& w,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod) = 0;
+			MVector& __restrict aux,
+			MVector& __restrict prod);
 };
 	
-/// A driver class to control the explicit time-stepping solution using TVD Runge-Kutta time integration
-/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() have been called on the mesh object prior to initialzing an object of this class.
+/// A driver class to control the explicit time-stepping solution using 
+/// TVD Runge-Kutta time integration
+/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
+ * have been called on the mesh object prior to initialzing an object of this class.
  */
 class EulerFV : public Spatial<NVARS>
 {
@@ -113,7 +120,8 @@ protected:
 	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
 	a_real g;								///< adiabatic index
 
-	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, where v_n and c are average values for each face of the cell
+	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, 
+	/// where v_n and c are average values for each face of the cell
 	amat::Array2d<a_real> integ;
 	
 	/// Analytical flux vector computation
@@ -147,22 +155,22 @@ protected:
 	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
 	int supersonic_vortex_case_inflow;		///< Inflow boundary marker for supersonic vortex case
 	
-	amat::Array2d<a_real> scalars;			///< Holds density, Mach number and pressure for each cell
+	amat::Array2d<a_real> scalars;			///< Holds density, Mach number and pressure for cells
 	amat::Array2d<a_real> velocities;		///< Holds velocity components for each cell
 	
 	amat::Array2d<a_real> uleft;			///< Left state at faces
 	amat::Array2d<a_real> uright;			///< Right state at faces
 
-	a_real eps;										///< step length for finite difference Jacobian
-
-	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) using the interior state provided
+	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) 
+	/// using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
 	 * \param[out] bounstates will contain the right state of boundary faces
 	 *
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Array2d<a_real>& instates, amat::Array2d<a_real>& bounstates);
+	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
+			amat::Array2d<a_real>& bounstates);
 
 	/// Computes ghost cell state across the face denoted by the first parameter
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
@@ -172,59 +180,54 @@ public:
 	/// Sets data and various numerics objects
 	/** \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
 	 * \param[in] jacflux The inviscid flux to use for computing the first-order Jacobian
-	 * \param[in] reconst The method used for gradient reconstruction - NONE, GREENGAUSS, LEASTSQUARES
+	 * \param[in] reconst The method used for gradient reconstruction 
+	 *   - NONE, GREENGAUSS, LEASTSQUARES
 	 * \param[in] limiter The kind of slope limiter to use - NONE, WENO
 	 */
-	EulerFV(const UMesh2dh *const mesh, std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+	EulerFV(const UMesh2dh *const mesh, std::string invflux, 
+			std::string jacflux, std::string reconst, std::string limiter);
 	
 	~EulerFV();
 	
 	/// Set simulation data and precompute data needed for reconstruction
-	void loaddata(const short inittype, a_real Minf, a_real vinf, a_real a, a_real rhoinf, MVector& u);
+	void loaddata(const short inittype, const a_real Minf, const a_real vinf, const a_real a, 
+			const a_real rhoinf, MVector& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
-	void compute_residual(const MVector& __restrict__ u, MVector& __restrict__ residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm);
+	void compute_residual(const MVector& u, MVector& __restrict residual, 
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm);
 
 #if HAVE_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
 	void compute_jacobian(const MVector& u, const bool blocked, Mat A);
 #else
-	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, and lower and upper blocks for each face
+	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, 
+	/// and lower and upper blocks for each face
 	/** A is not zeroed before use.
 	 */
 	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A);
-
-	/// Computes first order directional derivative using real-step finite difference
-	void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
-			const MVector& __restrict__ v, 
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod);
-	
-	void compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-			const MVector& __restrict__ v,
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const a_real b, const MVector& __restrict__ w,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod);
 #endif
 
 	/// Compute cell-centred quantities to export
-	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
+	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
+			amat::Array2d<a_real>& velocities);
 	
-	/// Compute nodal quantities to export, based on area-weighted averaging (which takes into account ghost cells as well)
-	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities);
+	/// Compute nodal quantities to export
+	/** Based on area-weighted averaging which takes into account ghost cells as well
+	 */
+	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+			amat::Array2d<a_real>& velocities);
 
 	/// Compute norm of cell-centered entropy production
-	/// Call aftr computing pressure etc \sa postprocess_cell
+	/** Call aftr computing pressure etc \sa postprocess_cell
+	 */
 	a_real compute_entropy_cell(const MVector& u);
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity
-template <unsigned short nvars>
+template <short nvars>
 class Diffusion : public Spatial<nvars>
 {
 protected:
@@ -234,45 +237,38 @@ protected:
 	using Spatial<nvars>::gr;
 	const a_real diffusivity;		///< Diffusion coefficient (eg. kinematic viscosity)
 	const a_real bval;				///< Dirichlet boundary value
+	
 	/// Pointer to a function that describes the  source term
-	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source;
-	//void (*const source)(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm);
+	std::function <
+		void(const a_real *const, const a_real, const a_real *const, a_real *const)
+					> source;
+
 	std::vector<a_real> h;			///< Size of cells
 	
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
 	
-	void compute_boundary_states(const amat::Array2d<a_real>& instates, amat::Array2d<a_real>& bounstates);
+	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
+			amat::Array2d<a_real>& bounstates);
 
 public:
 	Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source);
+			std::function <
+			void(const a_real *const, const a_real, const a_real *const, a_real *const)
+			> source);
 	
-	virtual void compute_residual(const MVector& __restrict__ u, MVector& __restrict__ residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm) = 0;
+	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) = 0;
 	
 	virtual void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A) = 0;
 
-	virtual void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
-			const MVector& __restrict__ v, 
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod) = 0;
-	
-	virtual void compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-			const MVector& __restrict__ v,
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const a_real b, const MVector& w,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod) = 0;
-	
 	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& up);
 
 	virtual ~Diffusion();
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity using the thin-layer model
-template <unsigned short nvars>
+template <short nvars>
 class DiffusionThinLayer : public Diffusion<nvars>
 {
 	using Spatial<nvars>::m;
@@ -292,35 +288,24 @@ class DiffusionThinLayer : public Diffusion<nvars>
 
 public:
 	DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source);
+		std::function< 
+		void(const a_real *const, const a_real, const a_real *const, a_real *const)
+			> source);
 	
-	void compute_residual(const MVector& __restrict__ u, MVector& __restrict__ residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm);
+	void compute_residual(const MVector& u, MVector& __restrict residual, 
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm);
 	
-	void add_source(const MVector& __restrict__ u, 
-			MVector& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
+	void add_source(const MVector& u, 
+			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm);
 	
 	void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A);
-
-	void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
-			const MVector& __restrict__ v, 
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod);
-	
-	void compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-			const MVector& __restrict__ v,
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const a_real b, const MVector& w,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod);
 	
 	using Diffusion<nvars>::postprocess_point;
 };
 
 /// Spatial discretization of diffusion operator with constant diffusivity using `modified gradient' or `corrected gradient' method
-template <unsigned short nvars>
+template <short nvars>
 class DiffusionMA : public Diffusion<nvars>
 {
 	using Spatial<nvars>::m;
@@ -344,29 +329,19 @@ class DiffusionMA : public Diffusion<nvars>
 
 public:
 	DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-			std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> source, std::string reconst);
+			std::function <
+			void(const a_real *const, const a_real, const a_real *const, a_real *const)
+				> source, 
+			std::string reconst);
 	
-	void compute_residual(const MVector& __restrict__ u, MVector& __restrict__ residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict__ dtm);
+	void compute_residual(const MVector& u, MVector& __restrict residual, 
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm);
 	
-	void add_source(const MVector& __restrict__ u, 
-			MVector& __restrict__ residual, amat::Array2d<a_real>& __restrict__ dtm);
+	void add_source(const MVector& u, 
+			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm);
 	
 	void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A);
-
-	void compute_jac_vec(const MVector& __restrict__ resu, const MVector& __restrict__ u,
-			const MVector& __restrict__ v, 
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod);
-	
-	void compute_jac_gemv(const a_real a, const MVector& __restrict__ resu, const MVector& __restrict__ u, 
-			const MVector& __restrict__ v,
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const a_real b, const MVector& w,
-			MVector& __restrict__ aux,
-			MVector& __restrict__ prod);
 
 	~DiffusionMA();
 	

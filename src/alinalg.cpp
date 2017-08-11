@@ -8,8 +8,9 @@ namespace blasted {
 
 template <int bs>
 DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh, 
-	const unsigned short n_buildsweeps, const unsigned int n_applysweeps)
-	: m(mesh), D(nullptr), L(nullptr), U(nullptr), luD(nullptr), luL(nullptr), luU(nullptr),
+	const short n_buildsweeps, const short n_applysweeps)
+	: LinearOperator<a_real,a_int>('d'),
+	  m(mesh), D(nullptr), L(nullptr), U(nullptr), luD(nullptr), luL(nullptr), luU(nullptr),
 	  nbuildsweeps(n_buildsweeps), napplysweeps(n_applysweeps),
 	  thread_chunk_size(200)
 {
@@ -191,7 +192,7 @@ void DLUMatrix<bs>::precJacobiSetup()
 {
 	if(!luD) {
 		luD = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
-		std::cout << " *DLUMatrix: allocating lu D\n";
+		std::cout << " DLUMatrix: allocating lu D\n";
 	}
 
 #pragma omp parallel for default(shared)
@@ -273,19 +274,21 @@ void DLUMatrix<bs>::precILUSetup()
 		luD = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			luD[iel] = D[iel];
+		std::cout << " DLUMatrix: allocating lu D\n";
 	}
 	if(!luL)
 	{
 		luL = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
 		for(a_int iface = 0; iface < m->gnaface()-m->gnbface(); iface++)
 			luL[iface] = L[iface];
+		std::cout << " DLUMatrix: allocating lu L\n";
 	}
 	if(!luU)
 	{
 		luU = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
-		for(a_int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
+		for(a_int iface = 0; iface < m->gnaface()-m->gnbface(); iface++)
 			luU[iface] = U[iface];
-		}
+		std::cout << " DLUMatrix: allocating lu U\n";
 	}
 
 	// BILU factorization

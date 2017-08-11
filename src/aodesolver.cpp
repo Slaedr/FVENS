@@ -51,7 +51,7 @@ void SteadyForwardEulerSolver<nvars>::solve()
 		{
 #pragma omp parallel for simd default(shared)
 			for(a_int iel = 0; iel < m->gnelem(); iel++) {
-				for(unsigned short i = 0; i < nvars; i++)
+				for(short i = 0; i < nvars; i++)
 					residual(iel,i) = 0;
 			}
 
@@ -154,6 +154,16 @@ void SteadyForwardEulerSolver<nvars>::solve()
 		<< ", wall time = " << walltime << std::endl << std::endl;
 }
 
+/// Ordering function for qsort - ascending order
+int order_ascending(const void* a, const void* b) {
+	if(*(a_int*)a < *(a_int*)b)
+		return -1;
+	else if(*(a_int*)a == *(a_int*)b)
+		return 0;
+	else
+		return 1;
+}
+
 /** By default, the Jacobian is stored in a block sparse row format.
  */
 template <short nvars>
@@ -165,7 +175,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		const char mattype, const double lin_tol, 
 		const int linmaxiter_start, const int linmaxiter_end, 
 		std::string linearsolver, std::string precond,
-		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
+		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
 	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), A(nullptr), 
@@ -180,19 +190,79 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	dtm.setup(m->gnelem(), 1);
 
 	// set Jacobian storage
-	if(mattype == 'p') {
-		// TODO: point matrix format
-	}
-	else if(mattype == 'd') {
+	if(mattype == 'd') {
 		// DLU matrix
 		A = new blasted::DLUMatrix<nvars>(m, nbuildsweeps, napplysweeps);
+	}
+	else if(mattype == 'p') {
+		// construct non-zero structure for sparse format
+
+		a_int* colinds, * rowptr;
+		a_int nnz = (m->gnelem()+2*(m->gnaface()-m->gnbface()))*nvars*nvars;
+		a_int nrows = m->gnelem()*nvars;
+
+		rowptr = new a_int[nrows+1];
+		colinds = new a_int[nnz];
+		for(a_int i = 0; i < nrows+1; i++)
+			rowptr[i] = nvars;
+
+		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		{
+			// each face represents an interaction between the two cells on either side
+			// we add the nonzero block to browptr but in a row shifter by 1
+			for(int i = 0; i < nvars; i++) {
+				rowptr[m->gintfac(iface,0)*nvars+i + 1] += nvars;
+				rowptr[m->gintfac(iface,1)*nvars+i + 1] += nvars;
+			}
+		}
+		for(a_int i = 2; i < nrows+1; i++)
+			rowptr[i] += rowptr[i-1];
+		rowptr[0] = 0;
+
+		if(rowptr[nrows] != nnz)
+			std::cout << "! SteadyBackwardEulerSolver:Point: Row pointer computation is wrong!!\n";
+#ifdef DEBUG
+		std::cout << "  nnz = " << rowptr[nrows] << "; should be "<< nnz << std::endl;
+#endif
+
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			size_t bcsize = (rowptr[(iel+1)*nvars]-rowptr[iel*nvars])/(nvars*nvars);
+			std::vector<a_int> bcinds;
+			bcinds.reserve(bcsize);
+
+			bcinds.push_back(iel);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
+				a_int nbdelem = m->gesuel(iel,ifael);
+				if(nbdelem < m->gnelem())
+					bcinds.push_back(nbdelem);
+			}
+
+			if(bcinds.size() != bcsize)
+				std::cout << "! SteadyBackwardEulerSolver:Point: Block-column indices are wrong!!\n";
+
+			std::sort(bcinds.begin(),bcinds.end());
+
+			for(size_t i = 0; i < bcinds.size(); i++)
+				for(int j = 0; j < nvars; j++)
+					colinds[(rowptr[iel]+i)*nvars + j] = bcinds[i]*nvars+j;
+		}
+
+		// Create the point matrix
+		A = new blasted::BSRMatrix<a_real,a_int,1> (
+				nrows, colinds,rowptr, nbuildsweeps,napplysweeps );
+
+		delete [] rowptr;
+		delete [] colinds;
 	}
 	else {
 		// construct non-zero structure for block sparse format
 
 		a_int* bcolinds, * browptr;
+		a_int nnzb = m->gnelem()+2*(m->gnaface()-m->gnbface());
+
 		browptr = new a_int[m->gnelem()+1];
-		bcolinds = new a_int[m->gnelem()+m->gnaface()-m->gnbface()];
+		bcolinds = new a_int[nnzb];
 		for(a_int i = 0; i < m->gnelem()+1; i++)
 			browptr[i] = 1;
 
@@ -207,13 +277,18 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 			browptr[i] += browptr[i-1];
 		browptr[0] = 0;
 
-		if(browptr[m->gnelem()] != m->gnelem() + m->gnaface() - m->gnbface())
+		if(browptr[m->gnelem()] != nnzb)
 			std::cout << "! SteadyBackwardEulerSolver: Row pointer computation is wrong!!\n";
+#ifdef DEBUG
+		std::cout << "  nnz = " << browptr[m->gnelem()] << "; should be "<< nnzb << std::endl;
+#endif
 
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
-			std::vector<a_int> cinds; 
-			cinds.reserve(browptr[iel+1]-browptr[iel]);
+			size_t csize = browptr[iel+1]-browptr[iel];
+			std::vector<a_int> cinds;
+			cinds.reserve(csize);
+
 			cinds.push_back(iel);
 			for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
 				a_int nbdelem = m->gesuel(iel,ifael);
@@ -221,11 +296,11 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 					cinds.push_back(nbdelem);
 			}
 
-			size_t csize = browptr[iel+1]-browptr[iel];
 			if(cinds.size() != csize)
 				std::cout << "! SteadyBackwardEulerSolver: Block-column indices are wrong!!\n";
 
 			std::sort(cinds.begin(),cinds.end());
+
 			for(size_t i = 0; i < cinds.size(); i++)
 				bcolinds[browptr[iel]+i] = cinds[i];
 		}
@@ -291,6 +366,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
 	if(usestarter == 1) {
+		std::cout << " SteadyBackwardEulerSolver: Starting initialization run..\n";
 		while(resi/initres > starttol && step < startmaxiter)
 		{
 #pragma omp parallel for default(shared)
@@ -480,7 +556,7 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 		const double toler, const int maxits, 
 		const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
 		std::string linearsolver, std::string precond,
-		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
+		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n)
 
 	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), 
@@ -556,17 +632,17 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-				for(unsigned short i = 0; i < nvars; i++) {
+				for(short i = 0; i < nvars; i++) {
 					residual(iel,i) = 0;
-					for(unsigned short j = 0; j < nvars; j++)
+					for(short j = 0; j < nvars; j++)
 						D[iel](i,j) = 0;
 				}
 			}
 #pragma omp parallel for default(shared)
 			for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
 #pragma omp simd
-				for(unsigned short i = 0; i < nvars; i++)
-					for(unsigned short j = 0; j < nvars; j++) {
+				for(short i = 0; i < nvars; i++)
+					for(short j = 0; j < nvars; j++) {
 						L[iface](i,j) = 0;
 						U[iface](i,j) = 0;
 					}
@@ -582,7 +658,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for simd default(shared)
 			for(int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(unsigned short i = 0; i < nvars; i++)
+				for(short i = 0; i < nvars; i++)
 					D[iel](i,i) += m->garea(iel) / (startcfl*dtm(iel));
 			}
 
@@ -634,9 +710,9 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-			for(unsigned short i = 0; i < nvars; i++) {
+			for(short i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
-				for(unsigned short j = 0; j < nvars; j++)
+				for(short j = 0; j < nvars; j++)
 					D[iel](i,j) = 0;
 			}
 		}
@@ -644,7 +720,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for default(shared)
 		for(int iface = 0; iface < m->gnaface()-m->gnbface(); iface++) {
 #pragma omp simd
-			for(unsigned short i = 0; i < nvars; i++)
+			for(short i = 0; i < nvars; i++)
 				for(int j = 0; j < nvars; j++) {
 					L[iface](i,j) = 0;
 					U[iface](i,j) = 0;
@@ -682,7 +758,7 @@ void SteadyMFBackwardEulerSolver<nvars>::solve()
 #pragma omp parallel for simd default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
 		{
-			for(unsigned short i = 0; i < nvars; i++)
+			for(short i = 0; i < nvars; i++)
 				D[iel](i,i) += m->garea(iel) / (curCFL*dtm(iel));
 		}
 

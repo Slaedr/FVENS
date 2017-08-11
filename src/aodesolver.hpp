@@ -176,7 +176,7 @@ public:
 		const double toler, const int maxits, 
 		const char mat_type, const double lin_tol, const int linmaxiterstart, 
 		const int linmaxiterend, std::string linearsolver, std::string precond,
-		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
+		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl);
 	
 	~SteadyBackwardEulerSolver();
@@ -235,7 +235,7 @@ public:
 		const double toler, const int maxits, 
 		const double lin_tol, const int linmaxiterstart, const int linmaxiterend, 
 		std::string linearsolver, std::string precond,
-		const unsigned short nbuildsweeps, const unsigned short napplysweeps,
+		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl);
 	
 	~SteadyMFBackwardEulerSolver();
