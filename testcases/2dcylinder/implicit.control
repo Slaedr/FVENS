@@ -48,6 +48,8 @@ IMPLICIT
 HLL
 -Use-matrix-free-(YES-for-matrix-free)
 NO
+-Matrix-storage-type
+d
 -linear-solver
 RICHARDSON
 -Linear-solver-tolerance

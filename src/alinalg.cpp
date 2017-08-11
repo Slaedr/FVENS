@@ -130,7 +130,7 @@ void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx,
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		z.row(iel) = q*x.row(iel)*D[iel].transpose();
+		z.row(iel).noalias() = q*x.row(iel)*D[iel].transpose();
 
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 		{
@@ -141,11 +141,11 @@ void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx,
 			{
 				if(nbdelem > iel) {
 					// upper
-					z.row(iel) += q*x.row(nbdelem)*U[face].transpose();
+					z.row(iel).noalias() += q*x.row(nbdelem)*U[face].transpose();
 				}
 				else {
 					// lower
-					z.row(iel) += q*x.row(nbdelem)*L[face].transpose();
+					z.row(iel).noalias() += q*x.row(nbdelem)*L[face].transpose();
 				}
 			}
 		}
@@ -165,7 +165,7 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, con
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		z.row(iel) = b*y.row(iel) + a*x.row(iel)*D[iel].transpose();
+		z.row(iel).noalias() = b*y.row(iel) + a*x.row(iel)*D[iel].transpose();
 
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
 		{
@@ -176,15 +176,27 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, con
 			{
 				if(nbdelem > iel) {
 					// upper
-					z.row(iel) += a*x.row(nbdelem)*U[face].transpose();
+					z.row(iel).noalias() += a*x.row(nbdelem)*U[face].transpose();
 				}
 				else {
 					// lower
-					z.row(iel) += a*x.row(nbdelem)*L[face].transpose();
+					z.row(iel).noalias() += a*x.row(nbdelem)*L[face].transpose();
 				}
 			}
 		}
 	}
+
+/*// This version is no better than the one above. To try,
+ * // uncomment this block and comment the inner loop above.
+#pragma omp parallel for default(shared)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_int face = iface - m->gnbface();
+		z.row(lelem).noalias() += a*x.row(relem)*U[face].transpose();
+		z.row(relem).noalias() += a*x.row(lelem)*L[face].transpose();
+	}*/
 }
 
 template <int bs>
@@ -209,7 +221,7 @@ void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __rest
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++) 
 	{
-		z.row(iel) = luD[iel] * r.row(iel).transpose();
+		z.row(iel).noalias() = luD[iel] * r.row(iel).transpose();
 	}
 }
 
