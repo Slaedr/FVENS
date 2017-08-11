@@ -319,17 +319,22 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	// select preconditioner
 	if(precond == "BJ") {
 		prec = new BlockJacobi<nvars>(A);
-		std::cout << " SteadyBackwardEulerSolver: Selected Block Jacobi preconditioner.\n";
+		std::cout << " SteadyBackwardEulerSolver: Selected ";
+		if(mattype != 'p') std::cout << "Block-"; 
+		std::cout << "Jacobi preconditioner.\n";
 	}
 	else if(precond == "BSGS") {
 		prec = new BlockSGS<nvars>(A);
-		std::cout << " SteadyBackwardEulerSolver: Selected Block SGS preconditioner.\n";
+		std::cout << " SteadyBackwardEulerSolver: Selected ";
+		if(mattype != 'p') std::cout << "Block-";
+		std::cout << "SGS preconditioner.\n";
 		A->allocTempVector();
 	}
 	else if(precond == "BILU0") {
 		prec = new BILU0<nvars>(A);
-		std::cout << " SteadyBackwardEulerSolver: Selected Block ILU0 preconditioner.\n";
-		A->allocTempVector();
+		std::cout << " SteadyBackwardEulerSolver: Selected ";
+		if(mattype != 'p') std::cout << "Block-";
+		std::cout << " ILU0 preconditioner.\n";
 	}
 	else {
 		prec = new NoPrec<nvars>(A);

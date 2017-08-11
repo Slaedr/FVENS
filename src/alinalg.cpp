@@ -543,7 +543,7 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 		//	std::cout << "   RichardsonSolver: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
-		prec->apply(s, ddu);
+		prec->apply(s.data(), ddu.data());
 
 		axpby(1.0, du, 1.0, ddu);
 
@@ -608,7 +608,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		axpbypcz(beta,p, 1.0,r, -beta*omega,v);
 		
 		// y <- Minv p
-		prec->apply(p, y);
+		prec->apply(p.data(), y.data());
 		
 		// v <- A y
 		A->apply(1.0,y.data(), v.data());
@@ -618,7 +618,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		// s <- r - alpha v, but reuse storage of r
 		axpby(1.0,r, -alpha,v);
 
-		prec->apply(r, z);
+		prec->apply(r.data(), z.data());
 		
 		// t <- A z
 		A->apply(1.0,z.data(), t.data());
@@ -648,8 +648,6 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		rhoold = rho;
 		step++;
 	}
-	
-	//block_axpby<nvars>(m, 1.0,du, alpha,y);
 
 	if(step == maxiter)
 		std::cout << " ! BiCGSTAB: Hit max iterations!\n";
@@ -762,7 +760,7 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 		
 		if(resnorm/bnorm < tol) break;
 
-		prec->apply(s, ddu);
+		prec->apply(s.data(), ddu.data());
 
 		axpby(1.0, du, 1.0, ddu);
 

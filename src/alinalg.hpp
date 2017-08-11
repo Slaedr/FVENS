@@ -233,12 +233,11 @@ public:
 	virtual void compute() = 0;
 
 	/// Applies the preconditioner Mz=r
-	/** \param[in] r The right hand side vector stored as a 2D array 
-	 * of size nelem x nvars (nelem x 4 for 2D Euler)
-	 * \param [in|out] z Contains the solution in the same format as r on exit.
+	/** \param[in] r The right hand side vector
+	 * \param [in|out] z Contains the solution
 	 */
-	virtual void apply(const MVector& r, 
-			MVector& z) = 0;
+	virtual void apply(const a_real *const r, 
+			a_real *const z) = 0;
 };
 
 /// Do-nothing preconditioner
@@ -252,8 +251,8 @@ public:
 	void compute()
 	{ }
 	
-	void apply(const MVector& r, 
-			MVector& z)
+	void apply(const a_real *const r, 
+			a_real *const z)
 	{ }
 };
 
@@ -270,9 +269,9 @@ public:
 		A->precJacobiSetup();
 	}
 
-	void apply(const MVector& r, 
-			MVector& __restrict z) {
-		A->precJacobiApply(&r(0,0), &z(0,0));
+	void apply(const a_real *const r, 
+			a_real *const __restrict z) {
+		A->precJacobiApply(r, z);
 	}
 };
 
@@ -290,9 +289,9 @@ public:
 		A->precJacobiSetup();
 	}
 
-	void apply(const MVector& r, 
-			MVector& __restrict z) {
-		A->precSGSApply(&r(0,0), &z(0,0));
+	void apply(const a_real *const r, 
+			a_real *const __restrict z) {
+		A->precSGSApply(r, z);
 	}
 };
 
@@ -311,9 +310,9 @@ public:
 	}
 	
 	/// Solves Mz=r, where M is the preconditioner
-	void apply(const MVector& r, 
-			MVector& __restrict z) {
-		A->precILUApply(&r(0,0), &z(0,0));
+	void apply(const a_real *const r, 
+			a_real *const __restrict z) {
+		A->precILUApply(r, z);
 	}
 };
 
