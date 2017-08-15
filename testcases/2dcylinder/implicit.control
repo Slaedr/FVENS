@@ -49,7 +49,7 @@ HLL
 -Use-matrix-free-(YES-for-matrix-free)
 NO
 -Matrix-storage-type
-d
+b
 -linear-solver
 RICHARDSON
 -Linear-solver-tolerance
@@ -58,9 +58,11 @@ RICHARDSON
 100
 -Linear-solver-max-iterations-end
 100
+-Number-of-Krylov-subspace-vectors
+20
 -preconditioner
 BSGS
 -preconditioner-build-sweeps
-2
+1
 -preconditioner-application-sweeps
-2
+1

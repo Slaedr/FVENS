@@ -127,11 +127,12 @@ void Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u,
 	MVector& __restrict aux,
 	MVector& __restrict prod)
 {
-	a_real vnorm = dot(v,v);
+	const a_int N = m->gnelem()*nvars;
+	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
 	
 	// compute the perturbed state and store in aux
-	axpbypcz(0.0,aux, 1.0,u, eps/vnorm,v);
+	axpbypcz(N, 0.0,aux.data(), 1.0,u.data(), eps/vnorm,v.data());
 	
 	// compute residual at the perturbed state and store in the output variable prod
 	amat::Array2d<a_real> _dtm;		// dummy
@@ -160,11 +161,12 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 		MVector& __restrict aux,
 		MVector& __restrict prod)
 {
-	a_real vnorm = dot(v,v);
+	const a_int N = m->gnelem()*nvars;
+	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
 	
 	// compute the perturbed state and store in aux
-	axpbypcz(0.0,aux, 1.0,u, eps/vnorm,v);
+	axpbypcz(N, 0.0,aux.data(), 1.0,u.data(), eps/vnorm,v.data());
 	
 	// compute residual at the perturbed state and store in the output variable prod
 	amat::Array2d<a_real> _dtm;		// dummy

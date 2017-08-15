@@ -1,7 +1,7 @@
 -mesh_file
-../testcases/heat/grids/cartsquare6.msh
+../testcases/heat/grids/cartsquare2.msh
 -output_file
-../data/heat-cartsquare-thinlayer-psgs.vtu
+../data/heat-cartsquare-thinlayer.vtu
 -Diffusivity
 1.0
 -boundary-value
@@ -35,6 +35,8 @@ IMPLICIT
 -max-time-steps-for-initialization-run
 300
 #####################################################
+-Matrix-storage-type
+p
 -linear-solver
 BCGSTB
 -Linear-solver-tolerance
@@ -43,6 +45,8 @@ BCGSTB
 200
 -Linear-solver-max-iterations-end
 200
+-Number-of-Krylov-vectors
+20
 -preconditioner
 BILU0
 -number-of-build-sweeps

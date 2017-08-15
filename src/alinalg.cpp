@@ -1,6 +1,7 @@
 #include "alinalg.hpp"
 #include <algorithm>
 #include <Eigen/LU>
+#include <Eigen/QR>
 
 #define THREAD_CHUNK_SIZE 200
 
@@ -186,8 +187,14 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, con
 		}
 	}
 
-/*// This version is no better than the one above. To try,
- * // uncomment this block and comment the inner loop above.
+/* We can also express the computation without if statement as follows.
+ * We first loop over cells to compute contributions from diagonal blocks,
+ * and then loop over faces, to *scatter* contributions from L and U blocks.
+ *
+ * This version is no better than the one above. To try,
+ * uncomment this block and comment the inner loop above.
+ */
+#if 0
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
@@ -196,7 +203,8 @@ void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, con
 		a_int face = iface - m->gnbface();
 		z.row(lelem).noalias() += a*x.row(relem)*U[face].transpose();
 		z.row(relem).noalias() += a*x.row(lelem)*L[face].transpose();
-	}*/
+	}
+#endif
 }
 
 template <int bs>
@@ -231,6 +239,8 @@ void DLUMatrix<bs>::allocTempVector()
 	y = MVector::Zero(m->gnelem(),bs);
 }
 
+/** \warning allocTempVector() must have been called prior to calling this method.
+ */
 template <int bs>
 void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restrict zz) const
 {
@@ -302,6 +312,8 @@ void DLUMatrix<bs>::precILUSetup()
 			luU[iface] = U[iface];
 		std::cout << " DLUMatrix: allocating lu U\n";
 	}
+	if(y.size() <= 0)
+		y = MVector::Zero(m->gnelem(),bs);
 
 	// BILU factorization
 	for(short isweep = 0; isweep < nbuildsweeps; isweep++)	
@@ -522,30 +534,24 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
+	const a_int N = m->gnelem()*nvars;
 	MVector s(m->gnelem(),nvars);
 	MVector ddu(m->gnelem(),nvars);
 
 	// norm of RHS
-	bnorm = std::sqrt(dot(res,res));
+	bnorm = std::sqrt(dot(N, res.data(),res.data()));
 
 	while(step < maxiter)
 	{
 		A->gemv3(-1.0,du.data(), -1.0,res.data(), s.data());
 
-		resnorm = 0;
-/*#pragma omp parallel for default(shared) reduction(+:resnorm)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-		{
-			// compute norm
-			resnorm += s.row(iel).squaredNorm();
-		}*/
-		resnorm = std::sqrt(dot(s,s));
+		resnorm = std::sqrt(dot(N, s.data(),s.data()));
 		//	std::cout << "   RichardsonSolver: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
 		prec->apply(s.data(), ddu.data());
 
-		axpby(1.0, du, 1.0, ddu);
+		axpby(N, 1.0, du.data(), 1.0, ddu.data());
 
 		step++;
 	}
@@ -570,6 +576,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 {
 	a_real resnorm = 100.0, bnorm = 0;
 	int step = 0;
+	const a_int N = m->gnelem()*nvars;
 
 	a_real omega = 1.0, rho, rhoold = 1.0, alpha = 1.0, beta;
 	MVector r(m->gnelem(),nvars);
@@ -601,11 +608,11 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 	while(step < maxiter)
 	{
 		// rho := rhat . r
-		rho = dot(rhat, r);
+		rho = dot(N, rhat.data(), r.data());
 		beta = rho*alpha/(rhoold*omega);
 		
 		// p <- r + beta p - beta omega v
-		axpbypcz(beta,p, 1.0,r, -beta*omega,v);
+		axpbypcz(N, beta,p.data(), 1.0,r.data(), -beta*omega,v.data());
 		
 		// y <- Minv p
 		prec->apply(p.data(), y.data());
@@ -613,10 +620,10 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		// v <- A y
 		A->apply(1.0,y.data(), v.data());
 
-		alpha = rho/dot(rhat,v);
+		alpha = rho/dot(N, rhat.data(),v.data());
 
 		// s <- r - alpha v, but reuse storage of r
-		axpby(1.0,r, -alpha,v);
+		axpby(N, 1.0,r.data(), -alpha,v.data());
 
 		prec->apply(r.data(), z.data());
 		
@@ -626,22 +633,17 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		//prec->apply(t,g);
 
 		//omega = block_dot<nvars>(m,g,z)/block_dot<nvars>(m,g,g);
-		omega = dot(t,r)/dot(t,t);
+		omega = dot(N, t.data(),r.data()) / dot(N, t.data(),t.data());
 
 		// du <- du + alpha y + omega z
-		axpbypcz(1.0,du, alpha,y, omega,z);
+		axpbypcz(N, 1.0,du.data(), alpha,y.data(), omega,z.data());
 
-		axpby(1.0,r, -omega,t);
+		// r <- r - omega t
+		axpby(N, 1.0,r.data(), -omega,t.data());
 
 		// check convergence or `lucky' breakdown
-		resnorm = 0;
-#pragma omp parallel for default(shared) reduction(+:resnorm)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-		{
-			// compute norm
-			resnorm += r.row(iel).squaredNorm();
-		}
-		resnorm = std::sqrt(resnorm);
+		resnorm = std::sqrt( dot(N, r.data(), r.data()) );
+
 		//	std::cout << "   BiCGSTAB: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
@@ -671,11 +673,9 @@ template <short nvars>
 int GMRES<nvars>::solve(const MVector& res, 
 		MVector& __restrict du) const
 {
-	a_real resnorm = 100.0, bnorm = 0;
-	a_int N = m->gnelem()*nvars;
+	const a_int N = m->gnelem()*nvars;
 	int step = 0;
 
-	a_real beta;
 	MVector r(m->gnelem(),nvars);
 	Matrix<a_real,Dynamic,Dynamic, ColMajor> V 
 		= Matrix<a_real,Dynamic,Dynamic>::Zero(N, mrestart);
@@ -693,7 +693,7 @@ int GMRES<nvars>::solve(const MVector& res,
 	while(step < maxiter)
 	{
 		// r := -res - A du
-		A->gemv3(N, -1.0,du.data(), -1.0,res.data(), r.data());
+		A->gemv3(-1.0,du.data(), -1.0,res.data(), r.data());
 
 		prec->apply(r.data(), V.data());
 		be1(0) = dot(N, V.data(),V.data());
@@ -701,28 +701,34 @@ int GMRES<nvars>::solve(const MVector& res,
 		
 #pragma omp parallel for simd default(shared)
 		for(a_int k = 0; k < N; k++)
-			V(k,0) = V(k,0)/beta;
+			V(k,0) = V(k,0)/be1(0);
 
 		for(int j = 0; j < mrestart; j++)
 		{
 			A->apply(1.0, &V(0,j), &y(0));
 			prec->apply(y.data(), w.data());
 
-			for(int i = 0; i < j; i++)
+			for(int i = 0; i <= j; i++)
 			{
 				H(i,j) = dot(N, w.data(), &V(0,i));
 				// w_j := w_j - H_(i,j) v_i
 				axpby(N, 1.0,w.data(), -H(i,j),&V(0,i));
 			}
 			H(j+1,j) = std::sqrt( dot(N, w.data(),w.data()) );
+			
+			if(j < mrestart-1)
 #pragma omp parallel for simd default(shared)
-			for(a_int k=0; k < N; k++)
-				V(k,j+1) = w(k)/H(j+1,j);
+				for(a_int k=0; k < N; k++)
+					V(k,j+1) = w(k)/H(j+1,j);
 		}
 
 		Matrix<a_real,Dynamic,1> z(mrestart);
 
-		// TODO: Solve least-squares to get z
+		// Solve least-squares to get z
+		Eigen::HouseholderQR<Matrix<a_real,Dynamic,Dynamic>> qr(mrestart+1,mrestart);
+		qr.compute(H);
+		z = qr.solve(be1);
+		//z = H.householderQr().solve();
 
 #pragma omp parallel default(shared)
 		for(int i = 0; i < mrestart; i++)
@@ -851,7 +857,7 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 
 		prec->apply(s.data(), ddu.data());
 
-		axpby(1.0, du, 1.0, ddu);
+		axpby(m->gnelem()*nvars, 1.0, du.data(), 1.0, ddu.data());
 
 		step++;
 	}
@@ -865,8 +871,10 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 
 template class RichardsonSolver<NVARS>;
 template class BiCGSTAB<NVARS>;
+template class GMRES<NVARS>;
 template class MFRichardsonSolver<NVARS>;
 template class RichardsonSolver<1>;
 template class BiCGSTAB<1>;
+template class GMRES<1>;
 
 }

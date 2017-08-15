@@ -144,6 +144,8 @@ public:
 
 	/// Applies a block LU factorization
 	void precILUApply(const a_real *const r, a_real *const __restrict z) const;
+
+	a_int dim() const { return m->gnelem()*bs; }
 	
 	/// Prints diagonal, L or U blocks depending on the argument
 	void printDiagnostic(const char choice) const;
@@ -155,55 +157,39 @@ namespace acfd {
 
 /// Vector or matrix addition
 /** z <- pz + qx.
+ * \param[in] N The length of the vectors
  */
-inline void axpby(const a_real p, MVector& z, 
-	const a_real q, const MVector& x)
+inline void axpby(const a_int N, const a_real p, a_real *const __restrict z, 
+	const a_real q, const a_real *const x)
 {
-#ifdef DEBUG
-	if(z.rows() != x.rows() || z.cols() != x.cols())
-		std::cout << "! axpby: Dimension mismatch between z and x!!\n";
-#endif
-	
-	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
+	//a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0);
 #pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < z.size(); i++) {
-		zz[i] = p*zz[i] + q*xx[i];
+	for(a_int i = 0; i < N; i++) {
+		z[i] = p*z[i] + q*x[i];
 	}
 }
 
 /** z <- pz + qx + ry for vectors and matrices
  */
-inline void axpbypcz(const a_real p, MVector& z, 
-	const a_real q, const MVector& x,
-	const a_real r, const MVector& y)
+inline void axpbypcz(const a_int N, const a_real p, a_real *const z, 
+	const a_real q, const a_real *const x,
+	const a_real r, const a_real *const y)
 {
-#ifdef DEBUG
-	if(z.rows() != x.rows() || z.cols() != x.cols())
-		std::cout << "! axpbypcz: Dimension mismatch between z and x!!\n";
-	if(x.rows() != y.rows() || x.cols() != y.cols())
-		std::cout << "! axpbypcz: Dimension mismatch between y and x!!\n";
-#endif
-	
-	a_real *const zz = &z(0,0); const a_real *const xx = &x(0,0); const a_real *const yy = &y(0,0);
+	//a_real *const zz = &z(0,0); const a_real *const xx =&x(0,0); const a_real *const yy = &y(0,0);
 #pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < z.size(); i++) {
-		zz[i] = p*zz[i] + q*xx[i] + r*yy[i];
+	for(a_int i = 0; i < N; i++) {
+		z[i] = p*z[i] + q*x[i] + r*y[i];
 	}
 }
 
 /// Dot product of vectors or `double dot' product of matrices
-inline a_real dot(const MVector& a, 
-	const MVector& b)
+inline a_real dot(const a_int N, const a_real *const a, 
+	const a_real *const b)
 {
-#ifdef DEBUG
-	if(a.rows() != b.rows() || b.cols() != b.cols())
-		std::cout << "! dot: Dimension mismatch!!\n";
-#endif
-
 	a_real sum = 0;
 #pragma omp parallel for simd default(shared) reduction(+:sum)
-	for(a_int i = 0; i < a.size(); i++)
-		sum += a.data()[i]*b.data()[i];
+	for(a_int i = 0; i < N; i++)
+		sum += a[i]*b[i];
 
 	return sum;
 }
@@ -241,9 +227,13 @@ public:
 };
 
 /// Do-nothing preconditioner
+/** The preconditioner is the identity matrix.
+ */
 template <short nvars>
 class NoPrec : public Preconditioner<nvars>
 {
+	using Preconditioner<nvars>::A;
+
 public:
 	NoPrec(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op)
 	{ }
@@ -253,7 +243,11 @@ public:
 	
 	void apply(const a_real *const r, 
 			a_real *const z)
-	{ }
+	{
+#pragma omp parallel for simd default(shared)
+		for(a_int i = 0; i < A->dim(); i++)
+			z[i] = r[i];
+	}
 };
 
 /// Jacobi preconditioner
@@ -282,7 +276,10 @@ class BlockSGS : public Preconditioner<nvars>
 	using Preconditioner<nvars>::A;
 
 public:
-	BlockSGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
+	BlockSGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) 
+	{
+		A->allocTempVector();
+	}
 
 	/// Sets D,L,U and inverts each D
 	void compute() {

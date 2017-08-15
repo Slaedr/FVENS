@@ -240,12 +240,12 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 			}
 
 			if(bcinds.size() != bcsize)
-				std::cout << "! SteadyBackwardEulerSolver:Point: Block-column indices are wrong!!\n";
+				std::cout << "! SteadyBackwardEulerSolver:Point: Row pointers are wrong!!\n";
 
 			std::sort(bcinds.begin(),bcinds.end());
 
 			// i th row in element iel's block-row
-			for(size_t i = 0; i < nvars; i++)
+			for(int i = 0; i < nvars; i++)
 				// j th block of the block-row: element iel and its neighbors
 				for(size_t j = 0; j < bcinds.size(); j++)
 					// k th column in the j th block
@@ -259,6 +259,39 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 
 		delete [] rowptr;
 		delete [] colinds;
+
+#ifdef DEBUG
+		// check
+		std::cout << " CSR: Checking..\n";
+		blasted::BSRMatrix<a_real,a_int,1>* B 
+			= reinterpret_cast<blasted::BSRMatrix<a_real,a_int,1>*>(A);
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			std::vector<int> nbd; nbd.reserve(5);
+			nbd.push_back(iel);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				int nbelem = m->gesuel(iel,ifael);
+				if(nbelem < m->gnelem())
+					nbd.push_back(nbelem);
+			}
+
+			for(short j = 0; j < nvars; j++)
+				if(nbd.size() != (B->browptr[(iel+1)*nvars]-B->browptr[iel*nvars])/(nvars*nvars))
+					std::cout << " CSR: browptr is wrong!!\n";
+
+			std::sort(nbd.begin(),nbd.end());
+			for(short j = 0; j < nvars; j++) 
+			{
+				for(a_int jj = B->browptr[iel*nvars+j]; jj < B->browptr[iel*nvars+j+1]; jj++)
+				{
+					a_int loccol = jj - B->browptr[iel*nvars+j];
+					if(B->bcolind[jj] != nbd[loccol/nvars]*nvars + loccol%nvars)
+						std::cout << " CSR: bcolind is wrong!!\n";
+				}
+			}
+		}
+#endif
 	}
 	else {
 		// construct non-zero structure for block sparse format
@@ -329,7 +362,6 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		if(mattype != 'p') std::cout << "Block-";
 		std::cout << "SGS preconditioner.\n";
-		A->allocTempVector();
 	}
 	else if(precond == "BILU0") {
 		prec = new BILU0<nvars>(A);

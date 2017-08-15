@@ -178,7 +178,7 @@ public:
 		const char mat_type, const double lin_tol, const int linmaxiterstart, 
 		const int linmaxiterend, std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl
+		const double ftoler, const int fmaxits, const double fcfl,
 		const int restart_vecs);
 	
 	~SteadyBackwardEulerSolver();
