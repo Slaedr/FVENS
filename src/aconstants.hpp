@@ -55,6 +55,7 @@ namespace acfd
 	
 	using Eigen::Dynamic;
 	using Eigen::RowMajor;
+	using Eigen::ColMajor;
 	using Eigen::Matrix;
 
 	/// Multi-vector type, used for storing mesh functions like the residual

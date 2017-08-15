@@ -176,7 +176,8 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		const int linmaxiter_start, const int linmaxiter_end, 
 		std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl_n)
+		const double ftoler, const int fmaxits, const double fcfl_n,
+		const int mrestart)
 
 	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), A(nullptr), 
 	cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), 
@@ -344,6 +345,11 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	if(linearsolver == "BCGSTB") {
 		linsolv = new BiCGSTAB<nvars>(m, A, prec);
 		std::cout << " SteadyBackwardEulerSolver: BiCGSTAB solver selected.\n";
+	}
+	else if(linearsolver == "GMRES") {
+		linsolv = new GMRES<nvars>(m, A, prec, mrestart);
+		std::cout << " SteadyBackwardEulerSolver: GMRES solver selected, restart after " 
+			<< mrestart << " iterations\n";
 	}
 	else {
 		linsolv = new RichardsonSolver<nvars>(mesh, A, prec);
@@ -566,7 +572,8 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 		const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
 		std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl_n)
+		const double ftoler, const int fmaxits, const double fcfl_n,
+		const int mrestart)
 
 	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), 
 	cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), 

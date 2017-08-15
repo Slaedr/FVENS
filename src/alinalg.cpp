@@ -660,6 +660,95 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 }
 
 template <short nvars>
+GMRES<nvars>::GMRES(const UMesh2dh *const mesh, 
+		LinearOperator<a_real,a_int> *const mat,
+		Preconditioner<nvars> *const precond,
+		int m_restart)
+	: IterativeSolver<nvars>(mesh, mat, precond), mrestart(m_restart)
+{ }
+
+template <short nvars>
+int GMRES<nvars>::solve(const MVector& res, 
+		MVector& __restrict du) const
+{
+	a_real resnorm = 100.0, bnorm = 0;
+	a_int N = m->gnelem()*nvars;
+	int step = 0;
+
+	a_real beta;
+	MVector r(m->gnelem(),nvars);
+	Matrix<a_real,Dynamic,Dynamic, ColMajor> V 
+		= Matrix<a_real,Dynamic,Dynamic>::Zero(N, mrestart);
+	Matrix<a_real,Dynamic,1> w = Matrix<a_real,Dynamic,1>::Zero(N);
+	Matrix<a_real,Dynamic,1> y = Matrix<a_real,Dynamic,1>::Zero(N);
+	Matrix<a_real,Dynamic,Dynamic> H(mrestart+1,mrestart);
+	
+	Matrix<a_real,Dynamic,1> be1 = Matrix<a_real,Dynamic,1>::Zero(mrestart+1);
+
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	
+	while(step < maxiter)
+	{
+		// r := -res - A du
+		A->gemv3(N, -1.0,du.data(), -1.0,res.data(), r.data());
+
+		prec->apply(r.data(), V.data());
+		be1(0) = dot(N, V.data(),V.data());
+		be1(0) = std::sqrt(be1(0));
+		
+#pragma omp parallel for simd default(shared)
+		for(a_int k = 0; k < N; k++)
+			V(k,0) = V(k,0)/beta;
+
+		for(int j = 0; j < mrestart; j++)
+		{
+			A->apply(1.0, &V(0,j), &y(0));
+			prec->apply(y.data(), w.data());
+
+			for(int i = 0; i < j; i++)
+			{
+				H(i,j) = dot(N, w.data(), &V(0,i));
+				// w_j := w_j - H_(i,j) v_i
+				axpby(N, 1.0,w.data(), -H(i,j),&V(0,i));
+			}
+			H(j+1,j) = std::sqrt( dot(N, w.data(),w.data()) );
+#pragma omp parallel for simd default(shared)
+			for(a_int k=0; k < N; k++)
+				V(k,j+1) = w(k)/H(j+1,j);
+		}
+
+		Matrix<a_real,Dynamic,1> z(mrestart);
+
+		// TODO: Solve least-squares to get z
+
+#pragma omp parallel default(shared)
+		for(int i = 0; i < mrestart; i++)
+		{
+#pragma omp for simd
+			for(a_int k = 0; k < N; k++)
+				du.data()[k] += z(i) * V(k,i);
+		}
+
+		step++;
+		a_real lsres = (be1 - H*z).norm()/be1(0);
+		if(lsres < tol)
+			break;
+	}
+
+	if(step == maxiter)
+		std::cout << " ! GMRES: Hit max iterations!\n";
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	return step+1;
+}
+
+template <short nvars>
 MFIterativeSolver<nvars>::MFIterativeSolver(const UMesh2dh* const mesh, 
 		Preconditioner<nvars> *const precond, Spatial<nvars> *const spatial)
 	: IterativeSolverBase(mesh), prec(precond), space(spatial)

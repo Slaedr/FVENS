@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
 	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, firstcfl, firsttolerance;
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter;
+	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
 	bool use_matrix_free;
@@ -57,6 +57,7 @@ int main(int argc, char* argv[])
 		control >> dum; control >> lintol;
 		control >> dum; control >> linmaxiterstart;
 		control >> dum; control >> linmaxiterend;
+		control >> dum; control >> restart_vecs;
 		control >> dum; control >> prec;
 		control >> dum; control >> nbuildsweeps;
 		control >> dum; control >> napplysweeps;
@@ -90,10 +91,10 @@ int main(int argc, char* argv[])
 	if(timesteptype == "IMPLICIT") {
 		if(use_matrix_free)
 			time = new SteadyMFBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs);
 		else
 			time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl);
+				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs);
 		std::cout << "Setting up backward Euler temporal scheme.\n";
 	}
 	else {

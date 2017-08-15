@@ -169,6 +169,7 @@ public:
 	 * \param[in] ftoler Tolerance for the starting ODE solver
 	 * \param[in] fmaxits Maximum iterations for the starting ODE solver
 	 * \param[in] fcfl CFL number to use for starting ODE solver
+	 * \param[in] restart_vecs Number of Krylov subspace vectors to store per restart iteration
 	 */
 	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, 
 		Spatial<nvars> *const starterfv, const short use_starter,
@@ -177,7 +178,8 @@ public:
 		const char mat_type, const double lin_tol, const int linmaxiterstart, 
 		const int linmaxiterend, std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl);
+		const double ftoler, const int fmaxits, const double fcfl
+		const int restart_vecs);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -236,7 +238,7 @@ public:
 		const double lin_tol, const int linmaxiterstart, const int linmaxiterend, 
 		std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl);
+		const double ftoler, const int fmaxits, const double fcfl, const int restart_vecs);
 	
 	~SteadyMFBackwardEulerSolver();
 

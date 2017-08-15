@@ -434,6 +434,31 @@ public:
 		MVector& __restrict du) const;
 };
 
+/// Restarted GMRES
+template <short nvars>
+class GMRES : public IterativeSolver<nvars>
+{
+	using IterativeSolver<nvars>::m;
+	using IterativeSolver<nvars>::A;
+	using IterativeSolver<nvars>::maxiter;
+	using IterativeSolver<nvars>::tol;
+	using IterativeSolver<nvars>::walltime;
+	using IterativeSolver<nvars>::cputime;
+	using IterativeSolver<nvars>::prec;
+	
+	/// Number of Krylov subspace vectors to store
+	int mrestart;
+
+public:
+	GMRES(const UMesh2dh* const mesh, 
+			LinearOperator<a_real,a_int>* const mat, 
+			Preconditioner<nvars> *const precond,
+			int m_restart);
+
+	int solve(const MVector& res, 
+		MVector& __restrict du) const;
+};
+
 /// Base class for matrix-free solvers
 /** Note that subclasses are matrix-free only with regard to the top-level solver,
  * usually a Krylov subspace solver. The preconditioning matrix is still computed and stored.
