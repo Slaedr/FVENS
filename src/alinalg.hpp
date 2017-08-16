@@ -93,7 +93,7 @@ public:
 	 */
 	void submitBlock(const a_int starti, const a_int startj, 
 			const a_real *const buffer,
-			const long lud, const long face_id);
+			const a_int lud, const a_int face_id);
 
 	/// Update a (contiguous) block of values into the matrix
 	/** This is function is thread-safe: each location that needs to be updated is updated
@@ -108,7 +108,7 @@ public:
 	 */
 	void updateBlock(const a_int starti, const a_int startj, 
 			const a_real *const buffer,
-			const long lud, const long face_id);
+			const a_int lud, const a_int face_id);
 	
 	/// Updates the diagonal block of the specified block-row
 	/** This function is thread-safe. It's also redundant, as it's no more efficient
@@ -117,7 +117,7 @@ public:
 	 * \param[in] buffer The values, in ROW-MAJOR order, making up the block to be added
 	 * \param[in] dummy Any integer value, not used.
 	 */
-	void updateDiagBlock(const a_int starti, const a_real *const buffer, const long dummy);
+	void updateDiagBlock(const a_int starti, const a_real *const buffer, const a_int dummy);
 
 	/// Computes the matrix vector product of this matrix with one vector-- y := a Ax
 	void apply(const a_real a, const a_real *const x, a_real *const __restrict y) const;

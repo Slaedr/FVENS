@@ -238,7 +238,6 @@ void UMesh2dh::readDomn(std::string mfile)
 /// Reads mesh from Gmsh 2 format file
 void UMesh2dh::readGmsh2(std::string mfile, int dimensions)
 {
-	std::cout << "UMesh2d: readGmsh2(): Reading mesh file...\n";
 	int dum; double dummy; std::string dums; char ch;
 	ndim = dimensions;
 
@@ -400,8 +399,10 @@ void UMesh2dh::readGmsh2(std::string mfile, int dimensions)
 	vol_regions.setup(nelem, ndtag);
 
 	std::cout << "UMesh2dh: readGmsh2(): No. of points: " << npoin 
-		<< ", number of elements: " << nelem << ", number of boundary faces " << nface 
-		<< ",\n max no. of nodes per element: " << maxnnode << ", no. of nodes per face: " << nnofa 
+		<< ", number of elements: " << nelem 
+		<< ",\nnumber of boundary faces " << nface 
+		<< ", max no. of nodes per element: " << maxnnode 
+		<< ",\nno. of nodes per face: " << nnofa 
 		<< ", max faces per element: " << maxnfael << std::endl;
 
 	// write into inpoel and bface
@@ -654,8 +655,9 @@ void UMesh2dh::compute_areas()
 /// \todo: TODO: There is an issue with psup for some boundary nodes belonging to elements of different types. Correct this.
 void UMesh2dh::compute_topological()
 {
-
+#ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Calculating and storing topological information...\n";
+#endif
 	/// 1. Elements surrounding points
 	//std::cout << "UMesh2d: compute_topological(): Elements surrounding points\n";
 	esup_p.setup(npoin+1,1);
@@ -691,7 +693,9 @@ void UMesh2dh::compute_topological()
 	// Elements surrounding points is now done.
 
 	/// 2. Points surrounding points
+#ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Points surrounding points\n";
+#endif
 	psup_p.setup(npoin+1,1);
 	psup_p.zeros();
 	psup_p(0,0) = 0;
@@ -802,8 +806,9 @@ void UMesh2dh::compute_topological()
 	//Points surrounding points is now done.
 
 	/// 3. Elements surrounding elements
+#ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Elements surrounding elements...\n";
-
+#endif
 	//amat::Array2d<int> lpoin(npoin,1);
 	esuel.setup(nelem, maxnfael);
 	for(int ii = 0; ii < nelem; ii++)
@@ -875,8 +880,9 @@ void UMesh2dh::compute_topological()
 	 * Also computes element-face connectivity array elemface in the same loop which computes intfac.
 	 * \note After the following portion, esuel holds (nelem + face no.) for each ghost cell, instead of -1 as before.
 	 */
-
+#ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
+#endif
 	nbface = naface = 0;
 	// first run: calculate nbface
 	for(int ie = 0; ie < nelem; ie++)
@@ -1028,7 +1034,9 @@ void UMesh2dh::compute_topological()
 			bpoints(ibp,1) = iface;
 		}
 	}*/
+#ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Done." << std::endl;
+#endif
 }
 
 /** Assumption: order of nodes of boundary faces is such that normal points outside, when normal is calculated as
@@ -1051,7 +1059,9 @@ void UMesh2dh::compute_face_data()
 	}
 
 	//Populate boundary flags in gallfa
+#ifdef DEBUG
 	std::cout << "UTriMesh: compute_face_data(): Storing boundary flags in gallfa...\n";
+#endif
 	for(int ied = 0; ied < nbface; ied++)
 	{
 		p1 = intfac(ied,2);
@@ -1076,8 +1086,9 @@ void UMesh2dh::compute_face_data()
 			}
 		}
 	}
-
+#ifdef DEBUG
 	std::cout << "UMesh2dh: compute_face_data(): Done.\n";
+#endif
 }
 
 void UMesh2dh::compute_boundary_maps()

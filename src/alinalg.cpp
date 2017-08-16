@@ -69,7 +69,7 @@ void DLUMatrix<bs>::setDiagZero()
 template <int bs>
 void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
-			const long lud, const long faceid)
+			const a_int lud, const a_int faceid)
 {
 	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;
@@ -90,7 +90,7 @@ void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,
 template <int bs>
 void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 			const a_real *const buffer,
-			const long lud, const long faceid)
+			const a_int lud, const a_int faceid)
 {
 	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;
@@ -112,7 +112,7 @@ void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,
 }
 
 template <int bs>
-void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer, const long dum)
+void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer, const a_int dum)
 {
 	constexpr int bs2 = bs*bs;
 	const a_int startr = starti/bs;

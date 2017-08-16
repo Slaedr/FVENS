@@ -195,7 +195,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		// DLU matrix
 		A = new blasted::DLUMatrix<nvars>(m, nbuildsweeps, napplysweeps);
 	}
-	else if(mattype == 'p') {
+	else if(mattype == 'c') {
 		// construct non-zero structure for sparse format
 
 		a_int* colinds, * rowptr;
@@ -223,7 +223,8 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		if(rowptr[nrows] != nnz)
 			std::cout << "! SteadyBackwardEulerSolver:Point: Row pointer computation is wrong!!\n";
 #ifdef DEBUG
-		std::cout << "  nnz = " << rowptr[nrows] << "; should be "<< nnz << std::endl;
+		std::cout << "  SteadyBackwardEulerSolver: nnz = " << rowptr[nrows] 
+			<< "; should be "<< nnz << std::endl;
 #endif
 
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -260,7 +261,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		delete [] rowptr;
 		delete [] colinds;
 
-#ifdef DEBUG
+#if 0
 		// check
 		std::cout << " CSR: Checking..\n";
 		blasted::BSRMatrix<a_real,a_int,1>* B 
@@ -351,22 +352,22 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 	}
 
 	// select preconditioner
-	if(precond == "BJ") {
+	if(precond == "J") {
 		prec = new BlockJacobi<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
-		if(mattype != 'p') std::cout << "Block-"; 
+		if(mattype != 'c') std::cout << "Block-"; 
 		std::cout << "Jacobi preconditioner.\n";
 	}
-	else if(precond == "BSGS") {
+	else if(precond == "SGS") {
 		prec = new BlockSGS<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
-		if(mattype != 'p') std::cout << "Block-";
+		if(mattype != 'c') std::cout << "Block-";
 		std::cout << "SGS preconditioner.\n";
 	}
-	else if(precond == "BILU0") {
+	else if(precond == "ILU0") {
 		prec = new BILU0<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
-		if(mattype != 'p') std::cout << "Block-";
+		if(mattype != 'c') std::cout << "Block-";
 		std::cout << " ILU0 preconditioner.\n";
 	}
 	else {
@@ -376,7 +377,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 
 	if(linearsolver == "BCGSTB") {
 		linsolv = new BiCGSTAB<nvars>(m, A, prec);
-		std::cout << " SteadyBackwardEulerSolver: BiCGSTAB solver selected.\n";
+		std::cout << " SteadyBackwardEulerSolver: BiCGStab solver selected.\n";
 	}
 	else if(linearsolver == "GMRES") {
 		linsolv = new GMRES<nvars>(m, A, prec, mrestart);
@@ -424,7 +425,8 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 				}
 			}
 
-			A->setDiagZero();
+			//A->setDiagZero();
+			A->setAllZero();
 			
 			// update residual and local time steps
 			starter->compute_residual(u, residual, true, dtm);
@@ -498,7 +500,8 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			}
 		}
 
-		A->setDiagZero();
+		//A->setDiagZero();
+		A->setAllZero();
 		
 		// update residual and local time steps
 		eul->compute_residual(u, residual, true, dtm);

@@ -373,8 +373,10 @@ void EulerFV::loaddata(const short inittype, const a_real Minf, const a_real vin
 		for(a_int i = 0; i < m->gnelem(); i++)
 			for(short j = 0; j < NVARS; j++)
 				u(i,j) = uinf(0,j);
-	
+
+#ifdef DEBUG
 	std::cout << "EulerFV: loaddata(): Initial data calculated.\n";
+#endif
 }
 
 void EulerFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
