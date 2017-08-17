@@ -252,12 +252,12 @@ public:
 
 /// Jacobi preconditioner
 template <short nvars>
-class BlockJacobi : public Preconditioner<nvars>
+class Jacobi : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
 
 public:
-	BlockJacobi(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
+	Jacobi(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
 	
 	void compute() {
 		A->precJacobiSetup();
@@ -271,12 +271,12 @@ public:
 
 /// Symmetric Gauss-Seidel preconditioner
 template <short nvars>
-class BlockSGS : public Preconditioner<nvars>
+class SGS : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
 
 public:
-	BlockSGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) 
+	SGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) 
 	{
 		A->allocTempVector();
 	}
@@ -294,12 +294,12 @@ public:
 
 /// ILU0 preconditioner
 template <short nvars>
-class BILU0 : public Preconditioner<nvars>
+class ILU0 : public Preconditioner<nvars>
 {
 	using Preconditioner<nvars>::A;
 
 public:
-	BILU0(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
+	ILU0(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
 
 	/// Sets D,L,U and computes the ILU factorization
 	void compute() {

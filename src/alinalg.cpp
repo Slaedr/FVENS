@@ -546,7 +546,6 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 		A->gemv3(-1.0,du.data(), -1.0,res.data(), s.data());
 
 		resnorm = std::sqrt(dot(N, s.data(),s.data()));
-		//	std::cout << "   RichardsonSolver: Lin res = " << resnorm << std::endl;
 		if(resnorm/bnorm < tol) break;
 
 		prec->apply(s.data(), ddu.data());
@@ -583,10 +582,10 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 	MVector rhat(m->gnelem(), nvars);
 	MVector p = MVector::Zero(m->gnelem(),nvars);
 	MVector v = MVector::Zero(m->gnelem(),nvars);
-	//MVector g(m->gnelem(),nvars);
 	MVector y(m->gnelem(),nvars);
 	MVector z(m->gnelem(),nvars);
 	MVector t(m->gnelem(),nvars);
+	MVector g(m->gnelem(),nvars);
 
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -625,14 +624,16 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		// s <- r - alpha v, but reuse storage of r
 		axpby(N, 1.0,r.data(), -alpha,v.data());
 
+		// z <- Minv s
 		prec->apply(r.data(), z.data());
 		
 		// t <- A z
 		A->apply(1.0,z.data(), t.data());
 
-		//prec->apply(t,g);
+		// For the more theoretically sound variant: g <- Minv t
+		//prec->apply(t.data(),g.data());
+		//omega = dot(N,g.data(),z.data())/dot(N,g.data(),g.data());
 
-		//omega = block_dot<nvars>(m,g,z)/block_dot<nvars>(m,g,g);
 		omega = dot(N, t.data(),r.data()) / dot(N, t.data(),t.data());
 
 		// du <- du + alpha y + omega z

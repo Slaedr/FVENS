@@ -353,19 +353,19 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 
 	// select preconditioner
 	if(precond == "J") {
-		prec = new BlockJacobi<nvars>(A);
+		prec = new Jacobi<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		if(mattype != 'c') std::cout << "Block-"; 
 		std::cout << "Jacobi preconditioner.\n";
 	}
 	else if(precond == "SGS") {
-		prec = new BlockSGS<nvars>(A);
+		prec = new SGS<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		if(mattype != 'c') std::cout << "Block-";
 		std::cout << "SGS preconditioner.\n";
 	}
 	else if(precond == "ILU0") {
-		prec = new BILU0<nvars>(A);
+		prec = new ILU0<nvars>(A);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		if(mattype != 'c') std::cout << "Block-";
 		std::cout << " ILU0 preconditioner.\n";
@@ -622,16 +622,16 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 	u.resize(m->gnelem(), nvars);
 	dtm.setup(m->gnelem(), 1);
 
-	if(precond == "BJ") {
-		prec = new BlockJacobi<nvars>(M);
+	if(precond == "J") {
+		prec = new Jacobi<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: Selected Block Jacobi preconditioner.\n";
 	}
-	else if(precond == "BSGS") {
-		prec = new BlockSGS<nvars>(M);
+	else if(precond == "SGS") {
+		prec = new SGS<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: Selected Block SGS preconditioner.\n";
 	}
-	else if(precond == "BILU0") {
-		prec = new BILU0<nvars>(M);
+	else if(precond == "ILU0") {
+		prec = new ILU0<nvars>(M);
 		std::cout << " SteadyMFBackwardEulerSolver: Selected Block ILU0 preconditioner.\n";
 	}
 	else {
