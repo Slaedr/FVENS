@@ -1,22 +1,27 @@
 cmake_minimum_required(VERSION 2.8)
 
-# The environment variable EIGEN_DIR needs to be set to the path where
-# the Eigen source directory is present.
+# The environment variable EIGEN_DIR needs to be set to the path of the Eigen top-level directory.
 # The environment variable BLASTED_DIR needs to set to the root of the BLASTed linear algebra library.
-# It is assumed that the BLASTed binary is ${BLASTED_DIR}/build/libblasted.a
 
 # Pass -DOMP=1 to compile with OpenMP
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
+# Pass -DNOAVX=1 to compile with SSE 4.2 instructions rather than AVX (default) instructions;
+#                 ^ ignored when compiling for KNC.
 
 project (fvens)
 
+set (CMAKE_CXX_FLAGS " ")
+set (CMAKE_CXX_FLAGS_DEBUG " ")
+set (CMAKE_CXX_FLAGS_RELEASE " ")
+
 # to compile with OpenMP
 if(OMP)
-	message(STATUS "Compiling with OpenMP")
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+		message(STATUS "Compiling with OpenMP for GNU")
 	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qopenmp")
+		message(STATUS "Compiling with OpenMP for Intel")
 	else()
 		message(SEND_ERROR "Don't know OpenMP flag for this compiler")
 	endif()
@@ -24,7 +29,7 @@ endif()
 
 # set compile options
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -ftree-vectorizer-verbose=2")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fopt-info-loop-inline-vec-optimized-missed=optimizations.info")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -qopt-report=2")
 endif()
@@ -32,6 +37,23 @@ endif()
 if(MICKNC)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
 	message(STATUS "Compiling for KNC")
+	if(NOT("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel"))
+		message(SEND_ERROR "Need to use Intel compiler for Xeon Phi!")
+	endif()
+else()
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+	message(STATUS "Compiling for x86_64")
+	if(NOAVX)
+		set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -msse4.2")
+		if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+			message(STATUS "Compiling with SSE4.2")
+		endif()
+	else()
+		set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx")
+		if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+			message(STATUS "Compiling with AVX")
+		endif()
+	endif()
 endif()
 
 # Eigen
@@ -66,9 +88,9 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 # libraries to be compiled
 add_library(fvens_base aodesolver.cpp alinalg.cpp aspatial.cpp areconstruction.cpp alimiter.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp)
 
-#if(WITH_PETSC)
-#	target_link_libraries(fvens_time ${PETSC_LIB})
-#endif()
+if(WITH_PETSC)
+	target_link_libraries(fvens_base ${PETSC_LIB})
+endif()
 
 # for the final executable(s)
 
