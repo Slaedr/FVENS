@@ -531,7 +531,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 		}
 
 		// add pseudo-time terms to diagonal blocks
-#pragma omp parallel for simd default(shared)
+#pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			Matrix<a_real,nvars,nvars,RowMajor> db 
