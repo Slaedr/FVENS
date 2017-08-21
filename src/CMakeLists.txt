@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 2.8)
 
 # Pass -DOMP=1 to compile with OpenMP
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
-# Pass -DNOAVX=1 to compile with SSE 4.2 instructions rather than AVX (default) instructions;
-#                 ^ ignored when compiling for KNC.
+# Pass -DSSE=1 to compile with SSE 4.2 instructions; ignored when compiling for KNC.
+# Pass -DAVX=1 to compile with AVX instructions
 
 project (fvens)
 
@@ -43,17 +43,21 @@ if(MICKNC)
 else()
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 	message(STATUS "Compiling for x86_64")
-	if(NOAVX)
+	if(SSE)
 		set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -msse4.2")
 		if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 			message(STATUS "Compiling with SSE4.2")
 		endif()
-	else()
+	elseif(AVX)
 		set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx")
 		if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 			message(STATUS "Compiling with AVX")
 		endif()
-	endif()
+	elseif(KNL)
+		set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=knl")
+		if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+			message(STATUS "Compiling with AVX")
+		endif()
 endif()
 
 # Eigen
