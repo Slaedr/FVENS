@@ -413,6 +413,8 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
+	unsigned int avglinsteps = 0;
+	
 	if(usestarter == 1) {
 		std::cout << " SteadyBackwardEulerSolver: Starting initialization run..\n";
 		while(resi/initres > starttol && step < startmaxiter)
@@ -451,6 +453,7 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 			linsolv->setParams(lintol, linmaxiterstart);
 			int linstepsneeded = linsolv->solve(residual, du);
 
+			avglinsteps += linstepsneeded;
 			a_real errmass = 0;
 
 #pragma omp parallel default(shared)
@@ -483,13 +486,15 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 
 		std::cout << " SteadyBackwardEulerSolver: solve(): Initial solve done, steps = " << step 
 			<< ", rel residual " << resi/initres << ".\n";
+		avglinsteps /= step;
+		std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
 		step = 0;
+		avglinsteps = 0;
 		resi = 1.0;
 		initres = 1.0;
 	}
 
 	std::cout << " SteadyBackwardEulerSolver: solve(): Starting main solver.\n";
-	unsigned int avglinsteps = 0;
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for default(shared)
