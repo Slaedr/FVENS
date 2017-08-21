@@ -58,6 +58,7 @@ else()
 		if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 			message(STATUS "Compiling with AVX")
 		endif()
+	endif()
 endif()
 
 # Eigen
