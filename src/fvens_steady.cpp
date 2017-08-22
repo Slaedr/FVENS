@@ -72,6 +72,14 @@ int main(int argc, char* argv[])
 		use_matrix_free = true;
 	else
 		use_matrix_free = false;
+	
+	if(meshfile == "READFROMCMD")
+	{
+		if(argc >= 3)
+			meshfile = argv[2];
+		else
+			std::cout << "! Mesh file not given in command line!\n";
+	}
 
 	// Set up mesh
 
