@@ -2,6 +2,8 @@
 ../testcases/heat/grids/cartsquare2.msh
 -output_file
 ../data/heat-cartsquare-thinlayer.vtu
+-Log-file
+log.txt
 -Diffusivity
 1.0
 -boundary-value

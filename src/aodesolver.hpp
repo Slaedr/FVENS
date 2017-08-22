@@ -54,7 +54,7 @@ public:
 		wall_time = walltime; cpu_time = cputime;
 	}
 
-	virtual void solve() = 0;
+	virtual void solve(std::string logfile) = 0;
 
 	virtual ~SteadySolver() {}
 };
@@ -96,7 +96,7 @@ public:
 	~SteadyForwardEulerSolver();
 
 	/// Solves the steady problem by a first-order explicit method, using local time-stepping
-	void solve();
+	void solve(std::string logfile);
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -184,7 +184,12 @@ public:
 	~SteadyBackwardEulerSolver();
 
 	/// Runs the time-stepping loop
-	void solve();
+	/** Appends a line of timing-related data to a log file as follows.
+	 *  num-cells num-threads  wall-time  CPU-time   avg-linear-solver-iterations <\n>
+	 * Times are the totals taken by linear solver only.
+	 * \param[in] logfile The file name to append timing data to
+	 */
+	void solve(std::string logfile);
 };
 
 /// Implicit pseudo-time iteration to steady state using a martrix-free linear solver
@@ -242,7 +247,7 @@ public:
 	
 	~SteadyMFBackwardEulerSolver();
 
-	void solve();
+	void solve(std::string logfile);
 };
 
 }	// end namespace

@@ -12,6 +12,10 @@
 #include <blockmatrices.hpp>
 #include <algorithm>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace acfd {
 
 template<short nvars>
@@ -35,7 +39,7 @@ SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 }
 
 template<short nvars>
-void SteadyForwardEulerSolver<nvars>::solve()
+void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 {
 	int step = 0;
 	a_real resi = 1.0;
@@ -152,6 +156,15 @@ void SteadyForwardEulerSolver<nvars>::solve()
 	std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
 	std::cout << "                                   CPU time = " << cputime 
 		<< ", wall time = " << walltime << std::endl << std::endl;
+
+	// append data to log file
+	int numthreads = 0;
+#ifdef _OPENMP
+	numthreads = omp_get_max_threads();
+#endif
+	std::ofstream outf; outf.open(logfile, std::ofstream::app);
+	outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
+	outf.close();
 }
 
 /// Ordering function for qsort - ascending order
@@ -400,7 +413,7 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 }
 
 template <short nvars>
-void SteadyBackwardEulerSolver<nvars>::solve()
+void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 {
 	double curCFL; int curlinmaxiter;
 	int step = 0;
@@ -602,6 +615,18 @@ void SteadyBackwardEulerSolver<nvars>::solve()
 	std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
 	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n\n";
+
+	// append data to log file
+	int numthreads = 0;
+#ifdef _OPENMP
+	numthreads = omp_get_max_threads();
+#endif
+	std::ofstream outf; outf.open(logfile, std::ofstream::app);
+	outf << std::setw(10) << m->gnelem();
+	outf << " " << std::setw(4) << numthreads << " " << std::setw(10) << linwtime << " " 
+		<< std::setw(10) << linctime << " " << std::setw(4) << avglinsteps
+		<< "\n";
+	outf.close();
 }
 
 template <short nvars>
@@ -668,7 +693,7 @@ SteadyMFBackwardEulerSolver<nvars>::~SteadyMFBackwardEulerSolver()
 
 /// \fixme FIXME: Broken by matrices storage changes
 template <short nvars>
-void SteadyMFBackwardEulerSolver<nvars>::solve()
+void SteadyMFBackwardEulerSolver<nvars>::solve(std::string logfile)
 {
 	double curCFL; int curlinmaxiter;
 	int step = 0;

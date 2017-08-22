@@ -16,7 +16,8 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
+	string dum, meshfile, outf, logfile;
+	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
 	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, firstcfl, firsttolerance;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
 	short inittype, usestarter;
@@ -26,6 +27,7 @@ int main(int argc, char* argv[])
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
+	control >> dum; control >> logfile;
 	control >> dum; control >> M_inf;
 	control >> dum; control >> vinf;
 	control >> dum; control >> alpha;
@@ -106,7 +108,7 @@ int main(int argc, char* argv[])
 	prob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time->unknowns());
 
 	// computation
-	time->solve();
+	time->solve(logfile);
 
 	Array2d<a_real> scalars;
 	Array2d<a_real> velocities;

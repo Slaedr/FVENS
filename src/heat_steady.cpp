@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, visflux, reconst, linsolver, timesteptype, prec;
+	string dum, meshfile, outf, logfile, visflux, reconst, linsolver, timesteptype, prec;
 	double initcfl, endcfl, tolerance, lintol, firstcfl, firsttolerance, diffcoeff, bvalue;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
 	short inittype, usestarter;
@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
+	control >> dum; control >> logfile;
 	control >> dum; control >> diffcoeff;
 	control >> dum; control >> bvalue;
 	control >> dum; control >> inittype;
@@ -107,7 +108,7 @@ int main(int argc, char* argv[])
 				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs);
 
 		// computation
-		time.solve();
+		time.solve(logfile);
 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& u = time.unknowns();
 
@@ -130,7 +131,7 @@ int main(int argc, char* argv[])
 				firsttolerance, firstmaxiter, firstcfl);
 
 		// computation
-		time.solve();
+		time.solve(logfile);
 
 		Matrix<a_real,Dynamic,Dynamic,RowMajor>& u = time.unknowns();
 

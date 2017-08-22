@@ -2,6 +2,8 @@
 ../testcases/2dcylinder/grids/2dcylstruct5.msh
 -output_file
 ../data/2dcylinder.vtu
+-Log-file
+log.txt
 -M_infinity
 0.38
 -velocity_infinity
