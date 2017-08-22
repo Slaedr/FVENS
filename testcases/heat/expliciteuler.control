@@ -3,7 +3,7 @@
 -output_file
 ../data/heat-cartsquare-thinlayer-expl.vtu
 -Log-file
-log.txt
+heat-expl.log
 -Diffusivity
 1.0
 -boundary-value
