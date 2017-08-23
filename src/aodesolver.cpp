@@ -622,9 +622,10 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 	numthreads = omp_get_max_threads();
 #endif
 	std::ofstream outf; outf.open(logfile, std::ofstream::app);
-	outf << std::setw(10) << m->gnelem();
-	outf << " " << std::setw(4) << numthreads << " " << std::setw(10) << linwtime << " " 
-		<< std::setw(10) << linctime << " " << std::setw(4) << avglinsteps
+	outf << std::setw(10) << m->gnelem() << " "
+		<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
+		<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "
+		<< std::setw(10) << step
 		<< "\n";
 	outf.close();
 }
