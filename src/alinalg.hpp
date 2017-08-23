@@ -346,6 +346,11 @@ public:
 	void setParams(const double toler, const int maxits) {
 		maxiter = maxits; tol = toler;
 	}
+	
+	/// Sets time accumulators to zero
+	void resetRunTimes() {
+		walltime = 0; cputime = 0;
+	}
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {

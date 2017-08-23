@@ -187,8 +187,7 @@ public:
 	/** Appends a line of timing-related data to a log file as follows.
 	 *  num-cells num-threads  wall-time  CPU-time   avg-linear-solver-iterations 
 	 *      number-of-time-steps  <\n>
-	 * Times are the totals taken by linear solver only.
-	 * The iterations and time steps are those taken by the main solver only, not the starter.
+	 * All data corresponds to the main solver only, not the starter.
 	 * \param[in] logfile The file name to append timing data to
 	 */
 	void solve(std::string logfile);

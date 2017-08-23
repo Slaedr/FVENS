@@ -506,6 +506,9 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		resi = 1.0;
 		initres = 1.0;
 	}
+	
+	// we only want the main solver timing
+	linsolv->resetRunTimes();
 
 	std::cout << " SteadyBackwardEulerSolver: solve(): Starting main solver.\n";
 	while(resi/initres > tol && step < maxiter)
