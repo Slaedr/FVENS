@@ -8,7 +8,7 @@ ffs = 40*srad;
 hc = 0.1;
 hf = 0.2;
 // (1D) Refine factor
-ref = 1;
+ref = 11.31370849898476039;    // for weak4
 // number of points tangential
 nt = 8*ref;
 // number of points radial
