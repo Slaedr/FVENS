@@ -26,11 +26,15 @@ protected:
 	const amat::Array2d<a_real>* rcg;
 
 public:
-	Reconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
+	/// Base constructor
+	Reconstruction(const UMesh2dh *const mesh,             ///< Mesh context
+			const amat::Array2d<a_real> *const _rc,        ///< Cell centers 
+			const amat::Array2d<a_real>* const _rcg);      ///< Ghost cell centers
 	
 	virtual ~Reconstruction();
 
-	virtual void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, const amat::Array2d<a_real>*const unkg, 
+	virtual void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
+			const amat::Array2d<a_real>*const unkg, 
 			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
 };
 
@@ -39,8 +43,12 @@ template<short nvars>
 class ConstantReconstruction : public Reconstruction
 {
 public:
-	ConstantReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
-	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, const amat::Array2d<a_real>*const unkg, 
+	ConstantReconstruction(const UMesh2dh *const mesh, 
+			const amat::Array2d<a_real> *const _rc, 
+			const amat::Array2d<a_real>* const _rcg);
+
+	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
+			const amat::Array2d<a_real>*const unkg, 
 			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
@@ -53,8 +61,12 @@ template<short nvars>
 class GreenGaussReconstruction : public Reconstruction
 {
 public:
-	GreenGaussReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
-	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, const amat::Array2d<a_real>*const unkg, 
+	GreenGaussReconstruction(const UMesh2dh *const mesh, 
+			const amat::Array2d<a_real> *const _rc, 
+			const amat::Array2d<a_real>* const _rcg);
+
+	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
+			const amat::Array2d<a_real>*const unkg, 
 			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
@@ -63,16 +75,17 @@ public:
 template<short nvars>
 class WeightedLeastSquaresReconstruction : public Reconstruction
 {
-	std::vector<amat::Array2d<a_real>> V;		///< LHS of least-squares problem
-	std::vector<amat::Array2d<a_real>> f;		///< RHS of least-squares problem
-	amat::Array2d<a_real> d;					///< unknown vector of least-squares problem
-	amat::Array2d<a_real> idets;				///< inverse of determinants of the LHS
-	amat::Array2d<a_real> du;
+	std::vector<Matrix<a_real,2,2>> V;			///< LHS of least-squares problems
+	std::vector<Matrix<a_real,2,nvars>> f;		///< RHS of least-squares problems
+	Matrix<a_real,2,nvars> d;					///< unknown vector of least-squares problem
 
 public:
-	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg);
+	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, 
+			const amat::Array2d<a_real> *const _rc, 
+			const amat::Array2d<a_real>* const _rcg);
 
-	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, const amat::Array2d<a_real>*const unkg, 
+	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
+			const amat::Array2d<a_real>*const unkg, 
 			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
 };
 
