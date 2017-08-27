@@ -1,11 +1,13 @@
 // flow past cylinder
 
+refine = 1;
+
 // actual boundary
 srad = 0.5;
 // far field
 ffs = 40*srad;
 // mesh size at cylinder
-hc = 0.00625;
+hc = 0.2/refine;
 // mesh size at far field
 hf = 40*hc;
 

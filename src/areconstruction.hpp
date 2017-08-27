@@ -77,7 +77,7 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 {
 	std::vector<Matrix<a_real,2,2>> V;			///< LHS of least-squares problems
 	std::vector<Matrix<a_real,2,nvars>> f;		///< RHS of least-squares problems
-	Matrix<a_real,2,nvars> d;					///< unknown vector of least-squares problem
+	//Matrix<a_real,2,nvars> d;					///< unknown vector of least-squares problem
 
 public:
 	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, 

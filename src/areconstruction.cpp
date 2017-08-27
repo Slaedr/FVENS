@@ -146,6 +146,7 @@ WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(co
 
 	V.resize(m->gnelem());
 	f.resize(m->gnelem());
+#pragma omp parallel for default(shared)
 	for(a_int i = 0; i < m->gnelem(); i++)
 	{
 		V[i] = Matrix<a_real,2,2>::Zero();
@@ -153,6 +154,7 @@ WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(co
 
 	// compute LHS of least-squares problem
 
+#pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int ielem = m->gintfac(iface,0);
@@ -162,13 +164,19 @@ WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(co
 			w2 += ((*rc)(ielem,idim)-(*rcg)(iface,idim))*((*rc)(ielem,idim)-(*rcg)(iface,idim));
 			dr[idim] = (*rc)(ielem,idim)-(*rcg)(iface,idim);
 		}
-		w2 = 1.0/w2;
+		w2 = 1.0/(w2);
 
+#pragma omp atomic update
 		V[ielem](0,0) += w2*dr[0]*dr[0];
+#pragma omp atomic update
 		V[ielem](1,1) += w2*dr[1]*dr[1];
+#pragma omp atomic update
 		V[ielem](0,1) += w2*dr[0]*dr[1];
+#pragma omp atomic update
 		V[ielem](1,0) += w2*dr[0]*dr[1];
 	}
+
+#pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		a_int ielem = m->gintfac(iface,0);
@@ -179,19 +187,28 @@ WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(co
 			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
 			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
 		}
-		w2 = 1.0/w2;
+		w2 = 1.0/(w2);
 
+#pragma omp atomic update
 		V[ielem](0,0) += w2*dr[0]*dr[0];
+#pragma omp atomic update
 		V[ielem](1,1) += w2*dr[1]*dr[1];
+#pragma omp atomic update
 		V[ielem](0,1) += w2*dr[0]*dr[1];
+#pragma omp atomic update
 		V[ielem](1,0) += w2*dr[0]*dr[1];
 		
+#pragma omp atomic update
 		V[jelem](0,0) += w2*dr[0]*dr[0];
+#pragma omp atomic update
 		V[jelem](1,1) += w2*dr[1]*dr[1];
+#pragma omp atomic update
 		V[jelem](0,1) += w2*dr[0]*dr[1];
+#pragma omp atomic update
 		V[jelem](1,0) += w2*dr[0]*dr[1];
 	}
 
+#pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		//a_real det = V[ielem].determinant();
@@ -210,6 +227,7 @@ void WeightedLeastSquaresReconstruction<nvars>::compute_gradients(
 {
 	// compute least-squares RHS
 
+#pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int ielem = m->gintfac(iface,0);
@@ -219,17 +237,21 @@ void WeightedLeastSquaresReconstruction<nvars>::compute_gradients(
 			w2 += ((*rc)(ielem,idim)-(*rcg)(iface,idim))*((*rc)(ielem,idim)-(*rcg)(iface,idim));
 			dr[idim] = (*rc)(ielem,idim)-(*rcg)(iface,idim);
 		}
-		w2 = 1.0/w2;
+		w2 = 1.0/(w2);
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
 			du[ivar] = (*u)(ielem,ivar) - (*ug)(iface,ivar);
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
+#pragma omp atomic update
 			f[ielem](0,ivar) += w2*dr[0]*du[ivar];
+#pragma omp atomic update
 			f[ielem](1,ivar) += w2*dr[1]*du[ivar];
 		}
 	}
+
+#pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		a_int ielem = m->gintfac(iface,0);
@@ -240,24 +262,28 @@ void WeightedLeastSquaresReconstruction<nvars>::compute_gradients(
 			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
 			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
 		}
-		w2 = 1.0/w2;
+		w2 = 1.0/(w2);
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
 			du[ivar] = (*u)(ielem,ivar) - (*u)(jelem,ivar);
 
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
+#pragma omp atomic update
 			f[ielem](0,ivar) += w2*dr[0]*du[ivar];
+#pragma omp atomic update
 			f[ielem](1,ivar) += w2*dr[1]*du[ivar];
+#pragma omp atomic update
 			f[jelem](0,ivar) += w2*dr[0]*du[ivar];
+#pragma omp atomic update
 			f[jelem](1,ivar) += w2*dr[1]*du[ivar];
 		}
 	}
 
-	// solve normal equations by Cramer's rule
+#pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		d = V[ielem]*f[ielem];
+		Matrix <a_real,2,nvars> d = V[ielem]*f[ielem];
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
 			(*dudx)(ielem,ivar) = d(0,ivar);
