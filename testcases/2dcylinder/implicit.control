@@ -4,6 +4,8 @@
 ../data/2dcylinder.vtu
 -Log-file
 cylstruct.log
+-Log-nonlinear-convergence-history(YES,NO)
+YES
 -M_infinity
 0.38
 -velocity_infinity

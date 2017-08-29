@@ -4,6 +4,8 @@
 ../data/2dcyl-2-expl.vtu
 -Log-file
 expl.log
+-Log-nonlinear-convergence-history(YES,NO)
+YES
 -M_infinity
 0.38
 -velocity_infinity

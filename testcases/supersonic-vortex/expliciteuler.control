@@ -2,6 +2,10 @@
 ../testcases/supersonic-vortex/grids/quarterannulus6.msh
 -output_file
 ../data/quarterannulus-hll-2-expl.vtu
+-Log-file
+expl.log
+-Log-nonlinear-convergence-history(YES,NO)
+YES
 -M_infinity
 2.25
 -velocity_infinity

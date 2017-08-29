@@ -4,6 +4,8 @@
 ../data/heat-cartsquare-thinlayer.vtu
 -Log-file
 heat.log
+-Log-nonlinear-convergence-history(YES,NO)
+YES
 -Diffusivity
 1.0
 -boundary-value

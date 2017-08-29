@@ -22,9 +22,9 @@ template<short nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
 		Spatial<nvars> *const euler, Spatial<nvars> *const starterfv,const short use_starter, 
 		const double toler, const int maxits, const double cfl_n, 
-		const double ftoler, const int fmaxits, const double fcfl_n)
+		const double ftoler, const int fmaxits, const double fcfl_n, bool lognlres)
 
-	: SteadySolver<nvars>(mesh, euler, starterfv, use_starter), 
+	: SteadySolver<nvars>(mesh, euler, starterfv, use_starter, lognlres), 
 	tol(toler), maxiter(maxits), cfl(cfl_n), 
 	starttol(ftoler), startmaxiter(fmaxits), startcfl(fcfl_n)
 {
@@ -44,6 +44,10 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
+
+	std::ofstream convout;
+	if(lognres)
+		convout.open(logfile+".conv", std::ofstream::app);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -142,8 +146,12 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 				<< ", rel residual " << resi/initres << std::endl;
 
 		step++;
+		if(lognres)
+			convout << step << " " << std::setw(10) << resi/initres << '\n';
 	}
-	//std::cout << residual << std::endl;
+
+	if(lognres)
+		convout.close();
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
@@ -190,9 +198,9 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 		std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n,
-		const int mrestart)
+		const int mrestart, bool lognlres)
 
-	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), A(nullptr), 
+	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter, lognlres), A(nullptr), 
 	cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), 
 	tol(toler), maxiter(maxits), 
 	lintol(lin_tol), linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), 
@@ -420,6 +428,10 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 	MVector du = MVector::Zero(m->gnelem(), nvars);
+
+	std::ofstream convout;
+	if(lognres)
+		convout.open(logfile+".conv", std::ofstream::app);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -429,7 +441,9 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 	unsigned int avglinsteps = 0;
 	
 	if(usestarter == 1) {
+		
 		std::cout << " SteadyBackwardEulerSolver: Starting initialization run..\n";
+
 		while(resi/initres > starttol && step < startmaxiter)
 		{
 #pragma omp parallel for default(shared)
@@ -487,7 +501,8 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 			if(step == 0)
 				initres = resi;
 
-			if(step % 10 == 0) {
+			if(step % 10 == 0) 
+			{
 				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
 					<< ", rel residual " << resi/initres << std::endl;
 				std::cout << "      CFL = " << startcfl << ", Lin max iters = " 
@@ -598,7 +613,13 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		}
 
 		step++;
+			
+		if(lognres)
+			convout << step << " " << std::setw(10)  << resi/initres << '\n';
 	}
+
+	if(lognres)
+		convout.close();
 
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
@@ -642,9 +663,9 @@ SteadyMFBackwardEulerSolver<nvars>::SteadyMFBackwardEulerSolver(const UMesh2dh*c
 		std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl_n,
-		const int mrestart)
+		const int mrestart, bool lognonlinearres)
 
-	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter), 
+	: SteadySolver<nvars>(mesh, spatial, starterfv, use_starter, lognonlinearres), 
 	cflinit(cfl_init), cflfin(cfl_fin), rampstart(ramp_start), rampend(ramp_end), 
 	tol(toler), maxiter(maxits), lintol(lin_tol), 
 	linmaxiterstart(linmaxiter_start), linmaxiterend(linmaxiter_end), 

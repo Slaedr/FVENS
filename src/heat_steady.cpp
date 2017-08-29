@@ -24,16 +24,18 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, logfile, visflux, reconst, linsolver, timesteptype, prec;
+	string dum, meshfile, outf, logfile, visflux, reconst, linsolver, timesteptype, prec, lognresstr;
 	double initcfl, endcfl, tolerance, lintol, firstcfl, firsttolerance, diffcoeff, bvalue;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
 	short inittype, usestarter;
 	short nbuildsweeps, napplysweeps;
 	char mattype;
+	bool lognres;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
 	control >> dum; control >> logfile;
+	control >> dum; control >> lognresstr;
 	control >> dum; control >> diffcoeff;
 	control >> dum; control >> bvalue;
 	control >> dum; control >> inittype;
@@ -64,6 +66,11 @@ int main(int argc, char* argv[])
 	}
 	control.close();
 
+	if(lognresstr == "YES")
+		lognres = true;
+	else
+		lognres = false;
+	
 	// rhs and exact soln
 	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> rhs 
 		= [diffcoeff](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
@@ -105,7 +112,7 @@ int main(int argc, char* argv[])
 	
 	if(timesteptype == "IMPLICIT") {
 		SteadyBackwardEulerSolver<1> time(&m, prob, startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs);
+				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs, lognres);
 
 		// computation
 		time.solve(logfile);
@@ -128,7 +135,7 @@ int main(int argc, char* argv[])
 	}
 	else {
 		SteadyForwardEulerSolver<1> time(&m, prob, startprob, usestarter, tolerance, maxiter, initcfl,
-				firsttolerance, firstmaxiter, firstcfl);
+				firsttolerance, firstmaxiter, firstcfl, lognres);
 
 		// computation
 		time.solve(logfile);

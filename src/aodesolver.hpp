@@ -32,12 +32,21 @@ protected:
 	const short usestarter;
 	double cputime;
 	double walltime;
+	bool lognres;
 
 public:
-	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, 
-			Spatial<nvars> *const starterfv, const short use_starter)
-		: m(mesh), eul(euler), starter(starterfv), usestarter(use_starter), 
-			cputime{0.0}, walltime{0.0}
+	/** 
+	 * \param[in] mesh Mesh context
+	 * \param[in] spatial Spatial discretization context
+	 * \param[in] starterfv Spatial discretization used to generate an approximate solution initially
+	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
+	 * \param[in] log_nonlinear_residual Set to true if output of convergence history is needed
+	 */
+	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, 
+			Spatial<nvars> *const starterfv, const short use_starter,
+			bool log_nonlinear_residual)
+		: m(mesh), eul(spatial), starter(starterfv), usestarter(use_starter), 
+			cputime{0.0}, walltime{0.0}, lognres{log_nonlinear_residual}
 	{ }
 
 	const MVector& residuals() const {
@@ -78,6 +87,7 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::usestarter;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
+	using SteadySolver<nvars>::lognres;
 
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
 	const double tol;
@@ -92,7 +102,8 @@ public:
 	SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
 			Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, 
 			const short use_starter, const double toler, const int maxits, const double cfl,
-			const double ftoler, const int fmaxits, const double fcfl);
+			const double ftoler, const int fmaxits, const double fcfl,
+			bool log_nonlinear_res);
 	~SteadyForwardEulerSolver();
 
 	/// Solves the steady problem by a first-order explicit method, using local time-stepping
@@ -115,6 +126,7 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::usestarter;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
+	using SteadySolver<nvars>::lognres;
 
 	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
 
@@ -170,6 +182,7 @@ public:
 	 * \param[in] fmaxits Maximum iterations for the starting ODE solver
 	 * \param[in] fcfl CFL number to use for starting ODE solver
 	 * \param[in] restart_vecs Number of Krylov subspace vectors to store per restart iteration
+	 * \param[in] log_nonlinear_res True if you want nonlinear convergence history
 	 */
 	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, 
 		Spatial<nvars> *const starterfv, const short use_starter,
@@ -179,7 +192,7 @@ public:
 		const int linmaxiterend, std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
 		const double ftoler, const int fmaxits, const double fcfl,
-		const int restart_vecs);
+		const int restart_vecs, bool log_nonlinear_res);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -205,6 +218,7 @@ class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
 	using SteadySolver<nvars>::usestarter;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
+	using SteadySolver<nvars>::lognres;
 
 	/// Stores allowable local time step for each cell
 	amat::Array2d<a_real> dtm; 
@@ -244,7 +258,8 @@ public:
 		const double lin_tol, const int linmaxiterstart, const int linmaxiterend, 
 		std::string linearsolver, std::string precond,
 		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl, const int restart_vecs);
+		const double ftoler, const int fmaxits, const double fcfl, const int restart_vecs,
+		bool log_nonlinear_res);
 	
 	~SteadyMFBackwardEulerSolver();
 
