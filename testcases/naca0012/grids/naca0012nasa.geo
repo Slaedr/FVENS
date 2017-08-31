@@ -1,12 +1,15 @@
 // params
-refine = 8;
+refine = 1;
 // ---
 
-meshSizeWing = 0.2/refine;
-meshSizeFF = 10*meshSizeWing;
-nsplinepoints = 20*refine;
-
 radiusFF = 20;
+
+meshSizeWing = 0.2/refine;
+meshSizeLead = meshSizeWing/5.0;
+meshSizeTrail = meshSizeWing/2.0;
+meshSizeFF = radiusFF*meshSizeWing;
+
+nsplinepoints = 20*refine;
 
 // Shape of airfoil
 Macro topsurface
@@ -19,24 +22,32 @@ Return
 // Airfoil points and splines
 
 tsplinePoints[0] = 0;
-Point(0) = {1,0,0,meshSizeWing/2.0};
+Point(0) = {1,0,0,meshSizeTrail};
 
 // assume range is inclusive
 For i In {1:nsplinepoints-2}
 	x = (1.0 - i/(nsplinepoints-1.0))^2;
 	Call botsurface;
 	tsplinePoints[i] = newp;
-	Point(tsplinePoints[i]) = {x,y,0,meshSizeWing}; 
+	If(nsplinepoints-2-i < 2*refine)
+		Point(tsplinePoints[i]) = {x,y,0,meshSizeLead}; 
+	Else
+		Point(tsplinePoints[i]) = {x,y,0,meshSizeWing}; 
+	EndIf
 EndFor
 tsplinePoints[nsplinepoints-1] = newp;
-Point(tsplinePoints[nsplinepoints-1]) = {0,0,0,meshSizeWing/5.0}; 
+Point(tsplinePoints[nsplinepoints-1]) = {0,0,0,meshSizeLead}; 
 
 bsplinePoints[0] = tsplinePoints[nsplinepoints-1];
 For i In {1:nsplinepoints-2}
 	x = (i/(nsplinepoints-1.0))^2;
 	Call topsurface;
 	bsplinePoints[i] = newp;
-	Point(bsplinePoints[i]) = {x,y,0,meshSizeWing};
+	If(i < 2*refine)
+		Point(bsplinePoints[i]) = {x,y,0,meshSizeLead};
+	Else
+		Point(bsplinePoints[i]) = {x,y,0,meshSizeWing};
+	EndIf
 EndFor
 
 bsplinePoints[nsplinepoints-1] = 0;
@@ -45,7 +56,7 @@ Spline(1) = tsplinePoints[];
 Spline(2) = bsplinePoints[];
 
 Point(10000) = {0,0,0,radiusFF};
-Point(10001) = {radiusFF,0,0,meshSizeFF};
+Point(10001) = {radiusFF,0,0,meshSizeFF/1.5};
 Point(10002) = {0,radiusFF,0,meshSizeFF};
 Point(10003) = {-radiusFF,0,0,meshSizeFF};
 Point(10004) = {0,-radiusFF,0,meshSizeFF};
@@ -62,4 +73,9 @@ Physical Surface(1) = {10};
 Physical Line(2) = {1,2};
 Physical Line(4) = {5,6,7,8};
 
+Recombine Surface(10);
+//Mesh.SubdivisionAlgorithm=1;	// ensures all quads, I think
 
+//Mesh.Algorithm=6;		// Frontal
+
+Color Black{ Surface{10}; }
