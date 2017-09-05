@@ -25,7 +25,7 @@ and for a release build
 
 		make -j<N>
 
-where '<N>' should be replaced by the number of threads to use for a parallel build.
+where '\<N\>' should be replaced by the number of threads to use for a parallel build.
 
 Running
 -------
