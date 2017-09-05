@@ -132,17 +132,40 @@ public:
 	}
 
 	/// Separate setup function in case no-arg constructor has to be used
-	void setup(a_int nr, a_int nc)
+	/** \deprecated Please use resize() instead.
+	 */
+	void setup(const a_int nr, const a_int nc)
 	{
 		if(nc==0)
 		{
-			std::cout << "Array2d: setup(): Error: Number of columns is zero. Setting it to 1.\n";
-			nc=1;
+			std::cout << "Array2d: setup(): ! Error: Number of columns is zero!\n";
+			return;
 		}
 		if(nr==0)
 		{
-			std::cout << "Array2d(): setup(): Error: Number of rows is zero. Setting it to 1.\n";
-			nr=1;
+			std::cout << "Array2d(): setup(): ! Error: Number of rows is zero!\n";
+			return;
+		}
+		nrows = nr; ncols = nc;
+		size = nrows*ncols;
+		if(isalloc == true)
+			delete [] elems;
+		elems = new T[nrows*ncols];
+		isalloc = true;
+	}
+	
+	/// Sets a new size for the array, deletes the contents and allocates new memory
+	void resize(const a_int nr, const a_int nc)
+	{
+		if(nc==0)
+		{
+			std::cout << "Array2d: setup(): ! Error: Number of columns is zero!\n";
+			return;
+		}
+		if(nr==0)
+		{
+			std::cout << "Array2d(): setup(): ! Error: Number of rows is zero!\n";
+			return;
 		}
 		nrows = nr; ncols = nc;
 		size = nrows*ncols;

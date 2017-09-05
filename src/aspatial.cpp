@@ -321,6 +321,11 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 		lim = new WENOLimiter(m, &rcg, &rc, gr);
 		std::cout << "  EulerFV: WENO limiter selected.\n";
 	}
+	else if(limiter == "VANALBADA")
+	{
+		lim = new VanAlbadaLimiter(m, &rcg, &rc, gr);
+		std::cout << "  EulerFV: Van Albada limiter selected.\n";
+	}
 }
 
 EulerFV::~EulerFV()
@@ -498,7 +503,7 @@ void EulerFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		compute_boundary_states(uleft, ug);
 
 		rec->compute_gradients(&u, &ug, &dudx, &dudy);
-		lim->compute_face_values(&u, &ug, &dudx, &dudy, &uleft, &uright);
+		lim->compute_face_values(u, ug, dudx, dudy, uleft, uright);
 	}
 	else
 	{

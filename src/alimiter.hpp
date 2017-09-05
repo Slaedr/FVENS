@@ -1,3 +1,8 @@
+/** @file alimiter.hpp
+ * @brief Slope limiters for variable-extrapolation reconstruction
+ * @author Aditya Kashi
+ */
+
 #ifndef __ALIMITER_H
 
 #ifndef __ACONSTANTS_H
@@ -30,71 +35,87 @@ protected:
 
 public:
 	FaceDataComputation();
-    FaceDataComputation (const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
-    void setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r);
 
-	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
-			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv,
-			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right) = 0;
+    FaceDataComputation (const UMesh2dh* mesh,            ///< Mesh context
+			const amat::Array2d<a_real>* ghost_centres,   ///< Ghost cell centres
+			const amat::Array2d<a_real>* c_centres,       ///< Cell centres
+			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
+
+    void setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
+
+	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv,
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) = 0;
 
 	virtual ~FaceDataComputation();
 };
 
-/// Calculate values of variables at left and right sides of each face based on computed derivatives but without limiter.
+/// Calculate values of variables at left and right sides of each face 
+/// based on computed derivatives but without limiter.
 /** ug (cell centered flow variables at ghost cells) are not used for this
  */
 class NoLimiter : public FaceDataComputation
 {
 public:
 	/// Constructs the NoLimiter object. \sa FaceDataComputation::FaceDataComputation.
-	NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+	NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
-			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv, 
-			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right);
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
 };
 
 /// Computes state at left and right sides of each face based on WENO-limited derivatives at each cell
 /** References:
- * - Y. Xia, X. Liu and H. Luo. "A finite volume method based on a WENO reconstruction for compressible flows on hybrid grids", 52nd AIAA Aerospace Sciences Meeting, AIAA-2014-0939.
- * - M. Dumbser and M. Kaeser. "Arbitrary high order non-oscillatory finite volume schemes on unsttructured meshes for linear hyperbolic systems", J. Comput. Phys. 221 pp 693--723, 2007.
+ * - Y. Xia, X. Liu and H. Luo. "A finite volume method based on a WENO reconstruction 
+ *   for compressible flows on hybrid grids", 52nd AIAA Aerospace Sciences Meeting, AIAA-2014-0939.
+ * - M. Dumbser and M. Kaeser. "Arbitrary high order non-oscillatory finite volume schemes on 
+ *   unsttructured meshes for linear hyperbolic systems", J. Comput. Phys. 221 pp 693--723, 2007.
  *
- * Note that we do not take the 'oscillation indicator' as the square of the magnitude of the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
+ * Note that we do not take the 'oscillation indicator' as the square of the magnitude of 
+ * the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
  */
 class WENOLimiter : public FaceDataComputation
 {
-	amat::Array2d<a_real>* ldudx;
-	amat::Array2d<a_real>* ldudy;
+	amat::Array2d<a_real> ldudx;
+	amat::Array2d<a_real> ldudy;
 	a_real gamma;
 	a_real lambda;
 	a_real epsilon;
 public:
-    WENOLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r);
+    WENOLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost,
-			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv,
-			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right);
-
-	~WENOLimiter();
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
 };
 
-/// Computes face values using the MUSCL scheme with Van-Albada limiter
+/// Computes face values using the `3rd-order' MUSCL scheme with Van-Albada limiter
 class VanAlbadaLimiter : public FaceDataComputation
 {
-    a_real eps;
-    a_real k;               			/// van-Albada parameter
-	amat::Array2d<a_real> phi_l;		/// left-face limiter values
-	amat::Array2d<a_real> phi_r;		/// right-face limiter values
+    a_real eps;							///< Small number
+    a_real k;               			///< MUSCL order parameter
+	amat::Array2d<a_real> phi_l;		///< left-face limiter values
+	amat::Array2d<a_real> phi_r;		///< right-face limiter values
 
 public:
-	void setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r);
+    VanAlbadaLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
     
-	/// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unknowns, const amat::Array2d<a_real> *const unknow_ghost, 
-			const amat::Array2d<a_real> *const x_deriv, const amat::Array2d<a_real> *const y_deriv, 
-			amat::Array2d<a_real> *const uface_left, amat::Array2d<a_real> *const uface_right);
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
 };
 
 } // end namespace

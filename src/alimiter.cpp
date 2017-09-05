@@ -5,7 +5,9 @@ namespace acfd {
 FaceDataComputation::FaceDataComputation()
 { }
 
-FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, 
+FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, 
+		const amat::Array2d<a_real>* ghost_centres, 
+		const amat::Array2d<a_real>* c_centres, 
 		const amat::Array2d<a_real>* gauss_r)
 	:
 	m(mesh),
@@ -29,12 +31,15 @@ void FaceDataComputation::setup(const UMesh2dh* mesh,
 	ng = gr[0].rows();
 }
 
-NoLimiter::NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
+NoLimiter::NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+		const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
 	: FaceDataComputation(mesh, ghost_centres, c_centres, gauss_r)
 { }
 
-void NoLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug,
-		const amat::Array2d<a_real> *const dudx, const amat::Array2d<a_real> *const dudy, amat::Array2d<a_real> *const ufl, amat::Array2d<a_real> *const ufr)
+void NoLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const amat::Array2d<a_real>& ug,
+		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
 {
 	// (a) internal faces
 	//cout << "NoLimiter: compute_face_values(): Computing values at faces - internal\n";
@@ -52,8 +57,12 @@ void NoLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor
 				for(int i = 0; i < NVARS; i++)
 				{
 
-					(*ufl)(ied,i) = (*u)(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
-					(*ufr)(ied,i) = (*u)(jelem,i) + dudx->get(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) + dudy->get(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
+					ufl(ied,i) = u(ielem,i) 
+						+ dudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
+						+ dudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+					ufr(ied,i) = u(jelem,i) 
+						+ dudx(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) 
+						+ dudy(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
 				}
 			}
 		}
@@ -67,31 +76,30 @@ void NoLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor
 			for(int ig = 0; ig < NGAUSS; ig++)
 			{
 				for(int i = 0; i < NVARS; i++)
-					(*ufl)(ied,i) = (*u)(ielem,i) + dudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+					ufl(ied,i) = u(ielem,i) 
+						+ dudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
+						+ dudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
 			}
 		}
 	}
 }
 
-WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
+WENOLimiter::WENOLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+		const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
 	: FaceDataComputation(mesh, ghost_centres, c_centres, gauss_r)
 {
-	ldudx = new amat::Array2d<a_real>(m->gnelem(),NVARS);
-	ldudy = new amat::Array2d<a_real>(m->gnelem(),NVARS);
+	ldudx.resize(m->gnelem(),NVARS);
+	ldudy.resize(m->gnelem(),NVARS);
 	// values below chosen from second reference (Dumbser and Kaeser)
 	gamma = 4.0;
 	lambda = 1e3;
 	epsilon = 1e-5;
 }
 
-WENOLimiter::~WENOLimiter()
-{
-	delete ldudx;
-	delete ldudy;
-}
-
-void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug,
-		const amat::Array2d<a_real> *const dudx, const amat::Array2d<a_real> *const dudy, amat::Array2d<a_real> *const ufl, amat::Array2d<a_real> *const ufr)
+void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const amat::Array2d<a_real>& ug,
+		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
 {
 	// first compute limited derivatives at each cell
 
@@ -103,15 +111,16 @@ void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMaj
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				a_real wsum = 0;
-				(*ldudx)(ielem,ivar) = 0;
-				(*ldudy)(ielem,ivar) = 0;
+				ldudx(ielem,ivar) = 0;
+				ldudy(ielem,ivar) = 0;
 
 				// Central stencil
-				a_real denom = pow( dudx->get(ielem,ivar)*dudx->get(ielem,ivar) + dudy->get(ielem,ivar)*dudy->get(ielem,ivar) + epsilon, gamma);
+				a_real denom = pow( dudx(ielem,ivar)*dudx(ielem,ivar) 
+						+ dudy(ielem,ivar)*dudy(ielem,ivar) + epsilon, gamma);
 				a_real w = lambda / denom;
 				wsum += w;
-				(*ldudx)(ielem,ivar) += w*dudx->get(ielem,ivar);
-				(*ldudy)(ielem,ivar) += w*dudy->get(ielem,ivar);
+				ldudx(ielem,ivar) += w*dudx(ielem,ivar);
+				ldudy(ielem,ivar) += w*dudy(ielem,ivar);
 
 				// Biased stencils
 				for(int jel = 0; jel < m->gnfael(ielem); jel++)
@@ -122,15 +131,16 @@ void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMaj
 					if(jelem >= m->gnelem())
 						continue;
 
-					denom = pow( dudx->get(jelem,ivar)*dudx->get(jelem,ivar) + dudy->get(jelem,ivar)*dudy->get(jelem,ivar) + epsilon, gamma);
+					denom = pow( dudx(jelem,ivar)*dudx(jelem,ivar) 
+							+ dudy(jelem,ivar)*dudy(jelem,ivar) + epsilon, gamma);
 					w = 1.0 / denom;
 					wsum += w;
-					(*ldudx)(ielem,ivar) += w*dudx->get(jelem,ivar);
-					(*ldudy)(ielem,ivar) += w*dudy->get(jelem,ivar);
+					ldudx(ielem,ivar) += w*dudx(jelem,ivar);
+					ldudy(ielem,ivar) += w*dudy(jelem,ivar);
 				}
 
-				(*ldudx)(ielem,ivar) /= wsum;
-				(*ldudy)(ielem,ivar) /= wsum;
+				ldudx(ielem,ivar) /= wsum;
+				ldudy(ielem,ivar) /= wsum;
 			}
 		}
 		
@@ -147,8 +157,12 @@ void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMaj
 				for(int i = 0; i < NVARS; i++)
 				{
 
-					(*ufl)(ied,i) = (*u)(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
-					(*ufr)(ied,i) = (*u)(jelem,i) + ldudx->get(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) + ldudy->get(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
+					ufl(ied,i) = u(ielem,i) 
+						+ ldudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
+						+ ldudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+					ufr(ied,i) = u(jelem,i) 
+						+ ldudx(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) 
+						+ ldudy(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
 				}
 			}
 		}
@@ -162,35 +176,42 @@ void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMaj
 			for(int ig = 0; ig < NGAUSS; ig++)
 			{
 				for(int i = 0; i < NVARS; i++)
-					(*ufl)(ied,i) = (*u)(ielem,i) + ldudx->get(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) + ldudy->get(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+					ufl(ied,i) = u(ielem,i) 
+						+ ldudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
+						+ ldudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
 			}
 		}
 	} // end parallel region
 }
 
-void VanAlbadaLimiter::setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+VanAlbadaLimiter::VanAlbadaLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+	: FaceDataComputation(mesh, ghost_centres, r_centres, gauss_r)
 {
-	FaceDataComputation::setup(mesh, ghost_centres, r_centres, gauss_r);
 	eps = 1e-8;
 	k = 1.0/3.0;
-	phi_l.setup(m->gnaface(), NVARS);
-	phi_r.setup(m->gnaface(), NVARS);
+	phi_l.resize(m->gnaface(), NVARS);
+	phi_r.resize(m->gnaface(), NVARS);
 }
 
-/// Calculate values of variables at left and right sides of each face based on computed derivatives and limiter values
-void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, const amat::Array2d<a_real> *const ug,
-		const amat::Array2d<a_real> *const dudx, const amat::Array2d<a_real> *const dudy, amat::Array2d<a_real> *const ufl, amat::Array2d<a_real> *const ufr)
+void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const amat::Array2d<a_real>& ug,
+		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
 {
 	//compute_limiters
 	
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		int lel = m->gintfac(ied,0);
-		amat::Array2d<a_real> deltam(NVARS,1);
 		for(int i = 0; i < NVARS; i++)
 		{
-			deltam(i) = 2 * ( dudx->get(lel,i)*(rb->get(ied,0)-ri->get(lel,0)) + dudy->get(lel,i)*(rb->get(ied,1)-ri->get(lel,1)) ) - (ug->get(ied,i) - (*u)(lel,i));
-			phi_l(ied,i) = (2*deltam(i) * (ug->get(ied,i) - (*u)(lel,i)) + eps) / (deltam(i)*deltam(i) + (ug->get(ied,i) - (*u)(lel,i))*(ug->get(ied,i) - (*u)(lel,i)) + eps);
+			a_real deltam;
+			deltam = 2 * ( dudx(lel,i)*(rb->get(ied,0)-ri->get(lel,0)) 
+				+ dudy(lel,i)*(rb->get(ied,1)-ri->get(lel,1)) ) 
+				- (ug(ied,i) - u(lel,i));
+			phi_l(ied,i) = (2*deltam * (ug(ied,i) - u(lel,i)) + eps) 
+				/ (deltam*deltam + (ug(ied,i) - u(lel,i))*(ug(ied,i) - u(lel,i)) + eps);
 			if( phi_l(ied,i) < 0.0) phi_l(ied,i) = 0.0;
 		}
 	}
@@ -199,17 +220,20 @@ void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,R
 	{
 		a_int lel = m->gintfac(ied,0);
 		a_int rel = m->gintfac(ied,1);
-		amat::Array2d<a_real> deltam(NVARS,1);
-		amat::Array2d<a_real> deltap(NVARS,1);
 		for(int i = 0; i < NVARS; i++)
 		{
-			deltam(i) = 2 * ( dudx->get(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - ((*u)(rel,i) - (*u)(lel,i));
-			deltap(i) = 2 * ( dudx->get(rel,i)*(ri->get(rel,0)-ri->get(lel,0)) + dudy->get(rel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - ((*u)(rel,i) - (*u)(lel,i));
+			a_real deltam, deltap;
+			deltam = 2 * ( dudx(lel,i)*(ri->get(rel,0)-ri->get(lel,0)) 
+					+ dudy(lel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u(rel,i) - u(lel,i));
+			deltap = 2 * ( dudx(rel,i)*(ri->get(rel,0)-ri->get(lel,0)) 
+					+ dudy(rel,i)*(ri->get(rel,1)-ri->get(lel,1)) ) - (u(rel,i) - u(lel,i));
 
-			phi_l(ied,i) = (2*deltam(i) * ((*u)(rel,i) - (*u)(lel,i)) + eps) / (deltam(i)*deltam(i) + ((*u)(rel,i) - (*u)(lel,i))*((*u)(rel,i) - (*u)(lel,i)) + eps);
+			phi_l(ied,i) = (2*deltam * (u(rel,i) - u(lel,i)) + eps) 
+				/ (deltam*deltam + (u(rel,i) - u(lel,i))*(u(rel,i) - u(lel,i)) + eps);
 			if( phi_l(ied,i) < 0.0) phi_l(ied,i) = 0.0;
 
-			phi_r(ied,i) = (2*deltap(i) * ((*u)(rel,i) - (*u)(lel,i)) + eps) / (deltap(i)*deltap(i) + ((*u)(rel,i) - (*u)(lel,i))*((*u)(rel,i) - (*u)(lel,i)) + eps);
+			phi_r(ied,i) = (2*deltap * (u(rel,i) - u(lel,i)) + eps) 
+				/ (deltap*deltap + (u(rel,i) - u(lel,i))*(u(rel,i) - u(lel,i)) + eps);
 			if( phi_r(ied,i) < 0.0) phi_r(ied,i) = 0.0;
 		}
 	}
@@ -217,8 +241,6 @@ void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,R
 	// apply the limiters
 	
 	//cout << "VanAlbadaLimiter: compute_interface_values(): Computing values at faces - internal\n";
-	amat::Array2d<a_real> deltam(NVARS,1);
-	amat::Array2d<a_real> deltap(NVARS,1);
 	for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);
@@ -230,11 +252,18 @@ void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,R
 		{
 			for(int i = 0; i < NVARS; i++)
 			{
-				deltam(i) = 2 * ( dudx->get(ielem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) + dudy->get(ielem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) - ((*u)(jelem,i) - (*u)(ielem,i));
-				deltap(i) = 2 * ( dudx->get(jelem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) + dudy->get(jelem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) - ((*u)(jelem,i) - (*u)(ielem,i));
+				a_real deltam, deltap;
+				deltam = 2 * ( dudx(ielem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) 
+					+ dudy(ielem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) 
+					- (u(jelem,i) - u(ielem,i));
+				deltap = 2 * ( dudx(jelem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) 
+					+ dudy(jelem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) 
+					- (u(jelem,i) - u(ielem,i));
 
-				(*ufl)(ied,i) = (*u)(ielem,i) + phi_l.get(ied,i)/4.0*( (1-k*phi_l.get(ied,i))*deltam.get(i) + (1+k*phi_l.get(ied,i))*((*u)(jelem,i) - (*u)(ielem,i)) );
-				(*ufr)(ied,i) = (*u)(jelem,i) + phi_r.get(ied,i)/4.0*( (1-k*phi_r.get(ied,i))*deltap(i) + (1+k*phi_r.get(ied,i))*((*u)(jelem,i) - (*u)(ielem,i)) );
+				ufl(ied,i) = u(ielem,i) + phi_l(ied,i)/4.0
+					*( (1-k*phi_l(ied,i))*deltam + (1+k*phi_l(ied,i))*(u(jelem,i) - u(ielem,i)) );
+				ufr(ied,i) = u(jelem,i) + phi_r(ied,i)/4.0
+					*( (1-k*phi_r(ied,i))*deltap + (1+k*phi_r(ied,i))*(u(jelem,i) - u(ielem,i)) );
 			}
 		}
 	}
