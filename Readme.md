@@ -1,17 +1,31 @@
 FVENS
 =====
 
-A finite volume (2nd order in space) compressible Euler solver.
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. A WENO (weighted essentially non-oscillatory) limiter is available for flows with shocks. A number of numerical convective fluxes are available - local Lax-Friedrichs, Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer) and HLLC. It currently only solves steady-state problems.
+
+Both explicit and implicit pseudo-time stepping is avaible. Explicit time-stepping uses the forward Euler scheme while implicit stepping uses the backward Euler scheme. Local time-stepping is used. A number of linear solvers and preconditioners are available. One of the focus areas for the project is massively parallel preconditioners.
 
 Building
 --------
-The Eigen matrix library is required. Please set EIGEN_DIR before issuing
+The following libraries are required:
+- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (version 3.3.4) - needs an environment variable called EIGEN_DIR to be set to the top-level Eigen directory
+- [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called BLASTED_DIR to be set to the top level BLASTed directory.
+
+Optionally, OpenMP can be used if available (default builds of GCC have this, for instance).
+
+To build, issue
 
 		cmake /path/to/src -DCMAKE_BUILD_TYPE=Debug -DOMP=1
 
+and for a release build
+
+		cmake /path/to/src -DCMAKE_BUILD_TYPE=Release -DOMP=1 -DSSE=1
+
+'-DOMP=1' should be removed if OpenMP is not available.
+
 Running
 -------
-The executables should be called with the path to a control file as input. Set  OMP_NUM_THREADS to the number of threads you want to use.
+The executables should be called with the path to a control file as input. Set OMP_NUM_THREADS to the number of threads you want to use.
 
 Control files
 -------------
