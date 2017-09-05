@@ -1,9 +1,9 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. A WENO (weighted essentially non-oscillatory) limiter is available for flows with shocks. A number of numerical convective fluxes are available - local Lax-Friedrichs, Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer) and HLLC. It currently only solves steady-state problems.
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. A WENO (weighted essentially non-oscillatory) limiter is available for flows with shocks. A number of numerical convective fluxes are available - local Lax-Friedrichs, Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer) and HLLC. It currently solves only steady-state problems.
 
-Both explicit and implicit pseudo-time stepping is avaible. Explicit time-stepping uses the forward Euler scheme while implicit stepping uses the backward Euler scheme. Local time-stepping is used. A number of linear solvers and preconditioners are available. One of the focus areas for the project is massively parallel preconditioners.
+Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme. Local time-stepping is used. A number of linear solvers and preconditioners are available. One of the focus areas for the project is massively parallel preconditioners for shared-memory machines.
 
 Building
 --------
@@ -21,16 +21,24 @@ and for a release build
 
 		cmake /path/to/src -DCMAKE_BUILD_TYPE=Release -DOMP=1 -DSSE=1
 
-'-DOMP=1' should be removed if OpenMP is not available.
+'-DOMP=1' should be removed if OpenMP is not available. Doing so will cause warnings about unknown pragmas to appear while building, which are to be ignored. Finally,
+
+		make -j<N>
+
+where '<N>' should be replaced by the number of threads to use for a parallel build.
 
 Running
 -------
 The executables should be called with the path to a control file as input. Set OMP_NUM_THREADS to the number of threads you want to use.
 
+		export OMP_NUM_THREADS=4
+		./fvens_steady /path/to/testcases/2dcylinder/implicit.control
+
 Control files
 -------------
 Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called.
 
+---
 
 Copyright (C) 2016, 2017 Aditya Kashi. See LICENSE.md for terms of redistribution with/without modification and those of linking.
 
