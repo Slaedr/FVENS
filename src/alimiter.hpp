@@ -118,5 +118,42 @@ public:
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
 };
 
+/// Non-differentiable multidimensional slope limiter
+class BarthJespersenLimiter : public FaceDataComputation
+{
+public:
+    BarthJespersenLimiter(const UMesh2dh* mesh, 
+			const amat::Array2d<a_real>* ghost_centres, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
+    
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+};
+
+/// Differentiable modification of Barth-Jespersen limiter
+class VenkatakrishnanLimiter: public FaceDataComputation
+{
+	/// Parameter for adjusting limiting vs convergence
+	a_real K;
+
+public:
+	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
+	 *             higher values improve convergence at the expense of some oscillations
+	 *             in the solution. Defaults to 2.0.
+	 */
+    VenkatakrishnanLimiter(const UMesh2dh* mesh, 
+			const amat::Array2d<a_real>* ghost_centres, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r, a_real k_param);
+    
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+};
+
 } // end namespace
 #endif

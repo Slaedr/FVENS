@@ -326,6 +326,16 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 		lim = new VanAlbadaLimiter(m, &rcg, &rc, gr);
 		std::cout << "  EulerFV: Van Albada limiter selected.\n";
 	}
+	else if(limiter == "BARTHJESPERSEN")
+	{
+		lim = new BarthJespersenLimiter(m, &rcg, &rc, gr);
+		std::cout << "  EulerFV: Barth-Jespersen limiter selected.\n";
+	}
+	else if(limiter == "VENKATAKRISHNAN")
+	{
+		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 2.0);
+		std::cout << "  EulerFV: Venkatakrishnan limiter selected.\n";
+	}
 }
 
 EulerFV::~EulerFV()

@@ -269,4 +269,136 @@ void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,R
 	}
 }
 
+BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh* mesh, 
+		const amat::Array2d<a_real>* ghost_centres, 
+		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+	: FaceDataComputation(mesh, ghost_centres, r_centres, gauss_r)
+{
+}
+
+void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const amat::Array2d<a_real>& ug, 
+		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+{
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		for(int ivar = 0; ivar < NVARS; ivar++)
+		{
+			//std::vector<a_real> lims(m->gnfael(iel));
+			a_real duimin=0, duimax=0;
+			for(int j = 0; j < m->gnfael(iel); j++)
+			{
+				a_int jel = m->gesuel(iel,j);
+				a_real dui = u(jel,ivar)-u(iel,ivar);
+				if(dui > duimax) duimax = dui;
+				if(dui < duimin) duimin = dui;
+			}
+			
+			a_real lim = 1;
+			for(int j = 0; j < m->gnfael(iel); j++)
+			{
+				a_int face = m->gelemface(iel,j);
+				a_real uface = u(iel,ivar) + dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
+					+ dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+				
+				a_real phiik;
+				a_real diff = uface - u(iel,ivar);
+				if(diff>0)
+					phiik = 1 < duimax/diff ? 1 : duimax/diff;
+				else if(diff < 0)
+					phiik = 1 < duimin/diff ? 1 : duimin/diff;
+				else
+					phiik = 1;
+
+				if(phiik < lim)
+					lim = phiik;
+			}
+			
+			for(int j = 0; j < m->gnfael(iel); j++)
+			{
+				a_int face = m->gelemface(iel,j);
+				a_int jel = m->gesuel(iel,j);
+				
+				if(iel < jel)
+					ufl(face,ivar) = u(iel,ivar) 
+						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
+						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+				else
+					ufr(face,ivar) = u(iel,ivar) 
+						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
+						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+			}
+
+		}
+	}
+}
+
+VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh, 
+		const amat::Array2d<a_real>* ghost_centres, 
+		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r,
+		a_real k_param=2.0)
+	: FaceDataComputation(mesh, ghost_centres, r_centres, gauss_r), K(k_param)
+{
+}
+
+void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const amat::Array2d<a_real>& ug, 
+		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+{
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		for(int ivar = 0; ivar < NVARS; ivar++)
+		{
+			//std::vector<a_real> lims(m->gnfael(iel));
+			a_real duimin=0, duimax=0;
+			for(int j = 0; j < m->gnfael(iel); j++)
+			{
+				a_int jel = m->gesuel(iel,j);
+				a_real dui = u(jel,ivar)-u(iel,ivar);
+				if(dui > duimax) duimax = dui;
+				if(dui < duimin) duimin = dui;
+			}
+			
+			a_real lim = 1;
+			for(int j = 0; j < m->gnfael(iel); j++)
+			{
+				a_int face = m->gelemface(iel,j);
+				a_real uface = u(iel,ivar) + dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
+					+ dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+				
+				a_real phiik;
+				a_real diff = uface - u(iel,ivar);
+				if(diff>0)
+					phiik = 1 < duimax/diff ? 1 : duimax/diff;
+				else if(diff < 0)
+					phiik = 1 < duimin/diff ? 1 : duimin/diff;
+				else
+					phiik = 1;
+
+				if(phiik < lim)
+					lim = phiik;
+			}
+			
+			for(int j = 0; j < m->gnfael(iel); j++)
+			{
+				a_int face = m->gelemface(iel,j);
+				a_int jel = m->gesuel(iel,j);
+				
+				if(iel < jel)
+					ufl(face,ivar) = u(iel,ivar) 
+						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
+						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+				else
+					ufr(face,ivar) = u(iel,ivar) 
+						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
+						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+			}
+
+		}
+	}
+}
+
 } // end namespace
+
