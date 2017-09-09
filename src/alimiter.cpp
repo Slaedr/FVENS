@@ -285,7 +285,6 @@ void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyna
 	{
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
-			//std::vector<a_real> lims(m->gnfael(iel));
 			a_real duimin=0, duimax=0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
@@ -340,6 +339,23 @@ VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh,
 		a_real k_param=2.0)
 	: FaceDataComputation(mesh, ghost_centres, r_centres, gauss_r), K(k_param)
 {
+	// compute characteristic length, currently the maximum edge length, of all cells
+	clength.resize(m->gnelem());
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		for(int ifa = 0; ifa < m->gnnode(iel); ifa++)
+		{
+			a_real llen = 0;
+			int inode = ifa, jnode = (ifa+1) % m->gnnode(iel);
+			for(int idim = 0; idim < 2; idim++)
+				llen += std::pow(m->gcoords(m->ginpoel(iel,inode),idim) 
+						- m->gcoords(m->ginpoel(iel,jnode),idim), 2);
+
+			if(clength[iel] < llen) clength[iel] = llen;
+		}
+		clength[iel] = std::sqrt(clength[iel]);
+	}
 }
 
 void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
@@ -349,9 +365,10 @@ void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyn
 {
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
+		a_real eps2 = std::pow(K*clength[iel], 3);
+
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
-			//std::vector<a_real> lims(m->gnfael(iel));
 			a_real duimin=0, duimax=0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
@@ -369,13 +386,13 @@ void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyn
 					+ dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
 				
 				a_real phiik;
-				a_real diff = uface - u(iel,ivar);
-				if(diff>0)
-					phiik = 1 < duimax/diff ? 1 : duimax/diff;
-				else if(diff < 0)
-					phiik = 1 < duimin/diff ? 1 : duimin/diff;
-				else
-					phiik = 1;
+				a_real dm = uface - u(iel,ivar);
+				a_real dp;
+
+				// Venkatakrishnan modification
+				if(dm < 0) dp = duimin;
+				else dp = duimax;
+				phiik = (dp*dp + 2*dp*dm + eps2)/(dp*dp + dp*dm + 2*dm*dm + eps2);
 
 				if(phiik < lim)
 					lim = phiik;

@@ -44,6 +44,8 @@
 
 namespace acfd
 {
+#define DOUBLE_PRECISION 1
+	
 	/// The floating-point type to use for all float computations
 	typedef double a_real;
 
