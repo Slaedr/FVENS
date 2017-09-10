@@ -333,7 +333,7 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 	}
 	else if(limiter == "VENKATAKRISHNAN")
 	{
-		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 8.0);
+		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 5.75);
 		std::cout << "  EulerFV: Venkatakrishnan limiter selected.\n";
 	}
 }

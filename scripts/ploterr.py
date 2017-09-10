@@ -26,12 +26,12 @@ for ifile in range(len(sys.argv)-1):
 	sigx2 = (data[:,0]*data[:,0]).sum()
 	psigxy = (data[:,1]*data[:,0]).sum()
 	pslope = (n*psigxy-sigx*psigy)/(n*sigx2-sigx**2)"""
+	
+	pslope = (data[1:,1]-data[:-1,1])/(data[1:,0]-data[:-1,0])
+	for i in range(n-1):
+		print("Slope "+ str(i) +" for " + title + " is " + str(pslope[i]))
 
-	pslope = (data[-1,1]-data[-2,1])/(data[-1,0]-data[-2,0])
-
-	print("Slope is " + str(pslope))
-
-	plt.plot(data[:,0],data[:,1],symbs[ifile], label=title+", slope={:.2f}".format(pslope))
+	plt.plot(data[:,0],data[:,1],symbs[ifile], label=title+", slope={:.2f}".format(pslope[-1]))
 
 plt.title("Grid-refinement")
 plt.xlabel("Log mesh size")

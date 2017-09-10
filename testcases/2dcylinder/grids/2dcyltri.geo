@@ -1,6 +1,6 @@
 // flow past cylinder
 
-refine = 1;
+refine = 8;
 
 // actual boundary
 srad = 0.5;
@@ -32,9 +32,12 @@ Circle(31)  = {31, 1, 32};
 Circle(32)  = {32, 1, 31};
 Line Loop(8) = {31,32};
 Plane Surface(8) = {8,7};
-Recombine Surface{8};
 
 //physical 
 Physical Line(2) = {1,2,3,4};
 Physical Line(4) = {31,32};
 Physical Surface(1) = {8};
+
+Color Black{ Surface{8}; }
+Mesh.Algorithm=6;		// Frontal
+
