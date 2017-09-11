@@ -82,7 +82,13 @@ private:
 	bool alloc_jacobians;			///< Flag indicating whether space has been allocated for jacobians
 	amat::Array2d<double > jacobians;		///< Contains jacobians of each (linear triangular) element
 	amat::Array2d<a_real> area;			///< Contains area of each element (either triangle or quad)
-	amat::Array2d<a_real> gallfa;			///< Stores lengths and normals for linear mesh faces
+
+	/// Stores lengths and unit normals for linear mesh faces
+	/** For each face, the first two entries are x- and y-components of the unit normal,
+	 * the third component is the length.
+	 * The unit normal points towards the cell with greater index.
+	 */
+	amat::Array2d<a_real> gallfa;
 
 public:
 	UMesh2dh();
@@ -195,8 +201,9 @@ public:
 	 */
 	void compute_topological();
 	
-	/// Computes normals and lengths, and sets boundary face tags for all faces in gallfa; only for linear meshes!
+	/// Computes unit normals and lengths, and sets boundary face tags for all faces in gallfa; only for linear meshes!
 	/** \note Uses intfac, so call only after compute_topological, only for linear mesh
+	 * \note The normal vector is the UNIT normal vector.
 	 */
 	void compute_face_data();
 

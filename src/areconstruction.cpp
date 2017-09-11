@@ -142,8 +142,6 @@ WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(co
 		const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
 	: Reconstruction(mesh, _rc, _rcg)
 { 
-	std::cout << "   WeightedLeastSquaresReconstruction: Setting up; num vars = " << nvars << std::endl;
-
 	V.resize(m->gnelem());
 	f.resize(m->gnelem());
 #pragma omp parallel for default(shared)

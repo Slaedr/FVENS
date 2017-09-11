@@ -267,44 +267,8 @@ public:
 	virtual ~Diffusion();
 };
 
-/// Spatial discretization of diffusion operator with constant difusivity using the thin-layer model
-template <short nvars>
-class DiffusionThinLayer : public Diffusion<nvars>
-{
-	using Spatial<nvars>::m;
-	using Spatial<nvars>::rc;
-	using Spatial<nvars>::rcg;
-	using Spatial<nvars>::gr;
-	using Diffusion<nvars>::diffusivity;
-	using Diffusion<nvars>::bval;
-	using Diffusion<nvars>::source;
-	using Diffusion<nvars>::h;
-	
-	using Diffusion<nvars>::compute_boundary_state;
-	using Diffusion<nvars>::compute_boundary_states;
-
-	amat::Array2d<a_real> uleft;			///< Left state at each face
-	amat::Array2d<a_real> ug;				///< Boundary states
-
-public:
-	DiffusionThinLayer(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-		std::function< 
-		void(const a_real *const, const a_real, const a_real *const, a_real *const)
-			> source);
-	
-	void compute_residual(const MVector& u, MVector& __restrict residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm);
-	
-	void add_source(const MVector& u, 
-			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm);
-	
-	void compute_jacobian(const MVector& u, 
-			LinearOperator<a_real,a_int> *const A);
-	
-	using Diffusion<nvars>::postprocess_point;
-};
-
-/// Spatial discretization of diffusion operator with constant diffusivity using `modified gradient' or `corrected gradient' method
+/// Spatial discretization of diffusion operator with constant diffusivity 
+/// using `modified gradient' or `corrected gradient' method
 template <short nvars>
 class DiffusionMA : public Diffusion<nvars>
 {

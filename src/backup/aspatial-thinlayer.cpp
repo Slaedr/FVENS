@@ -950,7 +950,176 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 			up(ipoin,ivar) /= areasum(ipoin);
 }
 
-	template<short nvars>
+template<short nvars>
+DiffusionThinLayer<nvars>::DiffusionThinLayer(const UMesh2dh *const mesh, 
+	const a_real diffcoeff, const a_real bvalue,
+	std::function <
+	void(const a_real *const,const a_real,const a_real *const,a_real *const)
+		> sourcefunc)
+	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sourcefunc)
+{
+	ug.setup(m->gnbface(),nvars);
+	uleft.setup(m->gnaface(),nvars);
+}
+
+template<short nvars>
+void DiffusionThinLayer<nvars>::compute_residual(const MVector& u, 
+                                                 MVector& __restrict residual, 
+                                                 const bool gettimesteps, 
+												 amat::Array2d<a_real>& __restrict dtm)
+{
+	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	{
+		a_int ielem = m->gintfac(ied,0);
+		for(short ivar = 0; ivar < nvars; ivar++)
+			uleft(ied,ivar) = u(ielem,ivar);
+	}
+	
+	compute_boundary_states(uleft, ug);
+
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(short ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			residual(lelem,ivar) -= diffusivity * (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+#pragma omp atomic
+			residual(relem,ivar) += diffusivity * (u(relem,ivar)-u(lelem,ivar))/dist*sn*len;
+		}
+	}
+	
+	for(int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real len = m->ggallfa(iface,2);
+		a_real dr[NDIM], dist=0, sn=0;
+		//a_real ug[nvars];
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		for(short ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			residual(lelem,ivar) -= diffusivity * (ug(iface,ivar)-u(lelem,ivar))/dist*sn*len;
+		}
+	}
+
+	for(int iel = 0; iel < m->gnelem(); iel++) {
+		if(gettimesteps)
+			dtm(iel) = h[iel]*h[iel]/diffusivity;
+
+		// subtract source term
+		a_real sourceterm;
+		source(&rc(iel,0), 0, &u(iel,0), &sourceterm);
+		residual(iel,0) -= sourceterm*m->garea(iel);
+	}
+}
+
+template<short nvars>
+void DiffusionThinLayer<nvars>::compute_jacobian(const MVector& u,
+		LinearOperator<a_real,a_int> *const A)
+{
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		//a_int intface = iface-m->gnbface();
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real len = m->ggallfa(iface,2);
+
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		/*for(int ivar = 0; ivar < nvars; ivar++){
+			L[intface](ivar,ivar) -= diffusivity * sn*len/dist;
+			U[intface](ivar,ivar) -= diffusivity * sn*len/dist;
+#pragma omp atomic
+			D[lelem](ivar,ivar) += diffusivity * sn*len/dist;
+#pragma omp atomic
+			D[relem](ivar,ivar) += diffusivity * sn*len/dist;
+		}*/
+
+		a_real ll[nvars*nvars];
+		for(short ivar = 0; ivar < nvars; ivar++) {
+			for(short jvar = 0; jvar < nvars; jvar++)
+				ll[ivar*nvars+jvar] = 0;
+			
+			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
+		}
+
+		a_int faceid = iface - m->gnbface();
+		if(A->type() == 'd') {
+			A->submitBlock(relem*nvars,lelem*nvars, ll, 1,faceid);
+			A->submitBlock(lelem*nvars,relem*nvars, ll, 2,faceid);
+		}
+		else {
+			A->submitBlock(relem*nvars,lelem*nvars, ll, nvars,nvars);
+			A->submitBlock(lelem*nvars,relem*nvars, ll, nvars,nvars);
+		}
+		
+		for(short ivar = 0; ivar < nvars; ivar++)
+			ll[ivar*nvars+ivar] *= -1;
+
+		A->updateDiagBlock(lelem*nvars, ll, nvars);
+		A->updateDiagBlock(relem*nvars, ll, nvars);
+	}
+	
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		a_real len = m->ggallfa(iface,2);
+
+		a_real dr[NDIM], dist=0, sn=0;
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+		}
+		dist = sqrt(dist);
+		for(int i = 0; i < NDIM; i++) {
+			sn += dr[i]/dist * m->ggallfa(iface,i);
+		}
+
+		/*for(int ivar = 0; ivar < nvars; ivar++){
+#pragma omp atomic
+			D[lelem](ivar,ivar) += diffusivity * sn*len/dist;
+		}*/
+
+		a_real ll[nvars*nvars];
+		for(short ivar = 0; ivar < nvars; ivar++) {
+			for(short jvar = 0; jvar < nvars; jvar++)
+				ll[ivar*nvars+jvar] = 0;
+			
+			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
+		}
+
+		A->updateDiagBlock(lelem*nvars, ll, nvars);
+	}
+}
+	
+template<short nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, 
 		const a_real diffcoeff, const a_real bvalue,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
@@ -1070,8 +1239,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 	}
 }
 
-/** For now, this is the same as the thin-layer Jacobian
- */
+/// For now, this is the same as the thin-layer Jacobian
 template<short nvars>
 void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		LinearOperator<a_real,a_int> *const A)
@@ -1145,6 +1313,7 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 	}
 }
 
+template class DiffusionThinLayer<1>;
 template class DiffusionMA<1>;
 
 }	// end namespace

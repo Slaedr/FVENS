@@ -875,8 +875,9 @@ void UMesh2dh::compute_topological()
 	}
 
 	/** Computes, for each face, the elements on either side, the starting node and the ending node of the face. This is stored in intfac. 
-	 * Also computes unit normals to, and lengths of, each face as well as boundary flags of boundary faces, in gallfa.
 	 * The orientation of the face is such that the element with smaller index is always to the left of the face, while the element with greater index is always to the right of the face.
+	 * The node ordering of the face is such that the face `points' to the cell with greater index;
+	 * this means the vector starting at node 0 and pointing towards node 1 would rotate clockwise by 90 degrees to point to the cell with greater index.
 	 * Also computes element-face connectivity array elemface in the same loop which computes intfac.
 	 * \note After the following portion, esuel holds (nelem + face no.) for each ghost cell, instead of -1 as before.
 	 */

@@ -93,19 +93,12 @@ int main(int argc, char* argv[])
 	std::cout << "Setting up spatial scheme.\n";
 	Diffusion<1>* prob;
 	Diffusion<1>* startprob;
-	if(visflux == "THINLAYER") {
-		prob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
-		startprob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
-		std::cout << " Thin-layer gradients\n";
-	} else if(visflux == "MODIFIEDAVERAGE") {
+	if(visflux == "MODIFIEDAVERAGE") {
 		prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
-		startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
-		std::cout << " Modified average gradients\n";
+		startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, "NONE");
 	}
 	else {
-		prob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
-		startprob = new DiffusionThinLayer<1>(&m, diffcoeff, bvalue, rhs);
-		std::cout << " Thin-layer gradients\n";
+		std::cout << " ! Viscous scheme not available!\n";
 	}
 
 	Array2d<a_real> outputarr, dummy;
