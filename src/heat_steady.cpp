@@ -99,6 +99,7 @@ int main(int argc, char* argv[])
 	}
 	else {
 		std::cout << " ! Viscous scheme not available!\n";
+		std::abort();
 	}
 
 	Array2d<a_real> outputarr, dummy;

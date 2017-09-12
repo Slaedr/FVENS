@@ -522,7 +522,17 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		initres = 1.0;
 	}
 	
-	// we only want the main solver timing
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by initial ODE solver:\n";
+	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n";
+
+	initialwtime = finalwtime; initialctime = finalctime;
+	walltime = cputime = 0;
+
+	gettimeofday(&time1, NULL);
 	linsolv->resetRunTimes();
 
 	std::cout << " SteadyBackwardEulerSolver: solve(): Starting main solver.\n";
@@ -608,7 +618,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		if(step % 10 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
 				<< ", rel residual " << resi/initres << std::endl;
-			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << linmaxiterstart 
+			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter 
 				<< ", iters used = " << linstepsneeded << std::endl;
 		}
 
@@ -622,8 +632,8 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		convout.close();
 
 	gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
-	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 	avglinsteps /= step;
 
