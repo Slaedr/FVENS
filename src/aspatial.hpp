@@ -108,9 +108,8 @@ public:
 			MVector& __restrict aux,
 			MVector& __restrict prod);
 };
-	
-/// A driver class to control the explicit time-stepping solution using 
-/// TVD Runge-Kutta time integration
+
+/// Computes the integrated fluxes and their Jacobians for compressible flow
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
  * have been called on the mesh object prior to initialzing an object of this class.
  */
@@ -125,7 +124,7 @@ protected:
 	amat::Array2d<a_real> integ;
 	
 	/// Analytical flux vector computation
-	EulerPhysics physics;
+	IdealGasPhysics physics;
 	
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.

@@ -13,7 +13,7 @@
 
 namespace acfd {
 
-InviscidFlux::InviscidFlux(const EulerPhysics *const phyctx) 
+InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx) 
 	: physics(phyctx), g(phyctx->gamma())
 { }
 
@@ -25,7 +25,7 @@ void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const u
 InviscidFlux::~InviscidFlux()
 { }
 
-LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const EulerPhysics *const analyticalflux)
+LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const IdealGasPhysics *const analyticalflux)
 	: InviscidFlux(analyticalflux)
 { }
 
@@ -207,7 +207,7 @@ void LLF_get_jacobian(const a_real *const __restrict__ ul,
 		}
 }
 
-VanLeerFlux::VanLeerFlux(const EulerPhysics *const analyticalflux) 
+VanLeerFlux::VanLeerFlux(const IdealGasPhysics *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 {
 }
@@ -284,7 +284,7 @@ void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! VanLeerFlux: Not implemented!\n";
 }
 
-RoeFlux::RoeFlux(const EulerPhysics *const analyticalflux) 
+RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 { }
 
@@ -404,7 +404,7 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! RoeFlux: Not implemented!\n";
 }
 
-HLLFlux::HLLFlux(const EulerPhysics *const analyticalflux) 
+HLLFlux::HLLFlux(const IdealGasPhysics *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 {
 }
@@ -890,7 +890,7 @@ void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur
 	}
 }
 
-HLLCFlux::HLLCFlux(const EulerPhysics *const analyticalflux) 
+HLLCFlux::HLLCFlux(const IdealGasPhysics *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 {
 }

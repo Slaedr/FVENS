@@ -25,12 +25,12 @@ namespace acfd {
 class InviscidFlux
 {
 protected:
-	const EulerPhysics *const physics;		///< Analytical flux context
+	const IdealGasPhysics *const physics;		///< Analytical flux context
 	a_real g;								///< Adiabatic index
 
 public:
 	/// Sets up data for the inviscid flux scheme
-	InviscidFlux(const EulerPhysics *const analyticalflux);
+	InviscidFlux(const IdealGasPhysics *const analyticalflux);
 
 	/** Computes flux across a face with
 	 * \param[in] uleft is the vector of left states for the face
@@ -58,7 +58,7 @@ public:
 class LocalLaxFriedrichsFlux : public InviscidFlux
 {
 public:
-	LocalLaxFriedrichsFlux(const EulerPhysics *const analyticalflux);
+	LocalLaxFriedrichsFlux(const IdealGasPhysics *const analyticalflux);
 	void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const flux);
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
@@ -69,7 +69,7 @@ public:
 class VanLeerFlux : public InviscidFlux
 {
 public:
-	VanLeerFlux(const EulerPhysics *const analyticalflux);
+	VanLeerFlux(const IdealGasPhysics *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -80,7 +80,7 @@ public:
 class RoeFlux : public InviscidFlux
 {
 public:
-	RoeFlux(const EulerPhysics *const analyticalflux);
+	RoeFlux(const IdealGasPhysics *const analyticalflux);
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -98,7 +98,7 @@ class HLLFlux : public InviscidFlux
 			a_real *const flux, a_real *const fluxd);
 
 public:
-	HLLFlux(const EulerPhysics *const analyticalflux);
+	HLLFlux(const IdealGasPhysics *const analyticalflux);
 	
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
@@ -126,7 +126,7 @@ class HLLCFlux : public InviscidFlux
 	void getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
 			a_real *const flux, a_real *const fluxd);
 public:
-	HLLCFlux(const EulerPhysics *const analyticalflux);
+	HLLCFlux(const IdealGasPhysics *const analyticalflux);
 	
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);

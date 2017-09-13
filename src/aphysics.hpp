@@ -24,15 +24,15 @@ public:
 			a_real *const dfdu) const = 0;
 };
 	
-/// Computation of the single-phase ideal gas Euler flux
-class EulerPhysics : public Physics
+/// Flow-physics-related computation for single-phase ideal gas
+class IdealGasPhysics : public Physics
 {
 protected:
 	/// Adiabatic constant
 	const a_real g;
 
 public:
-	EulerPhysics(a_real _g) : g(_g)
+	IdealGasPhysics(a_real _g) : g(_g)
 	{ }
 
 	a_real gamma() const { return g; }
