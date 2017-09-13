@@ -13,8 +13,8 @@
 
 namespace acfd {
 
-InviscidFlux::InviscidFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
-	: g(gamma), aflux(analyticalflux)
+InviscidFlux::InviscidFlux(const EulerPhysics *const phyctx) 
+	: physics(phyctx), g(phyctx->gamma())
 { }
 
 void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, 
@@ -25,8 +25,8 @@ void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const u
 InviscidFlux::~InviscidFlux()
 { }
 
-LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux)
-	: InviscidFlux(gamma, analyticalflux)
+LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const EulerPhysics *const analyticalflux)
+	: InviscidFlux(analyticalflux)
 { }
 
 void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul, 
@@ -49,7 +49,8 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul,
 	/*a_real vmagl = std::sqrt(ul[1]*ul[1]+ul[2]*ul[2])/ul[0];
 	a_real vmagr = std::sqrt(ur[1]*ur[1]+ur[2]*ur[2])/ur[0];
 	eig = vmagl+ci > vmagr+cj ? vmagl+ci : vmagr+cj;*/
-	const a_real eig = std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
+	const a_real eig = 
+		std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
 	
 	flux[0] = 0.5*( ul[0]*vni + ur[0]*vnj - eig*(ur[0]-ul[0]) );
 	flux[1] = 0.5*( vni*ul[1]+pi*n[0] + vnj*ur[1]+pj*n[0] - eig*(ur[1]-ul[1]) );
@@ -59,10 +60,9 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul,
 
 /** Jacobian with frozen spectral radius.
  */
-void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul, 
-		const a_real *const __restrict__ ur,
-		const a_real* const __restrict__ n, 
-		a_real *const __restrict__ dfdl, a_real *const __restrict__ dfdr)
+void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
+		const a_real* const n, 
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
 	a_real eig;
 
@@ -87,8 +87,8 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const __restrict__ ul,
 	}
 
 	// get flux jacobians
-	aflux->evaluate_normal_jacobian(ul, n, dfdl);
-	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	physics->evaluate_normal_jacobian(ul, n, dfdl);
+	physics->evaluate_normal_jacobian(ur, n, dfdr);
 
 	// add contributions to left derivative
 	for(int i = 0; i < NVARS; i++)
@@ -147,13 +147,15 @@ void LLF_get_jacobian(const a_real *const __restrict__ ul,
 	}
 
 	// get flux jacobians (uncomment to use this function)
-	//aflux->evaluate_normal_jacobian(ul, n, dfdl);
-	//aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	//physics->evaluate_normal_jacobian(ul, n, dfdl);
+	//physics->evaluate_normal_jacobian(ur, n, dfdr);
 
 	// linearization of the dissipation term
 	
-	const a_real ctermi = 0.5 / std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
-	const a_real ctermj = 0.5 / std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
+	const a_real ctermi = 0.5 / 
+		std::sqrt( g*(g-1)/ul[0]* (ul[3]-(ul[1]*ul[1]+ul[2]*ul[2])/(2*ul[0])) );
+	const a_real ctermj = 0.5 / 
+		std::sqrt( g*(g-1)/ur[0]* (ur[3]-(ur[1]*ur[1]+ur[2]*ur[2])/(2*ur[0])) );
 	a_real dedu[NVARS];
 	
 	if(leftismax) {
@@ -205,8 +207,8 @@ void LLF_get_jacobian(const a_real *const __restrict__ ul,
 		}
 }
 
-VanLeerFlux::VanLeerFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
-	: InviscidFlux(gamma, analyticalflux)
+VanLeerFlux::VanLeerFlux(const EulerPhysics *const analyticalflux) 
+	: InviscidFlux(analyticalflux)
 {
 }
 
@@ -264,7 +266,7 @@ void VanLeerFlux::get_flux(const a_real *const __restrict__ ul, const a_real *co
 	}
 	else
 	{
-		const a_real vmags = pow(ur[1]/ur[0], 2) + pow(ur[2]/ur[0], 2);	// square of velocity magnitude
+		const a_real vmags = pow(ur[1]/ur[0], 2) + pow(ur[2]/ur[0], 2);
 		fjminus[0] = -ur[0]*cj*pow(Mnj-1, 2)/4.0;
 		fjminus[1] = fjminus[0] * (ur[1]/ur[0] + nx*(-2.0*cj - vnj)/g);
 		fjminus[2] = fjminus[0] * (ur[2]/ur[0] + ny*(-2.0*cj - vnj)/g);
@@ -282,8 +284,8 @@ void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! VanLeerFlux: Not implemented!\n";
 }
 
-RoeFlux::RoeFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
-	: InviscidFlux(gamma, analyticalflux)
+RoeFlux::RoeFlux(const EulerPhysics *const analyticalflux) 
+	: InviscidFlux(analyticalflux)
 { }
 
 void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur,
@@ -341,11 +343,17 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	a_real r[4][4];
 	
 	// according to Dr Luo's notes
-	r[0][0] = 1.0;		r[0][1] = 0;						r[0][2] = 1.0;				r[0][3] = 1.0;
-	r[1][0] = vxij;		r[1][1] = cij*n[1];				r[1][2] = vxij + cij*n[0];	r[1][3] = vxij - cij*n[0];
-	r[2][0] = vyij;		r[2][1] = -cij*n[0];			r[2][2] = vyij + cij*n[1];	r[2][3] = vyij - cij*n[1];
-	r[3][0]= vm2ij*0.5;	r[3][1] = cij*(vxij*n[1]-vyij*n[0]); 
-	                                                   r[3][2] = Hij + cij*vnij;	r[3][3] = Hij - cij*vnij;
+	r[0][0] = 1.0;              r[0][1] = 0;						
+	r[0][2] = 1.0;              r[0][3] = 1.0;
+
+	r[1][0] = vxij;             r[1][1] = cij*n[1];				
+	r[1][2] = vxij + cij*n[0];	r[1][3] = vxij - cij*n[0];
+
+	r[2][0] = vyij;             r[2][1] = -cij*n[0];			
+	r[2][2] = vyij + cij*n[1];  r[2][3] = vyij - cij*n[1];
+
+	r[3][0]= vm2ij*0.5;         r[3][1] = cij*(vxij*n[1]-vyij*n[0]); 
+	r[3][2] = Hij + cij*vnij;   r[3][3] = Hij - cij*vnij;
 
 	// according to Fink (just a hack to make the overall flux equal the Roe flux in Fink's paper;
 	// the second eigenvector is obviously not what is given below
@@ -396,8 +404,8 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! RoeFlux: Not implemented!\n";
 }
 
-HLLFlux::HLLFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
-	: InviscidFlux(gamma, analyticalflux)
+HLLFlux::HLLFlux(const EulerPhysics *const analyticalflux) 
+	: InviscidFlux(analyticalflux)
 {
 }
 
@@ -418,7 +426,8 @@ void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	// speeds of sound
 	const a_real ci = sqrt(g*pi/ul[0]);
 	const a_real cj = sqrt(g*pj/ur[0]);
-	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
+	// (actually specific enthalpy := enthalpy per unit mass)
 	const a_real Hi = (ul[3] + pi)/ul[0];
 	const a_real Hj = (ur[3] + pj)/ur[0];
 
@@ -469,7 +478,8 @@ void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul,
 	
 	const a_real g = 1.4;
     a_real Hi, Hj, ci, cj, pi, pj, vxi, vxj, vyi, vyj, vmag2i, vmag2j, vni, vnj;
-    a_real Hid[NVARS], cid[NVARS], pid[NVARS], vxid[NVARS], vyid[NVARS], vmag2id[NVARS], vnid[NVARS];
+    a_real Hid[NVARS], cid[NVARS], pid[NVARS], vxid[NVARS], vyid[NVARS], 
+		   vmag2id[NVARS], vnid[NVARS];
     a_real fabs0;
     a_real fabs0d[NVARS];
     a_real fabs1;
@@ -493,7 +503,8 @@ void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul,
         // speeds of sound
         arg1d[nd] = (g*pid[nd]*ul[0]-g*pi*uld[0][nd])/(ul[0]*ul[0]);
         cid[nd] = (arg1 == 0.0 ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1)));
-        // enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+        // enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
+		// (actually specific enthalpy := enthalpy per unit mass)
         Hid[nd] = ((uld[3][nd]+pid[nd])*ul[0]-(ul[3]+pi)*uld[0][nd])/(ul[0]*ul[0]);
         arg1d[nd] = -(ur[0]*uld[0][nd]/(ul[0]*ul[0]));
         sld[nd] = vnid[nd] - cid[nd];
@@ -511,15 +522,18 @@ void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul,
     Hj = (ur[3]+pj)/ur[0];
     // compute Roe-averages
     a_real Rij, vxij, vyij, Hij, cij, vm2ij, vnij;
-    a_real Rijd[NVARS], vxijd[NVARS], vyijd[NVARS], Hijd[NVARS], cijd[NVARS], vm2ijd[NVARS], vnijd[NVARS];
+    a_real Rijd[NVARS], vxijd[NVARS], vyijd[NVARS], Hijd[NVARS], cijd[NVARS], 
+		   vm2ijd[NVARS], vnijd[NVARS];
     arg1 = ur[0]/ul[0];
     Rij = sqrt(arg1);
     vxij = (Rij*vxj+vxi)/(Rij+1.0);
     vyij = (Rij*vyj+vyi)/(Rij+1.0);
     for (nd = 0; nd < NVARS; ++nd) {
         Rijd[nd] = (arg1 == 0.0 ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1)));
-        vxijd[nd] = ((vxj*Rijd[nd]+vxid[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
-        vyijd[nd] = ((vyj*Rijd[nd]+vyid[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
+        vxijd[nd] = ((vxj*Rijd[nd]+vxid[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
+        vyijd[nd] = ((vyj*Rijd[nd]+vyid[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
         Hijd[nd] = ((Hj*Rijd[nd]+Hid[nd])*(Rij+1.0)-(Rij*Hj+Hi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
         vm2ijd[nd] = vxijd[nd]*vxij + vxij*vxijd[nd] + vyijd[nd]*vyij + vyij*vyijd[nd];
         vnijd[nd] = n[0]*vxijd[nd] + n[1]*vyijd[nd];
@@ -604,11 +618,13 @@ void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul,
     flux[0] = t1*vnj*ur[0] + t2*vni*ul[0] - t3*(ur[0]-ul[0]);
     for (nd = 0; nd < NVARS; ++nd)
         fluxd[1*NVARS+nd] = (vnj*ur[1]+pj*n[0])*t1d[nd] + t2d[nd]*(vni*ul[1]+pi*n[0]) 
-			+ t2*(vnid[nd]*ul[1]+vni*uld[1][nd]+n[0]*pid[nd]) - t3d[nd]*(ur[1]-ul[1]) + t3*uld[1][nd];
+			+ t2*(vnid[nd]*ul[1]+vni*uld[1][nd]+n[0]*pid[nd]) - t3d[nd]*(ur[1]-ul[1]) 
+			+ t3*uld[1][nd];
     flux[1] = t1*(vnj*ur[1]+pj*n[0]) + t2*(vni*ul[1]+pi*n[0]) - t3*(ur[1]-ul[1]);
     for (nd = 0; nd < NVARS; ++nd)
         fluxd[2*NVARS+nd] = (vnj*ur[2]+pj*n[1])*t1d[nd] + t2d[nd]*(vni*ul[2]+pi*n[1]) 
-			+ t2*(vnid[nd]*ul[2]+vni*uld[2][nd]+n[1]*pid[nd]) - t3d[nd]*(ur[2]-ul[2]) + t3*uld[2][nd];
+			+ t2*(vnid[nd]*ul[2]+vni*uld[2][nd]+n[1]*pid[nd]) - t3d[nd]*(ur[2]-ul[2]) 
+			+ t3*uld[2][nd];
     flux[2] = t1*(vnj*ur[2]+pj*n[1]) + t2*(vni*ul[2]+pi*n[1]) - t3*(ur[2]-ul[2]);
     for (nd = 0; nd < NVARS; ++nd)
         fluxd[3*NVARS+nd] = vnj*ur[0]*Hj*t1d[nd] + (t2d[nd]*vni+t2*vnid[nd])*ul[0]*Hi 
@@ -621,7 +637,8 @@ void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul,
  * Modified to remove the runtime parameter nbdirs and the differential of ul. 
  * Also changed the array shape of Jacobian.
  */
-void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
+void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, 
+		const a_real *const n, 
 		a_real *const __restrict flux, a_real *const __restrict fluxd)
 {
     a_real urd[NVARS][NVARS];
@@ -668,7 +685,8 @@ void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, c
     vni = vxi*n[0] + vyi*n[1];
     vnj = vxj*n[0] + vyj*n[1];
     cj = sqrt(arg1);
-    // enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+    // enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
+	// (actually specific enthalpy := enthalpy per unit mass)
     Hi = (ul[3]+pi)/ul[0];
     Hj = (ur[3]+pj)/ur[0];
     // compute Roe-averages
@@ -681,8 +699,10 @@ void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, c
     vyij = (Rij*vyj+vyi)/(Rij+1.0);
     for (nd = 0; nd < NVARS; ++nd) {
         Rijd[nd] = (arg1 == 0.0 ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1)));
-        vxijd[nd] = ((Rijd[nd]*vxj+Rij*vxjd[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
-        vyijd[nd] = ((Rijd[nd]*vyj+Rij*vyjd[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
+        vxijd[nd] = ((Rijd[nd]*vxj+Rij*vxjd[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
+        vyijd[nd] = ((Rijd[nd]*vyj+Rij*vyjd[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
         Hijd[nd] = ((Rijd[nd]*Hj+Rij*Hjd[nd])*(Rij+1.0)-(Rij*Hj+Hi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
         vm2ijd[nd] = vxijd[nd]*vxij + vxij*vxijd[nd] + vyijd[nd]*vyij + vyij*vyijd[nd];
         vnijd[nd] = n[0]*vxijd[nd] + n[1]*vyijd[nd];
@@ -768,15 +788,18 @@ void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, c
     }
     flux[0] = t1*vnj*ur[0] + t2*vni*ul[0] - t3*(ur[0]-ul[0]);
     for (nd = 0; nd < NVARS; ++nd)
-        fluxd[1*NVARS+nd] = t1d[nd]*(vnj*ur[1]+pj*n[0]) + t1*(vnjd[nd]*ur[1]+vnj*urd[1][nd]+n[0]*pjd[nd]) 
+        fluxd[1*NVARS+nd] = t1d[nd]*(vnj*ur[1]+pj*n[0]) 
+			+ t1*(vnjd[nd]*ur[1]+vnj*urd[1][nd]+n[0]*pjd[nd]) 
 			+ (vni*ul[1]+pi*n[0])*t2d[nd] - t3d[nd]*(ur[1]-ul[1]) - t3*urd[1][nd];
     flux[1] = t1*(vnj*ur[1]+pj*n[0]) + t2*(vni*ul[1]+pi*n[0]) - t3*(ur[1]-ul[1]);
     for (nd = 0; nd < NVARS; ++nd)
-        fluxd[2*NVARS+nd] = t1d[nd]*(vnj*ur[2]+pj*n[1]) + t1*(vnjd[nd]*ur[2]+vnj*urd[2][nd]+n[1]*pjd[nd]) 
+        fluxd[2*NVARS+nd] = t1d[nd]*(vnj*ur[2]+pj*n[1]) 
+			+ t1*(vnjd[nd]*ur[2]+vnj*urd[2][nd]+n[1]*pjd[nd]) 
 			+ (vni*ul[2]+pi*n[1])*t2d[nd] - t3d[nd]*(ur[2]-ul[2]) - t3*urd[2][nd];
     flux[2] = t1*(vnj*ur[2]+pj*n[1]) + t2*(vni*ul[2]+pi*n[1]) - t3*(ur[2]-ul[2]);
     for (nd = 0; nd < NVARS; ++nd)
-        fluxd[3*NVARS+nd] = (t1d[nd]*vnj+t1*vnjd[nd])*ur[0]*Hj + t1*vnj*(urd[0][nd]*Hj+ur[0]*Hjd[nd]) 
+        fluxd[3*NVARS+nd] = (t1d[nd]*vnj+t1*vnjd[nd])*ur[0]*Hj 
+			+ t1*vnj*(urd[0][nd]*Hj+ur[0]*Hjd[nd]) 
 			+ vni*ul[0]*Hi*t2d[nd] - t3d[nd]*(ur[3]-ul[3]) - t3*urd[3][nd];
     flux[3] = t1*(vnj*ur[0]*Hj) + t2*(vni*ul[0]*Hi) - t3*(ur[3]-ul[3]);
 }
@@ -791,7 +814,8 @@ void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const
 		dfdl[i] *= -1.0;
 }
 
-void HLLFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+void HLLFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, 
+		const a_real* const n, 
 		a_real *const __restrict flux, a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
 	getFluxJac_left(ul, ur, n, flux, dfdl);
@@ -803,7 +827,8 @@ void HLLFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, 
 /** The linearization assumes `locally frozen' signal speeds. 
  * According to Batten, Lechziner and Goldberg, this should be fine.
  */
-void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur, 
+		const a_real* const n, 
 		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
 	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
@@ -818,7 +843,8 @@ void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur
 	// speeds of sound
 	const a_real ci = sqrt(g*pi/ul[0]);
 	const a_real cj = sqrt(g*pj/ur[0]);
-	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
+	// (actually specific enthalpy := enthalpy per unit mass)
 	const a_real Hi = (ul[3] + pi)/ul[0];
 	const a_real Hj = (ur[3] + pj)/ur[0];
 
@@ -846,8 +872,8 @@ void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur
 	const a_real t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
 	
 	// get flux jacobians
-	aflux->evaluate_normal_jacobian(ul, n, dfdl);
-	aflux->evaluate_normal_jacobian(ur, n, dfdr);
+	physics->evaluate_normal_jacobian(ul, n, dfdl);
+	physics->evaluate_normal_jacobian(ur, n, dfdr);
 	for(int i = 0; i < NVARS; i++)
 		for(int j = 0; j < NVARS; j++)
 		{
@@ -864,8 +890,8 @@ void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur
 	}
 }
 
-HLLCFlux::HLLCFlux(const a_real gamma, const EulerFlux *const analyticalflux) 
-	: InviscidFlux(gamma, analyticalflux)
+HLLCFlux::HLLCFlux(const EulerPhysics *const analyticalflux) 
+	: InviscidFlux(analyticalflux)
 {
 }
 
@@ -889,7 +915,8 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 	// speeds of sound
 	const a_real ci = sqrt(g*pi/ul[0]);
 	const a_real cj = sqrt(g*pj/ur[0]);
-	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) (actually specific enthalpy := enthalpy per unit mass)
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
+	// (actually specific enthalpy := enthalpy per unit mass)
 	const a_real Hi = (ul[3] + pi)/ul[0];
 	const a_real Hj = (ur[3] + pj)/ur[0];
 
@@ -975,7 +1002,8 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
  * The estimated signal speeds are the Einfeldt estimates, 
  * not the corrected ones given by Remaki et. al.
  */
-void HLLCFlux::getFluxJac_left(const a_real *const ul, const a_real *const ur, const a_real *const n, 
+void HLLCFlux::getFluxJac_left(const a_real *const ul, const a_real *const ur, 
+		const a_real *const n, 
 		a_real *const __restrict flux, a_real *const __restrict fluxd) 
 {
     a_real uld[NVARS][NVARS];
@@ -1039,8 +1067,10 @@ void HLLCFlux::getFluxJac_left(const a_real *const ul, const a_real *const ur, c
     const a_real vyij = (Rij*vyj+vyi)/(Rij+1.0);
     for (nd = 0; nd < NVARS; ++nd) {
         Rijd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-        vxijd[nd] = ((vxj*Rijd[nd]+vxid[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
-        vyijd[nd] = ((vyj*Rijd[nd]+vyid[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
+        vxijd[nd] = ((vxj*Rijd[nd]+vxid[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
+        vyijd[nd] = ((vyj*Rijd[nd]+vyid[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
         Hijd[nd] = ((Hj*Rijd[nd]+Hid[nd])*(Rij+1.0)-(Rij*Hj+Hi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
         vm2ijd[nd] = vxijd[nd]*vxij + vxij*vxijd[nd] + vyijd[nd]*vyij + vyij*vyijd[nd];
         vnijd[nd] = n[0]*vxijd[nd] + n[1]*vyijd[nd];
@@ -1213,7 +1243,8 @@ void HLLCFlux::getFluxJac_left(const a_real *const ul, const a_real *const ur, c
  * Currently, the estimated signal speeds are the Einfeldt estimates, 
  * not the corrected ones given by Remaki et. al.
  */
-void HLLCFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
+void HLLCFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, 
+		const a_real *const n, 
 		a_real *const __restrict flux, a_real *const __restrict fluxd) 
 {
     a_real urd[NVARS][NVARS];
@@ -1275,8 +1306,10 @@ void HLLCFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, 
     a_real vnijd[NVARS];
     for (nd = 0; nd < NVARS; ++nd) {
         Rijd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-        vxijd[nd] = ((Rijd[nd]*vxj+Rij*vxjd[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
-        vyijd[nd] = ((Rijd[nd]*vyj+Rij*vyjd[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
+        vxijd[nd] = ((Rijd[nd]*vxj+Rij*vxjd[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
+        vyijd[nd] = ((Rijd[nd]*vyj+Rij*vyjd[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])
+			/((Rij+1.0)*(Rij+1.0));
         Hijd[nd] = ((Rijd[nd]*Hj+Rij*Hjd[nd])*(Rij+1.0)-(Rij*Hj+Hi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
         vm2ijd[nd] = vxijd[nd]*vxij + vxij*vxijd[nd] + vyijd[nd]*vyij + vyij*vyijd[nd];
         vnijd[nd] = n[0]*vxijd[nd] + n[1]*vyijd[nd];
@@ -1451,7 +1484,8 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 		dfdl[i] *= -1.0;
 }
 
-void HLLCFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+void HLLCFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, 
+		const a_real* const n, 
 		a_real *const __restrict flux, a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
 	std::cout << " !!!! HLLC Jacobian not available!!\n";

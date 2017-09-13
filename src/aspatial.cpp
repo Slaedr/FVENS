@@ -212,9 +212,11 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 	vy = vmag*sin(theta);
 }
 
+/** The adiabatic index is set to 1.4 here.
+ */
 EulerFV::EulerFV(const UMesh2dh *const mesh, 
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter)
-	: Spatial<NVARS>(mesh), g(1.4), aflux(g)
+	: Spatial<NVARS>(mesh), g(1.4), physics(g)
 {
 	/// \todo TODO: Take the boundary flags below as input from control file
 	solid_wall_id = 2;
@@ -232,27 +234,27 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
-		inviflux = new VanLeerFlux(g, &aflux);
+		inviflux = new VanLeerFlux(&physics);
 		std::cout << "  EulerFV: Using Van Leer fluxes." << std::endl;
 	}
 	else if(invflux == "ROE")
 	{
-		inviflux = new RoeFlux(g, &aflux);
+		inviflux = new RoeFlux(&physics);
 		std::cout << "  EulerFV: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLL")
 	{
-		inviflux = new HLLFlux(g, &aflux);
+		inviflux = new HLLFlux(&physics);
 		std::cout << "  EulerFV: Using HLL fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
-		inviflux = new HLLCFlux(g, &aflux);
+		inviflux = new HLLCFlux(&physics);
 		std::cout << "  EulerFV: Using HLLC fluxes." << std::endl;
 	}
 	else if(invflux == "LLF")
 	{
-		inviflux = new LocalLaxFriedrichsFlux(g, &aflux);
+		inviflux = new LocalLaxFriedrichsFlux(&physics);
 		std::cout << "  EulerFV: Using LLF fluxes." << std::endl;
 	}
 	else
@@ -261,30 +263,30 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 	// set inviscid flux scheme for Jacobian
 	allocflux = false;
 	if(jacflux == "VANLEER") {
-		jflux = new VanLeerFlux(g, &aflux);
+		jflux = new VanLeerFlux(&physics);
 		allocflux = true;
 	}
 	else if(jacflux == "ROE")
 	{
-		jflux = new RoeFlux(g, &aflux);
+		jflux = new RoeFlux(&physics);
 		std::cout << "  EulerFV: Using Roe fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "HLL")
 	{
-		jflux = new HLLFlux(g, &aflux);
+		jflux = new HLLFlux(&physics);
 		std::cout << "  EulerFV: Using HLL fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "HLLC")
 	{
-		jflux = new HLLCFlux(g, &aflux);
+		jflux = new HLLCFlux(&physics);
 		std::cout << "  EulerFV: Using HLLC fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "LLF")
 	{
-		jflux = new LocalLaxFriedrichsFlux(g, &aflux);
+		jflux = new LocalLaxFriedrichsFlux(&physics);
 		std::cout << "  EulerFV: Using LLF fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
@@ -358,14 +360,12 @@ void EulerFV::loaddata(const short inittype, const a_real Minf, const a_real vin
 		const a_real a, const a_real rhoinf, MVector& u)
 {
 	// Note that reference density and reference velocity are the values at infinity
-	//std::cout << "EulerFV: loaddata(): Calculating initial data...\n";
-	a_real vx = vinf*cos(a);
-	a_real vy = vinf*sin(a);
 	a_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
-	uinf(0,0) = rhoinf;		// should be 1
-	uinf(0,1) = rhoinf*vx;
-	uinf(0,2) = rhoinf*vy;
-	uinf(0,3) = p/(g-1) + 0.5*rhoinf*vinf*vinf;
+
+	uinf(0,0) = 1.0;
+	uinf(0,1) = cos(a);
+	uinf(0,2) = sin(a);
+	uinf(0,3) = 1.0/((g-1)*g*Minf*Minf) + 0.5;
 
 	if(inittype == 1)
 		for(a_int i = 0; i < m->gnelem(); i++)
@@ -381,7 +381,7 @@ void EulerFV::loaddata(const short inittype, const a_real Minf, const a_real vin
 			get_supersonicvortex_initial_velocity(vinf, x, y, u(i,1), u(i,2));
 			u(i,0) = rhoinf;
 			u(i,1) *= rhoinf; u(i,2) *= rhoinf;
-			u(i,3) = uinf(0,3);
+			u(i,3) = p/(g-1) + 0.5*rhoinf*vinf*vinf;
 		}
 	else
 		//initial values are equal to boundary values

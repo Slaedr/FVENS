@@ -125,7 +125,7 @@ protected:
 	amat::Array2d<a_real> integ;
 	
 	/// Analytical flux vector computation
-	EulerFlux aflux;
+	EulerPhysics physics;
 	
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.

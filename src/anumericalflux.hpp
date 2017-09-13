@@ -10,8 +10,8 @@
 #include "aconstants.hpp"
 #endif
 
-#ifndef __AEULERFLUX_H
-#include "aeulerflux.hpp"
+#ifndef __APHYSICS_H
+#include "aphysics.hpp"
 #endif
 
 #define __ANUMERICALFLUX_H 1
@@ -19,17 +19,18 @@
 namespace acfd {
 
 /// Abstract class from which to derive all numerical flux classes
-/** The class is such that given the left and right states and a face normal, the numerical flux is computed.
+/** The class is such that given the left and right states and a face normal, 
+ * the numerical flux and its Jacobian w.r.t. left and right states is computed.
  */
 class InviscidFlux
 {
 protected:
-	a_real g;						///< Adiabatic index
-	const EulerFlux *const aflux;		///< Analytical flux context
+	const EulerPhysics *const physics;		///< Analytical flux context
+	a_real g;								///< Adiabatic index
 
 public:
 	/// Sets up data for the inviscid flux scheme
-	InviscidFlux(const a_real gamma, const EulerFlux *const analyticalflux);
+	InviscidFlux(const EulerPhysics *const analyticalflux);
 
 	/** Computes flux across a face with
 	 * \param[in] uleft is the vector of left states for the face
@@ -37,16 +38,18 @@ public:
 	 * \param[in] n is the normal vector to the face
 	 * \param[in|out] flux contains the computed flux
 	 */
-	virtual void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
+	virtual void get_flux(const a_real *const uleft, const a_real *const uright, 
+			const a_real* const n, 
 			a_real *const flux) = 0;
 
-	/// Computes the Jacobian of the inviscid flux across a face w.r.t. both left and right states
-	/** dfdl is the `lower' block formed by the coupling between the elements adjoining the face,
+	/// Computes the Jacobian of inviscid flux across a face w.r.t. both left and right states
+	/** dfdl is the `lower' block formed by the coupling between elements adjoining the face,
 	 * while dfdr is the `upper' block.
-	 * The negative of the lower block is the contribution to the diagonal block of the left cell, and
-	 * the negative of the upper block is the contribution to the diagonal block of the right cell.
+	 * The negative of the lower block is the contribution to diagonal block of left cell, and
+	 * the negative of the upper block is the contribution to diagonal block of right cell.
 	 */
-	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n,
+	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, 
+			const a_real* const n,
 			a_real *const dfdl, a_real *const dfdr) = 0;
 
 	virtual ~InviscidFlux();
@@ -55,19 +58,20 @@ public:
 class LocalLaxFriedrichsFlux : public InviscidFlux
 {
 public:
-	LocalLaxFriedrichsFlux(const a_real gamma, const EulerFlux *const analyticalflux);
+	LocalLaxFriedrichsFlux(const EulerPhysics *const analyticalflux);
 	void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const flux);
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 };
 
-/// Given left and right states at each face, the Van-Leer flux-vector-splitting is calculated at each face
+/// Van-Leer flux-vector-splitting
 class VanLeerFlux : public InviscidFlux
 {
 public:
-	VanLeerFlux(a_real gamma, const EulerFlux *const analyticalflux);
-	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	VanLeerFlux(const EulerPhysics *const analyticalflux);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 };
@@ -76,8 +80,9 @@ public:
 class RoeFlux : public InviscidFlux
 {
 public:
-	RoeFlux(a_real gamma, const EulerFlux *const analyticalflux);
-	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	RoeFlux(const EulerPhysics *const analyticalflux);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 };
@@ -93,9 +98,10 @@ class HLLFlux : public InviscidFlux
 			a_real *const flux, a_real *const fluxd);
 
 public:
-	HLLFlux(a_real gamma, const EulerFlux *const analyticalflux);
+	HLLFlux(const EulerPhysics *const analyticalflux);
 	
-	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const flux);
 	
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
@@ -120,9 +126,10 @@ class HLLCFlux : public InviscidFlux
 	void getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
 			a_real *const flux, a_real *const fluxd);
 public:
-	HLLCFlux(a_real gamma, const EulerFlux *const analyticalflux);
+	HLLCFlux(const EulerPhysics *const analyticalflux);
 	
-	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, a_real *const flux);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const flux);
 	
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
