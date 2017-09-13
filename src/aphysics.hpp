@@ -25,6 +25,9 @@ public:
 };
 	
 /// Flow-physics-related computation for single-phase ideal gas
+/** \warning The non-dimensionalization assumed is from free-stream velocities and temperatues,
+ * as given in section 4.14.2 of \cite matatsuka
+ */
 class IdealGasPhysics : public Physics
 {
 protected:
@@ -48,16 +51,46 @@ public:
 			a_real *const __restrict dfdu) const;
 
 	/// Convert conserved variables to primitive variables (density, velocities, pressure)
-	/*void convertConservedToPrimitive(const a_real *const uc, a_real *const up);
+	void convertConservedToPrimitive(const a_real *const uc, a_real *const up)
+	{
+		up[0] = uc[0];
+		a_real rhovmag2 = 0;
+		for(int idim = 1; idim < NDIM+1; idim++) {
+			rhovmag2 += uc[idim]*uc[idim];
+			up[idim] = uc[idim]/uc[0];
+		}
+		up[NDIM+1] = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+	}
 
 	/// Convert primitive variables to conserved
-	void convertPrimitiveToConserved(const a_real *const up, a_real *const uc);
+	void convertPrimitiveToConserved(const a_real *const up, a_real *const uc)
+	{
+		uc[0] = up[0];
+		a_real vmag2 = 0;
+		for(int idim = 1; idim < NDIM; idim++) {
+			vmag2 += up[idim]*up[idim];
+			uc[idim] = up[0]*up[idim];
+		}
+		uc[NDIM+1] = up[NDIM+1]/(g-1.0) + 0.5*up[0]*vmag2;
+	}
 
-	/// Compute temperature from conserved variables
-	a_real getTemperatureFromConserved(const a_real *const uc);
+	/// Computes non-dimensional temperature from non-dimensional conserved variables
+	/** \sa IdealGasPhysics
+	 */
+	a_real getTemperatureFromConserved(const a_real *const uc, const a_real Minf)
+	{
+		a_real rhovmag2 = 0;
+		for(int idim = 1; idim < NDIM+1; idim++)
+			rhovmag2 += uc[idim]*uc[idim];
+		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+		return g*Minf*Minf*p/uc[0];
+	}
 
-	/// Compute temperature from primitive variables
-	a_real getTemperatureFromPrimitive(const a_real *const up);
+	/// Computes non-dimensional temperature from non-dimensional primitive variables
+	a_real getTemperatureFromPrimitive(const a_real *const up, const a_real Minf)
+	{
+		return g*Minf*Minf*up[NDIM+1]/up[0];
+	}
 
 	/// Compute temperature spatial derivative from conserved variables and their spatial derivatives
 	a_real getGradTemperatureFromConservedAndGradConserved(const a_real *const uc, 
@@ -69,7 +102,7 @@ public:
 			const a_real *const gup);
 
 	/// Computes dynamic viscosity using Sutherland's law
-	a_real getViscosityFromConserved(const a_real *const uc);*/
+	a_real getViscosityFromConserved(const a_real *const uc);
 };
 
 }
