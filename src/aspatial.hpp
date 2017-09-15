@@ -117,18 +117,33 @@ class FlowFV : public Spatial<NVARS>
 {
 public:
 	/// Sets data and various numerics objects
-	/** \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
+	/** \param[in] mesh The mesh context
+	 * \param[in] g Adiabatic index
+	 * \param[in] Minf Free-stream Mach number
+	 * \param[in] Tinf Free stream dimensional temperature
+	 * \param[in] Reinf Free-stream Reynolds number
+	 * \param[in] Pr Prandtl number
+	 * \param[in] isothermal_marker The boundary marker in the mesh file corresponding to
+	 *   isothermal wall boundaries
+	 * \param[in] isothermal_wall_temperature Wall temperature boundary value in Kelvin; this is
+	 *   divided by free-stream temperature in this routine and the non-dimensional value is stored
+	 * \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
 	 * \param[in] jacflux The inviscid flux to use for computing the first-order Jacobian
 	 * \param[in] reconst The method used for gradient reconstruction 
 	 *   - NONE, GREENGAUSS, LEASTSQUARES
-	 * \param[in] limiter The kind of slope limiter to use - NONE, WENO
+	 * \param[in] limiter The kind of slope limiter to use
 	 */
 	FlowFV(const UMesh2dh *const mesh, const a_real g, const a_real Minf, const a_real Tinf, 
-			const a_real Reinf, const a_real Pr,
-			std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+		const a_real Reinf, const a_real Pr,
+		const int isothermal_marker, const int adiabatic_marker, const int slip_marker,
+		const int inflowoutflow_marker, const a_real isothermal_wall_temperature,
+		std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
 	
 	~FlowFV();
-	
+
+	/// Sets initial conditions
+	/** \param[in] a Angle of attack in radians
+	 */
 	void loaddata(const a_real a, MVector& u);
 
 	/// Set simulation data for special cases
@@ -188,12 +203,20 @@ protected:
 
 	bool allocflux;
 
+	bool reconstructPrimitive;
+
 	/// Limiter context
 	FaceDataComputation* lim;
 
-	int solid_wall_id;						///< Boundary marker corresponding to solid wall
-	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
-	int supersonic_vortex_case_inflow;		///< Inflow boundary marker for supersonic vortex case
+	const int isothermal_wall_id;				///< Boundary marker for isothermal wall
+	const int adiabatic_wall_id;				///< Boundary marker for adiabatic wall
+	const int slip_wall_id;						///< Boundary marker corresponding to solid wall
+	const int inflow_outflow_id;				///< Boundary marker corresponding to inflow/outflow
+	
+	/// Inflow boundary marker for supersonic vortex case
+	const int supersonic_vortex_case_inflow;
+
+	const a_real isothermal_wall_temp;		///< Temperature imposed at isothermal wall
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) 
 	/// using the interior state provided

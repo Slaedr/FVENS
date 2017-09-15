@@ -16,14 +16,16 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, logfile, lognresstr, simtype;
+	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	double initcfl, endcfl, Minf, vinf, alpha, rhoinf, tolerance, lintol, firstcfl, firsttolerance;
+	double initcfl, endcfl, Minf, vinf, alpha, rhoinf, tolerance, lintol, 
+		   firstcfl, firsttolerance;
 	double Reinf, Tinf, Pr, gamma;
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
+	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, 
+		restart_vecs;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
-	bool use_matrix_free, lognres;
+	bool use_matrix_free, lognres, reconstPrim;
 	char mattype;
 
 	control >> dum; control >> meshfile;
@@ -47,12 +49,12 @@ int main(int argc, char* argv[])
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> limiter;
+	control >> dum; control >> recprim;
 	control >> dum;
 	control >> dum; control >> timesteptype;
 	control >> dum; control >> initcfl;
 	control >> dum; control >> endcfl;
-	control >> dum; control >> rampstart;
-	control >> dum; control >> rampend;
+	control >> dum; control >> rampstart >> rampend;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
 	control >> dum;
@@ -71,8 +73,7 @@ int main(int argc, char* argv[])
 		control >> dum; control >> linmaxiterend;
 		control >> dum; control >> restart_vecs;
 		control >> dum; control >> prec;
-		control >> dum; control >> nbuildsweeps;
-		control >> dum; control >> napplysweeps;
+		control >> dum; control >> nbuildsweeps >> napplysweeps;
 	}
 	else
 		invfluxjac = invflux;
@@ -87,6 +88,10 @@ int main(int argc, char* argv[])
 		lognres = true;
 	else
 		lognres = false;
+	if(recprim == "NO")
+		reconstPrim = false;
+	else
+		reconstPrim = true;
 	
 	if(meshfile == "READFROMCMD")
 	{
@@ -108,22 +113,31 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, reconst, limiter);
+	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, reconst, limiter,
+			reconstPrim);
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
-	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, "NONE", "NONE");
+	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, "NONE", "NONE",
+			true);
 	
 	SteadySolver<4>* time;
 	if(timesteptype == "IMPLICIT") {
 		if(use_matrix_free)
-			time = new SteadyMFBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs, lognres);
+			time = new SteadyMFBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
+					initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+					lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
+					nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, 
+					restart_vecs, lognres);
 		else
-			time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs, lognres);
+			time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
+					initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+					mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
+					nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, 
+					restart_vecs, lognres);
 		std::cout << "Setting up backward Euler temporal scheme.\n";
 	}
 	else {
-		time = new SteadyForwardEulerSolver<4>(&m, &prob, &startprob, usestarter, tolerance, maxiter, initcfl, firsttolerance, firstmaxiter, firstcfl, lognres);
+		time = new SteadyForwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
+				tolerance, maxiter, initcfl, firsttolerance, firstmaxiter, firstcfl, lognres);
 		std::cout << "Setting up explicit forward Euler temporal scheme.\n";
 	}
 	

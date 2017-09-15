@@ -1,0 +1,16 @@
+Free-stream (properties of dry air at 298 K)
+============================================
+temp 298 K
+dens 1.1839 kg/m3
+speed of sound 346.13 m/s
+thermal conductivity 0.026 W/m/K
+dynamic viscosity 1.84 x 10^(-5) Pa.s
+Prandtl number 0.71102553846
+Cp 1004.71 J/kg/K
+
+Height of channel = ref length = 1.0 m
+Speed of lower plate = 50 m/s
+Speed of upper plate = 55 m/s
+
+Minf = 0.1444543957
+Reinf (based on speed of lower plate and unit length) = 3217119.5652

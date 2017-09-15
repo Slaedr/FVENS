@@ -214,15 +214,16 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 
 FlowFV::FlowFV(const UMesh2dh *const mesh, 
 		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
-		std::string invflux, std::string jacflux, std::string reconst, std::string limiter)
-	: Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr)
+		const int isothermal_marker, const int adiabatic_marker, const int slip_marker,
+		const int inflowoutflow_marker, const a_real isothermal_wall_temperature,
+		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
+		reconstructPrim)
+	: 
+	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), reconstructPrimitive{reconstructPrim},
+	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker},
+	slip_wall_id{slip_marker}, inflow_outflow_id{inflowoutflow_marker},
+	supersonic_vortex_case_inflow{10}, isothermal_wall_temp{isothermal_wall_temp/Tinf}
 {
-	/// \todo TODO: Take the boundary flags below as input from control file
-	solid_wall_id = 2;
-	inflow_outflow_id = 4;
-	supersonic_vortex_case_inflow = 10;
-
-	// allocation
 	uinf.resize(1, NVARS);
 
 	// set inviscid flux scheme
@@ -422,15 +423,8 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	a_real ny = m->ggallfa(ied,1);
 
 	a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
-	/*a_real pi = (g-1.0)*(ins[3] - 0.5*(pow(ins[1],2)+pow(ins[2],2))/ins[0]);
-	a_real ci = sqrt(g*pi/ins[0]);
-	a_real Mni = vni/ci;
-	a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
-	a_real cinf = sqrt(g*pinf/uinf(0,0));
-	a_real vninf = (uinf(0,1)*nx + uinf(0,2)*ny)/uinf(0,0);
-	a_real Mninf = vninf/cinf;*/
 
-	if(m->ggallfa(ied,3) == solid_wall_id)
+	if(m->ggallfa(ied,3) == slip_wall_id)
 	{
 		bs[0] = ins[0];
 		bs[1] = ins[1] - 2*vni*nx*bs[0];
@@ -438,19 +432,55 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		bs[3] = ins[3];
 	}
 
-	/** Ghost cell values are always free-stream values.
-	 * Commented: Whether the flow is subsonic or supersonic at the boundary
-	 * is decided by interior value of the Mach number.
-	 * Commented below: Kind of according to FUN3D BCs paper
-	 * TODO: \todo Instead, the Mach number based on the Riemann solution state should be used.
+	if(m->ggallfa(ied,3) == isothermal_wall_id)
+	{
+		bs[0] = ins[0];
+		bs[1] = -ins[1];
+		bs[2] = -ins[2];
+		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temp};
+		bs[3] = getEnergyFromPrimitve2(prim2state);
+	}
+
+	if(m->ggallfa(ied,3) == adiabatic_wall_id)
+	{
+		bs[0] = ins[0];
+		bs[1] = -ins[1];
+		bs[2] = -ins[2];
+		a_real Tins = physics.getTemperatureFromConserved(ins);
+		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
+		bs[3] = getEnergyFromPrimitve2(prim2state);
+	}
+
+	/* Ghost cell values are always free-stream values.
 	 */
 	if(m->ggallfa(ied,3) == inflow_outflow_id)
 	{
-		/*if(Mni <= 0)
-		{*/
+		for(int i = 0; i < NVARS; i++)
+			bs[i] = uinf(0,i);
+	}
+
+	/* This BC is NOT TESTED and mostly DOES NOT WORK.
+	 * Whether the flow is subsonic or supersonic at the boundary
+	 * is decided by interior value of the Mach number.
+	 * Commented below: Kind of according to FUN3D BCs paper
+	 * TODO: Instead, the Mach number based on the Riemann solution state should be used.
+	 */
+	int characteristic_id = -1;
+	if(m->ggallfa(ied,3) == characteristic_id)
+	{
+		a_real pi = physics.getPressureFromConserved(ins);
+		a_real ci = physics.getSoundSpeedFromConserved(ins);
+		a_real Mni = vni/ci;
+		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
+		a_real cinf = physics.getSoundSpeedFromConserved(&uinf(0,0));
+		a_real vninf = (uinf(0,1)*nx + uinf(0,2)*ny)/uinf(0,0);
+		a_real Mninf = vninf/cinf;
+
+		if(Mni <= 0)
+		{
 			for(short i = 0; i < NVARS; i++)
 				bs[i] = uinf(0,i);
-		/*}
+		}
 		else if(Mni <= 1)
 		{
 			a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
@@ -463,7 +493,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		{
 			for(int i = 0; i < NVARS; i++)
 				bs[i] = ins[i];
-		}*/
+		}
 		
 		/*if(Mni <= -1.0)
 		{
@@ -533,39 +563,47 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
-		MVector up(m->gnelem(), NVARS);
-
-		// convert everything to primitive variables
-#pragma omp parallel default(shared)
+		if(reconstructPrimitive)
 		{
-#pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++)
+			MVector up(m->gnelem(), NVARS);
+
+			// convert everything to primitive variables
+#pragma omp parallel default(shared)
 			{
-				physics.convertConservedToPrimitive(&ug(iface,0), &ug(iface,0));
+#pragma omp for
+				for(a_int iface = 0; iface < m->gnbface(); iface++)
+				{
+					physics.convertConservedToPrimitive(&ug(iface,0), &ug(iface,0));
+				}
+
+#pragma omp for
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
+					physics.convertConservedToPrimitive(&u(iel,0), &up(iel,0));
 			}
 
+			// reconstruct
+			rec->compute_gradients(&up, &ug, &dudx, &dudy);
+			lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
+
+			// convert face values back to conserved variables - gradients stay primitive
+#pragma omp parallel default(shared)
+			{
 #pragma omp for
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
-				physics.convertConservedToPrimitive(&u(iel,0), &up(iel,0));
+				for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+				{
+					physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
+					physics.convertPrimitiveToConserved(&uright(iface,0), &uright(iface,0));
+				}
+#pragma omp for
+				for(a_int iface = 0; iface < m->gnbface(); iface++) {
+					physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
+				}
+			}
 		}
-
-		// reconstruct
-		rec->compute_gradients(&up, &ug, &dudx, &dudy);
-		lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
-
-		// convert face values back to conserved variables - gradients stay primitive
-#pragma omp parallel default(shared)
+		else
 		{
-#pragma omp for
-			for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
-			{
-				physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
-				physics.convertPrimitiveToConserved(&uright(iface,0), &uright(iface,0));
-			}
-#pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++) {
-				physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
-			}
+			rec->compute_gradients(&u, &ug, &dudx, &dudy);
+			lim->compute_face_values(u, ug, dudx, dudy, uleft, uright);
 		}
 	}
 	else
