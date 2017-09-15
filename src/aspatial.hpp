@@ -113,69 +113,9 @@ public:
 /** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
  * have been called on the mesh object prior to initialzing an object of this class.
  */
-class EulerFV : public Spatial<NVARS>
+class FlowFV : public Spatial<NVARS>
 {
-protected:
-	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
-	a_real g;								///< adiabatic index
-
-	/// stores (for each cell i) \f$ \sum_{j \in \partial\Omega_I} \int_j( |v_n| + c) d \Gamma \f$, 
-	/// where v_n and c are average values for each face of the cell
-	amat::Array2d<a_real> integ;
-	
-	/// Analytical flux vector computation
-	IdealGasPhysics physics;
-	
-	/// Numerical inviscid flux calculation context for residual computation
-	/** This is the "actual" flux being used.
-	 */
-	InviscidFlux* inviflux;
-
-	/// Numerical inviscid flux context for the Jacobian
-	InviscidFlux* jflux;
-
-	/// Reconstruction context
-	Reconstruction* rec;
-	
-	bool secondOrderRequested;
-
-	bool allocflux;
-
-	/// Limiter context
-	FaceDataComputation* lim;
-	
-	/// Ghost cell flow quantities
-	amat::Array2d<a_real> ug;
-
-	amat::Array2d<a_real> dudx;				///< X-gradients at cell centres
-	amat::Array2d<a_real> dudy;				///< Y-gradients at cell centres
-
-	int solid_wall_id;						///< Boundary marker corresponding to solid wall
-	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
-	int supersonic_vortex_case_inflow;		///< Inflow boundary marker for supersonic vortex case
-	
-	amat::Array2d<a_real> scalars;			///< Holds density, Mach number and pressure for cells
-	amat::Array2d<a_real> velocities;		///< Holds velocity components for each cell
-	
-	amat::Array2d<a_real> uleft;			///< Left state at faces
-	amat::Array2d<a_real> uright;			///< Right state at faces
-
-	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) 
-	/// using the interior state provided
-	/** \param[in] instates provides the left (interior state) for each boundary face
-	 * \param[out] bounstates will contain the right state of boundary faces
-	 *
-	 * Currently does not use characteristic BCs.
-	 * \todo Implement and test characteristic BCs
-	 */
-	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
-			amat::Array2d<a_real>& bounstates);
-
-	/// Computes ghost cell state across the face denoted by the first parameter
-	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
-
 public:
-
 	/// Sets data and various numerics objects
 	/** \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
 	 * \param[in] jacflux The inviscid flux to use for computing the first-order Jacobian
@@ -183,13 +123,16 @@ public:
 	 *   - NONE, GREENGAUSS, LEASTSQUARES
 	 * \param[in] limiter The kind of slope limiter to use - NONE, WENO
 	 */
-	EulerFV(const UMesh2dh *const mesh, std::string invflux, 
-			std::string jacflux, std::string reconst, std::string limiter);
+	FlowFV(const UMesh2dh *const mesh, const a_real g, const a_real Minf, const a_real Tinf, 
+			const a_real Reinf, const a_real Pr,
+			std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
 	
-	~EulerFV();
+	~FlowFV();
 	
-	/// Set simulation data and precompute data needed for reconstruction
-	void loaddata(const short inittype, const a_real Minf, const a_real vinf, const a_real a, 
+	void loaddata(const a_real a, MVector& u);
+
+	/// Set simulation data for special cases
+	void loaddata_special(const short inittype, const a_real vinf, const a_real a, 
 			const a_real rhoinf, MVector& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
@@ -223,6 +166,48 @@ public:
 	/** Call aftr computing pressure etc \sa postprocess_cell
 	 */
 	a_real compute_entropy_cell(const MVector& u);
+
+protected:
+	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
+
+	/// Analytical flux vector computation
+	IdealGasPhysics physics;
+	
+	/// Numerical inviscid flux calculation context for residual computation
+	/** This is the "actual" flux being used.
+	 */
+	InviscidFlux* inviflux;
+
+	/// Numerical inviscid flux context for the Jacobian
+	InviscidFlux* jflux;
+
+	/// Reconstruction context
+	Reconstruction* rec;
+	
+	bool secondOrderRequested;
+
+	bool allocflux;
+
+	/// Limiter context
+	FaceDataComputation* lim;
+
+	int solid_wall_id;						///< Boundary marker corresponding to solid wall
+	int inflow_outflow_id;					///< Boundary marker corresponding to inflow/outflow
+	int supersonic_vortex_case_inflow;		///< Inflow boundary marker for supersonic vortex case
+
+	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) 
+	/// using the interior state provided
+	/** \param[in] instates provides the left (interior state) for each boundary face
+	 * \param[out] bounstates will contain the right state of boundary faces
+	 *
+	 * Currently does not use characteristic BCs.
+	 * \todo Implement and test characteristic BCs
+	 */
+	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
+			amat::Array2d<a_real>& bounstates);
+
+	/// Computes ghost cell state across the face denoted by the first parameter
+	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs);
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity

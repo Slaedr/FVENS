@@ -30,15 +30,11 @@ public:
  */
 class IdealGasPhysics : public Physics
 {
-protected:
-	/// Adiabatic constant
-	const a_real g;
-
 public:
-	IdealGasPhysics(a_real _g) : g(_g)
+	IdealGasPhysics(const a_real _g, const a_real M_inf, 
+			const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
+		: g(_g), Minf(M_inf), Tinf(T_inf), Reinf(Re_inf), Pr(_Pr), sC(110.5)
 	{ }
-
-	a_real gamma() const { return g; }
 
 	/// Computes the analytical convective flux across a face oriented in some direction
 	void evaluate_normal_flux(const a_real *const u, const a_real* const n, 
@@ -50,8 +46,29 @@ public:
 	void evaluate_normal_jacobian(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict dfdu) const;
 
+	a_real getPressureFromConserved(const a_real *const uc) const
+	{
+		a_real rhovmag2 = 0;
+		for(int idim = 1; idim < NDIM+1; idim++)
+			rhovmag2 += uc[idim]*uc[idim];
+		return (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+	}
+
+	a_real getSoundSpeedFromConserved(const a_real *const uc) const
+	{
+		return std::sqrt(g * getPressureFromConserved(uc)/uc[0]);
+	}
+
+	a_real getEntropyFromConserved(const a_real *const uc) const
+	{
+		return getPressureFromConserved(uc)/std::pow(uc[0],g);
+	}
+
 	/// Convert conserved variables to primitive variables (density, velocities, pressure)
-	void convertConservedToPrimitive(const a_real *const uc, a_real *const up)
+	/** The input pointers are not assumed restricted, so the two parameters can point to
+	 * the same storage.
+	 */
+	void convertConservedToPrimitive(const a_real *const uc, a_real *const up) const
 	{
 		up[0] = uc[0];
 		a_real rhovmag2 = 0;
@@ -63,11 +80,14 @@ public:
 	}
 
 	/// Convert primitive variables to conserved
-	void convertPrimitiveToConserved(const a_real *const up, a_real *const uc)
+	/** The input pointers are not assumed restricted, so the two parameters can point to
+	 * the same storage.
+	 */
+	void convertPrimitiveToConserved(const a_real *const up, a_real *const uc) const
 	{
 		uc[0] = up[0];
 		a_real vmag2 = 0;
-		for(int idim = 1; idim < NDIM; idim++) {
+		for(int idim = 1; idim < NDIM+1; idim++) {
 			vmag2 += up[idim]*up[idim];
 			uc[idim] = up[0]*up[idim];
 		}
@@ -77,32 +97,68 @@ public:
 	/// Computes non-dimensional temperature from non-dimensional conserved variables
 	/** \sa IdealGasPhysics
 	 */
-	a_real getTemperatureFromConserved(const a_real *const uc, const a_real Minf)
+	a_real getTemperatureFromConserved(const a_real *const uc) const
 	{
-		a_real rhovmag2 = 0;
-		for(int idim = 1; idim < NDIM+1; idim++)
-			rhovmag2 += uc[idim]*uc[idim];
-		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+		const a_real p = getPressureFromConserved(uc);
 		return g*Minf*Minf*p/uc[0];
 	}
 
 	/// Computes non-dimensional temperature from non-dimensional primitive variables
-	a_real getTemperatureFromPrimitive(const a_real *const up, const a_real Minf)
+	a_real getTemperatureFromPrimitive(const a_real *const up) const
 	{
 		return g*Minf*Minf*up[NDIM+1]/up[0];
 	}
 
-	/// Compute temperature spatial derivative from conserved variables and their spatial derivatives
+	/// Compute non-dim temperature spatial derivative 
+	/// from non-dim conserved variables and their spatial derivatives
 	a_real getGradTemperatureFromConservedAndGradConserved(const a_real *const uc, 
-			const a_real *const guc);
+			const a_real *const guc) const
+	{
+		const a_real p = getPressureFromConserved(uc);
+		a_real term1 = 0, term2 = 0;
+		for(int idim = 1; idim < NDIM+1; idim++)
+		{
+			term1 += uc[idim]*guc[idim];
+			term2 += uc[idim]*uc[idim];
+		}
+		a_real dpdx = (g-1.0) * (guc[NDIM-1] - 0.5/(uc[0]*uc[0])*(2*uc[0]*term1 - term2*guc[0]));
+		return (uc[0]*dpdx - p*guc[0])/(uc[0]*uc[0]) * g*Minf*Minf;
+	}
 
-	/// Compute spatial derivative of from conserved variables and
-	/// spatial derivatives of *primitive* variables
+	/// Compute spatial derivative of non-dim temperature from non-dim conserved variables and
+	/// spatial derivatives of non-dim *primitive* variables
 	a_real getGradTemperatureFromConservedAndGradPrimitive(const a_real *const uc,
-			const a_real *const gup);
+			const a_real *const gup) const
+	{
+		const a_real p = getPressureFromConserved(uc);
+		return (uc[0]*gup[NDIM+1] - p*gup[0]) / (uc[0]*uc[0]) * g*Minf*Minf;
+	}
 
-	/// Computes dynamic viscosity using Sutherland's law
-	a_real getViscosityFromConserved(const a_real *const uc);
+	/// Computes non-dimensional viscosity using Sutherland's law from conserved variables
+	a_real getViscosityFromConserved(const a_real *const uc) const
+	{
+		a_real T = getTemperatureFromConserved(uc);
+		return (1+sC/Tinf)/(T+sC/Tinf) * std::pow(T,1.5) / Reinf;
+	}
+
+	a_real getThermalDiffusivityFromConserved(const a_real *const uc) const
+	{
+		a_real muhat = getViscosityFromConserved(uc);
+		return g*muhat / ((g-1.0)*Pr);
+	}
+
+	/// Adiabatic constant
+	const a_real g;
+	/// Free-stream Mach number
+	const a_real Minf;
+	/// Free-stream static temperature
+	const a_real Tinf;
+	/// Free-stream Reynolds number
+	const a_real Reinf;
+	/// Prandtl number
+	const a_real Pr;
+	/// Sutherland constant
+	const a_real sC;
 };
 
 }

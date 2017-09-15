@@ -12,11 +12,11 @@ namespace acfd {
 template<short nvars>
 Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL)/10.0}
 {
-	rc.setup(m->gnelem(),m->gndim());
-	rcg.setup(m->gnbface(),m->gndim());
+	rc.resize(m->gnelem(),m->gndim());
+	rcg.resize(m->gnbface(),m->gndim());
 	gr = new amat::Array2d<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
-		gr[i].setup(NGAUSS, m->gndim());
+		gr[i].resize(NGAUSS, m->gndim());
 
 	// get cell centers (real and ghost)
 	
@@ -212,11 +212,10 @@ void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, co
 	vy = vmag*sin(theta);
 }
 
-/** The adiabatic index is set to 1.4 here.
- */
-EulerFV::EulerFV(const UMesh2dh *const mesh, 
+FlowFV::FlowFV(const UMesh2dh *const mesh, 
+		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter)
-	: Spatial<NVARS>(mesh), g(1.4), physics(g)
+	: Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr)
 {
 	/// \todo TODO: Take the boundary flags below as input from control file
 	solid_wall_id = 2;
@@ -224,41 +223,35 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 	supersonic_vortex_case_inflow = 10;
 
 	// allocation
-	uinf.setup(1, NVARS);
-	integ.setup(m->gnelem(), 1);
-	dudx.setup(m->gnelem(), NVARS);
-	dudy.setup(m->gnelem(), NVARS);
-	ug.setup(m->gnbface(),NVARS);
-	uleft.setup(m->gnaface(), NVARS);
-	uright.setup(m->gnaface(), NVARS);
+	uinf.resize(1, NVARS);
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
 		inviflux = new VanLeerFlux(&physics);
-		std::cout << "  EulerFV: Using Van Leer fluxes." << std::endl;
+		std::cout << "  FlowFV: Using Van Leer fluxes." << std::endl;
 	}
 	else if(invflux == "ROE")
 	{
 		inviflux = new RoeFlux(&physics);
-		std::cout << "  EulerFV: Using Roe fluxes." << std::endl;
+		std::cout << "  FlowFV: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLL")
 	{
 		inviflux = new HLLFlux(&physics);
-		std::cout << "  EulerFV: Using HLL fluxes." << std::endl;
+		std::cout << "  FlowFV: Using HLL fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
 		inviflux = new HLLCFlux(&physics);
-		std::cout << "  EulerFV: Using HLLC fluxes." << std::endl;
+		std::cout << "  FlowFV: Using HLLC fluxes." << std::endl;
 	}
 	else if(invflux == "LLF")
 	{
 		inviflux = new LocalLaxFriedrichsFlux(&physics);
-		std::cout << "  EulerFV: Using LLF fluxes." << std::endl;
+		std::cout << "  FlowFV: Using LLF fluxes." << std::endl;
 	}
 	else
-		std::cout << "  EulerFV: ! Flux scheme not available!" << std::endl;
+		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
 	
 	// set inviscid flux scheme for Jacobian
 	allocflux = false;
@@ -269,46 +262,46 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 	else if(jacflux == "ROE")
 	{
 		jflux = new RoeFlux(&physics);
-		std::cout << "  EulerFV: Using Roe fluxes for Jacobian." << std::endl;
+		std::cout << "  FlowFV: Using Roe fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "HLL")
 	{
 		jflux = new HLLFlux(&physics);
-		std::cout << "  EulerFV: Using HLL fluxes for Jacobian." << std::endl;
+		std::cout << "  FlowFV: Using HLL fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "HLLC")
 	{
 		jflux = new HLLCFlux(&physics);
-		std::cout << "  EulerFV: Using HLLC fluxes for Jacobian." << std::endl;
+		std::cout << "  FlowFV: Using HLLC fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "LLF")
 	{
 		jflux = new LocalLaxFriedrichsFlux(&physics);
-		std::cout << "  EulerFV: Using LLF fluxes for Jacobian." << std::endl;
+		std::cout << "  FlowFV: Using LLF fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else
-		std::cout << "  EulerFV: ! Flux scheme not available!" << std::endl;
+		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
 	secondOrderRequested = true;
-	std::cout << "  EulerFV: Selected reconstruction scheme is " << reconst << std::endl;
+	std::cout << "  FlowFV: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
 		rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc, &rcg);
-		std::cout << "  EulerFV: Weighted least-squares reconstruction will be used.\n";
+		std::cout << "  FlowFV: Weighted least-squares reconstruction will be used.\n";
 	}
 	else if(reconst == "GREENGAUSS")
 	{
 		rec = new GreenGaussReconstruction<NVARS>(m, &rc, &rcg);
-		std::cout << "  EulerFV: Green-Gauss reconstruction will be used." << std::endl;
+		std::cout << "  FlowFV: Green-Gauss reconstruction will be used." << std::endl;
 	}
 	else /*if(reconst == "NONE")*/ {
 		rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
-		std::cout << "  EulerFV: No reconstruction; first order solution." << std::endl;
+		std::cout << "  FlowFV: No reconstruction; first order solution." << std::endl;
 		secondOrderRequested = false;
 	}
 
@@ -316,31 +309,31 @@ EulerFV::EulerFV(const UMesh2dh *const mesh,
 	if(limiter == "NONE")
 	{
 		lim = new NoLimiter(m, &rcg, &rc, gr);
-		std::cout << "  EulerFV: No limiter will be used." << std::endl;
+		std::cout << "  FlowFV: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
 		lim = new WENOLimiter(m, &rcg, &rc, gr);
-		std::cout << "  EulerFV: WENO limiter selected.\n";
+		std::cout << "  FlowFV: WENO limiter selected.\n";
 	}
 	else if(limiter == "VANALBADA")
 	{
 		lim = new VanAlbadaLimiter(m, &rcg, &rc, gr);
-		std::cout << "  EulerFV: Van Albada limiter selected.\n";
+		std::cout << "  FlowFV: Van Albada limiter selected.\n";
 	}
 	else if(limiter == "BARTHJESPERSEN")
 	{
 		lim = new BarthJespersenLimiter(m, &rcg, &rc, gr);
-		std::cout << "  EulerFV: Barth-Jespersen limiter selected.\n";
+		std::cout << "  FlowFV: Barth-Jespersen limiter selected.\n";
 	}
 	else if(limiter == "VENKATAKRISHNAN")
 	{
-		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 5.75);
-		std::cout << "  EulerFV: Venkatakrishnan limiter selected.\n";
+		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 3.75);
+		std::cout << "  FlowFV: Venkatakrishnan limiter selected.\n";
 	}
 }
 
-EulerFV::~EulerFV()
+FlowFV::~FlowFV()
 {
 	delete rec;
 	delete inviflux;
@@ -356,18 +349,37 @@ EulerFV::~EulerFV()
  * \param rhoinf Free stream density
  * \param u conserved variable array
  */
-void EulerFV::loaddata(const short inittype, const a_real Minf, const a_real vinf, 
-		const a_real a, const a_real rhoinf, MVector& u)
+void FlowFV::loaddata(const a_real a, MVector& u)
 {
 	// Note that reference density and reference velocity are the values at infinity
-	a_real p = rhoinf*vinf*vinf/(g*Minf*Minf);
 
 	uinf(0,0) = 1.0;
 	uinf(0,1) = cos(a);
 	uinf(0,2) = sin(a);
-	uinf(0,3) = 1.0/((g-1)*g*Minf*Minf) + 0.5;
+	uinf(0,3) = 1.0/((physics.g-1)*physics.g*physics.Minf*physics.Minf) + 0.5;
 
-	if(inittype == 1)
+	//initial values are equal to boundary values
+	for(a_int i = 0; i < m->gnelem(); i++)
+		for(short j = 0; j < NVARS; j++)
+			u(i,j) = uinf(0,j);
+
+#ifdef DEBUG
+	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
+#endif
+}
+
+void FlowFV::loaddata_special(const short inittype, const a_real vinf, 
+		const a_real a, const a_real rhoinf, MVector& u)
+{
+	// Note that reference density and reference velocity are the values at infinity
+
+	uinf(0,0) = 1.0;
+	uinf(0,1) = cos(a);
+	uinf(0,2) = sin(a);
+	uinf(0,3) = 1.0/((physics.g-1)*physics.g*physics.Minf*physics.Minf) + 0.5;
+
+	if(inittype == 1) {
+		a_real p = rhoinf*vinf*vinf/(physics.g*physics.Minf*physics.Minf);
 		for(a_int i = 0; i < m->gnelem(); i++)
 		{
 			// call supersonic vortex initialzation
@@ -381,8 +393,9 @@ void EulerFV::loaddata(const short inittype, const a_real Minf, const a_real vin
 			get_supersonicvortex_initial_velocity(vinf, x, y, u(i,1), u(i,2));
 			u(i,0) = rhoinf;
 			u(i,1) *= rhoinf; u(i,2) *= rhoinf;
-			u(i,3) = p/(g-1) + 0.5*rhoinf*vinf*vinf;
+			u(i,3) = p/(physics.g-1) + 0.5*rhoinf*vinf*vinf;
 		}
+	}
 	else
 		//initial values are equal to boundary values
 		for(a_int i = 0; i < m->gnelem(); i++)
@@ -390,11 +403,11 @@ void EulerFV::loaddata(const short inittype, const a_real Minf, const a_real vin
 				u(i,j) = uinf(0,j);
 
 #ifdef DEBUG
-	std::cout << "EulerFV: loaddata(): Initial data calculated.\n";
+	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
 #endif
 }
 
-void EulerFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
+void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -403,7 +416,7 @@ void EulerFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Ar
 	}
 }
 
-void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
 {
 	a_real nx = m->ggallfa(ied,0);
 	a_real ny = m->ggallfa(ied,1);
@@ -482,13 +495,21 @@ void EulerFV::compute_boundary_state(const int ied, const a_real *const ins, a_r
 		// y-coordinate of face center
 		a_real r = 0.5*(m->gcoords(m->gintfac(ied,2),1) + m->gcoords(m->gintfac(ied,3),1));
 		a_real ri = 1.0, Mi = 2.25, rhoi = 1.0;
-		get_supersonicvortex_state(g, Mi, ri, rhoi, r, bs[0], bs[1], bs[2], bs[3]);
+		get_supersonicvortex_state(physics.g, Mi, ri, rhoi, r, bs[0], bs[1], bs[2], bs[3]);
 	}
 }
 
-void EulerFV::compute_residual(const MVector& u, MVector& __restrict residual, 
+void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 
 		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm)
 {
+	amat::Array2d<a_real> integ, dudx, dudy, ug, uleft, uright;	
+	integ.resize(m->gnelem(), 1);
+	dudx.resize(m->gnelem(), NVARS);
+	dudy.resize(m->gnelem(), NVARS);
+	ug.resize(m->gnbface(),NVARS);
+	uleft.resize(m->gnaface(), NVARS);
+	uright.resize(m->gnaface(), NVARS);
+
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
@@ -512,8 +533,40 @@ void EulerFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
-		rec->compute_gradients(&u, &ug, &dudx, &dudy);
-		lim->compute_face_values(u, ug, dudx, dudy, uleft, uright);
+		MVector up(m->gnelem(), NVARS);
+
+		// convert everything to primitive variables
+#pragma omp parallel default(shared)
+		{
+#pragma omp for
+			for(a_int iface = 0; iface < m->gnbface(); iface++)
+			{
+				physics.convertConservedToPrimitive(&ug(iface,0), &ug(iface,0));
+			}
+
+#pragma omp for
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
+				physics.convertConservedToPrimitive(&u(iel,0), &up(iel,0));
+		}
+
+		// reconstruct
+		rec->compute_gradients(&up, &ug, &dudx, &dudy);
+		lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
+
+		// convert face values back to conserved variables - gradients stay primitive
+#pragma omp parallel default(shared)
+		{
+#pragma omp for
+			for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+			{
+				physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
+				physics.convertPrimitiveToConserved(&uright(iface,0), &uright(iface,0));
+			}
+#pragma omp for
+			for(a_int iface = 0; iface < m->gnbface(); iface++) {
+				physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
+			}
+		}
 	}
 	else
 	{
@@ -564,13 +617,13 @@ void EulerFV::compute_residual(const MVector& u, MVector& __restrict residual,
 					fluxes[ivar] *= len;
 
 			//calculate presures from u
-			const a_real pi = (g-1)*(uleft(ied,3) 
+			const a_real pi = (physics.g-1)*(uleft(ied,3) 
 					- 0.5*(pow(uleft(ied,1),2)+pow(uleft(ied,2),2))/uleft(ied,0));
-			const a_real pj = (g-1)*(uright(ied,3) 
+			const a_real pj = (physics.g-1)*(uright(ied,3) 
 					- 0.5*(pow(uright(ied,1),2)+pow(uright(ied,2),2))/uright(ied,0));
 			//calculate speeds of sound
-			const a_real ci = sqrt(g*pi/uleft(ied,0));
-			const a_real cj = sqrt(g*pj/uright(ied,0));
+			const a_real ci = sqrt(physics.g*pi/uleft(ied,0));
+			const a_real cj = sqrt(physics.g*pj/uright(ied,0));
 			//calculate normal velocities
 			const a_real vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
 			const a_real vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
@@ -605,7 +658,7 @@ void EulerFV::compute_residual(const MVector& u, MVector& __restrict residual,
 
 #if HAVE_PETSC==1
 
-void EulerFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
+void FlowFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
 {
 	if(blocked)
 	{
@@ -615,7 +668,7 @@ void EulerFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
 	{
 		Array2d<a_real>* D = new Array2d<a_real>[m->gnelem()];
 		for(int iel = 0; iel < m->gnelem(); iel++) {
-			D[iel].setup(NVARS,NVARS);
+			D[iel].resize(NVARS,NVARS);
 			D[iel].zeros();
 		}
 
@@ -718,7 +771,7 @@ void EulerFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
-void EulerFV::compute_jacobian(const MVector& u, 
+void FlowFV::compute_jacobian(const MVector& u, 
 				LinearOperator<a_real,a_int> *const __restrict A)
 {
 #pragma omp parallel for default(shared)
@@ -794,11 +847,12 @@ void EulerFV::compute_jacobian(const MVector& u,
 
 #endif
 
-void EulerFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, amat::Array2d<a_real>& velocities)
+void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+		amat::Array2d<a_real>& velocities)
 {
-	std::cout << "EulerFV: postprocess_point(): Creating output arrays...\n";
-	scalars.setup(m->gnpoin(),3);
-	velocities.setup(m->gnpoin(),2);
+	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
+	scalars.resize(m->gnpoin(),3);
+	velocities.resize(m->gnpoin(),2);
 	
 	amat::Array2d<a_real> areasum(m->gnpoin(),1);
 	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
@@ -827,22 +881,22 @@ void EulerFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars
 		//velocities(ipoin,0) = dudx(ipoin,1);
 		//velocities(ipoin,1) = dudy(ipoin,1);
 		a_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
-		scalars(ipoin,2) = up(ipoin,0)*(g-1) * (up(ipoin,3)/up(ipoin,0) - 0.5*vmag2);		// pressure
-		a_real c = sqrt(g*scalars(ipoin,2)/up(ipoin,0));
+		scalars(ipoin,2) = physics.getPressureFromConserved(&up(ipoin,0));
+		a_real c = physics.getSoundSpeedFromConserved(&up(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c;
 	}
 
 	compute_entropy_cell(u);
 
-	std::cout << "EulerFV: postprocess_point(): Done.\n";
+	std::cout << "FlowFV: postprocess_point(): Done.\n";
 }
 
-void EulerFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
+void FlowFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
 		amat::Array2d<a_real>& velocities)
 {
-	std::cout << "EulerFV: postprocess_cell(): Creating output arrays...\n";
-	scalars.setup(m->gnelem(), 3);
-	velocities.setup(m->gnelem(), 2);
+	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
+	scalars.resize(m->gnelem(), 3);
+	velocities.resize(m->gnelem(), 2);
 
 	for(a_int iel = 0; iel < m->gnelem(); iel++) {
 		scalars(iel,0) = u(iel,0);
@@ -853,33 +907,30 @@ void EulerFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars,
 		velocities(iel,0) = u(iel,1)/u(iel,0);
 		velocities(iel,1) = u(iel,2)/u(iel,0);
 		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
-		scalars(iel,2) = (g-1) * (u(iel,3) - 0.5*u(iel,0)*vmag2);				// pressure
-		a_real c = sqrt(g*scalars(iel,2)/u(iel,0));
+		scalars(iel,2) = physics.getPressureFromConserved(&u(iel,0));
+		a_real c = physics.getSoundSpeedFromConserved(&u(iel,0));
 		scalars(iel,1) = sqrt(vmag2)/c;
 	}
 	compute_entropy_cell(u);
-	std::cout << "EulerFV: postprocess_cell(): Done.\n";
+	std::cout << "FlowFV: postprocess_cell(): Done.\n";
 }
 
-a_real EulerFV::compute_entropy_cell(const MVector& u)
+a_real FlowFV::compute_entropy_cell(const MVector& u)
 {
-	a_real vmaginf2 = uinf(0,1)/uinf(0,0)*uinf(0,1)/uinf(0,0) 
-		              + uinf(0,2)/uinf(0,0)*uinf(0,2)/uinf(0,0);
-	a_real sinf = ( uinf(0,0)*(g-1) * (uinf(0,3)/uinf(0,0) - 0.5*vmaginf2) ) / pow(uinf(0,0),g);
+	a_real sinf = physics.getEntropyFromConserved(&uinf(0,0));
 
 	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		a_real p = (g-1) * ( u(iel,3) - 0.5*(u(iel,1)*u(iel,1)+u(iel,2)*u(iel,2))/u(iel,0) );
-		s_err(iel) = (p / pow(u(iel,0),g) - sinf) / sinf;
+		s_err(iel) = (physics.getEntropyFromConserved(&u(iel,0)) - sinf) / sinf;
 		error += s_err(iel)*s_err(iel)*m->garea(iel);
 	}
 	error = sqrt(error);
 
 	a_real h = 1.0/sqrt(m->gnelem());
  
-	std::cout << "EulerFV:   " << log10(h) << "  " 
+	std::cout << "FlowFV:   " << log10(h) << "  " 
 		<< std::setprecision(10) << log10(error) << std::endl;
 
 	return error;
@@ -931,7 +982,7 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
 	
 	amat::Array2d<a_real> areasum(m->gnpoin(),1);
-	up.setup(m->gnpoin(), nvars);
+	up.resize(m->gnpoin(), nvars);
 	up.zeros();
 	areasum.zeros();
 
@@ -973,10 +1024,10 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh,
 		std::cout << "  DiffusionMA: No reconstruction; first order solution." << std::endl;
 	}
 	
-	dudx.setup(m->gnelem(),nvars);
-	dudy.setup(m->gnelem(),nvars);
-	uleft.setup(m->gnaface(),nvars);
-	ug.setup(m->gnbface(),nvars);
+	dudx.resize(m->gnelem(),nvars);
+	dudy.resize(m->gnelem(),nvars);
+	uleft.resize(m->gnaface(),nvars);
+	ug.resize(m->gnbface(),nvars);
 }
 
 template<short nvars>

@@ -16,9 +16,10 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, logfile, lognresstr;
+	string dum, meshfile, outf, logfile, lognresstr, simtype;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	double initcfl, endcfl, M_inf, vinf, alpha, rho_inf, tolerance, lintol, firstcfl, firsttolerance;
+	double initcfl, endcfl, Minf, vinf, alpha, rhoinf, tolerance, lintol, firstcfl, firsttolerance;
+	double Reinf, Tinf, Pr, gamma;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
@@ -29,11 +30,19 @@ int main(int argc, char* argv[])
 	control >> dum; control >> outf;
 	control >> dum; control >> logfile;
 	control >> dum; control >> lognresstr;
-	control >> dum; control >> M_inf;
-	control >> dum; control >> vinf;
+	control >> dum;
+	control >> dum; control >> simtype;
 	control >> dum; control >> alpha;
-	control >> dum; control >> rho_inf;
+	control >> dum; control >> Minf;
+	control >> dum; control >> Tinf;
+	control >> dum; control >> Reinf;
+	control >> dum; control >> Pr;
+	control >> dum; control >> gamma;
 	control >> dum; control >> inittype;
+	if(inittype == 1) {
+		control >> dum; control >> vinf;
+		control >> dum; control >> rhoinf;
+	}
 	control >> dum;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
@@ -69,8 +78,6 @@ int main(int argc, char* argv[])
 		invfluxjac = invflux;
 	control.close();
 
-	std::locale loc;
-
 	if(usemf == "YES")
 		use_matrix_free = true;
 	else
@@ -101,9 +108,9 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	EulerFV prob(&m, invflux, invfluxjac, reconst, limiter);
+	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, reconst, limiter);
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
-	EulerFV startprob(&m, invflux, invfluxjac, "NONE", "NONE");
+	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, "NONE", "NONE");
 	
 	SteadySolver<4>* time;
 	if(timesteptype == "IMPLICIT") {
@@ -120,8 +127,16 @@ int main(int argc, char* argv[])
 		std::cout << "Setting up explicit forward Euler temporal scheme.\n";
 	}
 	
-	startprob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time->unknowns());
-	prob.loaddata(inittype, M_inf, vinf, alpha*PI/180, rho_inf, time->unknowns());
+	if(inittype == 1)
+	{
+		startprob.loaddata_special(inittype, vinf, alpha*PI/180, rhoinf, time->unknowns());
+		prob.loaddata_special(inittype, vinf, alpha*PI/180, rhoinf, time->unknowns());
+	}
+	else
+	{
+		startprob.loaddata(alpha*PI/180.0, time->unknowns());
+		prob.loaddata(alpha*PI/180.0, time->unknowns());
+	}
 
 	// computation
 	time->solve(logfile);

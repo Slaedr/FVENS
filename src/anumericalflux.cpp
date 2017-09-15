@@ -14,7 +14,7 @@
 namespace acfd {
 
 InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx) 
-	: physics(phyctx), g(phyctx->gamma())
+	: physics(phyctx), g(phyctx->g)
 { }
 
 void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, 
