@@ -186,46 +186,33 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 	}
 }
 
-/** Solution for supersonic vortex case given by Krivodonova and Berger.
- * Lilia Krivodonova and Marsha Berger, "High-order accurate implementation of 
- * solid wall boundary conditions in curved geometries",
- * JCP 211, pp 492--512, 2006.
- */
-void get_supersonicvortex_state(const a_real g, 
-		const a_real Mi, const a_real ri, const a_real rhoi, 
-		const a_real r, a_real& rho, a_real& rhov1, a_real& rhov2, a_real& rhoe)
-{
-	a_real p = 1.0 + (g-1.0)*0.5*Mi*Mi*(1-ri*ri/(r*r));
-	rho = rhoi * pow(p, 1.0/(g-1));
-	a_real ci = sqrt(pow(rhoi, g-1.0));
-	a_real v = ci*Mi/r;
-	rhov1 = rho*v; rhov2 = 0;
-	p = pow(rho,g)/g;
-	rhoe = p/(g-1.0) + 0.5*rho*v*v;
-}
-
-void get_supersonicvortex_initial_velocity(const a_real vmag, const a_real x, const a_real y, 
-		a_real& vx, a_real& vy)
-{
-	a_real theta = atan2(y,x) - PI/2.0;
-	vx = vmag*cos(theta);
-	vy = vmag*sin(theta);
-}
-
 FlowFV::FlowFV(const UMesh2dh *const mesh, 
 		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
-		const int isothermal_marker, const int adiabatic_marker, const int slip_marker,
-		const int inflowoutflow_marker, const a_real isothermal_wall_temperature,
+		const a_real a, 
+		const int isothermal_marker, const int isothermalbaric_marker, 
+		const int adiabatic_marker, const int slip_marker, const int inflowoutflow_marker, 
+		const a_real isothermal_Temperature, const a_real isothermal_TangVel,
+		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel,
+		const a_real isothermalbaric_Pressure, const a_real adiabatic_TangVel,
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
-		reconstructPrim)
+		const bool reconstructPrim)
 	: 
-	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), reconstructPrimitive{reconstructPrim},
-	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker},
+	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr),
+	isothermal_wall_id{isothermal_marker}, isothermalbaric_wall_id{isothermalbaric_marker},
+	adiabatic_wall_id{adiabatic_marker},
 	slip_wall_id{slip_marker}, inflow_outflow_id{inflowoutflow_marker},
-	supersonic_vortex_case_inflow{10}, isothermal_wall_temp{isothermal_wall_temp/Tinf}
+	isothermal_wall_temperature{isothermal_Temperature/Tinf},
+	isothermal_wall_tangvel{isothermal_TangVel}, 
+	isothermalbaric_wall_temperature{isothermalbaric_Temperature},
+	isothermalbaric_wall_tangvel{isothermalbaric_TangVel},
+	isothermalbaric_wall_pressure{isothermalbaric_Pressure},
+	adiabatic_wall_tangvel{adiabatic_TangVel},
+	reconstructPrimitive{reconstructPrim}
 {
-	uinf.resize(1, NVARS);
-
+#ifdef DEBUG
+	std::cout << "Boundary markers:\n";
+	std::cout << "Farfield " << inflow_outflow_id << ", slip wall " << slip_wall_id << '\n';
+#endif
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
 		inviflux = new VanLeerFlux(&physics);
@@ -332,6 +319,14 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 3.75);
 		std::cout << "  FlowFV: Venkatakrishnan limiter selected.\n";
 	}
+	
+	// Set farfield: note that reference density and reference velocity are the values at infinity
+
+	uinf.resize(1, NVARS);
+	uinf(0,0) = 1.0;
+	uinf(0,1) = cos(a);
+	uinf(0,2) = sin(a);
+	uinf(0,3) = 1.0/((physics.g-1)*physics.g*physics.Minf*physics.Minf) + 0.5;
 }
 
 FlowFV::~FlowFV()
@@ -343,59 +338,12 @@ FlowFV::~FlowFV()
 	delete lim;
 }
 
-/// Function to feed needed data and initialize u
-/** \param Minf Free-stream Mach number
- * \param vinf Free stream velocity magnitude
- * \param a Angle of attack (radians)
- * \param rhoinf Free stream density
- * \param u conserved variable array
- */
-void FlowFV::loaddata(const a_real a, MVector& u)
+void FlowFV::initializeUnknowns(const bool fromfile, const std::string file, MVector& u)
 {
-	// Note that reference density and reference velocity are the values at infinity
 
-	uinf(0,0) = 1.0;
-	uinf(0,1) = cos(a);
-	uinf(0,2) = sin(a);
-	uinf(0,3) = 1.0/((physics.g-1)*physics.g*physics.Minf*physics.Minf) + 0.5;
-
-	//initial values are equal to boundary values
-	for(a_int i = 0; i < m->gnelem(); i++)
-		for(short j = 0; j < NVARS; j++)
-			u(i,j) = uinf(0,j);
-
-#ifdef DEBUG
-	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
-#endif
-}
-
-void FlowFV::loaddata_special(const short inittype, const a_real vinf, 
-		const a_real a, const a_real rhoinf, MVector& u)
-{
-	// Note that reference density and reference velocity are the values at infinity
-
-	uinf(0,0) = 1.0;
-	uinf(0,1) = cos(a);
-	uinf(0,2) = sin(a);
-	uinf(0,3) = 1.0/((physics.g-1)*physics.g*physics.Minf*physics.Minf) + 0.5;
-
-	if(inittype == 1) {
-		a_real p = rhoinf*vinf*vinf/(physics.g*physics.Minf*physics.Minf);
-		for(a_int i = 0; i < m->gnelem(); i++)
-		{
-			// call supersonic vortex initialzation
-			a_real x = 0, y = 0;
-			for(int inode = 0; inode < m->gnnode(i); inode++) {
-				x += m->gcoords(m->ginpoel(i, inode), 0);
-				y += m->gcoords(m->ginpoel(i, inode), 1);
-			}
-			x /= m->gnnode(i); y /= m->gnnode(i);
-
-			get_supersonicvortex_initial_velocity(vinf, x, y, u(i,1), u(i,2));
-			u(i,0) = rhoinf;
-			u(i,1) *= rhoinf; u(i,2) *= rhoinf;
-			u(i,3) = p/(physics.g-1) + 0.5*rhoinf*vinf*vinf;
-		}
+	if(fromfile)
+	{
+		/// TODO: read initial conditions from file
 	}
 	else
 		//initial values are equal to boundary values
@@ -437,8 +385,8 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		bs[0] = ins[0];
 		bs[1] = -ins[1];
 		bs[2] = -ins[2];
-		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temp};
-		bs[3] = getEnergyFromPrimitve2(prim2state);
+		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
+		bs[3] = physics.getEnergyFromPrimitive2(prim2state);
 	}
 
 	if(m->ggallfa(ied,3) == adiabatic_wall_id)
@@ -448,7 +396,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		bs[2] = -ins[2];
 		a_real Tins = physics.getTemperatureFromConserved(ins);
 		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
-		bs[3] = getEnergyFromPrimitve2(prim2state);
+		bs[3] = physics.getEnergyFromPrimitive2(prim2state);
 	}
 
 	/* Ghost cell values are always free-stream values.
@@ -468,13 +416,13 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	int characteristic_id = -1;
 	if(m->ggallfa(ied,3) == characteristic_id)
 	{
-		a_real pi = physics.getPressureFromConserved(ins);
 		a_real ci = physics.getSoundSpeedFromConserved(ins);
 		a_real Mni = vni/ci;
 		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
-		a_real cinf = physics.getSoundSpeedFromConserved(&uinf(0,0));
+		/*a_real cinf = physics.getSoundSpeedFromConserved(&uinf(0,0));
 		a_real vninf = (uinf(0,1)*nx + uinf(0,2)*ny)/uinf(0,0);
 		a_real Mninf = vninf/cinf;
+		a_real pi = physics.getPressureFromConserved(ins);*/
 
 		if(Mni <= 0)
 		{
@@ -483,11 +431,10 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		}
 		else if(Mni <= 1)
 		{
-			a_real pinf = (g-1.0)*(uinf(0,3) - 0.5*(pow(uinf(0,1),2)+pow(uinf(0,2),2))/uinf(0,0));
 			bs[0] = ins[0];
 			bs[1] = ins[1];
 			bs[2] = ins[2];
-			bs[3] = pinf/(g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			bs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
 		}
 		else
 		{
@@ -519,13 +466,6 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		else
 			for(i = 0; i < NVARS; i++)
 				bs(ied,i) = ins.get(ied,i);*/
-	}
-	
-	if(m->ggallfa(ied,3) == supersonic_vortex_case_inflow) {
-		// y-coordinate of face center
-		a_real r = 0.5*(m->gcoords(m->gintfac(ied,2),1) + m->gcoords(m->gintfac(ied,3),1));
-		a_real ri = 1.0, Mi = 2.25, rhoi = 1.0;
-		get_supersonicvortex_state(physics.g, Mi, ri, rhoi, r, bs[0], bs[1], bs[2], bs[3]);
 	}
 }
 
@@ -830,13 +770,6 @@ void FlowFV::compute_jacobian(const MVector& u,
 		// multiply by length of face and negate, as -ve of L is added to D
 		left = -len*left;
 		A->updateDiagBlock(lelem*NVARS, left.data(), NVARS);
-
-		/*for(int i = 0; i < NVARS; i++)
-			for(int j = 0; j < NVARS; j++) {
-				left(i,j) *= len;
-#pragma omp atomic update
-				D[lelem](i,j) -= left(i,j);
-			}*/
 	}
 
 #pragma omp parallel for default(shared)
@@ -853,19 +786,8 @@ void FlowFV::compute_jacobian(const MVector& u,
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
 		/// NOTE: the values of L and U get REPLACED here, not added to
-		//jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L[intface](0,0), &U[intface](0,0));
 		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
 
-		/*for(int i = 0; i < NVARS; i++)
-			for(int j = 0; j < NVARS; j++) {
-				L[intface](i,j) *= len;
-				U[intface](i,j) *= len;
-#pragma omp atomic update
-				D[lelem](i,j) -= L[intface](i,j);
-#pragma omp atomic update
-				D[relem](i,j) -= U[intface](i,j);
-			}*/
-		
 		L *= len; U *= len;
 		if(A->type()=='d') {
 			A->submitBlock(relem*NVARS,lelem*NVARS, L.data(), 1,intface);
@@ -1061,11 +983,6 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh,
 		rec = new ConstantReconstruction<nvars>(m, &rc, &rcg);
 		std::cout << "  DiffusionMA: No reconstruction; first order solution." << std::endl;
 	}
-	
-	dudx.resize(m->gnelem(),nvars);
-	dudy.resize(m->gnelem(),nvars);
-	uleft.resize(m->gnaface(),nvars);
-	ug.resize(m->gnbface(),nvars);
 }
 
 template<short nvars>
@@ -1080,6 +997,16 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
                                           const bool gettimesteps, 
 										  amat::Array2d<a_real>& __restrict dtm)
 {
+	amat::Array2d<a_real> dudx;
+	amat::Array2d<a_real> dudy;
+	amat::Array2d<a_real> uleft;
+	amat::Array2d<a_real> ug;
+	
+	dudx.resize(m->gnelem(),nvars);
+	dudy.resize(m->gnelem(),nvars);
+	uleft.resize(m->gnaface(),nvars);
+	ug.resize(m->gnbface(),nvars);
+
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);

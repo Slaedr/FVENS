@@ -16,34 +16,49 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim;
+	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	double initcfl, endcfl, Minf, vinf, alpha, rhoinf, tolerance, lintol, 
+	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
 		   firstcfl, firsttolerance;
-	double Reinf, Tinf, Pr, gamma;
+	double Reinf=0, Tinf=0, Pr=0, gamma, twalltemp=0, twallvel = 0;
+	double tpwalltemp=0, tpwallpressure=0, tpwallvel=0, adiawallvel;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, 
-		restart_vecs;
+		restart_vecs, farfield_marker, slipwall_marker, isothermalwall_marker=-1,
+		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
 	bool use_matrix_free, lognres, reconstPrim;
-	char mattype;
+	char mattype, dumc;
 
-	control >> dum; control >> meshfile;
+	std::getline(control,dum); control >> meshfile;
 	control >> dum; control >> outf;
 	control >> dum; control >> logfile;
 	control >> dum; control >> lognresstr;
 	control >> dum;
 	control >> dum; control >> simtype;
+	control >> dum; control >> gamma;
 	control >> dum; control >> alpha;
 	control >> dum; control >> Minf;
-	control >> dum; control >> Tinf;
-	control >> dum; control >> Reinf;
-	control >> dum; control >> Pr;
-	control >> dum; control >> gamma;
+	if(simtype == "NAVIERSTOKES") {
+		control >> dum; control >> Tinf;
+		control >> dum; control >> Reinf;
+		control >> dum; control >> Pr;
+	}
 	control >> dum; control >> inittype;
 	if(inittype == 1) {
-		control >> dum; control >> vinf;
-		control >> dum; control >> rhoinf;
+		control >> dum; control >> initcondfile;
+	}
+	control.get(dumc); std::getline(control,dum);
+	control >> dum; control >> farfield_marker;
+	control >> dum; control >> slipwall_marker;
+	if(simtype == "NAVIERSTOKES") {
+		control.get(dumc); std::getline(control,dum); control >> isothermalwall_marker;
+		control.get(dumc); std::getline(control,dum); control >> twalltemp >> twallvel;
+		control.get(dumc); std::getline(control,dum); control >> isothermalpressurewall_marker;
+		control.get(dumc); std::getline(control,dum); control >> tpwalltemp >> tpwallvel 
+			>> tpwallpressure;
+		control.get(dumc); std::getline(control,dum); control >> adiabaticwall_marker;
+		control.get(dumc); std::getline(control,dum); control >> adiawallvel;
 	}
 	control >> dum;
 	control >> dum; control >> invflux;
@@ -113,11 +128,17 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, reconst, limiter,
-			reconstPrim);
+	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0,
+			isothermalwall_marker, isothermalpressurewall_marker, adiabaticwall_marker,
+			slipwall_marker, farfield_marker,
+			twalltemp, twallvel, tpwalltemp, tpwallvel, tpwallpressure, adiawallvel,
+			invflux, invfluxjac, reconst, limiter, reconstPrim);
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
-	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, invflux, invfluxjac, "NONE", "NONE",
-			true);
+	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0,
+			isothermalwall_marker, isothermalpressurewall_marker, adiabaticwall_marker,
+			slipwall_marker, farfield_marker,
+			twalltemp, twallvel, tpwalltemp, tpwallvel, tpwallpressure, adiawallvel,
+			invflux, invfluxjac, "NONE", "NONE",true);
 	
 	SteadySolver<4>* time;
 	if(timesteptype == "IMPLICIT") {
@@ -133,27 +154,20 @@ int main(int argc, char* argv[])
 					mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
 					nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, 
 					restart_vecs, lognres);
-		std::cout << "Setting up backward Euler temporal scheme.\n";
+		std::cout << "Set up backward Euler temporal scheme.\n";
 	}
 	else {
 		time = new SteadyForwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
 				tolerance, maxiter, initcfl, firsttolerance, firstmaxiter, firstcfl, lognres);
-		std::cout << "Setting up explicit forward Euler temporal scheme.\n";
+		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}
 	
-	if(inittype == 1)
-	{
-		startprob.loaddata_special(inittype, vinf, alpha*PI/180, rhoinf, time->unknowns());
-		prob.loaddata_special(inittype, vinf, alpha*PI/180, rhoinf, time->unknowns());
-	}
-	else
-	{
-		startprob.loaddata(alpha*PI/180.0, time->unknowns());
-		prob.loaddata(alpha*PI/180.0, time->unknowns());
-	}
+	startprob.initializeUnknowns(false, initcondfile, time->unknowns());
 
 	// computation
 	time->solve(logfile);
+
+	// export output
 
 	Array2d<a_real> scalars;
 	Array2d<a_real> velocities;

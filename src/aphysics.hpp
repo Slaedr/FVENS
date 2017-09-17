@@ -35,7 +35,10 @@ public:
 	IdealGasPhysics(const a_real _g, const a_real M_inf, 
 			const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
 		: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
-	{ }
+	{
+		std::cout << "Adiabatic index = " << g << ", M_infty = " << Minf << ", T_infy = " << Tinf
+			<< "\nRe_infty = " << Reinf << ", Pr = " << Pr << std::endl;
+	}
 
 	/// Computes the analytical convective flux across a face oriented in some direction
 	void evaluate_normal_flux(const a_real *const u, const a_real* const n, 
@@ -141,7 +144,7 @@ public:
 	a_real getEnergyFromPrimitive2(const a_real *const upt) const
 	{
 		const a_real p = upt[0]*upt[NDIM+1]/(g*Minf*Minf);
-		const vmag2 = 0;
+		a_real vmag2 = 0;
 		for(int idim = 1; idim < NDIM+1; idim++)
 			vmag2 += upt[idim]*upt[idim];
 		return p/(g-1.0) + 0.5*upt[0]*vmag2;

@@ -9,31 +9,35 @@ NO
 ########PHYSICS######################################################
 ---Flow-type(EULER,NAVIERSTOKES)
 NAVIERSTOKES
+---Adiabatic-index
+1.4
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.2
+0.1444543957
 ---Free-stream-temperature(K)
-298
+298.0
 ---Free-stream-Reynolds-number
-0
+3217119.5652
 ---Prandtl-number
-0.72
----Adiabatic-index
-1.4
----Initial-values-type(0=from_infinity_values,1=supersonic_vortex)
-0
+0.71102553846
 ###########BOUNDARY-CONDITIONS########################################
----Isothermal-wall-marker
-6
----Isothermal-wall-temperature(K)
-293.15
----Adiabatic-wall-marker
-7
----Slip-wall-marker
-2
 ---Farfield-marker
 4
+---Slip-wall-marker
+2
+---Isothermal-wall-Marker
+		6
+---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
+		                     298.0                        1.1
+---Isothermal-isobaric-wall-Marker
+		7           
+---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
+							  298.0                       1.0                           1.0
+---Adiabatic-wall-Marker
+		8  
+---Adiabatic-wall:           Tang. velocity (normalized)
+					          0.0
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL

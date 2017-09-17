@@ -110,7 +110,8 @@ public:
 };
 
 /// Computes the integrated fluxes and their Jacobians for compressible flow
-/** \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
+/** Note about BCs: normal velocity is assumed zero at all walls.
+ * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
  * have been called on the mesh object prior to initialzing an object of this class.
  */
 class FlowFV : public Spatial<NVARS>
@@ -123,9 +124,12 @@ public:
 	 * \param[in] Tinf Free stream dimensional temperature
 	 * \param[in] Reinf Free-stream Reynolds number
 	 * \param[in] Pr Prandtl number
+	 * \param[in] aoa Angle of attack in radians
 	 * \param[in] isothermal_marker The boundary marker in the mesh file corresponding to
 	 *   isothermal wall boundaries
-	 * \param[in] isothermal_wall_temperature Wall temperature boundary value in Kelvin; this is
+	 * \param[in] isothermalbaric_marker Boundary marker in the mesh file corresponding to
+	 *   isothermal wall with pressure additionally specified
+	 * \param[in] isothermal_Temperature Wall temperature boundary value in Kelvin; this is
 	 *   divided by free-stream temperature in this routine and the non-dimensional value is stored
 	 * \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
 	 * \param[in] jacflux The inviscid flux to use for computing the first-order Jacobian
@@ -134,21 +138,24 @@ public:
 	 * \param[in] limiter The kind of slope limiter to use
 	 */
 	FlowFV(const UMesh2dh *const mesh, const a_real g, const a_real Minf, const a_real Tinf, 
-		const a_real Reinf, const a_real Pr,
-		const int isothermal_marker, const int adiabatic_marker, const int slip_marker,
-		const int inflowoutflow_marker, const a_real isothermal_wall_temperature,
-		std::string invflux, std::string jacflux, std::string reconst, std::string limiter);
+		const a_real Reinf, const a_real Pr, const a_real aoa,
+		const int isothermal_marker, const int isothermalbaric_marker, 
+		const int adiabatic_marker, const int slip_marker, const int inflowoutflow_marker, 
+		const a_real isothermal_Temperature, const a_real isothermal_TangVel, 
+		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
+		const a_real isothermalbaric_Pressure,
+		const a_real adiabatic_TangVel,
+		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
+		const bool reconst_prim);
 	
 	~FlowFV();
 
 	/// Sets initial conditions
-	/** \param[in] a Angle of attack in radians
+	/** \param[in] fromfile True if initial data is to be read from a file
+	 * \param[in] file Name of initial conditions file
+	 * \param[in|out] u Vector to store the initial data in
 	 */
-	void loaddata(const a_real a, MVector& u);
-
-	/// Set simulation data for special cases
-	void loaddata_special(const short inittype, const a_real vinf, const a_real a, 
-			const a_real rhoinf, MVector& u);
+	void initializeUnknowns(const bool fromfile, const std::string file, MVector& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
@@ -203,20 +210,25 @@ protected:
 
 	bool allocflux;
 
-	bool reconstructPrimitive;
-
 	/// Limiter context
 	FaceDataComputation* lim;
 
 	const int isothermal_wall_id;				///< Boundary marker for isothermal wall
+	const int isothermalbaric_wall_id;			/**< Isothermal wall with a pressure value 
+													additionally imposed */
 	const int adiabatic_wall_id;				///< Boundary marker for adiabatic wall
 	const int slip_wall_id;						///< Boundary marker corresponding to solid wall
 	const int inflow_outflow_id;				///< Boundary marker corresponding to inflow/outflow
-	
-	/// Inflow boundary marker for supersonic vortex case
-	const int supersonic_vortex_case_inflow;
 
-	const a_real isothermal_wall_temp;		///< Temperature imposed at isothermal wall
+	const a_real isothermal_wall_temperature;      ///< Temperature imposed at isothermal wall
+	const a_real isothermal_wall_tangvel;          ///< Tangential velocity at isothermal wall
+	const a_real isothermalbaric_wall_temperature; ///< Temperature at isothermal isobaric wall
+	const a_real isothermalbaric_wall_tangvel;  ///< Tangential velocity at isothermal isobaric wall
+	const a_real isothermalbaric_wall_pressure; ///< Pressure imposed at isothermal isobaric wall
+	const a_real adiabatic_wall_tangvel;           ///< Tangential velocity at adiabatic wall
+
+	/// True if primitive variables should be reconstructed rather than conserved variables
+	const bool reconstructPrimitive;
 
 	/// Computes flow variables at boundaries (either Gauss points or ghost cell centers) 
 	/// using the interior state provided
@@ -237,6 +249,22 @@ protected:
 template <short nvars>
 class Diffusion : public Spatial<nvars>
 {
+public:
+	Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+			std::function <
+			void(const a_real *const, const a_real, const a_real *const, a_real *const)
+			> source);
+	
+	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
+			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) = 0;
+	
+	virtual void compute_jacobian(const MVector& u, 
+			LinearOperator<a_real,a_int> *const A) = 0;
+
+	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& up);
+
+	virtual ~Diffusion();
+
 protected:
 	using Spatial<nvars>::m;
 	using Spatial<nvars>::rc;
@@ -256,22 +284,6 @@ protected:
 	
 	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
 			amat::Array2d<a_real>& bounstates);
-
-public:
-	Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-			std::function <
-			void(const a_real *const, const a_real, const a_real *const, a_real *const)
-			> source);
-	
-	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) = 0;
-	
-	virtual void compute_jacobian(const MVector& u, 
-			LinearOperator<a_real,a_int> *const A) = 0;
-
-	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& up);
-
-	virtual ~Diffusion();
 };
 
 /// Spatial discretization of diffusion operator with constant diffusivity 
@@ -279,25 +291,6 @@ public:
 template <short nvars>
 class DiffusionMA : public Diffusion<nvars>
 {
-	using Spatial<nvars>::m;
-	using Spatial<nvars>::rc;
-	using Spatial<nvars>::rcg;
-	using Spatial<nvars>::gr;
-	using Diffusion<nvars>::diffusivity;
-	using Diffusion<nvars>::bval;
-	using Diffusion<nvars>::source;
-	using Diffusion<nvars>::h;
-	
-	using Diffusion<nvars>::compute_boundary_state;
-	using Diffusion<nvars>::compute_boundary_states;
-	
-	Reconstruction* rec;
-	amat::Array2d<a_real> dudx;				///< X-gradients at cell centres
-	amat::Array2d<a_real> dudy;				///< Y-gradients at cell centres
-	amat::Array2d<a_real> uleft;			///< Left state at each face
-	amat::Array2d<a_real> uright;			///< Right state at each face
-	amat::Array2d<a_real> ug;				///< Boundary states
-
 public:
 	DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 			std::function <
@@ -315,8 +308,22 @@ public:
 			LinearOperator<a_real,a_int> *const A);
 
 	~DiffusionMA();
-	
+
+protected:
 	using Diffusion<nvars>::postprocess_point;
+	using Spatial<nvars>::m;
+	using Spatial<nvars>::rc;
+	using Spatial<nvars>::rcg;
+	using Spatial<nvars>::gr;
+	using Diffusion<nvars>::diffusivity;
+	using Diffusion<nvars>::bval;
+	using Diffusion<nvars>::source;
+	using Diffusion<nvars>::h;
+	
+	using Diffusion<nvars>::compute_boundary_state;
+	using Diffusion<nvars>::compute_boundary_states;
+	
+	Reconstruction* rec;
 };
 
 }	// end namespace
