@@ -6,7 +6,7 @@ radiusFF = 20;
 
 meshSizeWing = 0.2/refine;
 meshSizeLead = meshSizeWing/10.0;
-meshSizeTrail = meshSizeWing/5.0;
+meshSizeTrail = meshSizeWing/10.0;
 meshSizeFF = radiusFF*meshSizeWing;
 
 nsplinepoints = 20*refine;
@@ -74,18 +74,16 @@ Line Loop(6) = {5,6,7,8};
 Line Loop(7) = {1,2};
 
 //  Boundary layer
-surfs1[] = Extrude {Line{-1}; Layers{{10,5,2},{meshSizeWing/20, meshSizeWing/10, meshSizeWing/4}}; };
-//surfs2[] = Extrude {Line{-2}; Layers{{10,5,2},{meshSizeWing/20, meshSizeWing/10, meshSizeWing/4}};};
+//surfs1[] = Extrude {Line{-1}; Layers{{10,5,2},{meshSizeWing/20, meshSizeWing/10, meshSizeWing/6}}; };
+//surfs2[] = Extrude {Line{-2}; Layers{{10,5,2},{meshSizeWing/20, meshSizeWing/10, meshSizeWing/6}};};
 
-//Plane Surface(10) = {6,7};
-//Physical Surface(1) = {10};
+Plane Surface(10) = {6,7};
+Physical Surface(1) = {10};
 
-//Line Loop(8) = {-surfs1[0],-surfs2[0]};
-Line Loop(8) = {-surfs1[0], 2};
+/*Line Loop(8) = {-surfs1[0],-surfs2[0]};
 Plane Surface(10) = {6, 8};
-//Physical Surface(1) = {10,surfs1[1],surfs2[1]};
-Phyical Surface(1) = {10,surfs1[1]};
-Color Black{ Surface{surfs1[1], surfs2[1]}; }
+Physical Surface(1) = {10,surfs1[1],surfs2[1]};
+Color Black{ Surface{surfs1[1], surfs2[1]}; }*/
 
 Physical Line(2) = {1,2};
 Physical Line(4) = {5,6,7,8};
@@ -94,14 +92,14 @@ Physical Line(4) = {5,6,7,8};
 
 // Size fields - do not work
 
-Mesh.CharacteristicLengthFromCurvature=10; // Does not work
+//Mesh.CharacteristicLengthFromCurvature=10; // Does not work
 
 Field[1] = BoundaryLayer;
 Field[1].AnisoMax = 90;
 Field[1].EdgesList = {1,2};
 Field[1].FanNodesList = {0};
 Field[1].Quads = 1;
-Field[1].hfar = meshSizeWing;
+Field[1].hfar = meshSizeFF;
 Field[1].hwall_n = meshSizeWing/20.0;
 Field[1].ratio = 1.5;
 Field[1].thickness = 0.1;
