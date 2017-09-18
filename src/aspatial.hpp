@@ -127,8 +127,8 @@ public:
 	 * \param[in] aoa Angle of attack in radians
 	 * \param[in] isothermal_marker The boundary marker in the mesh file corresponding to
 	 *   isothermal wall boundaries
-	 * \param[in] isothermalbaric_marker Boundary marker in the mesh file corresponding to
-	 *   isothermal wall with pressure additionally specified
+	 * \param[in] adiabisobaric_marker Boundary marker in the mesh file corresponding to
+	 *   adiabatic wall with pressure additionally specified
 	 * \param[in] isothermal_Temperature Wall temperature boundary value in Kelvin; this is
 	 *   divided by free-stream temperature in this routine and the non-dimensional value is stored
 	 * \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
@@ -142,8 +142,8 @@ public:
 		const int isothermal_marker, const int isothermalbaric_marker, 
 		const int adiabatic_marker, const int slip_marker, const int inflowoutflow_marker, 
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel, 
-		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
-		const a_real isothermalbaric_Pressure,
+		const a_real adiabisobaric_Temperature, const a_real adiabisobaric_TangVel, 
+		const a_real adiabisobaric_Pressure,
 		const a_real adiabatic_TangVel,
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
 		const bool reconst_prim);
@@ -222,10 +222,9 @@ protected:
 
 	const a_real isothermal_wall_temperature;      ///< Temperature imposed at isothermal wall
 	const a_real isothermal_wall_tangvel;          ///< Tangential velocity at isothermal wall
-	const a_real isothermalbaric_wall_temperature; ///< Temperature at isothermal isobaric wall
-	const a_real isothermalbaric_wall_tangvel;  ///< Tangential velocity at isothermal isobaric wall
-	const a_real isothermalbaric_wall_pressure; ///< Pressure imposed at isothermal isobaric wall
 	const a_real adiabatic_wall_tangvel;           ///< Tangential velocity at adiabatic wall
+	const a_real adiabisobaric_wall_tangvel;  ///< Tangential velocity at adiabatic isobaric wall
+	const a_real adiabisobaric_wall_pressure; ///< Pressure imposed at adiabatic isobaric wall
 
 	/// True if primitive variables should be reconstructed rather than conserved variables
 	const bool reconstructPrimitive;

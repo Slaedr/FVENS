@@ -189,11 +189,11 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 FlowFV::FlowFV(const UMesh2dh *const mesh, 
 		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
 		const a_real a, 
-		const int isothermal_marker, const int isothermalbaric_marker, 
-		const int adiabatic_marker, const int slip_marker, const int inflowoutflow_marker, 
+		const int isothermal_marker, const int adiabatic_marker, const int adiabisobaric_marker,
+		const int slip_marker, const int inflowoutflow_marker, 
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel,
-		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel,
-		const a_real isothermalbaric_Pressure, const a_real adiabatic_TangVel,
+		const a_real adiabatic_TangVel,
+		const a_real adiabisobaric_TangVel, const a_real adiabisobaric_Pressure, 
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
 		const bool reconstructPrim)
 	: 
@@ -382,18 +382,20 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 	if(m->ggallfa(ied,3) == isothermal_wall_id)
 	{
+		const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
 		bs[0] = ins[0];
-		bs[1] = -ins[1];
-		bs[2] = -ins[2];
+		bs[1] =  2.0*tangMomentum*ny - ins[1];
+		bs[2] = -2.0*tangMomentum*nx - ins[2];
 		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
 		bs[3] = physics.getEnergyFromPrimitive2(prim2state);
 	}
 
 	if(m->ggallfa(ied,3) == adiabatic_wall_id)
 	{
+		const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
 		bs[0] = ins[0];
-		bs[1] = -ins[1];
-		bs[2] = -ins[2];
+		bs[1] =  2.0*tangMomentum*ny - ins[1];
+		bs[2] = -2.0*tangMomentum*nx - ins[2];
 		a_real Tins = physics.getTemperatureFromConserved(ins);
 		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
 		bs[3] = physics.getEnergyFromPrimitive2(prim2state);
