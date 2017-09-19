@@ -18,16 +18,17 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
+	string constvisc;
 	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
 		   firstcfl, firsttolerance;
 	double Reinf=0, Tinf=0, Pr=0, gamma, twalltemp=0, twallvel = 0;
 	double tpwalltemp=0, tpwallpressure=0, tpwallvel=0, adiawallvel;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, 
 		restart_vecs, farfield_marker, slipwall_marker, isothermalwall_marker=-1,
-		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1;
+		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, extrap_marker=-1;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
-	bool use_matrix_free, lognres, reconstPrim;
+	bool use_matrix_free, lognres, reconstPrim, useconstvisc, viscsim=false;
 	char mattype, dumc;
 
 	std::getline(control,dum); control >> meshfile;
@@ -43,22 +44,25 @@ int main(int argc, char* argv[])
 		control >> dum; control >> Tinf;
 		control >> dum; control >> Reinf;
 		control >> dum; control >> Pr;
+		control >> dum; control >> constvisc;
+		viscsim = true;
 	}
 	control >> dum; control >> inittype;
 	if(inittype == 1) {
 		control >> dum; control >> initcondfile;
 	}
 	control.get(dumc); std::getline(control,dum);
-	control >> dum; control >> farfield_marker;
 	control >> dum; control >> slipwall_marker;
-	if(simtype == "NAVIERSTOKES") {
-		control.get(dumc); std::getline(control,dum); control >> isothermalwall_marker;
-		control.get(dumc); std::getline(control,dum); control >> twalltemp >> twallvel;
-		control.get(dumc); std::getline(control,dum); control >> isothermalpressurewall_marker;
-		control.get(dumc); std::getline(control,dum); control >> tpwalltemp >> tpwallvel 
+	control >> dum; control >> farfield_marker;
+	control >> dum; control >> extrap_marker;
+	if(viscsim) {
+		std::getline(control,dum); std::getline(control,dum); control >> isothermalwall_marker;
+		std::getline(control,dum); std::getline(control,dum); control >> twalltemp >> twallvel;
+		std::getline(control,dum); std::getline(control,dum); control >> adiabaticwall_marker;
+		std::getline(control,dum); std::getline(control,dum); control >> adiawallvel;
+		std::getline(control,dum); std::getline(control,dum); control >> isothermalpressurewall_marker;
+		std::getline(control,dum); std::getline(control,dum); control >> tpwalltemp >> tpwallvel 
 			>> tpwallpressure;
-		control.get(dumc); std::getline(control,dum); control >> adiabaticwall_marker;
-		control.get(dumc); std::getline(control,dum); control >> adiawallvel;
 	}
 	control >> dum;
 	control >> dum; control >> invflux;
@@ -107,6 +111,10 @@ int main(int argc, char* argv[])
 		reconstPrim = false;
 	else
 		reconstPrim = true;
+	if(constvisc == "YES")
+		useconstvisc = true;
+	else
+		useconstvisc = false;
 	
 	if(meshfile == "READFROMCMD")
 	{
@@ -128,16 +136,16 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0,
-			isothermalwall_marker, isothermalpressurewall_marker, adiabaticwall_marker,
-			slipwall_marker, farfield_marker,
-			twalltemp, twallvel, tpwalltemp, tpwallvel, tpwallpressure, adiawallvel,
+	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
+			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
+			slipwall_marker, farfield_marker, extrap_marker,
+			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, reconst, limiter, reconstPrim);
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
-	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0,
-			isothermalwall_marker, isothermalpressurewall_marker, adiabaticwall_marker,
-			slipwall_marker, farfield_marker,
-			twalltemp, twallvel, tpwalltemp, tpwallvel, tpwallpressure, adiawallvel,
+	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
+			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
+			slipwall_marker, farfield_marker, extrap_marker,
+			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",true);
 	
 	SteadySolver<4>* time;

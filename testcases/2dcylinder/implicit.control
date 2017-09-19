@@ -18,10 +18,12 @@ EULER
 ---Initial-values-type(0=from_infinity_values,1=from_file)
 0
 ###########BOUNDARY-CONDITIONS########################################
----Farfield-marker
-4
 ---Slip-wall-marker
 2
+---Farfield-marker
+4
+---Extrapolation-marker
+0
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL

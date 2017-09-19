@@ -188,31 +188,41 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 
 FlowFV::FlowFV(const UMesh2dh *const mesh, 
 		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
-		const a_real a, 
-		const int isothermal_marker, const int adiabatic_marker, const int adiabisobaric_marker,
-		const int slip_marker, const int inflowoutflow_marker, 
+		const a_real a, const bool compute_viscous, const bool useConstVisc,
+		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker,
+		const int slip_marker, const int inflowoutflow_marker, const int extrap_marker,
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel,
 		const a_real adiabatic_TangVel,
-		const a_real adiabisobaric_TangVel, const a_real adiabisobaric_Pressure, 
+		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
+		const a_real isothermalbaric_Pressure, 
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
 		const bool reconstructPrim)
 	: 
-	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr),
-	isothermal_wall_id{isothermal_marker}, isothermalbaric_wall_id{isothermalbaric_marker},
-	adiabatic_wall_id{adiabatic_marker},
-	slip_wall_id{slip_marker}, inflow_outflow_id{inflowoutflow_marker},
+	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), 
+	computeViscous{compute_viscous}, constVisc(useConstVisc),
+	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
+	isothermalbaric_wall_id{isothermalbaric_marker},
+	slip_wall_id{slip_marker}, inflow_outflow_id{inflowoutflow_marker}, extrap_id{extrap_marker},
 	isothermal_wall_temperature{isothermal_Temperature/Tinf},
 	isothermal_wall_tangvel{isothermal_TangVel}, 
-	isothermalbaric_wall_temperature{isothermalbaric_Temperature},
-	isothermalbaric_wall_tangvel{isothermalbaric_TangVel},
-	isothermalbaric_wall_pressure{isothermalbaric_Pressure},
 	adiabatic_wall_tangvel{adiabatic_TangVel},
+	isothermalbaric_wall_temperature{isothermalbaric_Temperature}, 
+	isothermalbaric_wall_tangvel{isothermalbaric_TangVel}, 
+	isothermalbaric_wall_pressure{isothermalbaric_Pressure},
+	secondOrderRequested{true},
 	reconstructPrimitive{reconstructPrim}
 {
 #ifdef DEBUG
-	std::cout << "Boundary markers:\n";
-	std::cout << "Farfield " << inflow_outflow_id << ", slip wall " << slip_wall_id << '\n';
+	std::cout << " FlowFV: Boundary markers:\n";
+	std::cout << "  Farfield " << inflow_outflow_id << ", slip wall " << slip_wall_id;
+	std::cout << "  Extrapolation " << extrap_id << '\n';
+	std::cout << "  Isothermal " << isothermal_wall_id;
+	std::cout << "  Adiabatic " << adiabatic_wall_id;
+	std::cout << "  Isothermal isobaric " << isothermalbaric_wall_id << '\n';
 #endif
+	if(constVisc)
+		std::cout << " FLowFV: Using constant viscosity.\n";
+
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
 		inviflux = new VanLeerFlux(&physics);
@@ -275,7 +285,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
-	secondOrderRequested = true;
+	bool* secondOrder = const_cast<bool*>(&secondOrderRequested);
 	std::cout << "  FlowFV: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
@@ -290,7 +300,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	else /*if(reconst == "NONE")*/ {
 		rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
 		std::cout << "  FlowFV: No reconstruction; first order solution." << std::endl;
-		secondOrderRequested = false;
+		*secondOrder = false;
 	}
 
 	// set limiter
@@ -357,6 +367,7 @@ void FlowFV::initializeUnknowns(const bool fromfile, const std::string file, MVe
 }
 
 void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
+	const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -365,7 +376,7 @@ void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Arr
 	}
 }
 
-void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs)
+void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const
 {
 	a_real nx = m->ggallfa(ied,0);
 	a_real ny = m->ggallfa(ied,1);
@@ -380,25 +391,12 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		bs[3] = ins[3];
 	}
 
-	if(m->ggallfa(ied,3) == isothermal_wall_id)
+	if(m->ggallfa(ied,3) == extrap_id)
 	{
-		const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
 		bs[0] = ins[0];
-		bs[1] =  2.0*tangMomentum*ny - ins[1];
-		bs[2] = -2.0*tangMomentum*nx - ins[2];
-		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
-		bs[3] = physics.getEnergyFromPrimitive2(prim2state);
-	}
-
-	if(m->ggallfa(ied,3) == adiabatic_wall_id)
-	{
-		const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
-		bs[0] = ins[0];
-		bs[1] =  2.0*tangMomentum*ny - ins[1];
-		bs[2] = -2.0*tangMomentum*nx - ins[2];
-		a_real Tins = physics.getTemperatureFromConserved(ins);
-		a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
-		bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+		bs[1] = ins[1];
+		bs[2] = ins[2];
+		bs[3] = ins[3];
 	}
 
 	/* Ghost cell values are always free-stream values.
@@ -409,13 +407,48 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			bs[i] = uinf(0,i);
 	}
 
+	if(computeViscous) 
+	{
+		if(m->ggallfa(ied,3) == isothermal_wall_id)
+		{
+			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			bs[0] = ins[0];
+			bs[1] =  2.0*tangMomentum*ny - ins[1];
+			bs[2] = -2.0*tangMomentum*nx - ins[2];
+			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
+			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+		}
+
+		if(m->ggallfa(ied,3) == adiabatic_wall_id)
+		{
+			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			bs[0] = ins[0];
+			bs[1] =  2.0*tangMomentum*ny - ins[1];
+			bs[2] = -2.0*tangMomentum*nx - ins[2];
+			a_real Tins = physics.getTemperatureFromConserved(ins);
+			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
+			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+		}
+
+		if(m->ggallfa(ied,3) == isothermalbaric_wall_id)
+		{
+			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
+			bs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
+					isothermalbaric_wall_temperature);
+			bs[1] =  2.0*tangMomentum*ny - ins[1];
+			bs[2] = -2.0*tangMomentum*nx - ins[2];
+			a_real prim2state[] = {bs[0],bs[1]/bs[0],bs[2]/bs[0],isothermalbaric_wall_temperature};
+			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+		}
+	}
+
 	/* This BC is NOT TESTED and mostly DOES NOT WORK.
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 * Commented below: Kind of according to FUN3D BCs paper
 	 * TODO: Instead, the Mach number based on the Riemann solution state should be used.
 	 */
-	int characteristic_id = -1;
+	constexpr int characteristic_id = -1;
 	if(m->ggallfa(ied,3) == characteristic_id)
 	{
 		a_real ci = physics.getSoundSpeedFromConserved(ins);
@@ -471,8 +504,43 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	}
 }
 
+inline void FlowFV::computeViscousFlux(const a_int iface, const MVector& u, 
+		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		a_real *const __restrict vflux) const
+{
+	// TODO
+	a_int lelem = m->gintfac(iface,0);
+	a_int relem = m->gintfac(iface,1);
+	a_real len = m->ggallfa(iface,2);
+	a_real dr[NDIM], dist=0, sn=0, gradterm[NVARS];
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+	}
+	dist = sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		sn += dr[i]/dist * m->ggallfa(iface,i);
+	}
+
+	// compute modified gradient
+	for(short ivar = 0; ivar < NVARS; ivar++) {
+		gradterm[ivar] 
+		 = 0.5*(dudx(lelem,ivar)+dudx(relem,ivar)) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
+		 + 0.5*(dudy(lelem,ivar)+dudy(relem,ivar)) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
+	}
+
+	// TODO: get coeff
+	a_real diffusivity = 1.0;
+
+	for(short ivar = 0; ivar < NVARS; ivar++)
+	{
+		vflux[ivar] = diffusivity * 
+			(gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len;
+	}
+}
+
 void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 
-		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm)
+		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const
 {
 	amat::Array2d<a_real> integ, dudx, dudy, ug, uleft, uright;	
 	integ.resize(m->gnelem(), 1);
@@ -488,6 +556,10 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			integ(iel) = 0.0;
+			for(int ivar = 0; ivar < NVARS; ivar++) {
+				dudx(iel,ivar) = 0;
+				dudy(iel,ivar) = 0;
+			}
 		}
 
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
@@ -596,17 +668,15 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 			for(short ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] *= len;
 
-			//calculate presures from u
-			const a_real pi = (physics.g-1)*(uleft(ied,3) 
-					- 0.5*(pow(uleft(ied,1),2)+pow(uleft(ied,2),2))/uleft(ied,0));
-			const a_real pj = (physics.g-1)*(uright(ied,3) 
-					- 0.5*(pow(uright(ied,1),2)+pow(uright(ied,2),2))/uright(ied,0));
-			//calculate speeds of sound
-			const a_real ci = sqrt(physics.g*pi/uleft(ied,0));
-			const a_real cj = sqrt(physics.g*pj/uright(ied,0));
-			//calculate normal velocities
-			const a_real vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
-			const a_real vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
+			if(computeViscous) 
+			{
+				// get viscous fluxes
+				a_real vflux[NVARS];
+				computeViscousFlux(ied, u, dudx, dudy, vflux);
+
+				for(short ivar = 0; ivar < NVARS; ivar++)
+					fluxes[ivar] -= vflux[ivar];
+			}
 
 			for(int ivar = 0; ivar < NVARS; ivar++) {
 #pragma omp atomic
@@ -618,15 +688,40 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 					residual(relem,ivar) -= fluxes[ivar];
 				}
 			}
+			
+			// compute max allowable time steps
+			if(gettimesteps) 
+			{
+				//calculate speeds of sound
+				const a_real ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
+				const a_real cj = physics.getSoundSpeedFromConserved(&uright(ied,0));
+				//calculate normal velocities
+				const a_real vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
+				const a_real vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
+
+				a_real specradi = (fabs(vni)+ci)*len, specradj = (fabs(vnj)+cj)*len;
+
+				if(computeViscous) 
+				{
+					a_real mui = physics.getViscosityFromConserved(&uleft(ied,0));
+					a_real muj = physics.getViscosityFromConserved(&uright(ied,0));
+					a_real coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
+					a_real coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
+					specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
+					specradj += coj*muj/physics.Pr * len*len/m->garea(relem);
+				}
+
 #pragma omp atomic
-			integ(lelem) += (fabs(vni)+ci)*len;
-			if(relem < m->gnelem()) {
+				integ(lelem) += specradi;
+				if(relem < m->gnelem()) {
 #pragma omp atomic
-				integ(relem) += (fabs(vnj)+cj)*len;
+					integ(relem) += specradj;
+				}
 			}
 		}
 
 #pragma omp barrier
+
 		if(gettimesteps)
 #pragma omp for simd
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -924,7 +1019,7 @@ Diffusion<nvars>::~Diffusion()
 // Currently, all boundaries are constant Dirichlet
 template<short nvars>
 inline void Diffusion<nvars>::compute_boundary_state(const int ied, 
-		const a_real *const ins, a_real *const bs)
+		const a_real *const ins, a_real *const bs) const
 {
 	for(short ivar = 0; ivar < nvars; ivar++)
 		bs[ivar] = 2.0*bval - ins[ivar];
@@ -932,7 +1027,7 @@ inline void Diffusion<nvars>::compute_boundary_state(const int ied,
 
 template<short nvars>
 void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates, 
-                                                amat::Array2d<a_real>& bounstates)
+                                                amat::Array2d<a_real>& bounstates) const
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
@@ -997,7 +1092,7 @@ template<short nvars>
 void DiffusionMA<nvars>::compute_residual(const MVector& u, 
                                           MVector& __restrict residual, 
                                           const bool gettimesteps, 
-										  amat::Array2d<a_real>& __restrict dtm)
+										  amat::Array2d<a_real>& __restrict dtm) const
 {
 	amat::Array2d<a_real> dudx;
 	amat::Array2d<a_real> dudy;

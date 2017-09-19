@@ -76,7 +76,9 @@ public:
 			a_real *const dfdl, a_real *const dfdr);
 };
 
-/// Roe flux-difference splitting Riemann solver for the Euler equations
+/// Roe flux-difference splitting
+/** From Blazek's version: \cite{blazek}.
+ */
 class RoeFlux : public InviscidFlux
 {
 public:

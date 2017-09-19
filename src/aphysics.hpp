@@ -36,8 +36,9 @@ public:
 			const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
 		: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
 	{
-		std::cout << "Adiabatic index = " << g << ", M_infty = " << Minf << ", T_infy = " << Tinf
-			<< "\nRe_infty = " << Reinf << ", Pr = " << Pr << std::endl;
+		std::cout << " IdealGasPhysics: Physical parameters:\n";
+		std::cout << "  Adiabatic index = " <<g << ", M_infty = " <<Minf << ", T_infty = " << Tinf
+			<< "\n   Re_infty = " << Reinf << ", Pr = " << Pr << std::endl;
 	}
 
 	/// Computes the analytical convective flux across a face oriented in some direction
@@ -96,6 +97,13 @@ public:
 			uc[idim] = up[0]*up[idim];
 		}
 		uc[NDIM+1] = up[NDIM+1]/(g-1.0) + 0.5*up[0]*vmag2;
+	}
+
+	/// Computes density from pressure and temperature using ideal gas relation;
+	/// All quantities are non-dimensional
+	a_real getDensityFromPressureTemperature(const a_real pressure, const a_real temperature) const
+	{
+		return g*Minf*Minf*pressure/temperature;
 	}
 
 	/// Computes non-dimensional temperature from non-dimensional conserved variables

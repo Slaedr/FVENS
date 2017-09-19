@@ -1,21 +1,29 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/2dcylinder/grids/2dcylquad0.msh
+../testcases/couette/grids/coustructtri0.msh
 ---Output-file
-../data/2dcyl.vtu
+../data/couette.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
 NO
 ########PHYSICS######################################################
 ---Flow-type(EULER,NAVIERSTOKES)
-EULER
+NAVIERSTOKES
 ---Adiabatic-index
 1.4
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.38
----Initial-values-type(0=from_infinity_values,1=from_file)
+0.1444543957
+---Free-stream-temperature(K)
+298.0
+---Free-stream-Reynolds-number
+3217119.5652
+---Prandtl-number
+0.71102553846
+---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
+YES
+---Initialization-type(0=from-free-stream,1=from-file)
 0
 ###########BOUNDARY-CONDITIONS########################################
 ---Slip-wall-marker
@@ -23,7 +31,19 @@ EULER
 ---Farfield-marker
 4
 ---Extrapolation-marker
-0
+5
+---Isothermal-wall-Marker
+		6
+---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
+		                     298.0                        1.1
+---Adiabatic-wall-Marker
+		7
+---Adiabatic-wall:           Tang. velocity (normalized)
+					          1.0
+---Isothermal-isobaric-wall-Marker
+		11
+---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
+							  298.0                       1.0                           1.0
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL
@@ -31,26 +51,26 @@ HLL
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
----Reconstruct-primitive-variables?(YES,NO)
+---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
 YES
 ######################################################################
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 EXPLICIT
 ---initial-CFL
-0.2
+0.1
 ---final-CFL
-0.2
+0.1
 ---ramp-start-step-and-end-step
 0 0
 ---Tolerance
 1e-5
 ---Max-pseudotime-iterations
-500000
+100000
 #######################################################################
 ---use-first-order-initial-condition
 1
 ---CFL-for-initialization-run
-0.5
+0.05
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization

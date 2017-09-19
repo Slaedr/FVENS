@@ -288,8 +288,8 @@ RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux)
 	: InviscidFlux(analyticalflux)
 { }
 
-void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur,
-		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
+		const a_real* const n, a_real *const __restrict flux)
 {
 	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
 	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
@@ -301,13 +301,13 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
 	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
 	// speeds of sound
-	const a_real ci = sqrt(g*pi/ul[0]);
-	const a_real cj = sqrt(g*pj/ur[0]);
+	//const a_real ci = sqrt(g*pi/ul[0]);
+	//const a_real cj = sqrt(g*pj/ur[0]);
 	// enthalpies  ( NOT E + p/rho = u(3)/u(0) + p/u(0) )
 	const a_real Hi = g/(g-1.0)* pi/ul[0] + 0.5*vmag2i;
 	const a_real Hj = g/(g-1.0)* pj/ur[0] + 0.5*vmag2j;
 
-	// compute Roe-averages
+	//> compute Roe-averages
 	
 	const a_real Rij = sqrt(ur[0]/ul[0]);
 	const a_real rhoij = Rij*ul[0];
@@ -318,68 +318,47 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	const a_real vnij = vxij*n[0] + vyij*n[1];
 	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
-	// eigenvalues
+	//> eigenvalues
+	
 	a_real l[4];
-	l[0] = vnij; l[1] = vnij; l[2] = vnij + cij; l[3] = vnij - cij;
-
-	// Harten-Hyman entropy fix
-	a_real eps = 0;
-	if(eps < l[0]-vni) eps = l[0]-vni;
-	if(eps < vnj-l[0]) eps = vnj-l[0];
-	if(fabs(l[0]) < eps) l[0] = eps;
-	if(fabs(l[1]) < eps) l[1] = eps;
-
-	eps = 0;
-	if(eps < l[2]-(vni+ci)) eps = l[2]-(vni+ci);
-	if(eps < vnj+cj - l[2]) eps = vnj+cj - l[2];
-	if(fabs(l[2]) < eps) l[2] = eps;
-
-	eps = 0;
-	if(eps < l[3] - (vni-ci)) eps = l[3] - (vni-ci);
-	if(eps < vnj-cj - l[3]) eps = vnj-cj - l[3];
-	if(fabs(l[3]) < eps) l[3] = eps;
-
-	// eigenvectors (column vectors of r below)
-	a_real r[4][4];
+	l[0] = fabs(vnij-cij); l[1] = fabs(vnij); l[2] = l[1]; l[3] = fabs(vnij+cij);
 	
-	// according to Dr Luo's notes
-	r[0][0] = 1.0;              r[0][1] = 0;						
-	r[0][2] = 1.0;              r[0][3] = 1.0;
-
-	r[1][0] = vxij;             r[1][1] = cij*n[1];				
-	r[1][2] = vxij + cij*n[0];	r[1][3] = vxij - cij*n[0];
-
-	r[2][0] = vyij;             r[2][1] = -cij*n[0];			
-	r[2][2] = vyij + cij*n[1];  r[2][3] = vyij - cij*n[1];
-
-	r[3][0]= vm2ij*0.5;         r[3][1] = cij*(vxij*n[1]-vyij*n[0]); 
-	r[3][2] = Hij + cij*vnij;   r[3][3] = Hij - cij*vnij;
-
-	// according to Fink (just a hack to make the overall flux equal the Roe flux in Fink's paper;
-	// the second eigenvector is obviously not what is given below
-	/*r(0,0) = 1.0;		r(0,2) = 1.0;				r(0,3) = 1.0;
-	r(1,0) = vxij;		r(1,2) = vxij + cij*n[0];	r(1,3) = vxij - cij*n[0];
-	r(2,0) = vyij;		r(2,2) = vyij + cij*n[1];	r(2,3) = vyij - cij*n[1];
-	r(3,0)= vm2ij*0.5;	r(3,2) = Hij + cij*vnij;	r(3,3) = Hij - cij*vnij;
-	
-	r(0,1) = 0.0;
-	r(1,1) = (vxj-vxi) - n[0]*(vnj-vni);
-	r(2,1) = (vyj-vyi) - n[1]*(vnj-vni);
-	r(3,1) = vxij*(vxj-vxi) + vyij*(vyj-vyi) - vnij*(vnj-vni);*/
-	
-	for(int ivar = 0; ivar < 4; ivar++)
+	// Harten entropy fix
+	const a_real delta = 0.01*cij;
+	for(int ivar = 0; ivar < NVARS; ivar++)
 	{
-		r[ivar][2] *= rhoij/(2.0*cij);
-		r[ivar][3] *= rhoij/(2.0*cij);
+		if(l[ivar] < delta)
+			l[ivar] = (l[ivar]*l[ivar] + delta*delta)/(2.0*delta);
 	}
 
-	// R^(-1)(qR-qL)
-	a_real dw[4];
-	dw[0] = (ur[0]-ul[0]) - (pj-pi)/(cij*cij);
-	dw[1] = (vxj-vxi)*n[1] - (vyj-vyi)*n[0];			// Dr Luo
-	//dw(1) = rhoij;										// hack for conformance with Fink
-	dw[2] = vnj-vni + (pj-pi)/(rhoij*cij);
-	dw[3] = -(vnj-vni) + (pj-pi)/(rhoij*cij);
+	//> A_Roe * dU
+	
+	const a_real dvn = vnj-vni, dp = pj-pi;
+	a_real adu[] = {0.0,0.0,0.0,0.0};
+	// product of eigenvalues and wave strengths (for component 2, sort of):
+	a_real lalpha[NVARS];   
+	lalpha[0] = l[0]*(dp-rhoij*cij*dvn)/(2.0*cij*cij);
+	lalpha[1] = l[1]*(ur[0]-ul[0] - dp/(cij*cij));
+	lalpha[2] = l[1]*rhoij;
+	lalpha[3] = l[3]*(dp+rhoij*cij*dvn)/(2.0*cij*cij);
+
+	// un-c:
+	adu[0] += lalpha[0];
+	adu[1] += lalpha[0]*(vxij-cij*n[0]);
+	adu[2] += lalpha[0]*(vyij-cij*n[1]);
+	adu[3] += lalpha[0]*(Hij-cij*vnij);
+
+	// un:
+	adu[0] += lalpha[1];
+	adu[1] += lalpha[1]*vxij + lalpha[2]*(vxj-vxi - dvn*n[0]);
+	adu[2] += lalpha[1]*vyij + lalpha[2]*(vyj-vyi - dvn*n[1]);
+	adu[3] += lalpha[1]*vm2ij/2.0 + lalpha[2] *(vxij*(vxj-vxi) +vyij*(vyj-vyi) -vnij*dvn);
+
+	// un+c:
+	adu[0] += lalpha[3];
+	adu[1] += lalpha[3]*(vxij+cij*n[0]);
+	adu[2] += lalpha[3]*(vyij+cij*n[1]);
+	adu[3] += lalpha[3]*(Hij+cij*vnij);
 
 	// get one-sided flux vectors
 	a_real fi[4], fj[4];
@@ -391,10 +370,7 @@ void RoeFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	// finally compute fluxes
 	for(int ivar = 0; ivar < NVARS; ivar++)
 	{
-		a_real sum = 0;
-		for(int j = 0; j < NVARS; j++)
-			sum += fabs(l[j])*dw[j]*r[ivar][j];
-		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - sum);
+		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar]);
 	}
 }
 
