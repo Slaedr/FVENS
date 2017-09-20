@@ -27,6 +27,12 @@ and for a release build
 
 where '\<N\>' should be replaced by the number of threads to use for a parallel build.
 
+To build the Doxygen documentation, please type the following command in the doc/ directory:
+
+		doxygen fvens_doxygen.cfg
+
+Of course, this requires you to have [Doxygen](http://www.stack.nl/~dimitri/doxygen/index.html) installed. This will generate HTML documentation, which can be accessed through doc/html/index.htm.
+
 Running
 -------
 The executables should be called with the path to a control file as input. Set OMP_NUM_THREADS to the number of threads you want to use.

@@ -4,7 +4,24 @@
 
 FVENS
 =====
-A 2D, unstructured grid, 2nd order finite volume solver for the compressible Navier-Stokes equations. The code uses explicit time-stepping.
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. A WENO (weighted essentially non-oscillatory) limiter is available for flows with shocks. A number of numerical convective fluxes are available - local Lax-Friedrichs, Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer) and HLLC. The modified average method is used to compute gradients at faces for viscous fluxes.
+
+It currently solves only steady-state problems.
+
+Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme. Local time-stepping is used. A number of linear solvers and preconditioners are available.
+
+Code Structure
+--------------
+Execution starts in fvens_steady.cpp. The [mesh](\ref acfd::UMesh2dh) class is responsible for reading and storing the mesh and pre-computing mesh-related data. The [Spatial](\ref acfd::Spatial) class and its [subclass for flow problems](\ref acfd::FlowFV) handle the finite volume flux computation, ie., the residual or right-hand-side computation for the steady-state nonlinear problem. It calls routines from reconstruction classes like [GreenGaussReconstruction](\ref acfd::GreenGaussReconstruction), slope limiter classes like [VenkatakrishnanLimiter](\ref acfd::VenkatakrishnanLimiter) and numerical flux classes like [HLLCFlux](\ref acfd::HLLCFlux). Gas physics functionality is provided by Physics and its subclass IdealGasPhysics. There is also a class for spatial discretization of a constant-coefficient [diffusion](\ref acfd::DiffusionMA) equation.
+
+Routines from the spatial class are called by ODE solver classes such as [SteadyBackwardEulerSolver](\ref SteadyBackwardEulerSolver). Perhaps these are mathematically more of nonlinear solvers (thus the [base class](\ref acfd::SteadySolver) is called simply 'SteadySolver'), but since they are quasi-Newton schemes with pseudo-time stepping, we also refer to them as ODE solvers. They implement pseudo-time stepping irrespective of the spatial problem and linear solver. They are, however, responsible for allocating storage for the Jacobian matrix in case of implicit methods using mesh data. Such a steady ODE solver class currently owns the state vector \f$\mathbf{u}\f$, residual vector \f$\mathbf{r}\f$ and Jacobian matrix \f$\mathbf{A}\f$. Each (pseudo-time) step \f$ n \f$ of the implicit nonlinear solve calls a linear solver to solve 
+\f{eqnarray}{ 
+\left( \mathbf{M}_\tau + \frac{\partial\mathbf{r}}{\partial\mathbf{u}}|_{\mathbf{u}_n} \right) \Delta \mathbf{u}_n = -\mathbf{r}_n \\
+\mathbf{u}_{n+1} := \mathbf{u}_n + \Delta\mathbf{u}_n,
+\f}
+where \f$ \mathbf{M}_\tau \f$ is the mass matrix for the pseudo-time term. Note that this corresponds to a backward Euler time-stepping.
+
+ODE solvers call routines from linear solver classes such as [RichardsonSolver](\ref acfd::RichardsonSolver). Matrix storage and several preconditioners are interfaced from the [BLASTed](https://github.com/Slaedr/BLASTed) library.
 
 */
 

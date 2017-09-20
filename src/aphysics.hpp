@@ -185,7 +185,7 @@ public:
 
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from conserved variables
 	/** This is the overall coefficient for the shear stress terms in the momentum equation
-	 * when non-dimensionalized as stated in IdeaGasPhysics.
+	 * when non-dimensionalized as stated in IdealGasPhysics.
 	 * Note that divergence terms must still be multiplied further by -2/3 
 	 * and diagonal stress terms by 2.
 	 */
