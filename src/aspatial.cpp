@@ -504,38 +504,186 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	}
 }
 
-inline void FlowFV::computeViscousFlux(const a_int iface, const MVector& u, 
+void FlowFV::computeViscousFlux(const a_int iface, 
+		const MVector& u, const amat::Array2d<a_real>& ug,
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 		a_real *const __restrict vflux) const
 {
-	// TODO
 	a_int lelem = m->gintfac(iface,0);
 	a_int relem = m->gintfac(iface,1);
+
+	/* get proper state variables and grads at cell centres
+	 */
+
+	a_real ucl[NVARS], ucr[NVARS];
+	a_real gradl[NDIM][NVARS], gradr[NDIM][NVARS];
+	for(short i = 0; i < NVARS; i++) {
+		ucl[i] = u(lelem,i);
+		for(short j = 0; j < NDIM; j++) {
+			gradl[j][i] = 0; gradr[j][i] = 0;
+		}
+	}
+	
+	if(iface < m->gnbface())
+	{
+		// boundary face
+		
+		for(int i = 0; i < NVARS; i++) {
+			ucr[i] = ug(iface,i);
+		}
+	
+		if(secondOrderRequested)
+		{
+			for(int i = 0; i < NVARS; i++) {
+				gradl[0][i] = dudx(lelem,i); gradl[1][i] = dudy(lelem,i);
+			}
+
+			if(reconstructPrimitive) {
+				/* If gradients are those of primitive variables,
+				 * convert cell-centred variables to primitive; we need primitive variables
+				 * to compute temperature gradient from primitive gradients.
+				 */
+				physics.convertConservedToPrimitive(ucl, ucl);
+				physics.convertConservedToPrimitive(ucr, ucr);
+				
+				/* get one-sided temperature gradients from one-sided primitive gradients
+				 * and discard grad p in favor of grad T.
+				 */
+				for(int j = 0; j < NDIM; j++) {
+					a_real gt;
+					gt = physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucl,gradl[j]);
+					gradl[j][NDIM+1] = gt;
+				}
+			} 
+			else {
+				/* get one-sided primitive-2 gradients from one-sided conservative gradients
+				 * "Primitive-2" variables are density, velocities and temperature.
+				 */
+				for(int j = 0; j < NDIM; j++) {
+					physics.getGradPrimitive2FromConservedAndGradConserved(ucl,gradl[j],gradl[j]);
+				}
+			}
+
+			// use the same gradients on both sides of a boundary face:
+			for(int i = 0; i < NVARS; i++) {
+				gradr[0][i] = gradl[0][i]; gradr[1][i] = gradl[1][i];
+			}
+		}
+	}
+	else {
+		// interior face
+		
+		for(int i = 0; i < NVARS; i++) {
+			ucr[i] = u(relem,i);
+		}
+		if(secondOrderRequested)
+		{
+			for(int i = 0; i < NVARS; i++) {
+				gradl[0][i] = dudx(lelem,i); gradl[1][i] = dudy(lelem,i);
+				gradr[0][i] = dudx(relem,i); gradr[1][i] = dudy(relem,i);
+			}
+
+			if(reconstructPrimitive) {
+				physics.convertConservedToPrimitive(ucl, ucl);
+				physics.convertConservedToPrimitive(ucr, ucr);
+				
+				/* get one-sided temperature gradients from one-sided primitive gradients
+				 * and discard grad p in favor of grad T.
+				 */
+				for(int j = 0; j < NDIM; j++) {
+					a_real gt;
+					gt = physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucl,gradl[j]);
+					gradl[j][NDIM+1] = gt;
+					gt = physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucr,gradr[j]);
+					gradr[j][NDIM+1] = gt;
+				}
+			}
+			else {
+				/* get one-sided primitive-2 gradients from one-sided conservative gradients
+				 * "Primitive-2" variables are density, velocities and temperature.
+				 */
+				for(int j = 0; j < NDIM; j++) {
+					physics.getGradPrimitive2FromConservedAndGradConserved(ucl,gradl[j],gradl[j]);
+					physics.getGradPrimitive2FromConservedAndGradConserved(ucr,gradr[j],gradr[j]);
+				}
+			}
+		}
+	}
+
+	// convert cell-centred variables to primitive-2
+	if(secondOrderRequested && reconstructPrimitive)
+	{
+		physics.convertPrimitiveToPrimitive2(ucl);
+		physics.convertPrimitiveToPrimitive2(ucr);
+	}
+	else
+	{
+		physics.convertConservedToPrimitive2(ucl);
+		physics.convertConservedToPrimitive2(ucr);
+	}
+
+	/* Compute modified averages of primitive-2 variables' gradients
+	 * This is the only finite-volume part of this function, rest is physics and chain rule.
+	 */
+	
 	a_real len = m->ggallfa(iface,2);
-	a_real dr[NDIM], dist=0, sn=0, gradterm[NVARS];
+	a_real dr[NDIM], dist=0, sn=0, n[NDIM];
+
 	for(int i = 0; i < NDIM; i++) {
 		dr[i] = rc(relem,i)-rc(lelem,i);
 		dist += dr[i]*dr[i];
+		n[i] = m->gallfa(iface,i);
 	}
 	dist = sqrt(dist);
 	for(int i = 0; i < NDIM; i++) {
-		sn += dr[i]/dist * m->ggallfa(iface,i);
+		dr[i] /= dist;
 	}
 
-	// compute modified gradient
-	for(short ivar = 0; ivar < NVARS; ivar++) {
-		gradterm[ivar] 
-		 = 0.5*(dudx(lelem,ivar)+dudx(relem,ivar)) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
-		 + 0.5*(dudy(lelem,ivar)+dudy(relem,ivar)) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
-	}
-
-	// TODO: get coeff
-	a_real diffusivity = 1.0;
-
-	for(short ivar = 0; ivar < NVARS; ivar++)
+	a_real grad[NDIM][NVARS];
+	for(short i = 0; i < NVARS; i++) 
 	{
-		vflux[ivar] = diffusivity * 
-			(gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len;
+		a_real davg[NDIM], corr;
+		
+		for(short j = 0; j < NDIM; j++)
+			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
+
+		corr = (ucr[i]-ucl[i])/dist;
+		
+		a_real ddr = 0;
+		for(short j = 0; j < NDIM; j++)
+			ddr += davg[j]*dr[j];
+
+		for(short j = 0; j < NDIM; j++)
+		{
+			grad[j][i] = davg[j] - ddr*dr[j] + corr*dr[j];
+		}
+	}
+
+	/* Finally, compute viscous fluxes from primitive-2 variables and gradients
+	 */
+	
+	a_real muRe = 0.5*( physics.getViscosityFromConserved(&u(iface,0))
+				        + physics.getViscosityFromConserved(&u(iface,0)) );
+	a_real kdiff = physics.getThermalDiffusivityFromViscosity(muRe); 
+
+	if(secondOrderRequested && reconstructPrimitive)
+	{
+		// everything is primitive
+
+		// divergence of velocity times second viscosity
+		a_real div = 0;
+		for(int j = 0; j < NDIM; j++)
+			div += grad[j][j+1];
+		div *= 2.0/3.0*muRe;
+
+		vflux[0] = 0.0;
+		vflux[1] = n[0]*(2.0*muRe*grad[0][1] - div) + n[1]*muRe*(grad[1][1]+grad[0][2]);
+		vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - div);
+	}
+	else
+	{
+		// everything is conserved
 	}
 }
 
@@ -544,8 +692,6 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 {
 	amat::Array2d<a_real> integ, dudx, dudy, ug, uleft, uright;	
 	integ.resize(m->gnelem(), 1);
-	dudx.resize(m->gnelem(), NVARS);
-	dudy.resize(m->gnelem(), NVARS);
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
@@ -556,10 +702,6 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			integ(iel) = 0.0;
-			for(int ivar = 0; ivar < NVARS; ivar++) {
-				dudx(iel,ivar) = 0;
-				dudy(iel,ivar) = 0;
-			}
 		}
 
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
@@ -574,6 +716,9 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 
 	if(secondOrderRequested)
 	{
+		dudx.resize(m->gnelem(), NVARS);
+		dudy.resize(m->gnelem(), NVARS);
+
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
@@ -672,7 +817,7 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 			{
 				// get viscous fluxes
 				a_real vflux[NVARS];
-				computeViscousFlux(ied, u, dudx, dudy, vflux);
+				computeViscousFlux(ied, u, dudx, dudy, uleft, uright, vflux);
 
 				for(short ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] -= vflux[ivar];

@@ -259,8 +259,22 @@ protected:
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const;
 
 	/// Computes viscous flux across a face
-	void computeViscousFlux(const a_int iface, const MVector& u, 
+	/** This is the negative of what is needed in the residual.
+	 * \param[in] iface Face index
+	 * \param[in] u Cell-centred conserved variables
+	 * \param[in] ug Ghost cell-centred conserved variables
+	 * \param[in] dudx Cell-centred gradients ("optional")
+	 * \param[in] dudy Cell-centred gradients ("optional", see below)
+	 * \param[in] ul Left state of faces (conserved variables)
+	 * \param[in] ul Right state of faces (conserved variables)
+	 * \param[in|out] vflux On output, contains the viscous flux across the face
+	 *
+	 * Note that dudx and dudy can be unallocated if only first-order fluxes are being computed,
+	 * but ul and ur are always used.
+	 */
+	void computeViscousFlux(const a_int iface, const MVector& u, const amat::Array2d<a_real>& ug,
 			const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
 };
 

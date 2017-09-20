@@ -28,6 +28,9 @@ public:
 /** The non-dimensionalization assumed is from free-stream velocities and temperatues,
  * as given in section 4.14.2 of \cite matatsuka.
  * Note that several computations here depend on the exact non-dimensionalization scheme used.
+ *
+ * "Primitive-2" variables are density, velocities and temperature, as opposed to
+ * "primitive" variables which are density, velocities and pressure.
  */
 class IdealGasPhysics : public Physics
 {
@@ -99,6 +102,14 @@ public:
 		uc[NDIM+1] = up[NDIM+1]/(g-1.0) + 0.5*up[0]*vmag2;
 	}
 
+	void convertPrimitiveToPrimitive2(const a_real *const up, a_real *const up2) const
+	{
+		a_real t = getTemperatureFromPrimitive(up);
+		for(int i = 0; i < NVARS-1; i++)
+			up2[i] = up[1];
+		up2[NVARS-1] = t;
+	}
+
 	/// Computes density from pressure and temperature using ideal gas relation;
 	/// All quantities are non-dimensional
 	a_real getDensityFromPressureTemperature(const a_real pressure, const a_real temperature) const
@@ -118,7 +129,7 @@ public:
 	/// Computes non-dimensional temperature from non-dimensional primitive variables
 	a_real getTemperatureFromPrimitive(const a_real *const up) const
 	{
-		return g*Minf*Minf*up[NDIM+1]/up[0];
+		return g*Minf*Minf*up[NVARS-1]/up[0];
 	}
 
 	/// Compute non-dim temperature spatial derivative 
@@ -133,7 +144,7 @@ public:
 			term1 += uc[idim]*guc[idim];
 			term2 += uc[idim]*uc[idim];
 		}
-		a_real dpdx = (g-1.0) * (guc[NDIM-1] - 0.5/(uc[0]*uc[0])*(2*uc[0]*term1 - term2*guc[0]));
+		a_real dpdx = (g-1.0) * (guc[NDIM+1] - 0.5/(uc[0]*uc[0])*(2*uc[0]*term1 - term2*guc[0]));
 		return (uc[0]*dpdx - p*guc[0])/(uc[0]*uc[0]) * g*Minf*Minf;
 	}
 
@@ -144,6 +155,20 @@ public:
 	{
 		const a_real p = getPressureFromConserved(uc);
 		return (uc[0]*gup[NDIM+1] - p*gup[0]) / (uc[0]*uc[0]) * g*Minf*Minf;
+	}
+	
+	a_real getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,
+			const a_real *const gup) const
+	{
+		return (up[0]*gup[NDIM+1] - up[NDIM+1]*gup[0]) / (up[0]*up[0]) * g*Minf*Minf;
+	}
+
+	/// Get primitive-2 gradients from conserved variables and their gradients
+	void getGradPrimitive2FromConservedAndGradConserved(const a_real *const uc,
+			const a_real *const guc, a_real *const gp)
+	{
+		// TODO
+		bladvake;
 	}
 
 	/// Computes total energy from a vector of density, velocities and temperature
@@ -158,17 +183,28 @@ public:
 		return p/(g-1.0) + 0.5*upt[0]*vmag2;
 	}
 
-	/// Computes non-dimensional viscosity using Sutherland's law from conserved variables
-	a_real getViscosityFromConserved(const a_real *const uc) const
+	/// Computes non-dimensional viscosity coeff using Sutherland's law from conserved variables
+	/** This is the overall coefficient for the shear stress terms in the momentum equation
+	 * when non-dimensionalized as stated in IdeaGasPhysics.
+	 * Note that divergence terms must still be multiplied further by -2/3 
+	 * and diagonal stress terms by 2.
+	 */
+	a_real getViscosityCoeffFromConserved(const a_real *const uc) const
 	{
 		a_real T = getTemperatureFromConserved(uc);
 		return (1+sC/Tinf)/(T+sC/Tinf) * std::pow(T,1.5) / Reinf;
 	}
-
-	a_real getThermalDiffusivityFromConserved(const a_real *const uc) const
+	
+	/// Computes non-dimensional viscosity coeff using Sutherland's law from primitive-2 variables
+	a_real getViscosityCoeffFromPrimitive2(const a_real *const up) const
 	{
-		a_real muhat = getViscosityFromConserved(uc);
-		return g*muhat / ((g-1.0)*Pr);
+		return (1+sC/Tinf)/(up[NVARS-1]+sC/Tinf) * std::pow(up[NVARS-1],1.5) / Reinf;
+	}
+
+	/// Computes non-dimensional diffusivity from non-dimensional dynamic viscosity coeff
+	a_real getThermalDiffusivityFromViscosity(const a_real muhat) const
+	{
+		return muhat / (Minf*Minf*(g-1.0)*Pr);
 	}
 
 	/// Adiabatic constant
