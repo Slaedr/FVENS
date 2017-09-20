@@ -86,6 +86,19 @@ public:
 		}
 		up[NDIM+1] = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
 	}
+	
+	/// Convert conserved variables to primitive-2 variables; depends on non-dimensionalization
+	void convertConservedToPrimitive2(const a_real *const uc, a_real *const up) const
+	{
+		up[0] = uc[0];
+		a_real rhovmag2 = 0;
+		for(int idim = 1; idim < NDIM+1; idim++) {
+			rhovmag2 += uc[idim]*uc[idim];
+			up[idim] = uc[idim]/uc[0];
+		}
+		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+		up[NVARS-1] = g*Minf*Minf*p/up[0];
+	}
 
 	/// Convert primitive variables to conserved
 	/** The input pointers are not assumed restricted, so the two parameters can point to
@@ -157,6 +170,7 @@ public:
 		return (uc[0]*gup[NDIM+1] - p*gup[0]) / (uc[0]*uc[0]) * g*Minf*Minf;
 	}
 	
+	/// Computes temerature gradients from primitive and their gradients
 	a_real getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,
 			const a_real *const gup) const
 	{
@@ -214,13 +228,22 @@ public:
 	}
 	
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from primitive-2 variables
+	/** By viscosity coefficient, we mean dynamic viscosity divided by 
+	 * the free-stream Reynolds number.
+	 */
 	a_real getViscosityCoeffFromPrimitive2(const a_real *const up) const
 	{
 		return (1+sC/Tinf)/(up[NVARS-1]+sC/Tinf) * std::pow(up[NVARS-1],1.5) / Reinf;
 	}
 
-	/// Computes non-dimensional diffusivity from non-dimensional dynamic viscosity coeff
-	a_real getThermalDiffusivityFromViscosity(const a_real muhat) const
+	/// Returns non-dimensional free-stream viscosity coefficient
+	a_real getConstantViscosityCoeff() const
+	{
+		return 1.0/Reinf;
+	}
+
+	/// Computes non-dimensional conductivity from non-dimensional dynamic viscosity coeff
+	a_real getThermalConductivityFromViscosity(const a_real muhat) const
 	{
 		return muhat / (Minf*Minf*(g-1.0)*Pr);
 	}

@@ -1,5 +1,5 @@
 // params
-refine = 2;
+refine = 1;
 // ---
 
 radiusFF = 20;
@@ -115,12 +115,12 @@ Plane Surface(22) = {9}; Transfinite Surface{22}; Recombine Surface{22};
 Physical Surface(1) = {10,11,21,22};
 
 // Adiabatic wall
-Physical Line(6) = {1,2};
+Physical Line(2) = {1,2};
 // Farfield
 Physical Line(4) = {5,6,7,8};
 
 //Mesh.SubdivisionAlgorithm=1;	// ensures all quads, I think
 
-//Mesh.Algorithm=6;		// Frontal
+Mesh.Algorithm=6;		// Frontal
 
 Color Black{ Surface{10,11,21,22}; }

@@ -138,6 +138,7 @@ public:
 	 * \param[in] reconst The method used for gradient reconstruction 
 	 *   - NONE, GREENGAUSS, LEASTSQUARES
 	 * \param[in] limiter The kind of slope limiter to use
+	 * \param[in] order2 True if second-order solution is desired.
 	 */
 	FlowFV(const UMesh2dh *const mesh, const a_real g, const a_real Minf, const a_real Tinf, 
 		const a_real Reinf, const a_real Pr, const a_real aoa, 
@@ -149,7 +150,7 @@ public:
 		const a_real adiabisobaric_Pressure,
 		const a_real adiabatic_TangVel,
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
-		const bool reconst_prim);
+		const bool order2, const bool reconst_prim);
 	
 	~FlowFV();
 
@@ -182,7 +183,9 @@ public:
 			amat::Array2d<a_real>& velocities);
 	
 	/// Compute nodal quantities to export
-	/** Based on area-weighted averaging which takes into account ghost cells as well
+	/** Based on area-weighted averaging which takes into account ghost cells as well.
+	 * Density, Mach number, pressure and temperature are the exported scalars,
+	 * and velocity is exported as well.
 	 */
 	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities);
@@ -260,6 +263,7 @@ protected:
 
 	/// Computes viscous flux across a face
 	/** This is the negative of what is needed in the residual.
+	 * The output vflux needs to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] u Cell-centred conserved variables
 	 * \param[in] ug Ghost cell-centred conserved variables

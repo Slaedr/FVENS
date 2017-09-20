@@ -28,7 +28,8 @@ int main(int argc, char* argv[])
 		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, extrap_marker=-1;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
-	bool use_matrix_free, lognres, reconstPrim, useconstvisc, viscsim=false;
+	bool use_matrix_free, lognres, reconstPrim, useconstvisc=false, viscsim=false,
+		 order2 = true;
 	char mattype, dumc;
 
 	std::getline(control,dum); control >> meshfile;
@@ -45,6 +46,8 @@ int main(int argc, char* argv[])
 		control >> dum; control >> Reinf;
 		control >> dum; control >> Pr;
 		control >> dum; control >> constvisc;
+		if(constvisc == "YES")
+			useconstvisc = true;
 		viscsim = true;
 	}
 	control >> dum; control >> inittype;
@@ -67,6 +70,8 @@ int main(int argc, char* argv[])
 	control >> dum;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
+	if(reconst == "NONE")
+		order2 = false;
 	control >> dum; control >> limiter;
 	control >> dum; control >> recprim;
 	control >> dum;
@@ -111,10 +116,6 @@ int main(int argc, char* argv[])
 		reconstPrim = false;
 	else
 		reconstPrim = true;
-	if(constvisc == "YES")
-		useconstvisc = true;
-	else
-		useconstvisc = false;
 	
 	if(meshfile == "READFROMCMD")
 	{
@@ -140,13 +141,13 @@ int main(int argc, char* argv[])
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
 			slipwall_marker, farfield_marker, extrap_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-			invflux, invfluxjac, reconst, limiter, reconstPrim);
+			invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
 	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
 			slipwall_marker, farfield_marker, extrap_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-			invflux, invfluxjac, "NONE", "NONE",true);
+			invflux, invfluxjac, "NONE", "NONE",false,true);
 	
 	SteadySolver<4>* time;
 	if(timesteptype == "IMPLICIT") {
@@ -181,7 +182,7 @@ int main(int argc, char* argv[])
 	Array2d<a_real> velocities;
 	prob.postprocess_point(time->unknowns(), scalars, velocities);
 
-	string scalarnames[] = {"density", "mach-number", "pressure"};
+	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
 
 	delete time;

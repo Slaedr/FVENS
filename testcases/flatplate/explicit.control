@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/couette/grids/coustructtri0.msh
+../testcases/flatplate/grids/flatplateluo.msh
 ---Output-file
-../data/couette.vtu
+../data/flatplate.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -14,39 +14,39 @@ NAVIERSTOKES
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.1444543957
+0.2
 ---Free-stream-temperature(K)
-298.0
+297.62
 ---Free-stream-Reynolds-number
-3217119.5652
+4269137.684
 ---Prandtl-number
-0.71102553846
+0.712
 ---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
-YES
+NO
 ---Initialization-type(0=from-free-stream,1=from-file)
 0
 ###########BOUNDARY-CONDITIONS########################################
 ---Slip-wall-marker
-2
+3
 ---Farfield-marker
 4
 ---Extrapolation-marker
-5
+-1
 ---Isothermal-wall-Marker
-		6
+		-1
 ---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
-		                     298.0                        1.1
+		                     298.0                        0.0
 ---Adiabatic-wall-Marker
-		7
+		2
 ---Adiabatic-wall:           Tang. velocity (normalized)
-					          1.0
+					          0.0
 ---Isothermal-isobaric-wall-Marker
-		11
+		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
-							  298.0                       1.0                           1.0
+							  298.0                       1.1                           1.0
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLL
+HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -55,44 +55,25 @@ NONE
 YES
 ######################################################################
 ---time-stepping-type(EXPLICIT,IMPLICIT)
-IMPLICIT
+EXPLICIT
 ---initial-CFL
-250.0
+0.1
 ---final-CFL
-250.0
+0.1
 ---ramp-start-step-and-end-step
 0 0
 ---Tolerance
-1e-5
+1e-4
 ---Max-pseudotime-iterations
-5000
+100000
 #######################################################################
 ---use-first-order-initial-condition
 1
 ---CFL-for-initialization-run
-200.0
+0.2
 ---tolerance-for-initialization
-1e-2
+1e-1
 ---max-time-steps-for-initialization
-500
+2000
 ########################################################################
----inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLL
----Use-matrix-free-(YES,NO)
-NO
----Matrix-type(c=CSR,b=BSR,d=DLU)
-b
----linear-solver(RICHARDSON,BCGSTB,GMRES)
-RICHARDSON
----Linear-solver-tolerance
-1e-2
----Linear-solver-max-iterations-initial
-50
----Linear-solver-max-iterations-end
-50
----Krylov-vectors
-30
----preconditioner(J=Jacobi,SGS,ILU0)
-ILU0
----preconditioner-build-and-application-sweeps
-1 1
+

@@ -129,7 +129,9 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 	std::cout << "Vtu file written.\n";
 }
 
-void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& m, const amat::Array2d<double>& x, std::string scaname[], const amat::Array2d<double>& y, std::string vecname)
+void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& m, 
+		const amat::Array2d<double>& x, std::string scaname[], 
+		const amat::Array2d<double>& y, std::string vecname)
 {
 	int elemcode;
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";

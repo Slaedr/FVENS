@@ -196,7 +196,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
 		const a_real isothermalbaric_Pressure, 
 		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
-		const bool reconstructPrim)
+		const bool order2, const bool reconstructPrim)
 	: 
 	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), 
 	computeViscous{compute_viscous}, constVisc(useConstVisc),
@@ -209,7 +209,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	isothermalbaric_wall_temperature{isothermalbaric_Temperature}, 
 	isothermalbaric_wall_tangvel{isothermalbaric_TangVel}, 
 	isothermalbaric_wall_pressure{isothermalbaric_Pressure},
-	secondOrderRequested{true},
+	secondOrderRequested{order2},
 	reconstructPrimitive{reconstructPrim}
 {
 #ifdef DEBUG
@@ -285,22 +285,27 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
-	bool* secondOrder = const_cast<bool*>(&secondOrderRequested);
 	std::cout << "  FlowFV: Selected reconstruction scheme is " << reconst << std::endl;
-	if(reconst == "LEASTSQUARES")
+	if(secondOrderRequested)
 	{
-		rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc, &rcg);
-		std::cout << "  FlowFV: Weighted least-squares reconstruction will be used.\n";
+		if(reconst == "LEASTSQUARES")
+		{
+			rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc, &rcg);
+			std::cout << "  FlowFV: Weighted least-squares reconstruction will be used.\n";
+		}
+		else if(reconst == "GREENGAUSS")
+		{
+			rec = new GreenGaussReconstruction<NVARS>(m, &rc, &rcg);
+			std::cout << "  FlowFV: Green-Gauss reconstruction will be used." << std::endl;
+		}
+		else {
+			rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
+			std::cout << " ! FlowFV: No reconstruction!" << std::endl;
+		}
 	}
-	else if(reconst == "GREENGAUSS")
-	{
-		rec = new GreenGaussReconstruction<NVARS>(m, &rc, &rcg);
-		std::cout << "  FlowFV: Green-Gauss reconstruction will be used." << std::endl;
-	}
-	else /*if(reconst == "NONE")*/ {
-		rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
+	else {
 		std::cout << "  FlowFV: No reconstruction; first order solution." << std::endl;
-		*secondOrder = false;
+		rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
 	}
 
 	// set limiter
@@ -421,7 +426,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 		if(m->ggallfa(ied,3) == adiabatic_wall_id)
 		{
-			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
 			bs[0] = ins[0];
 			bs[1] =  2.0*tangMomentum*ny - ins[1];
 			bs[2] = -2.0*tangMomentum*nx - ins[2];
@@ -451,6 +456,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	constexpr int characteristic_id = -1;
 	if(m->ggallfa(ied,3) == characteristic_id)
 	{
+		std::cout << " Bad characteristic boundary\n";
 		a_real ci = physics.getSoundSpeedFromConserved(ins);
 		a_real Mni = vni/ci;
 		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
@@ -513,10 +519,13 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	a_int lelem = m->gintfac(iface,0);
 	a_int relem = m->gintfac(iface,1);
 
-	/* get proper state variables and grads at cell centres
+	/* Get proper state variables and grads at cell centres:
+	 * we start with all conserved variables and either conservative or primitive gradients
 	 */
 
+	// cell-centred left and right states
 	a_real ucl[NVARS], ucr[NVARS];
+	// left and right gradients; zero for first order scheme
 	a_real gradl[NDIM][NVARS], gradr[NDIM][NVARS];
 	for(short i = 0; i < NVARS; i++) {
 		ucl[i] = u(lelem,i);
@@ -529,17 +538,18 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	{
 		// boundary face
 		
-		for(int i = 0; i < NVARS; i++) {
-			ucr[i] = ug(iface,i);
-		}
-	
 		if(secondOrderRequested)
 		{
+			for(int i = 0; i < NVARS; i++) {
+				ucr[i] = ug(iface,i);
+			}
+		
 			for(int i = 0; i < NVARS; i++) {
 				gradl[0][i] = dudx(lelem,i); gradl[1][i] = dudy(lelem,i);
 			}
 
-			if(reconstructPrimitive) {
+			if(reconstructPrimitive) 
+			{
 				/* If gradients are those of primitive variables,
 				 * convert cell-centred variables to primitive; we need primitive variables
 				 * to compute temperature gradient from primitive gradients.
@@ -551,12 +561,13 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				 * and discard grad p in favor of grad T.
 				 */
 				for(int j = 0; j < NDIM; j++) {
-					a_real gt;
-					gt = physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucl,gradl[j]);
+					const a_real gt =
+						physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucl,gradl[j]);
 					gradl[j][NDIM+1] = gt;
 				}
 			} 
-			else {
+			else 
+			{
 				/* get one-sided primitive-2 gradients from one-sided conservative gradients
 				 * "Primitive-2" variables are density, velocities and temperature.
 				 */
@@ -568,6 +579,12 @@ void FlowFV::computeViscousFlux(const a_int iface,
 			// use the same gradients on both sides of a boundary face:
 			for(int i = 0; i < NVARS; i++) {
 				gradr[0][i] = gradl[0][i]; gradr[1][i] = gradl[1][i];
+			}
+		}
+		else
+		{
+			for(int i = 0; i < NVARS; i++) {
+				ucr[i] = ul(iface,i);
 			}
 		}
 	}
@@ -584,7 +601,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				gradr[0][i] = dudx(relem,i); gradr[1][i] = dudy(relem,i);
 			}
 
-			if(reconstructPrimitive) {
+			if(reconstructPrimitive) 
+			{
 				physics.convertConservedToPrimitive(ucl, ucl);
 				physics.convertConservedToPrimitive(ucr, ucr);
 				
@@ -599,7 +617,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 					gradr[j][NDIM+1] = gt;
 				}
 			}
-			else {
+			else 
+			{
 				/* get one-sided primitive-2 gradients from one-sided conservative gradients
 				 * "Primitive-2" variables are density, velocities and temperature.
 				 */
@@ -614,27 +633,33 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	// convert cell-centred variables to primitive-2
 	if(secondOrderRequested && reconstructPrimitive)
 	{
-		physics.convertPrimitiveToPrimitive2(ucl);
-		physics.convertPrimitiveToPrimitive2(ucr);
+		physics.convertPrimitiveToPrimitive2(ucl, ucl);
+		physics.convertPrimitiveToPrimitive2(ucr, ucr);
 	}
 	else
 	{
-		physics.convertConservedToPrimitive2(ucl);
-		physics.convertConservedToPrimitive2(ucr);
+		physics.convertConservedToPrimitive2(ucl, ucl);
+		physics.convertConservedToPrimitive2(ucr, ucr);
 	}
 
-	/* Compute modified averages of primitive-2 variables' gradients
+	/* Compute modified averages of primitive-2 variables and their gradients.
 	 * This is the only finite-volume part of this function, rest is physics and chain rule.
 	 */
 	
-	a_real len = m->ggallfa(iface,2);
-	a_real dr[NDIM], dist=0, sn=0, n[NDIM];
+	a_real dr[NDIM], dist=0, n[NDIM];
 
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] = rc(relem,i)-rc(lelem,i);
-		dist += dr[i]*dr[i];
-		n[i] = m->gallfa(iface,i);
-	}
+	if(iface < m->gnbface())
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+			n[i] = m->ggallfa(iface,i);
+		}
+	else
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+			n[i] = m->ggallfa(iface,i);
+		}
 	dist = sqrt(dist);
 	for(int i = 0; i < NDIM; i++) {
 		dr[i] /= dist;
@@ -664,28 +689,38 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	 * primitive-2 face gradients and conserved face variables.
 	 */
 	
-	a_real muRe = 0.5*( physics.getViscosityFromConserved(&ul(iface,0))
-				        + physics.getViscosityFromConserved(&ur(iface,0)) );
-	a_real kdiff = physics.getThermalDiffusivityFromViscosity(muRe); 
+	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
+	const a_real muRe = constVisc ? 
+			physics.getConstantViscosityCoeff() 
+		:
+			0.5*( physics.getViscosityCoeffFromConserved(&ul(iface,0))
+			+ physics.getViscosityCoeffFromConserved(&ur(iface,0)) );
+	
+	// Non-dimensional thermal conductivity
+	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
 
-	if(secondOrderRequested && reconstructPrimitive)
-	{
-		// everything is primitive
+	// divergence of velocity times second viscosity
+	a_real ldiv = 0;
+	for(int j = 0; j < NDIM; j++)
+		ldiv += grad[j][j+1];
+	ldiv *= 2.0/3.0*muRe;
 
-		// divergence of velocity times second viscosity
-		a_real div = 0;
-		for(int j = 0; j < NDIM; j++)
-			div += grad[j][j+1];
-		div *= 2.0/3.0*muRe;
+	vflux[0] = 0.0;
+	vflux[1] = n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]);
+	vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv);
 
-		vflux[0] = 0.0;
-		vflux[1] = n[0]*(2.0*muRe*grad[0][1] - div) + n[1]*muRe*(grad[1][1]+grad[0][2]);
-		vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - div);
-	}
-	else
-	{
-		// everything is conserved
-	}
+	// energy dissipation terms in the 2 directions
+	a_real sp[NDIM] = {0.0, 0.0};
+	sp[0] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * (2.0*muRe*grad[0][1]-ldiv)
+		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
+		+ kdiff*grad[0][3];
+	sp[1] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
+		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2*muRe*grad[1][2]-ldiv)
+		+ kdiff*grad[1][3];
+
+	vflux[3] = 0;
+	for(int i = 0; i < NDIM; i++)
+		vflux[3] += n[i]*sp[i];
 }
 
 void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 
@@ -762,6 +797,7 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		}
 		else
 		{
+			std::cout << " No primitive reconstruction! ";
 			rec->compute_gradients(&u, &ug, &dudx, &dudy);
 			lim->compute_face_values(u, ug, dudx, dudy, uleft, uright);
 		}
@@ -818,10 +854,10 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 			{
 				// get viscous fluxes
 				a_real vflux[NVARS];
-				computeViscousFlux(ied, u, dudx, dudy, uleft, uright, vflux);
+				computeViscousFlux(ied, u, ug, dudx, dudy, uleft, uright, vflux);
 
 				for(short ivar = 0; ivar < NVARS; ivar++)
-					fluxes[ivar] -= vflux[ivar];
+					fluxes[ivar] -= vflux[ivar]*len;
 			}
 
 			for(int ivar = 0; ivar < NVARS; ivar++) {
@@ -849,12 +885,21 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 
 				if(computeViscous) 
 				{
-					a_real mui = physics.getViscosityFromConserved(&uleft(ied,0));
-					a_real muj = physics.getViscosityFromConserved(&uright(ied,0));
+					a_real mui, muj;
+					if(constVisc) {
+						mui = physics.getConstantViscosityCoeff();
+						muj = physics.getConstantViscosityCoeff();
+					}
+					else {
+						mui = physics.getViscosityCoeffFromConserved(&uleft(ied,0));
+						muj = physics.getViscosityCoeffFromConserved(&uright(ied,0));
+					}
 					a_real coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
 					a_real coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
+					
 					specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
-					specradj += coj*muj/physics.Pr * len*len/m->garea(relem);
+					if(relem < m->gnelem())
+						specradj += coj*muj/physics.Pr * len*len/m->garea(relem);
 				}
 
 #pragma omp atomic
@@ -1054,7 +1099,7 @@ void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars,
 		amat::Array2d<a_real>& velocities)
 {
 	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
-	scalars.resize(m->gnpoin(),3);
+	scalars.resize(m->gnpoin(),4);
 	velocities.resize(m->gnpoin(),2);
 	
 	amat::Array2d<a_real> areasum(m->gnpoin(),1);
@@ -1087,6 +1132,7 @@ void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars,
 		scalars(ipoin,2) = physics.getPressureFromConserved(&up(ipoin,0));
 		a_real c = physics.getSoundSpeedFromConserved(&up(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c;
+		scalars(ipoin,3) = physics.getTemperatureFromConserved(&up(ipoin,0));
 	}
 
 	compute_entropy_cell(u);

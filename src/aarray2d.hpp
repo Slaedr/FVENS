@@ -296,8 +296,8 @@ public:
 	T& operator()(const a_int x, const a_int y=0)
 	{
 #ifdef DEBUG
-		if(x>=nrows || y>=ncols) { std::cout << "! Array2d (): Index beyond array size(s)\n"; return elems[0]; }
-		if(x<0 || y<0) { std::cout << "! Array2d (): Index negative!\n"; return elems[0]; }
+		if(x>=nrows || y>=ncols) { std::cout << "! Array2d (): Index beyond array size(s)\n"; /*return elems[0];*/ }
+		if(x<0 || y<0) { std::cout << "! Array2d (): Index negative!\n"; /*return elems[0];*/ }
 #endif
 		return elems[x*ncols + y];
 	}
@@ -306,8 +306,8 @@ public:
 	const T& operator()(const a_int x, const a_int y=0) const
 	{
 #ifdef DEBUG
-		if(x>=nrows || y>=ncols) { std::cout << "Array2d (): Index beyond array size(s)\n"; return elems[0]; }
-		if(x<0 || y<0) { std::cout << "! Array2d (): Index negative!\n"; return elems[0]; }
+		if(x>=nrows || y>=ncols) { std::cout << "Array2d (): Index beyond array size(s)\n"; /*return elems[0];*/ }
+		if(x<0 || y<0) { std::cout << "! Array2d (): Index negative!\n"; /*return elems[0];*/ }
 #endif
 		return elems[x*ncols + y];
 	}
