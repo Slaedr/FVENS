@@ -660,11 +660,12 @@ void FlowFV::computeViscousFlux(const a_int iface,
 		}
 	}
 
-	/* Finally, compute viscous fluxes from primitive-2 variables and gradients
+	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
+	 * primitive-2 face gradients and conserved face variables.
 	 */
 	
-	a_real muRe = 0.5*( physics.getViscosityFromConserved(&u(iface,0))
-				        + physics.getViscosityFromConserved(&u(iface,0)) );
+	a_real muRe = 0.5*( physics.getViscosityFromConserved(&ul(iface,0))
+				        + physics.getViscosityFromConserved(&ur(iface,0)) );
 	a_real kdiff = physics.getThermalDiffusivityFromViscosity(muRe); 
 
 	if(secondOrderRequested && reconstructPrimitive)

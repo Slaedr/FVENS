@@ -164,11 +164,29 @@ public:
 	}
 
 	/// Get primitive-2 gradients from conserved variables and their gradients
-	void getGradPrimitive2FromConservedAndGradConserved(const a_real *const uc,
-			const a_real *const guc, a_real *const gp)
+	void getGradPrimitive2FromConservedAndGradConserved(const a_real *const __restrict uc,
+			const a_real *const guc, a_real *const gp) const
 	{
-		// TODO
-		bladvake;
+		gp[0] = guc[0];
+
+		// velocity derivatives from momentum derivatives
+		for(int i = 1; i < NDIM+1; i++)
+			gp[i] = 1/guc[0] * (guc[i] - uc[i]/uc[0]*guc[0]);
+		
+		const a_real p = getPressureFromConserved(uc);
+		
+		// pressure derivative
+		a_real term1 = 0, term2 = 0;
+		for(int i = 1; i < NDIM+1; i++)
+		{
+			term1 += uc[i]*uc[i];
+			term2 += uc[i]*gp[i];
+		}
+		term1 *= (0.5*gp[0]/uc[0]);
+		const a_real dp = (g-1.0)*(guc[NVARS-1] -term1 -term2);
+
+		// temperature
+		gp[NVARS-1] = g*Minf*Minf * (uc[0]*dp - p*gp[0])/(uc[0]*uc[0]);
 	}
 
 	/// Computes total energy from a vector of density, velocities and temperature
