@@ -18,6 +18,22 @@
 
 #define __AOUTPUT_H 1
 
+/// Interface for output to files
+/*class Output
+{
+public:
+	Output(const std::string filename);
+
+	virtual void export() const = 0;
+};
+
+class FlowOutput : public Output
+{
+public:
+	FlowOutput(const std::string filename, const bool export_cons_var,
+		const std::array<bool> surface_vars, const std::array<int> markers);
+};*/
+
 /** Writes multiple scalar data sets and one vector data set, all cell-centered data, to a file in VTU format.
  * If either x or y is a 0x0 matrix, it is ignored.
  * \param fname is the output vtu file name

@@ -284,6 +284,233 @@ void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! VanLeerFlux: Not implemented!\n";
 }
 
+AUSMFlux::AUSMFlux(const IdealGasPhysics *const analyticalflux) 
+	: InviscidFlux(analyticalflux)
+{ }
+
+void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,
+		const a_real* const n, a_real *const __restrict flux)
+{
+	a_real ML, MR, pL, pR;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	// speeds of sound
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
+
+	// Interface speed of sound
+	a_real csi = std::sqrt((ci*ci/(g-1.0)+0.5*vmag2i)*2.0*(g-1.0)/(g+1.0));
+	a_real csj = std::sqrt((cj*cj/(g-1.0)+0.5*vmag2j)*2.0*(g-1.0)/(g+1.0));
+	a_real corri, corrj;
+	if(csi > vni)
+		corri = csi;
+	else
+		corri = vni;
+	if(csj > -vnj)
+		corrj = csj;
+	else
+		corrj = -vnj;
+	csi = csi*csi/corri;
+	csj = csj*csj/corrj;
+	const a_real chalf = (csi < csj) ? csi : csj;
+	
+	const a_real Mni = vni/chalf, Mnj = vnj/chalf;
+	
+	// split non-dimensional convection speeds (ie split Mach numbers) and split pressures
+	if(std::fabs(Mni) <= 1.0)
+	{
+		ML = 0.25*(Mni+1)*(Mni+1) /*+ 1.0/8.0*(Mni*Mni-1.0)*(Mni*Mni-1.0)*/;
+		pL = pi*(0.25*(Mni+1)*(Mni+1)*(2.0-Mni) /*+ 3.0/16*Mni*(Mni*Mni-1.0)*(Mni*Mni-1.0)*/);
+	}
+	else if(Mni < -1.0) {
+		ML = 0;
+		pL = 0;
+	}
+	else {
+		ML = Mni;
+		pL = pi;
+	}
+	
+	if(std::fabs(Mnj) <= 1.0) {
+		MR = -0.25*(Mnj-1)*(Mnj-1) /*- 1.0/8.0*(Mnj*Mnj-1.0)*(Mnj*Mnj-1.0)*/;
+		pR = pj*(0.25*(Mnj-1)*(Mnj-1)*(2.0+Mnj) /*- 3.0/16*Mnj*(Mnj*Mnj-1.0)*(Mnj*Mnj-1.0)*/);
+	}
+	else if(Mnj < -1.0) {
+		MR = Mnj;
+		pR = pj;
+	}
+	else {
+		MR = 0;
+		pR = 0;
+	}
+	
+	// Interface convection speed and pressure
+	const a_real Mhalf = ML+MR;
+	const a_real phalf = pL+pR;
+
+	// Fluxes
+	flux[0] = chalf* (Mhalf/2.0*(ul[0]+ur[0]) -std::fabs(Mhalf)/2.0*(ur[0]-ul[0]));
+	flux[1] = chalf* (Mhalf/2.0*(ul[1]+ur[1]) -std::fabs(Mhalf)/2.0*(ur[1]-ul[1])) + phalf*n[0];
+	flux[2] = chalf* (Mhalf/2.0*(ul[2]+ur[2]) -std::fabs(Mhalf)/2.0*(ur[2]-ul[2])) + phalf*n[1];
+	flux[3] = chalf* (Mhalf/2.0*(ul[3]+pi+ur[3]+pj) -std::fabs(Mhalf)/2.0*((ur[3]+pj)-(ul[3]+pi)));
+	
+	/*const a_real mplus = 0.5*(Mhalf + std::fabs(Mhalf)), mminus = 0.5*(Mhalf - std::fabs(Mhalf));
+	flux[0] =  (mplus*ci*ul[0] + mminus*cj*ur[0]);
+	flux[1] =  (mplus*ci*ul[1] + mminus*cj*ur[1]) + phalf*n[0];
+	flux[2] =  (mplus*ci*ul[2] + mminus*cj*ur[2]) + phalf*n[1];
+	flux[3] =  (mplus*ci*(ul[3]+pi) + mminus*cj*(ur[3]+pj));*/
+}
+
+/** Based on original AUSM for now
+ */
+void AUSMFlux::getFluxJac_left(const a_real *const ul, 
+		                      const a_real *const ur, 
+		                      const a_real *const n, 
+		a_real *const __restrict flux, a_real *const __restrict fluxd)
+{
+    a_real uld[NVARS][NVARS];
+	for(int i = 0; i < NVARS; i++) {
+		for(int j = 0; j < NVARS; j++)
+			uld[i][j] = 0;
+		uld[i][i] = 1.0;
+	}
+	
+	a_real ML, MR, pL, pR;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	// speeds of sound
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
+	const a_real Mni = vni/ci, Mnj = vnj/cj;
+	
+	// split non-dimensional convection speeds (ie split Mach numbers) and split pressures
+	if(std::fabs(Mni) <= 1.0)
+	{
+		ML = 0.25*(Mni+1)*(Mni+1);
+		pL = ML*pi*(2.0-Mni);
+	}
+	else if(Mni < -1.0) {
+		ML = 0;
+		pL = 0;
+	}
+	else {
+		ML = Mni;
+		pL = pi;
+	}
+	
+	if(std::fabs(Mnj) <= 1.0) {
+		MR = -0.25*(Mnj-1)*(Mnj-1);
+		pR = -MR*pj*(2.0+Mnj);
+	}
+	else if(Mnj < -1.0) {
+		MR = Mnj;
+		pR = pj;
+	}
+	else {
+		MR = 0;
+		pR = 0;
+	}
+	
+	// Interface convection speed and pressure
+	const a_real Mhalf = ML+MR;
+	const a_real phalf = pL+pR;
+
+	// Fluxes
+	flux[0] = Mhalf/2.0*(ul[0]*ci+ur[0]*cj) -std::fabs(Mhalf)/2.0*(ur[0]*cj-ul[0]*ci);
+	flux[1] = Mhalf/2.0*(ul[1]*ci+ur[1]*cj) -std::fabs(Mhalf)/2.0*(ur[1]*cj-ul[1]*ci) + phalf*n[0];
+	flux[2] = Mhalf/2.0*(ul[2]*ci+ur[2]*cj) -std::fabs(Mhalf)/2.0*(ur[2]*cj-ul[2]*ci) + phalf*n[1];
+	flux[3] = Mhalf/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) -std::fabs(Mhalf)/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi));
+}
+
+/** Based on original AUSM
+ */
+void AUSMFlux::getFluxJac_right(const a_real *const ul, 
+		                      const a_real *const ur, 
+		                      const a_real *const n, 
+		a_real *const __restrict flux, a_real *const __restrict fluxd)
+{
+    a_real urd[NVARS][NVARS];
+	for(int i = 0; i < NVARS; i++) {
+		for(int j = 0; j < NVARS; j++)
+			urd[i][j] = 0;
+		urd[i][i] = 1.0;
+	}
+	
+	a_real ML, MR, pL, pR;
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	// speeds of sound
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
+	const a_real Mni = vni/ci, Mnj = vnj/cj;
+	
+	// split non-dimensional convection speeds (ie split Mach numbers) and split pressures
+	if(std::fabs(Mni) <= 1.0)
+	{
+		ML = 0.25*(Mni+1)*(Mni+1);
+		pL = ML*pi*(2.0-Mni);
+	}
+	else if(Mni < -1.0) {
+		ML = 0;
+		pL = 0;
+	}
+	else {
+		ML = Mni;
+		pL = pi;
+	}
+	
+	if(std::fabs(Mnj) <= 1.0) {
+		MR = -0.25*(Mnj-1)*(Mnj-1);
+		pR = -MR*pj*(2.0+Mnj);
+	}
+	else if(Mnj < -1.0) {
+		MR = Mnj;
+		pR = pj;
+	}
+	else {
+		MR = 0;
+		pR = 0;
+	}
+	
+	// Interface convection speed and pressure
+	const a_real Mhalf = ML+MR;
+	const a_real phalf = pL+pR;
+
+	// Fluxes
+	flux[0] = Mhalf/2.0*(ul[0]*ci+ur[0]*cj) -std::fabs(Mhalf)/2.0*(ur[0]*cj-ul[0]*ci);
+	flux[1] = Mhalf/2.0*(ul[1]*ci+ur[1]*cj) -std::fabs(Mhalf)/2.0*(ur[1]*cj-ul[1]*ci) + phalf*n[0];
+	flux[2] = Mhalf/2.0*(ul[2]*ci+ur[2]*cj) -std::fabs(Mhalf)/2.0*(ur[2]*cj-ul[2]*ci) + phalf*n[1];
+	flux[3] = Mhalf/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) -std::fabs(Mhalf)/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi));
+}
+
+void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+{
+	std::cout << " ! AUSMFlux: Not implemented!\n";
+	// TODO
+}
+
 RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 { }
@@ -324,7 +551,7 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	l[0] = fabs(vnij-cij); l[1] = fabs(vnij); l[2] = l[1]; l[3] = fabs(vnij+cij);
 	
 	// Harten entropy fix
-	const a_real delta = 0.01*cij;
+	const a_real delta = 0.001*cij;
 	for(int ivar = 0; ivar < NVARS; ivar++)
 	{
 		if(l[ivar] < delta)
@@ -334,12 +561,13 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	//> A_Roe * dU
 	
 	const a_real dvn = vnj-vni, dp = pj-pi;
-	a_real adu[] = {0.0,0.0,0.0,0.0};
+	a_real adu[NVARS] = {0.0,0.0,0.0,0.0};
 	// product of eigenvalues and wave strengths (for component 2, sort of):
 	a_real lalpha[NVARS];   
 	lalpha[0] = l[0]*(dp-rhoij*cij*dvn)/(2.0*cij*cij);
 	lalpha[1] = l[1]*(ur[0]-ul[0] - dp/(cij*cij));
-	lalpha[2] = l[1]*rhoij;
+	//lalpha[2] = l[1]*rhoij;
+	lalpha[2] = l[1]*((vxj-vxi)*n[1]-(vyj-vyi)*n[0]);
 	lalpha[3] = l[3]*(dp+rhoij*cij*dvn)/(2.0*cij*cij);
 
 	// un-c:
@@ -350,9 +578,10 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 
 	// un:
 	adu[0] += lalpha[1];
-	adu[1] += lalpha[1]*vxij + lalpha[2]*(vxj-vxi - dvn*n[0]);
-	adu[2] += lalpha[1]*vyij + lalpha[2]*(vyj-vyi - dvn*n[1]);
-	adu[3] += lalpha[1]*vm2ij/2.0 + lalpha[2] *(vxij*(vxj-vxi) +vyij*(vyj-vyi) -vnij*dvn);
+	adu[1] += lalpha[1]*vxij + lalpha[2]*(vxj-vxi - dvn*n[0])/*cij*n[1]*/; 
+	adu[2] += lalpha[1]*vyij + lalpha[2]*(vyj-vyi - dvn*n[1])/*(-cij)*n[0]*/;
+	adu[3] += lalpha[1]*vm2ij/2.0 + lalpha[2] *(vxij*(vxj-vxi) +vyij*(vyj-vyi) -vnij*dvn)
+		/*cij*(vxij*n[1]-vyij*n[0])*/;
 
 	// un+c:
 	adu[0] += lalpha[3];

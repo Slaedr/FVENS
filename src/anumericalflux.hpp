@@ -76,6 +76,24 @@ public:
 			a_real *const dfdl, a_real *const dfdr);
 };
 
+/// Liou-Steffen AUSM+ flux-vector-splitting
+class AUSMFlux : public InviscidFlux
+{
+	/// Computes the Jacobian of the numerical flux w.r.t. left state
+	void getFluxJac_left(const a_real *const ul, const a_real *const ur, const a_real *const n, 
+			a_real *const flux, a_real *const fluxd);
+	/// Computes the Jacobian of the numerical flux w.r.t. right state
+	void getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
+			a_real *const flux, a_real *const fluxd);
+
+public:
+	AUSMFlux(const IdealGasPhysics *const analyticalflux);
+	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const flux);
+	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const dfdl, a_real *const dfdr);
+};
+
 /// Roe flux-difference splitting
 /** From Blazek's version: \cite{blazek}.
  */
