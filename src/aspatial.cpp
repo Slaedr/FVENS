@@ -933,6 +933,84 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 	} // end parallel region
 }
 
+void FlowFV::computeViscousFluxJacobian(const a_real *const ul, const a_real *const ur,
+		const a_real *const n,
+		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
+{
+	a_real vflux[NVARS]; // output variable to be differentiated
+	a_real upr[NVARS], upl[NVARS];
+
+	physics.convertConservedToPrimitive2(ucl, upl);
+	physics.convertConservedToPrimitive2(ucr, upr);
+	
+	a_real dr[NDIM], dist=0, n[NDIM]; 
+
+	if(iface < m->gnbface())
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+			n[i] = m->ggallfa(iface,i);
+		}
+	else
+		for(int i = 0; i < NDIM; i++) {
+			dr[i] = rc(relem,i)-rc(lelem,i);
+			dist += dr[i]*dr[i];
+			n[i] = m->ggallfa(iface,i);
+		}
+	dist = sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] /= dist;
+	}
+
+	a_real grad[NDIM][NVARS];
+	for(short i = 0; i < NVARS; i++) 
+	{
+		a_real corr = (upr[i]-upl[i])/dist;
+		
+		for(short j = 0; j < NDIM; j++)
+		{
+			grad[j][i] = corr*dr[j];
+		}
+	}
+
+	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
+	 * primitive-2 face gradients and conserved face variables.
+	 */
+	
+	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
+	const a_real muRe = constVisc ? 
+			physics.getConstantViscosityCoeff() 
+		:
+			0.5*( physics.getViscosityCoeffFromConserved(&ul(iface,0))
+			+ physics.getViscosityCoeffFromConserved(&ur(iface,0)) );
+	
+	// Non-dimensional thermal conductivity
+	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
+
+	// divergence of velocity times second viscosity
+	a_real ldiv = 0;
+	for(int j = 0; j < NDIM; j++)
+		ldiv += grad[j][j+1];
+	ldiv *= 2.0/3.0*muRe;
+
+	vflux[0] = 0.0;
+	vflux[1] = n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]);
+	vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv);
+
+	// energy dissipation terms in the 2 directions
+	a_real sp[NDIM] = {0.0, 0.0};
+	sp[0] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * (2.0*muRe*grad[0][1]-ldiv)
+		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
+		+ kdiff*grad[0][3];
+	sp[1] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
+		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2*muRe*grad[1][2]-ldiv)
+		+ kdiff*grad[1][3];
+
+	vflux[3] = 0;
+	for(int i = 0; i < NDIM; i++)
+		vflux[3] += n[i]*sp[i];
+}
+
 #if HAVE_PETSC==1
 
 void FlowFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)

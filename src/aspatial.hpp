@@ -280,6 +280,22 @@ protected:
 			const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
 			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
+
+	/// Compues the first-order "thin-layer" viscous flux Jacobian
+	/** This is the same sign as is needed in the residual; note that the viscous flux Jacobian is
+	 * added to the output matrices - they are not zeroed or durectly assigned to.
+	 * The outputs vfluxi and vfluxj still need to be integrated on the face.
+	 * \param[in] iface Face index
+	 * \param[in] ul Cell-centred conserved variable on left
+	 * \param[in] ur Cell-centred conserved variable on right
+	 * \param[in|out] vfluxi Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_i \f$
+	 *   NVARS x NVARS array stored as a 1D row-major array
+	 * \param[in|out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
+	 *   NVARS x NVARS array stored as a 1D row-major array
+	 */
+	void computeViscousFluxJacobian(const a_real *const ul, const a_real *const ur,
+			const a_real *const n,
+			a_real *const __restrict vfluxj) const;
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity

@@ -247,6 +247,47 @@ public:
 	{
 		return muhat / (Minf*Minf*(g-1.0)*Pr);
 	}
+	
+	/// Computes the Jacobian matrix of the conserved-to-primitive-2 transformation
+	/** \f$ \partial \mathbf{u}_{prim} / \partial \mathbf{u}_{cons} \f$. 
+	 * The output is stored as 1D rowmajor.
+	 *
+	 * \warning The Jacobian is *added* to the output jac. If it has garbage at the outset,
+	 * it will contain garbage at the end.
+	 */
+	void getJacobianConservedToPrimitive2(const a_real *const uc, 
+			a_real *const __restrict jac) const
+	{
+		a_real up[NVARS]; // primitive-2 vector
+		up[0] = uc[0];
+		jac[0] += 1.0; jac[1] = 0; jac[2] = 0; jac[3] = 0;
+
+		a_real rhovmag2 = 0;
+		a_real stor[NVARS] = {0,0,0,0};
+		for(int idim = 1; idim < NDIM+1; idim++) {
+			rhovmag2 += uc[idim]*uc[idim];
+			// d(rhovmag2):
+			stor[idim] += 2*uc[idim];
+			
+			up[idim] = uc[idim]/uc[0];
+			// d(up[idim])
+			jac[idim*NVARS+0] += -uc[idim]/(uc[0]*uc[0]);
+			jac[idim*NVARS+idim] += 1.0/uc[0];
+		}
+		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+		// dp:
+		a_real dp[NVARS];
+		dp[0] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * (stor[0]*uc[0]-rhovmag2));
+		dp[1] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[1]*uc[0]);
+		dp[2] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[2]*uc[0]);
+		dp[3] = (g-1.0)*(1.0);
+
+		up[NVARS-1] = g*Minf*Minf*p/up[0];
+		jac[3*NVARS+0] += g*Minf*Minf/(up[0]*up[0]) * (dp[0]*up[0]-p);
+		jac[3*NVARS+1] += g*Minf*Minf/(up[0]*up[0]) * dp[1]*up[0];
+		jac[3*NVARS+2] += g*Minf*Minf/(up[0]*up[0]) * dp[2]*up[0];
+		jac[3*NVARS+3] += g*Minf*Minf/(up[0]*up[0]) * dp[3]*up[0];
+	}
 
 	/// Adiabatic constant
 	const a_real g;
