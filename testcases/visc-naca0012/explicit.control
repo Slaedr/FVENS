@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-naca0012/grids/naca0012nasa_iso2.msh
+../testcases/visc-naca0012/grids/naca0012nasa_iso1.msh
 ---Output-file
 ../data/vnaca.vtu
 ---Log-file-for-runtimes

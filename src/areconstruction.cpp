@@ -11,8 +11,8 @@ namespace acfd
 {
 
 Reconstruction::Reconstruction(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
-	: m(mesh), rc(_rc), rcg(_rcg)
+		const amat::Array2d<a_real> *const _rc)
+	: m(mesh), rc(_rc)
 { }
 
 Reconstruction::~Reconstruction()
@@ -20,12 +20,13 @@ Reconstruction::~Reconstruction()
 
 template<short nvars>
 ConstantReconstruction<nvars>::ConstantReconstruction(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
-	: Reconstruction(mesh, _rc, _rcg)
+		const amat::Array2d<a_real> *const _rc)
+	: Reconstruction(mesh, _rc)
 { }
 
 template<short nvars>
-void ConstantReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
+void ConstantReconstruction<nvars>::compute_gradients(
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
 		const amat::Array2d<a_real>*const ug, 
 		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
@@ -42,14 +43,15 @@ void ConstantReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dynami
 
 template<short nvars>
 GreenGaussReconstruction<nvars>::GreenGaussReconstruction(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
-	: Reconstruction(mesh, _rc, _rcg)
+		const amat::Array2d<a_real> *const _rc)
+	: Reconstruction(mesh, _rc)
 { }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
  */
 template<short nvars>
-void GreenGaussReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
+void GreenGaussReconstruction<nvars>::compute_gradients(
+		const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
 		const amat::Array2d<a_real>*const ug, 
 		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
 {
@@ -68,20 +70,20 @@ void GreenGaussReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dyna
 #pragma omp for
 		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			a_int ielem, ip1, ip2;
 			a_real areainv1;
 			a_real ut[nvars];
 			a_real dL, dR, mid[NDIM];
 		
-			ielem = m->gintfac(iface,0);
-			ip1 = m->gintfac(iface,2);
-			ip2 = m->gintfac(iface,3);
+			const a_int ielem = m->gintfac(iface,0);
+			const a_int jelem = m->gintfac(iface,1);   // ghost cell index
+			const a_int ip1 = m->gintfac(iface,2);
+			const a_int ip2 = m->gintfac(iface,3);
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
 				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
 				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
-				dR += (mid[idim]-(*rcg)(iface,idim))*(mid[idim]-(*rcg)(iface,idim));
+				dR += (mid[idim]-(*rc)(jelem,idim))*(mid[idim]-(*rc)(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -89,7 +91,7 @@ void GreenGaussReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dyna
 			
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar] = ((*u)(ielem,ivar)*dL + (*ug)(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar]= ((*u)(ielem,ivar)*dL + (*ug)(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
 				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
 				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
 			}
@@ -138,9 +140,10 @@ void GreenGaussReconstruction<nvars>::compute_gradients(const Matrix<a_real,Dyna
 /** An inverse-distance weighted least-squares is used.
  */
 template<short nvars>
-WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc, const amat::Array2d<a_real>* const _rcg)
-	: Reconstruction(mesh, _rc, _rcg)
+WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(
+		const UMesh2dh *const mesh, 
+		const amat::Array2d<a_real> *const _rc)
+	: Reconstruction(mesh, _rc)
 { 
 	V.resize(m->gnelem());
 	f.resize(m->gnelem());
@@ -155,12 +158,13 @@ WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction(co
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		a_int ielem = m->gintfac(iface,0);
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
 		a_real w2 = 0, dr[2];
 		for(short idim = 0; idim < 2; idim++)
 		{
-			w2 += ((*rc)(ielem,idim)-(*rcg)(iface,idim))*((*rc)(ielem,idim)-(*rcg)(iface,idim));
-			dr[idim] = (*rc)(ielem,idim)-(*rcg)(iface,idim);
+			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
+			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -228,12 +232,13 @@ void WeightedLeastSquaresReconstruction<nvars>::compute_gradients(
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		a_int ielem = m->gintfac(iface,0);
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
 		a_real w2 = 0, dr[NDIM], du[nvars];
 		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += ((*rc)(ielem,idim)-(*rcg)(iface,idim))*((*rc)(ielem,idim)-(*rcg)(iface,idim));
-			dr[idim] = (*rc)(ielem,idim)-(*rcg)(iface,idim);
+			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
+			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 		

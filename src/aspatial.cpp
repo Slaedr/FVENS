@@ -12,11 +12,10 @@ namespace acfd {
 template<short nvars>
 Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL)/10.0}
 {
-	rc.resize(m->gnelem(),m->gndim());
-	rcg.resize(m->gnbface(),m->gndim());
+	rc.resize(m->gnelem()+m->gnbface(),m->gndim());
 	gr = new amat::Array2d<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
-		gr[i].resize(NGAUSS, m->gndim());
+		gr[i].resize(NGAUSS, NDIM);
 
 	// get cell centers (real and ghost)
 	
@@ -32,9 +31,17 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL
 	}
 
 	a_real x1, y1, x2, y2;
+	amat::Array2d<a_real> rchg(m->gnbface(),NDIM);
 
-	compute_ghost_cell_coords_about_midpoint();
-	//compute_ghost_cell_coords_about_face();
+	compute_ghost_cell_coords_about_midpoint(rchg);
+	//compute_ghost_cell_coords_about_face(rchg);
+
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int relem = m->gintfac(iface,1);
+		for(int idim = 0; idim < NDIM; idim++)
+			rc(relem,idim) = rchg(iface,idim);
+	}
 
 	//Calculate and store coordinates of Gauss points
 	// Gauss points are uniformly distributed along the face.
@@ -59,7 +66,7 @@ Spatial<nvars>::~Spatial()
 }
 
 template<short nvars>
-void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
+void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg)
 {
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
@@ -74,7 +81,7 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
 		}
 
 		for(short idim = 0; idim < NDIM; idim++)
-			rcg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
+			rchg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
 	}
 }
 
@@ -82,7 +89,7 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint()
  * It is NOT the reflection about the midpoint of the boundary-face.
  */
 template<short nvars>
-void Spatial<nvars>::compute_ghost_cell_coords_about_face()
+void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg)
 {
 	a_real x1, y1, x2, y2, xs, ys, xi, yi;
 
@@ -116,8 +123,8 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face()
 			xs = x1;
 			ys = yi;
 		}
-		rcg(ied,0) = 2*xs-xi;
-		rcg(ied,1) = 2*ys-yi;
+		rchg(ied,0) = 2*xs-xi;
+		rchg(ied,1) = 2*ys-yi;
 	}
 }
 
@@ -301,48 +308,48 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	{
 		if(reconst == "LEASTSQUARES")
 		{
-			rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc, &rcg);
+			rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc);
 			std::cout << "  FlowFV: Weighted least-squares reconstruction will be used.\n";
 		}
 		else if(reconst == "GREENGAUSS")
 		{
-			rec = new GreenGaussReconstruction<NVARS>(m, &rc, &rcg);
+			rec = new GreenGaussReconstruction<NVARS>(m, &rc);
 			std::cout << "  FlowFV: Green-Gauss reconstruction will be used." << std::endl;
 		}
 		else {
-			rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
+			rec = new ConstantReconstruction<NVARS>(m, &rc);
 			std::cout << " ! FlowFV: No reconstruction!" << std::endl;
 		}
 	}
 	else {
 		std::cout << "  FlowFV: No reconstruction; first order solution." << std::endl;
-		rec = new ConstantReconstruction<NVARS>(m, &rc, &rcg);
+		rec = new ConstantReconstruction<NVARS>(m, &rc);
 	}
 
 	// set limiter
 	if(limiter == "NONE")
 	{
-		lim = new NoLimiter(m, &rcg, &rc, gr);
+		lim = new NoLimiter(m, &rc, gr);
 		std::cout << "  FlowFV: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
-		lim = new WENOLimiter(m, &rcg, &rc, gr);
+		lim = new WENOLimiter(m, &rc, gr);
 		std::cout << "  FlowFV: WENO limiter selected.\n";
 	}
 	else if(limiter == "VANALBADA")
 	{
-		lim = new VanAlbadaLimiter(m, &rcg, &rc, gr);
+		lim = new VanAlbadaLimiter(m, &rc, gr);
 		std::cout << "  FlowFV: Van Albada limiter selected.\n";
 	}
 	else if(limiter == "BARTHJESPERSEN")
 	{
-		lim = new BarthJespersenLimiter(m, &rcg, &rc, gr);
+		lim = new BarthJespersenLimiter(m, &rc, gr);
 		std::cout << "  FlowFV: Barth-Jespersen limiter selected.\n";
 	}
 	else if(limiter == "VENKATAKRISHNAN")
 	{
-		lim = new VenkatakrishnanLimiter(m, &rcg, &rc, gr, 3.75);
+		lim = new VenkatakrishnanLimiter(m, &rc, gr, 3.75);
 		std::cout << "  FlowFV: Venkatakrishnan limiter selected.\n";
 	}
 	
@@ -661,7 +668,7 @@ void FlowFV::computeViscousFlux(const a_int iface,
 
 	if(iface < m->gnbface())
 		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dr[i] = rc(relem,i)-rc(lelem,i);
 			dist += dr[i]*dr[i];
 			n[i] = m->ggallfa(iface,i);
 		}
@@ -727,6 +734,80 @@ void FlowFV::computeViscousFlux(const a_int iface,
 		+ kdiff*grad[0][3];
 	sp[1] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
 		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2*muRe*grad[1][2]-ldiv)
+		+ kdiff*grad[1][3];
+
+	vflux[3] = 0;
+	for(int i = 0; i < NDIM; i++)
+		vflux[3] += n[i]*sp[i];
+}
+
+void FlowFV::computeViscousFluxJacobian(const a_int iface,
+		const a_real *const ul, const a_real *const ur,
+		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
+{
+	a_real vflux[NVARS]; // output variable to be differentiated
+	a_real upr[NVARS], upl[NVARS];
+
+	physics.convertConservedToPrimitive2(ul, upl);
+	physics.convertConservedToPrimitive2(ur, upr);
+	
+	a_real dr[NDIM], dist=0, n[NDIM];
+
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+		n[i] = m->ggallfa(iface,i);
+	}
+	
+	dist = sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] /= dist;
+	}
+
+	a_real grad[NDIM][NVARS];
+	for(short i = 0; i < NVARS; i++) 
+	{
+		a_real corr = (upr[i]-upl[i])/dist;
+		
+		for(short j = 0; j < NDIM; j++)
+		{
+			grad[j][i] = corr*dr[j];
+		}
+	}
+
+	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
+	 * primitive-2 face gradients and conserved face variables.
+	 */
+	
+	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
+	const a_real muRe = constVisc ? 
+			physics.getConstantViscosityCoeff() 
+		:
+			0.5*( physics.getViscosityCoeffFromConserved(ul)
+			+ physics.getViscosityCoeffFromConserved(ur) );
+	
+	// Non-dimensional thermal conductivity
+	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
+
+	// divergence of velocity times second viscosity
+	a_real ldiv = 0;
+	for(int j = 0; j < NDIM; j++)
+		ldiv += grad[j][j+1];
+	ldiv *= 2.0/3.0*muRe;
+
+	vflux[0] = 0.0;
+	vflux[1] = n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]);
+	vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv);
+
+	// energy dissipation terms in the 2 directions
+	a_real sp[NDIM] = {0.0, 0.0};
+	sp[0] = 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*muRe*grad[0][1]-ldiv)
+		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * muRe*(grad[1][1]+grad[0][2])
+		+ kdiff*grad[0][3];
+	sp[1] = 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * muRe*(grad[1][1]+grad[0][2])
+		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * (2*muRe*grad[1][2]-ldiv)
 		+ kdiff*grad[1][3];
 
 	vflux[3] = 0;
@@ -931,84 +1012,6 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 				dtm(iel) = m->garea(iel)/integ(iel);
 			}
 	} // end parallel region
-}
-
-void FlowFV::computeViscousFluxJacobian(const a_real *const ul, const a_real *const ur,
-		const a_real *const n,
-		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
-{
-	a_real vflux[NVARS]; // output variable to be differentiated
-	a_real upr[NVARS], upl[NVARS];
-
-	physics.convertConservedToPrimitive2(ucl, upl);
-	physics.convertConservedToPrimitive2(ucr, upr);
-	
-	a_real dr[NDIM], dist=0, n[NDIM]; 
-
-	if(iface < m->gnbface())
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rcg(iface,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-			n[i] = m->ggallfa(iface,i);
-		}
-	else
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-			n[i] = m->ggallfa(iface,i);
-		}
-	dist = sqrt(dist);
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] /= dist;
-	}
-
-	a_real grad[NDIM][NVARS];
-	for(short i = 0; i < NVARS; i++) 
-	{
-		a_real corr = (upr[i]-upl[i])/dist;
-		
-		for(short j = 0; j < NDIM; j++)
-		{
-			grad[j][i] = corr*dr[j];
-		}
-	}
-
-	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
-	 * primitive-2 face gradients and conserved face variables.
-	 */
-	
-	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const a_real muRe = constVisc ? 
-			physics.getConstantViscosityCoeff() 
-		:
-			0.5*( physics.getViscosityCoeffFromConserved(&ul(iface,0))
-			+ physics.getViscosityCoeffFromConserved(&ur(iface,0)) );
-	
-	// Non-dimensional thermal conductivity
-	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
-
-	// divergence of velocity times second viscosity
-	a_real ldiv = 0;
-	for(int j = 0; j < NDIM; j++)
-		ldiv += grad[j][j+1];
-	ldiv *= 2.0/3.0*muRe;
-
-	vflux[0] = 0.0;
-	vflux[1] = n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]);
-	vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv);
-
-	// energy dissipation terms in the 2 directions
-	a_real sp[NDIM] = {0.0, 0.0};
-	sp[0] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * (2.0*muRe*grad[0][1]-ldiv)
-		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
-		+ kdiff*grad[0][3];
-	sp[1] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
-		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2*muRe*grad[1][2]-ldiv)
-		+ kdiff*grad[1][3];
-
-	vflux[3] = 0;
-	for(int i = 0; i < NDIM; i++)
-		vflux[3] += n[i]*sp[i];
 }
 
 #if HAVE_PETSC==1
@@ -1349,16 +1352,16 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh,
 	std::cout << "  DiffusionMA: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
-		rec = new WeightedLeastSquaresReconstruction<nvars>(m, &rc, &rcg);
+		rec = new WeightedLeastSquaresReconstruction<nvars>(m, &rc);
 		std::cout << "  DiffusionMA: Weighted least-squares reconstruction will be used.\n";
 	}
 	else if(reconst == "GREENGAUSS")
 	{
-		rec = new GreenGaussReconstruction<nvars>(m, &rc, &rcg);
+		rec = new GreenGaussReconstruction<nvars>(m, &rc);
 		std::cout << "  DiffusionMA: Green-Gauss reconstruction will be used." << std::endl;
 	}
 	else /*if(reconst == "NONE")*/ {
-		rec = new ConstantReconstruction<nvars>(m, &rc, &rcg);
+		rec = new ConstantReconstruction<nvars>(m, &rc);
 		std::cout << "  DiffusionMA: No reconstruction; first order solution." << std::endl;
 	}
 }
@@ -1429,11 +1432,12 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 	
 	for(int iface = 0; iface < m->gnbface(); iface++)
 	{
-		a_int lelem = m->gintfac(iface,0);
-		a_real len = m->ggallfa(iface,2);
+		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);
+		const a_real len = m->ggallfa(iface,2);
 		a_real dr[NDIM], dist=0, sn=0, gradterm[nvars];
 		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dr[i] = rc(relem,i)-rc(lelem,i);
 			dist += dr[i]*dr[i];
 		}
 		dist = sqrt(dist);
@@ -1515,11 +1519,12 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
 		a_real len = m->ggallfa(iface,2);
 
 		a_real dr[NDIM], dist=0, sn=0;
 		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rcg(iface,i)-rc(lelem,i);
+			dr[i] = rc(relem,i)-rc(lelem,i);
 			dist += dr[i]*dr[i];
 		}
 		dist = sqrt(dist);

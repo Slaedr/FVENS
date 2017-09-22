@@ -681,12 +681,18 @@ void UMesh2dh::compute_topological()
 		for(int j = 0; j < nnode[i]; j++)
 		{
 			int ipoin = inpoel(i,j);
-			esup(esup_p(ipoin,0),0) = i;		// now put that element no. in the space pointed to by esup_p(ipoin)
-			esup_p(ipoin,0) += 1;				// an element corresponding to ipoin has been found - increment esup_p for that point
+			
+			// now put that element no. in the space pointed to by esup_p(ipoin):
+			esup(esup_p(ipoin,0),0) = i;
+
+			// an element corresponding to ipoin has been found - increment esup_p for that point:
+			esup_p(ipoin,0) += 1;				
 		}
 	}
-	//But now esup_p holds increased values - each member increased by the number elements surrounding the corresponding point.
-	// So correct this.
+	
+	//But now esup_p holds increased values:
+	// each member increased by the number elements surrounding the corresponding point.
+	// So now correct this.
 	for(int i = npoin; i >= 1; i--)
 		esup_p(i,0) = esup_p(i-1,0);
 	esup_p(0,0) = 0;

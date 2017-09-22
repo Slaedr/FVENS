@@ -29,20 +29,18 @@ class FaceDataComputation
 {
 protected:
 	const UMesh2dh* m;
-	const amat::Array2d<a_real>* rb;			///< coords of cell centers of ghost cells
-	const amat::Array2d<a_real>* ri;			///< coords of cell centers of real cells
-	const amat::Array2d<a_real>* gr;		/// coords of gauss points of each face
+	const amat::Array2d<a_real>* ri;		///< coords of cell centers of cells
+	const amat::Array2d<a_real>* gr;		///< coords of gauss points of each face
 	int ng;									///< Number of Gauss points
 
 public:
 	FaceDataComputation();
 
     FaceDataComputation (const UMesh2dh* mesh,            ///< Mesh context
-			const amat::Array2d<a_real>* ghost_centres,   ///< Ghost cell centres
 			const amat::Array2d<a_real>* c_centres,       ///< Cell centres
 			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
 
-    void setup(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+    void setup(const UMesh2dh* mesh,
 			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
@@ -62,7 +60,7 @@ class NoLimiter : public FaceDataComputation
 {
 public:
 	/// Constructs the NoLimiter object. \sa FaceDataComputation::FaceDataComputation.
-	NoLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+	NoLimiter(const UMesh2dh* mesh,
 			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
@@ -91,7 +89,7 @@ class WENOLimiter : public FaceDataComputation
 	a_real lambda;
 	a_real epsilon;
 public:
-    WENOLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+    WENOLimiter(const UMesh2dh* mesh,
 			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
@@ -110,7 +108,7 @@ class VanAlbadaLimiter : public FaceDataComputation
 	amat::Array2d<a_real> phi_r;		///< right-face limiter values
 
 public:
-    VanAlbadaLimiter(const UMesh2dh* mesh, const amat::Array2d<a_real>* ghost_centres, 
+    VanAlbadaLimiter(const UMesh2dh* mesh,
 			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
@@ -125,7 +123,6 @@ class BarthJespersenLimiter : public FaceDataComputation
 {
 public:
     BarthJespersenLimiter(const UMesh2dh* mesh, 
-			const amat::Array2d<a_real>* ghost_centres, 
 			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
@@ -150,7 +147,6 @@ public:
 	 *             in the solution. Defaults to 2.0.
 	 */
     VenkatakrishnanLimiter(const UMesh2dh* mesh, 
-			const amat::Array2d<a_real>* ghost_centres, 
 			const amat::Array2d<a_real>* c_centres, 
 			const amat::Array2d<a_real>* gauss_r, a_real k_param);
     

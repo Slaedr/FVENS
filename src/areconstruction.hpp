@@ -22,14 +22,11 @@ protected:
 	const UMesh2dh* m;
 	/// Cell centers' coords
 	const amat::Array2d<a_real>* rc;
-	/// Ghost cell centers
-	const amat::Array2d<a_real>* rcg;
 
 public:
 	/// Base constructor
 	Reconstruction(const UMesh2dh *const mesh,             ///< Mesh context
-			const amat::Array2d<a_real> *const _rc,        ///< Cell centers 
-			const amat::Array2d<a_real>* const _rcg);      ///< Ghost cell centers
+			const amat::Array2d<a_real> *const _rc);       ///< Cell centers 
 	
 	virtual ~Reconstruction();
 
@@ -44,8 +41,7 @@ class ConstantReconstruction : public Reconstruction
 {
 public:
 	ConstantReconstruction(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real> *const _rc, 
-			const amat::Array2d<a_real>* const _rcg);
+			const amat::Array2d<a_real> *const _rc);
 
 	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
 			const amat::Array2d<a_real>*const unkg, 
@@ -62,8 +58,7 @@ class GreenGaussReconstruction : public Reconstruction
 {
 public:
 	GreenGaussReconstruction(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real> *const _rc, 
-			const amat::Array2d<a_real>* const _rcg);
+			const amat::Array2d<a_real> *const _rc);
 
 	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
 			const amat::Array2d<a_real>*const unkg, 
@@ -81,8 +76,7 @@ class WeightedLeastSquaresReconstruction : public Reconstruction
 
 public:
 	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real> *const _rc, 
-			const amat::Array2d<a_real>* const _rcg);
+			const amat::Array2d<a_real> *const _rc);
 
 	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
 			const amat::Array2d<a_real>*const unkg, 

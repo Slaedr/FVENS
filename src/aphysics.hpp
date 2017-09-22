@@ -54,6 +54,7 @@ public:
 	void evaluate_normal_jacobian(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict dfdu) const;
 
+	/// Computes pressure from conserved variables
 	a_real getPressureFromConserved(const a_real *const uc) const
 	{
 		a_real rhovmag2 = 0;
@@ -61,12 +62,49 @@ public:
 			rhovmag2 += uc[idim]*uc[idim];
 		return (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
 	}
+	
+	/// Derivative of pressure w.r.t. conserved variables
+	/** Note that the derivative is added to the second argument - the latter is not zeroed
+	 * or anything.
+	 */
+	void getJacobianPressureWrtConserved(const a_real *const uc, a_real *const __restrict dp) const
+	{
+		a_real rhovmag2 = 0;
+		a_real drvmg2[NVARS-1];
+		for(int i = 0; i < NVARS-1; i++)
+			drvmg2[i] = 0;
 
+		for(int idim = 1; idim < NDIM+1; idim++) {
+			rhovmag2 += uc[idim]*uc[idim];
+			drvmg2[idim] += 2.0*uc[idim];
+		}
+		
+		dp[0] += (g-1.0)*(-0.5)* (drvmg2[0]*uc[0] - rhovmag2)/(uc[0]*uc[0]);
+		dp[1] += (g-1.0)*(-0.5)* drvmg2[1]/uc[0];
+		dp[2] += (g-1.0)*(-0.5)* drvmg2[2]/uc[0];
+		dp[3] += (g-1.0);
+	}
+
+	/// Computes speed of sound from conserved variables
 	a_real getSoundSpeedFromConserved(const a_real *const uc) const
 	{
 		return std::sqrt(g * getPressureFromConserved(uc)/uc[0]);
 	}
 
+	/// Derivative of sound speed w.r.t. conserved variables
+	void getJacobianSoundSpeedWrtConserved(const a_real *const uc,
+			a_real *const __restrict dc) const
+	{
+		a_real p =getPressureFromConserved(uc);
+		a_real dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
+		getJacobianPressureWrtConserved(uc);
+		
+		dc[0] += 0.5/std::sqrt(g*p/uc[0]) * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
+		for(int i = 1; i < NVARS; i++)
+			dc[i] += 0.5/std::sqrt(g*p/uc[0]) * g*dp[i]/uc[0];
+	}
+
+	/// Computes an entropy \f$ p/ \rho^\gamma \f$ from conserved variables
 	a_real getEntropyFromConserved(const a_real *const uc) const
 	{
 		return getPressureFromConserved(uc)/std::pow(uc[0],g);
@@ -97,7 +135,44 @@ public:
 			up[idim] = uc[idim]/uc[0];
 		}
 		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
-		up[NVARS-1] = g*Minf*Minf*p/up[0];
+		up[NVARS-1] = g*Minf*Minf*p/uc[0];
+	}
+	
+	/// Computes the Jacobian matrix of the conserved-to-primitive-2 transformation
+	/** \f$ \partial \mathbf{u}_{prim2} / \partial \mathbf{u}_{cons} \f$. 
+	 * The output is stored as 1D rowmajor.
+	 *
+	 * \warning The Jacobian is *added* to the output jac. If it has garbage at the outset,
+	 * it will contain garbage at the end.
+	 */
+	void getJacobianPrimitive2WrtConserved(const a_real *const uc, 
+			a_real *const __restrict jac) const
+	{
+		jac[0] += 1.0; jac[1] = 0; jac[2] = 0; jac[3] = 0;
+
+		a_real rhovmag2 = 0;
+		a_real stor[NVARS] = {0,0,0,0};
+		for(int idim = 1; idim < NDIM+1; idim++) {
+			rhovmag2 += uc[idim]*uc[idim];
+			// d(rhovmag2):
+			stor[idim] += 2*uc[idim];
+			
+			// d(up[idim])
+			jac[idim*NVARS+0] += -uc[idim]/(uc[0]*uc[0]);
+			jac[idim*NVARS+idim] += 1.0/uc[0];
+		}
+		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+		// dp:
+		a_real dp[NVARS];
+		dp[0] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * (stor[0]*uc[0]-rhovmag2));
+		dp[1] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[1]*uc[0]);
+		dp[2] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[2]*uc[0]);
+		dp[3] = (g-1.0)*(1.0);
+
+		jac[3*NVARS+0] += g*Minf*Minf/(uc[0]*uc[0]) * (dp[0]*uc[0]-p);
+		jac[3*NVARS+1] += g*Minf*Minf/(uc[0]*uc[0]) * dp[1]*uc[0];
+		jac[3*NVARS+2] += g*Minf*Minf/(uc[0]*uc[0]) * dp[2]*uc[0];
+		jac[3*NVARS+3] += g*Minf*Minf/(uc[0]*uc[0]) * dp[3]*uc[0];
 	}
 
 	/// Convert primitive variables to conserved
@@ -137,6 +212,22 @@ public:
 	{
 		const a_real p = getPressureFromConserved(uc);
 		return g*Minf*Minf*p/uc[0];
+	}
+	
+	/// Computes derivatives of temperature w.r.t. conserved variables
+	/** \param[in|out] dT The derivatives are added to dT, which is not zeroed initially.
+	 */
+	void getJacobianTemperatureWrtConserved(const a_real *const uc, 
+			a_real *const __restrict dT) const
+	{
+		const a_real p = getPressureFromConserved(uc);
+		a_real dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
+		getJacobianPressureWrtConserved(uc,dp);
+
+		a_real coef = g*Minf*Minf;
+		dT[0] += coef*(dp[0]*uc[0] - p)/(uc[0]*uc[0]);
+		for(int i = 1; i < NVARS; i++)
+			dT[i] += coef/uc[0] * dp[i];
 	}
 
 	/// Computes non-dimensional temperature from non-dimensional primitive variables
@@ -216,7 +307,7 @@ public:
 	}
 
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from conserved variables
-	/** This is the overall coefficient for the shear stress terms in the momentum equation
+	/** This is the dynamic viscosity divided by the Reynolds number
 	 * when non-dimensionalized as stated in IdealGasPhysics.
 	 * Note that divergence terms must still be multiplied further by -2/3 
 	 * and diagonal stress terms by 2.
@@ -225,6 +316,21 @@ public:
 	{
 		a_real T = getTemperatureFromConserved(uc);
 		return (1+sC/Tinf)/(T+sC/Tinf) * std::pow(T,1.5) / Reinf;
+	}
+
+	/// Computes derivatives of Sutherland's dynamic viscosity coeff w.r.t. conserved variables
+	void getJacobianViscosityWrtConserved(const a_real *const uc, a_real *const __restrict dmu) const
+	{
+		a_real T = getTemperatureFromConserved(uc);
+		a_real dT[NVARS]; for(int i = 0; i < NVARS; i++) dT[i] = 0;
+		getJacobianTemperatureWrtConserved(uc, dT);
+
+		a_real coef = (1.0+sC/Tinf)/Reinf;
+		a_real T15 = std::pow(T,1.5), Tm15 = std::pow(T,-1.5);
+		a_real denom = (T + sC/Tinf)*(T+sC/Tinf);
+		// coef * pow(T,1.5) / (T + sC/Tinf)
+		for(int i = 0; i < NVARS; i++)
+			dmu[i] += coef* (1.5*Tm15*dT[i]*(T+sC/Tinf) - T15*dT[i])/denom;
 	}
 	
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from primitive-2 variables
@@ -246,47 +352,6 @@ public:
 	a_real getThermalConductivityFromViscosity(const a_real muhat) const
 	{
 		return muhat / (Minf*Minf*(g-1.0)*Pr);
-	}
-	
-	/// Computes the Jacobian matrix of the conserved-to-primitive-2 transformation
-	/** \f$ \partial \mathbf{u}_{prim} / \partial \mathbf{u}_{cons} \f$. 
-	 * The output is stored as 1D rowmajor.
-	 *
-	 * \warning The Jacobian is *added* to the output jac. If it has garbage at the outset,
-	 * it will contain garbage at the end.
-	 */
-	void getJacobianConservedToPrimitive2(const a_real *const uc, 
-			a_real *const __restrict jac) const
-	{
-		a_real up[NVARS]; // primitive-2 vector
-		up[0] = uc[0];
-		jac[0] += 1.0; jac[1] = 0; jac[2] = 0; jac[3] = 0;
-
-		a_real rhovmag2 = 0;
-		a_real stor[NVARS] = {0,0,0,0};
-		for(int idim = 1; idim < NDIM+1; idim++) {
-			rhovmag2 += uc[idim]*uc[idim];
-			// d(rhovmag2):
-			stor[idim] += 2*uc[idim];
-			
-			up[idim] = uc[idim]/uc[0];
-			// d(up[idim])
-			jac[idim*NVARS+0] += -uc[idim]/(uc[0]*uc[0]);
-			jac[idim*NVARS+idim] += 1.0/uc[0];
-		}
-		a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
-		// dp:
-		a_real dp[NVARS];
-		dp[0] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * (stor[0]*uc[0]-rhovmag2));
-		dp[1] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[1]*uc[0]);
-		dp[2] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[2]*uc[0]);
-		dp[3] = (g-1.0)*(1.0);
-
-		up[NVARS-1] = g*Minf*Minf*p/up[0];
-		jac[3*NVARS+0] += g*Minf*Minf/(up[0]*up[0]) * (dp[0]*up[0]-p);
-		jac[3*NVARS+1] += g*Minf*Minf/(up[0]*up[0]) * dp[1]*up[0];
-		jac[3*NVARS+2] += g*Minf*Minf/(up[0]*up[0]) * dp[2]*up[0];
-		jac[3*NVARS+3] += g*Minf*Minf/(up[0]*up[0]) * dp[3]*up[0];
 	}
 
 	/// Adiabatic constant

@@ -44,21 +44,18 @@ protected:
 	/// Mesh context
 	const UMesh2dh *const m;
 
-	/// Cell centers
+	/// Cell centers of both real cells and ghost cells
 	amat::Array2d<a_real> rc;
-
-	/// Ghost cell centers
-	amat::Array2d<a_real> rcg;
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
 	/// naface x nguass x ndim (in that order)
 	amat::Array2d<a_real>* gr;
 	
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
-	void compute_ghost_cell_coords_about_midpoint();
+	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg);
 
 	/// computes ghost cell centers assuming symmetry about the face
-	void compute_ghost_cell_coords_about_face();
+	void compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg);
 
 	/// step length for finite difference Jacobian
 	const a_real eps;
@@ -293,9 +290,9 @@ protected:
 	 * \param[in|out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
 	 *   NVARS x NVARS array stored as a 1D row-major array
 	 */
-	void computeViscousFluxJacobian(const a_real *const ul, const a_real *const ur,
-			const a_real *const n,
-			a_real *const __restrict vfluxj) const;
+	void computeViscousFluxJacobian(const a_int iface,
+			const a_real *const ul, const a_real *const ur,
+			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity
@@ -321,7 +318,6 @@ public:
 protected:
 	using Spatial<nvars>::m;
 	using Spatial<nvars>::rc;
-	using Spatial<nvars>::rcg;
 	using Spatial<nvars>::gr;
 	const a_real diffusivity;		///< Diffusion coefficient (eg. kinematic viscosity)
 	const a_real bval;				///< Dirichlet boundary value
@@ -366,7 +362,6 @@ protected:
 	using Diffusion<nvars>::postprocess_point;
 	using Spatial<nvars>::m;
 	using Spatial<nvars>::rc;
-	using Spatial<nvars>::rcg;
 	using Spatial<nvars>::gr;
 	using Diffusion<nvars>::diffusivity;
 	using Diffusion<nvars>::bval;
