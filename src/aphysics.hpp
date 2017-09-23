@@ -97,7 +97,7 @@ public:
 	{
 		a_real p =getPressureFromConserved(uc);
 		a_real dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
-		getJacobianPressureWrtConserved(uc);
+		getJacobianPressureWrtConserved(uc, dp);
 		
 		dc[0] += 0.5/std::sqrt(g*p/uc[0]) * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
 		for(int i = 1; i < NVARS; i++)
