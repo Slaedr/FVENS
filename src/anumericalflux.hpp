@@ -63,6 +63,9 @@ public:
 			a_real *const flux);
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
+	
+	void get_frozen_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const dfdl, a_real *const dfdr);
 };
 
 /// Van-Leer flux-vector-splitting
@@ -80,15 +83,19 @@ public:
 /** I call this flux vector splitting (FVS) for want of a better term; even though it is not
  * FVS strictly speaking, it's close enough. It's a FVS of the convective and pressure fluxes
  * separately.
+ * \warning The Jacobian does not work, except for useless small CFL numbers.
  */
 class AUSMFlux : public InviscidFlux
 {
 public:
 	AUSMFlux(const IdealGasPhysics *const analyticalflux);
+	
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
+	
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
+	
 	/// Computes both the flux and the 2 flux Jacobians
 	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux, a_real *const dfdl, a_real *const dfdr);

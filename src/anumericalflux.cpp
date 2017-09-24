@@ -58,7 +58,7 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const __restrict__ ul,
 	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
 }
 
-/** Jacobian with frozen spectral radius.
+/** Jacobian with frozen spectral radius
  */
 void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		const a_real* const n, 
@@ -116,13 +116,13 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 		}
 }
 
-void LLF_get_jacobian(const a_real *const __restrict__ ul, 
-		const a_real *const __restrict__ ur,
-		const a_real* const __restrict__ n, 
-		a_real *const __restrict__ dfdl, a_real *const __restrict__ dfdr)
+// full linearization, inspite of the name; no better than frozen version
+void LocalLaxFriedrichsFlux::get_frozen_jacobian(const a_real *const ul, 
+		const a_real *const ur,
+		const a_real* const n, 
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
 	a_real eig; 
-	a_real g=-1000000000000000000;
 
 	//calculate presures from u
 	const a_real pi = (g-1)*(ul[3] - 0.5*(pow(ul[1],2)+pow(ul[2],2))/ul[0]);
@@ -146,9 +146,9 @@ void LLF_get_jacobian(const a_real *const __restrict__ ul,
 		leftismax = false;
 	}
 
-	// get flux jacobians (uncomment to use this function)
-	//physics->evaluate_normal_jacobian(ul, n, dfdl);
-	//physics->evaluate_normal_jacobian(ur, n, dfdr);
+	// get flux jacobians
+	physics->evaluate_normal_jacobian(ul, n, dfdl);
+	physics->evaluate_normal_jacobian(ur, n, dfdr);
 
 	// linearization of the dissipation term
 	
@@ -378,12 +378,12 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 
 	dmni[0] = (-1.0/(ul[0]*ul[0])*(ul[1]*n[0]+ul[2]*n[1])*ci - vni*dci[0])/(ci*ci);
 	dmni[1] = (n[0]/ul[0]*ci - vni*dci[1])/(ci*ci);
-	dmni[2] = (n[1]/ul[0]*ci - vni*dci[1])/(ci*ci);
+	dmni[2] = (n[1]/ul[0]*ci - vni*dci[2])/(ci*ci);
 	dmni[3] = -vni*dci[3]/(ci*ci);
 
 	dmnj[0] = (-1.0/(ur[0]*ur[0])*(ur[1]*n[0]+ur[2]*n[1])*cj - vnj*dcj[0])/(cj*cj);
 	dmnj[1] = (n[0]/ur[0]*cj - vnj*dcj[1])/(cj*cj);
-	dmnj[2] = (n[1]/ur[0]*cj - vnj*dcj[1])/(cj*cj);
+	dmnj[2] = (n[1]/ur[0]*cj - vnj*dcj[2])/(cj*cj);
 	dmnj[3] = -vnj*dcj[3]/(cj*cj);
 	
 	// split non-dimensional convection speeds (ie split Mach numbers) and split pressures
@@ -435,82 +435,89 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	 */
 
 	// mass flux
+	//flux[0] = Mhalf/2.0*(ul[0]*ci+ur[0]*cj) -fabs(Mhalf)/2.0*(ur[0]*cj-ul[0]*ci);
 	
 	dfdl[0] = dML[0]/2.0*(ul[0]*ci+ur[0]*cj) + Mhalf/2.0*(ci+ul[0]*dci[0])
-		-( (Mhalf>0 ? 1.0 : -1.0)*dML[0]/2.0*(ur[0]*cj-ul[0]*ci) 
+		-( (Mhalf>=0 ? 1.0 : -1.0)*dML[0]/2.0*(ur[0]*cj-ul[0]*ci) 
 				+ fabs(Mhalf)/2.0*(-ci-ul[0]*dci[0]) );
 	
 	dfdr[0] = dMR[0]/2.0*(ul[0]*ci+ur[0]*cj) + Mhalf/2.0*(cj+ur[0]*dcj[0])
-		-( (Mhalf>0 ? 1.0 : -1.0)*dMR[0]/2.0*(ur[0]*cj-ul[0]*ci) 
+		-( (Mhalf>=0 ? 1.0 : -1.0)*dMR[0]/2.0*(ur[0]*cj-ul[0]*ci) 
 				+ fabs(Mhalf)/2.0*(cj+ur[0]*dcj[0]) );
 	
 	for(int k = 1; k < NVARS; k++) 
 	{
 	  dfdl[k] = dML[k]/2.0*(ul[0]*ci+ur[0]*cj) + Mhalf/2.0*ul[0]*dci[k] - 
-		( (Mhalf>0 ? 1.0:-1.0)*dML[k]/2.0*(ur[0]*cj-ul[0]*ci) - fabs(Mhalf)/2.0*ul[0]*dci[k] );
+		( (Mhalf>=0 ? 1.0:-1.0)*dML[k]/2.0*(ur[0]*cj-ul[0]*ci) - fabs(Mhalf)/2.0*ul[0]*dci[k] );
 	  dfdr[k] = dMR[k]/2.0*(ul[0]*ci+ur[0]*cj) + Mhalf/2.0*ur[0]*dcj[k] - 
-		( (Mhalf>0 ? 1.0:-1.0)*dMR[k]/2.0*(ur[0]*cj-ul[0]*ci) + fabs(Mhalf)/2.0*ur[0]*dcj[k] );
+		( (Mhalf>=0 ? 1.0:-1.0)*dMR[k]/2.0*(ur[0]*cj-ul[0]*ci) + fabs(Mhalf)/2.0*ur[0]*dcj[k] );
 	}
 
 	// x-momentum
+	//flux[1] = Mhalf/2.0*(ul[1]*ci+ur[1]*cj) -fabs(Mhalf)/2.0*(ur[1]*cj-ul[1]*ci) + phalf*n[0];
 
 	dfdl[NVARS+1] = dML[1]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*(ci+ul[1]*dci[1]) -
-		( (Mhalf>0? 1.0:-1.0)*dML[1]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*(-ci-ul[1]*dci[1]) )
+		( (Mhalf>=0? 1.0:-1.0)*dML[1]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*(-ci-ul[1]*dci[1]) )
 		+ dpL[1]*n[0];
 	dfdr[NVARS+1] = dMR[1]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*(cj+ur[1]*dcj[1]) -
-		( (Mhalf>0? 1.0:-1.0)*dMR[1]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*(cj+ur[1]*dcj[1]) )
+		( (Mhalf>=0? 1.0:-1.0)*dMR[1]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*(cj+ur[1]*dcj[1]) )
 		+ dpR[1]*n[0];
 	for(int k = 0; k < NVARS; k++)
 	{
 		if(k == 1) continue;
 		dfdl[NVARS+k] = dML[k]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*ul[1]*dci[k] - 
-			( (Mhalf>0?1.0:-1.0)*dML[k]/2.0*(ur[1]*cj-ul[1]*ci) - fabs(Mhalf)/2.0*ul[1]*dci[k] )
+			( (Mhalf>=0?1.0:-1.0)*dML[k]/2.0*(ur[1]*cj-ul[1]*ci) - fabs(Mhalf)/2.0*ul[1]*dci[k] )
 			+ dpL[k]*n[0];
 		dfdr[NVARS+k] = dMR[k]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*ur[1]*dcj[k] - 
-			( (Mhalf>0?1.0:-1.0)*dMR[k]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*ur[1]*dcj[k] )
+			( (Mhalf>=0?1.0:-1.0)*dMR[k]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*ur[1]*dcj[k] )
 			+ dpR[k]*n[0];
 	}
 
 	// y-momentum
+	//flux[2] = Mhalf/2.0*(ul[2]*ci+ur[2]*cj) -fabs(Mhalf)/2.0*(ur[2]*cj-ul[2]*ci) + phalf*n[1];
 
 	dfdl[2*NVARS+2] = dML[2]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*(ci+ul[2]*dci[2]) -
-		( (Mhalf>0? 1.0:-1.0)*dML[2]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*(-ci-ul[2]*dci[2]) )
+		( (Mhalf>=0? 1.0:-1.0)*dML[2]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*(-ci-ul[2]*dci[2]) )
 		+ dpL[2]*n[1];
 	dfdr[2*NVARS+2] = dMR[2]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*(cj+ur[2]*dcj[2]) -
-		( (Mhalf>0? 1.0:-1.0)*dMR[2]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*(cj+ur[2]*dcj[2]) )
+		( (Mhalf>=0? 1.0:-1.0)*dMR[2]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*(cj+ur[2]*dcj[2]) )
 		+ dpR[2]*n[1];
 	for(int k = 0; k < NVARS; k++)
 	{
 		if(k == 2) continue;
 		dfdl[2*NVARS+k] = dML[k]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*ul[2]*dci[k] - 
-			( (Mhalf>0?1.0:-1.0)*dML[k]/2.0*(ur[2]*cj-ul[2]*ci) - fabs(Mhalf)/2.0*ul[2]*dci[k] )
+			( (Mhalf>=0?1.0:-1.0)*dML[k]/2.0*(ur[2]*cj-ul[2]*ci) - fabs(Mhalf)/2.0*ul[2]*dci[k] )
 			+ dpL[k]*n[1];
 		dfdr[2*NVARS+k] = dMR[k]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*ur[2]*dcj[k] - 
-			( (Mhalf>0?1.0:-1.0)*dMR[k]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*ur[2]*dcj[k] )
+			( (Mhalf>=0?1.0:-1.0)*dMR[k]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*ur[2]*dcj[k] )
 			+ dpR[k]*n[1];
 	}
 
 	// Energy flux
+	//flux[3]=Mhalf/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj))-fabs(Mhalf)/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi));
 
 	dfdl[3*NVARS+3] = 
 		dML[3]/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) + Mhalf/2.0*(dci[3]*(ul[3]+pi)+ci*(1.0+dpi[3])) -
-		( (Mhalf>0?1.0:-1.0)*dML[3]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
+		( (Mhalf>=0?1.0:-1.0)*dML[3]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
 		  +fabs(Mhalf)/2.0*(-dci[3]*(ul[3]+pi)-ci*(1.0+dpi[3])) );
 	dfdr[3*NVARS+3] = 
 		dMR[3]/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) + Mhalf/2.0*(dcj[3]*(ur[3]+pj)+cj*(1.0+dpj[3])) -
-		( (Mhalf>0?1.0:-1.0)*dMR[3]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
+		( (Mhalf>=0?1.0:-1.0)*dMR[3]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
 		  +fabs(Mhalf)/2.0*(dcj[3]*(ur[3]+pj)+cj*(1.0+dpj[3])) );
 	for(int k = 0; k < NVARS-1; k++)
 	{
 		dfdl[3*NVARS+k] = 
 		  dML[k]/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) +Mhalf/2.0*(dci[k]*(ul[3]+pi)+ci*dpi[k]) - 
-		  ( (Mhalf>0?1.0:-1.0)*dML[k]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
+		  ( (Mhalf>=0?1.0:-1.0)*dML[k]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
 			+fabs(Mhalf)/2.0*(-dci[k]*(ul[3]+pi)-ci*dpi[k]) );
 		dfdr[3*NVARS+k] = 
 		  dMR[k]/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) +Mhalf/2.0*(dcj[k]*(ur[3]+pj)+cj*dpj[k]) - 
-		  ( (Mhalf>0?1.0:-1.0)*dMR[k]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
+		  ( (Mhalf>=0?1.0:-1.0)*dMR[k]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
 			+fabs(Mhalf)/2.0*(dcj[k]*(ur[3]+pj)+cj*dpj[k]) );
 	}
+
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dfdl[k] = -dfdl[k];
 }
 
 void AUSMFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, 
@@ -546,12 +553,12 @@ void AUSMFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur,
 
 	dmni[0] = (-1.0/(ul[0]*ul[0])*(ul[1]*n[0]+ul[2]*n[1])*ci - vni*dci[0])/(ci*ci);
 	dmni[1] = (n[0]/ul[0]*ci - vni*dci[1])/(ci*ci);
-	dmni[2] = (n[1]/ul[0]*ci - vni*dci[1])/(ci*ci);
+	dmni[2] = (n[1]/ul[0]*ci - vni*dci[2])/(ci*ci);
 	dmni[3] = -vni*dci[3]/(ci*ci);
 
 	dmnj[0] = (-1.0/(ur[0]*ur[0])*(ur[1]*n[0]+ur[2]*n[1])*cj - vnj*dcj[0])/(cj*cj);
 	dmnj[1] = (n[0]/ur[0]*cj - vnj*dcj[1])/(cj*cj);
-	dmnj[2] = (n[1]/ur[0]*cj - vnj*dcj[1])/(cj*cj);
+	dmnj[2] = (n[1]/ur[0]*cj - vnj*dcj[2])/(cj*cj);
 	dmnj[3] = -vnj*dcj[3]/(cj*cj);
 	
 	// split non-dimensional convection speeds (ie split Mach numbers) and split pressures
@@ -668,7 +675,7 @@ void AUSMFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur,
 	}
 
 	// Energy flux
-	flux[3] = Mhalf/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) -fabs(Mhalf)/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi));
+	flux[3]= Mhalf/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj))-fabs(Mhalf)/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi));
 
 	dfdl[3*NVARS+3] = 
 		dML[3]/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) + Mhalf/2.0*(dci[3]*(ul[3]+pi)+ci*(1.0+dpi[3])) -
@@ -689,6 +696,9 @@ void AUSMFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur,
 		  ( (Mhalf>0?1.0:-1.0)*dMR[k]/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi)) 
 			+fabs(Mhalf)/2.0*(dcj[k]*(ur[3]+pj)+cj*dpj[k]) );
 	}
+
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dfdl[k] = -dfdl[k];
 }
 
 AUSMPlusFlux::AUSMPlusFlux(const IdealGasPhysics *const analyticalflux) 

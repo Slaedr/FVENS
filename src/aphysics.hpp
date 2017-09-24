@@ -70,8 +70,8 @@ public:
 	void getJacobianPressureWrtConserved(const a_real *const uc, a_real *const __restrict dp) const
 	{
 		a_real rhovmag2 = 0;
-		a_real drvmg2[NVARS-1];
-		for(int i = 0; i < NVARS-1; i++)
+		a_real drvmg2[NVARS];
+		for(int i = 0; i < NVARS; i++)
 			drvmg2[i] = 0;
 
 		for(int idim = 1; idim < NDIM+1; idim++) {
@@ -167,12 +167,12 @@ public:
 		dp[0] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * (stor[0]*uc[0]-rhovmag2));
 		dp[1] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[1]*uc[0]);
 		dp[2] = (g-1.0)*(-0.5/(uc[0]*uc[0]) * stor[2]*uc[0]);
-		dp[3] = (g-1.0)*(1.0);
+		dp[3] = (g-1.0);
 
 		jac[3*NVARS+0] += g*Minf*Minf/(uc[0]*uc[0]) * (dp[0]*uc[0]-p);
-		jac[3*NVARS+1] += g*Minf*Minf/(uc[0]*uc[0]) * dp[1]*uc[0];
-		jac[3*NVARS+2] += g*Minf*Minf/(uc[0]*uc[0]) * dp[2]*uc[0];
-		jac[3*NVARS+3] += g*Minf*Minf/(uc[0]*uc[0]) * dp[3]*uc[0];
+		jac[3*NVARS+1] += g*Minf*Minf/uc[0] * dp[1];
+		jac[3*NVARS+2] += g*Minf*Minf/uc[0] * dp[2];
+		jac[3*NVARS+3] += g*Minf*Minf/uc[0] * dp[3];
 	}
 
 	/// Convert primitive variables to conserved
