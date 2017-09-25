@@ -319,7 +319,8 @@ public:
 	}
 
 	/// Computes derivatives of Sutherland's dynamic viscosity coeff w.r.t. conserved variables
-	void getJacobianViscosityWrtConserved(const a_real *const uc, a_real *const __restrict dmu) const
+	void getJacobianSutherlandViscosityWrtConserved(const a_real *const uc, 
+			a_real *const __restrict dmu) const
 	{
 		a_real T = getTemperatureFromConserved(uc);
 		a_real dT[NVARS]; for(int i = 0; i < NVARS; i++) dT[i] = 0;
@@ -352,6 +353,16 @@ public:
 	a_real getThermalConductivityFromViscosity(const a_real muhat) const
 	{
 		return muhat / (Minf*Minf*(g-1.0)*Pr);
+	}
+
+	/** \brief Computes derivatives of non-dim thermal conductivity w.r.t. conserved variables
+	 * given derivatives of the non-dim viscosity coeff w.r.t. conserved variables.
+	 */
+	void getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(
+			const a_real *const dmuhat, a_real *const __restrict dkhat)
+	{
+		for(int k = 0; k < NVARS; k++)
+			dkhat[k] = dmuhat[k]/(Minf*Minf*(g-1.0)*Pr);
 	}
 
 	/// Adiabatic constant

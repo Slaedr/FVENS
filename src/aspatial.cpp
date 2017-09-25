@@ -601,6 +601,7 @@ void FlowFV::computeViscousFlux(const a_int iface,
 		}
 		else
 		{
+			// if second order was not requested, boundary values are stored in ul, not ug
 			for(int i = 0; i < NVARS; i++) {
 				ucr[i] = ul(iface,i);
 			}
@@ -748,8 +749,16 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	a_real vflux[NVARS]; // output variable to be differentiated
 	a_real upr[NVARS], upl[NVARS];
 
+	a_real dupr[NVARS*NVARS], dupl[NVARS*NVARS];
+	for(int k = 0; k < NVARS*NVARS; k++) {
+		dupr[k] = 0; dupl[k] = 0;
+	}
+
 	physics.convertConservedToPrimitive2(ul, upl);
 	physics.convertConservedToPrimitive2(ur, upr);
+
+	physics.getJacobianPrimitive2WrtConserved(ul, dupl);
+	physics.getJacobianPrimitive2WrtConserved(ur, dupr);
 	
 	a_real dr[NDIM], dist=0, n[NDIM];
 
@@ -767,6 +776,8 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	}
 
 	a_real grad[NDIM][NVARS];
+	a_real dgradl[NDIM][NVARS][NVARS];
+	a_real dgradr[NDIM][NVARS][NVARS];
 	for(short i = 0; i < NVARS; i++) 
 	{
 		a_real corr = (upr[i]-upl[i])/dist;
@@ -774,6 +785,11 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		for(short j = 0; j < NDIM; j++)
 		{
 			grad[j][i] = corr*dr[j];
+			
+			for(int k = 0; k < NVARS; k++) {
+				dgradl[j][i][k] = -dupl[i*NVARS+k]/dist * dr[j];
+				dgradr[j][i][k] = dupr[i*NVARS+k]/dist * dr[j];
+			}
 		}
 	}
 
@@ -790,6 +806,18 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	
 	// Non-dimensional thermal conductivity
 	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
+
+	a_real dmul[NVARS], dmur[NVARS], dkdl[NVARS], dkdr[NVARS];
+	for(int k = 0; k < NVARS; k++) {
+		dmul[k] = 0; dmur[k] = 0; dkdl[k] = 0; dkdr[k] = 0;
+	}
+
+	if(!constVisc) {
+		physics.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
+		physics.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
+		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
+		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
+	}
 
 	// divergence of velocity times second viscosity
 	a_real ldiv = 0;
