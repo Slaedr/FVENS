@@ -259,8 +259,7 @@ protected:
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const;
 
 	/// Computes viscous flux across a face
-	/** This is the negative of what is needed in the residual.
-	 * The output vflux needs to be integrated on the face.
+	/** The output vflux needs to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] u Cell-centred conserved variables
 	 * \param[in] ug Ghost cell-centred conserved variables
@@ -280,7 +279,7 @@ protected:
 
 	/// Compues the first-order "thin-layer" viscous flux Jacobian
 	/** This is the same sign as is needed in the residual; note that the viscous flux Jacobian is
-	 * added to the output matrices - they are not zeroed or durectly assigned to.
+	 * added to the output matrices - they are not zeroed or directly assigned to.
 	 * The outputs vfluxi and vfluxj still need to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] ul Cell-centred conserved variable on left

@@ -87,8 +87,8 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	}
 
 	// get flux jacobians
-	physics->evaluate_normal_jacobian(ul, n, dfdl);
-	physics->evaluate_normal_jacobian(ur, n, dfdr);
+	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
 
 	// add contributions to left derivative
 	for(int i = 0; i < NVARS; i++)
@@ -147,8 +147,8 @@ void LocalLaxFriedrichsFlux::get_frozen_jacobian(const a_real *const ul,
 	}
 
 	// get flux jacobians
-	physics->evaluate_normal_jacobian(ul, n, dfdl);
-	physics->evaluate_normal_jacobian(ur, n, dfdr);
+	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
 
 	// linearization of the dissipation term
 	
@@ -1358,8 +1358,8 @@ void HLLFlux::get_frozen_jacobian(const a_real *const ul, const a_real *const ur
 	const a_real t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
 	
 	// get flux jacobians
-	physics->evaluate_normal_jacobian(ul, n, dfdl);
-	physics->evaluate_normal_jacobian(ur, n, dfdr);
+	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
 	for(int i = 0; i < NVARS; i++)
 		for(int j = 0; j < NVARS; j++)
 		{
@@ -1381,13 +1381,104 @@ HLLCFlux::HLLCFlux(const IdealGasPhysics *const analyticalflux)
 {
 }
 
-/** Currently, the estimated signal speeds are the Einfeldt estimates, 
- * not the corrected ones given by Remaki et. al.
- */
 void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 		a_real *const __restrict flux)
 {
-	a_real utemp[NVARS];
+	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
+	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
+	const a_real vni = vxi*n[0] + vyi*n[1];
+	const a_real vnj = vxj*n[0] + vyj*n[1];
+	const a_real vmag2i = vxi*vxi + vyi*vyi;
+	const a_real vmag2j = vxj*vxj + vyj*vyj;
+	// pressures
+	const a_real pi = (g-1.0)*(ul[3] - 0.5*ul[0]*vmag2i);
+	const a_real pj = (g-1.0)*(ur[3] - 0.5*ur[0]*vmag2j);
+	// speeds of sound
+	const a_real ci = sqrt(g*pi/ul[0]);
+	const a_real cj = sqrt(g*pj/ur[0]);
+	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
+	// (actually specific enthalpy := enthalpy per unit mass)
+	const a_real Hi = (ul[3] + pi)/ul[0];
+	const a_real Hj = (ur[3] + pj)/ur[0];
+
+	// compute Roe-averages
+	const a_real Rij = sqrt(ur[0]/ul[0]);
+	//rhoij = Rij*ul[0];
+	const a_real vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+	const a_real vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+	const a_real Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+	const a_real vm2ij = vxij*vxij + vyij*vyij;
+	const a_real vnij = vxij*n[0] + vyij*n[1];
+	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+
+	// estimate signal speeds
+	a_real sr, sl;
+	sl = vni - ci;
+	if (sl > vnij-cij)
+		sl = vnij-cij;
+	sr = vnj+cj;
+	if(sr < vnij+cij)
+		sr = vnij+cij;
+	const a_real sm = ( ur[0]*vnj*(sr-vnj) - ul[0]*vni*(sl-vni) + pi-pj ) 
+		/ ( ur[0]*(sr-vnj) - ul[0]*(sl-vni) );
+
+	// compute fluxes
+	
+	if(sl > 0)
+	{
+		flux[0] = vni*ul[0];
+		flux[1] = vni*ul[1] + pi*n[0];
+		flux[2] = vni*ul[2] + pi*n[1];
+		flux[3] = vni*(ul[3] + pi);
+	}
+	else if(sl <= 0 && sm > 0)
+	{
+		flux[0] = vni*ul[0];
+		flux[1] = vni*ul[1] + pi*n[0];
+		flux[2] = vni*ul[2] + pi*n[1];
+		flux[3] = vni*(ul[3] + pi);
+
+		const a_real pstar = ul[0]*(vni-sl)*(vni-sm) + pi;
+		a_real utemp[NVARS];
+		utemp[0] = ul[0] * (sl - vni)/(sl-sm);
+		utemp[1] = ( (sl-vni)*ul[1] + (pstar-pi)*n[0] )/(sl-sm);
+		utemp[2] = ( (sl-vni)*ul[2] + (pstar-pi)*n[1] )/(sl-sm);
+		utemp[3] = ( (sl-vni)*ul[3] - pi*vni + pstar*sm )/(sl-sm);
+
+		for(int ivar = 0; ivar < NVARS; ivar++)
+			flux[ivar] += sl * ( utemp[ivar] - ul[ivar]);
+	}
+	else if(sm <= 0 && sr >= 0)
+	{
+		flux[0] = vnj*ur[0];
+		flux[1] = vnj*ur[1] + pj*n[0];
+		flux[2] = vnj*ur[2] + pj*n[1];
+		flux[3] = vnj*(ur[3] + pj);
+
+		const a_real pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
+		a_real utemp[NVARS];
+		utemp[0] = ur[0] * (sr - vnj)/(sr-sm);
+		utemp[1] = ( (sr-vnj)*ur[1] + (pstar-pj)*n[0] )/(sr-sm);
+		utemp[2] = ( (sr-vnj)*ur[2] + (pstar-pj)*n[1] )/(sr-sm);
+		utemp[3] = ( (sr-vnj)*ur[3] - pj*vnj + pstar*sm )/(sr-sm);
+
+		for(int ivar = 0; ivar < NVARS; ivar++)
+			flux[ivar] += sr * ( utemp[ivar] - ur[ivar]);
+	}
+	else
+	{
+		flux[0] = vnj*ur[0];
+		flux[1] = vnj*ur[1] + pj*n[0];
+		flux[2] = vnj*ur[2] + pj*n[1];
+		flux[3] = vnj*(ur[3] + pj);
+	}
+}
+
+void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+{
+	std::cout << " !!!! HLLC Jacobian not available!!\n";
+	a_real flux[NVARS];
 
 	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
 	const a_real vxj = ur[1]/ur[0]; const a_real vyj = ur[2]/ur[0];
@@ -1416,16 +1507,140 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 	const a_real vnij = vxij*n[0] + vyij*n[1];
 	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 
-	// estimate signal speeds (classical; not Remaki corrected)
+	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvniji[NVARS], dvnijj[NVARS],
+	dvm2iji[NVARS], dvm2ijj[NVARS], dci[NVARS], dcj[NVARS], dciji[NVARS], dcijj[NVARS],
+	dsli[NVARS], dslj[NVARS], dsri[NVARS], dsrj[NVARS], dsmi[NVARS], dsmj[NVARS];
+	for(int k = 0; k < NVARS; k++)
+	{
+		dpi[k] = dpj[k] = dci[k] = dcj[k] = 0;
+	}
+
+	dvni[0] = -(ul[1]*n[0]+ul[2]*n[1])/(ul[0]*ul[0]);
+	dvni[1] = n[0]/ul[0];
+	dvni[2] = n[1]/ul[0];
+	dvni[3] = 0;
+	dvnj[0] = -(ur[1]*n[0]+ur[2]*n[1])/(ur[0]*ur[0]);
+	dvnj[1] = n[0]/ur[0];
+	dvnj[2] = n[1]/ur[0];
+	dvnj[3] = 0;
+
+	physics->getJacobianPressureWrtConserved(ul, dpi);
+	physics->getJacobianPressureWrtConserved(ur, dpj);
+	physics->getJacobianSoundSpeedWrtConserved(ul, dci);
+	physics->getJacobianSoundSpeedWrtConserved(ur, dcj);
+	
+	// initially use dsli and dslj to get derivatives of Rij and...
+	dsli[0] = 0.5/sqrt(ur[0]/ul[0]) * (-ur[0])/(ul[0]*ul[0]);
+	dslj[0] = 0.5/sqrt(ur[0]/ul[0]) / ul[0];
+	for(int k = 1; k < NVARS; k++) {
+		dsli[k] = 0; dslj[k] = 0;
+	}
+	
+	// ... dsri and dsrj to save derivatives of Hi and Hj.
+	dsri[0] = (dpi[0]*ul[0]-(ul[3]+pi))/(ul[0]*ul[0]);
+	dsrj[0] = (dpj[0]*ur[0]-(ur[3]+pj))/(ur[0]*ur[0]);
+	for(int k = 1; k < NVARS-1; k++) {
+		dsri[k] = dpi[k]/ul[0];
+		dsrj[k] = dpj[k]/ur[0];
+	}
+	dsri[3] = (1.0+dpi[3])/ul[0];
+	dsrj[3] = (1.0+dpj[3])/ur[0];
+
+	// derivatives of Roe velocities
+	a_real dvxiji[NVARS], dvxijj[NVARS], dvyiji[NVARS], dvyijj[NVARS];
+	
+	// Note: vxij = Rij * ur[1]/ur[0] + ul[1]/ul[0]
+	dvxiji[0] = dsli[0]*ur[1]/ur[0] - ul[1]/(ul[0]*ul[0]);
+	dvxiji[1] = dsli[1]*ur[1]/ur[0] + 1.0/ul[0];
+	dvxiji[2] = dsli[2]*ur[1]/ur[0]; 
+	dvxiji[3] = dsli[3]*ur[1]/ur[0];
+
+	dvxijj[0] = dslj[0]*ur[1]/ur[0] + Rij/(ur[0]*ur[0])*(-ur[1]);
+	dvxijj[1] = dslj[1]*ur[1]/ur[0] + Rij/ur[0];
+	dvxijj[2] = dslj[2]*ur[1]/ur[0];
+	dvxijj[3] = dslj[3]*ur[1]/ur[0];
+
+	// Note: vyij = Rij * ur[2]/ur[0] + ul[2]/ul[0]
+	dvyiji[0] = ur[2]/ur[0]*dsli[0] - ul[2]/(ul[0]*ul[0]);
+	dvyiji[1] = ur[2]/ur[0]*dsli[1];
+	dvyiji[2] = ur[2]/ur[0]*dsli[2] + 1.0/ul[0];
+	dvyiji[3] = ur[2]/ur[0]*dsli[3];
+
+	dvyijj[0] = dslj[0]*ur[2]/ur[0] + Rij/(ur[0]*ur[0])*(-ur[2]);
+	dvyijj[1] = dslj[1]*ur[2]/ur[0];
+	dvyijj[2] = dslj[2]*ur[2]/ur[0] + Rij/ur[0];
+	dvyijj[3] = dslj[3]*ur[2]/ur[0];
+
+	// derivative of Roe normal velocity and Roe velocity magnitude
+	for(int k = 0; k < NVARS; k++) {
+		dvniji[k] = dvxiji[k]*n[0] + dvyiji[k]*n[1];
+		dvnijj[k] = dvxijj[k]*n[0] + dvyijj[k]*n[1];
+		dvm2iji[k] = 2.0*( vxij*dvxiji[k] + vyij*dvyiji[k] );
+		dvm2ijj[k] = 2.0*( vxij*dvxijj[k] + vyij*dvyijj[k] );
+	}
+
+	// derivative of Roe speed of sound
+	for(int k = 0; k < NVARS; k++) {
+		dciji[k] = 0.5/cij*(g-1.0)
+		  * ((dsli[k]*Hj+dsri[k])*(Rij+1)-(Rij*Hj+Hi)*dsli[k] - 0.5*dvm2iji[k]);
+		dcijj[k] = 0.5/cij*(g-1.0)
+		  * (((dslj[k]*Hj+Rij*dsrj[k])*(Rij+1) - (Rij*Hj+Hi)*dslj[k])/((Rij+1)*(Rij+1))
+		    - 0.5*dm2ijj[k] );
+	}
+
+	// We no longer need derivatives of Rij, Hi or Hj, so
+	// we now use dsl and dsr for the signal speeds sl and sr.
+
+	// estimate signal speeds 
 	a_real sr, sl;
 	sl = vni - ci;
-	if (sl > vnij-cij)
+	for(int k = 0; k < NVARS; k++) {
+		dsli[k] = dvni[k] - dci[k];
+		dslj[k] = 0;
+	}
+	if (sl > vnij-cij) {
 		sl = vnij-cij;
+		for(int k = 0; k < NVARS; k++) {
+			dsli[k] = dvniji[k] - dciji[k];
+			dslj[k] = dvnijj[k] - dcijj[k];
+		}
+	}
+
 	sr = vnj+cj;
-	if(sr < vnij+cij)
+	for(int k = 0; k < NVARS; k++) {
+		dsri[k] = 0;
+		dsrj[k] = dvnj[k] - dcj[k];
+	}
+	if(sr < vnij+cij) {
 		sr = vnij+cij;
-	const a_real sm = ( ur[0]*vnj*(sr-vnj) - ul[0]*vni*(sl-vni) + pi-pj ) 
-		/ ( ur[0]*(sr-vnj) - ul[0]*(sl-vni) );
+		for(int k = 0; k < NVARS; k++) {
+			dsri[k] = dvniji[k] + dciji[k];
+			dsrj[k] = dvnijj[k] + dcijj[k];
+		}
+	}
+
+	const a_real num = ( ur[0]*vnj*(sr-vnj) - ul[0]*vni*(sl-vni) + pi-pj );
+	const a_real denom2 = ((ur[0]*(sr-vnj) - ul[0]*(sl-vni))*(ur[0]*(sr-vnj) - ul[0]*(sl-vni)));
+
+	const a_real sm = num / ( ur[0]*(sr-vnj) - ul[0]*(sl-vni) );
+
+	dsmi[0]= ( (ur[0]*vnj*dsri[0] -vni*(sl-vni)-ul[0]*dvni[0]*(sl-vni)-ul[0]*vni*(dsli[0]-dvni[0])
+		+ dpi[0] )*(ur[0]*(sr-vnj)-ul[0]*(sl-vni))
+		-num*(ur[0]*dsri[0] - (sl-vni)-ul[0]*(dsli[0]-dvni[0])) ) / denom2;
+
+	dsmj[0]= ( (vnj*(sr-vnj)+ur[0]*dvnj[0]*(sr-vnj)+ur[0]*vnj*(dsrj[0]-dvnj[0]) -ul[0]*vni*dslj[0]
+		- dpj[0])*(ur[0]*(sr-vnj) - ul[0]*(sl-vni))
+		-num*((sr-vnj)+ur[0]*(dsrj[0]-dvnj[0]) - ul[0]*dslj[0]) ) / denom2;
+	
+	for(int k = 1; k < NVARS; k++) {
+		dsmi[k]= ( (ur[0]*vnj*dsri[k] - ul[0]*(dvni[k]*(sl-vni)+vni*(dsli[k]-dvni[k])) +dpi[k])
+		  * (ur[0]*(sr-vnj)-ul[0]*(sl-vni))
+		  - num *(ur[0]*dsri[k] -ul[0]*(dsli[k]-dvni[k])) ) / denom2;
+
+		dsmj[k]= ( (ur[0]*(dvnj[k]*(sr-vnj)+vnj*(dsrj[k]-dvnj[k])) -ul[0]*vni*dslj[k] -dpj[k])
+			*(ur[0]*(sr-vnj)-ul[0]*(sl-vni))
+			-num * (ur[0]*(dsrj[k]-dvnj[k]) - ul[0]*dslj[k]) ) / denom2;
+	}
 
 	// compute fluxes
 	
@@ -1435,6 +1650,10 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 		flux[1] = vni*ul[1] + pi*n[0];
 		flux[2] = vni*ul[2] + pi*n[1];
 		flux[3] = vni*(ul[3] + pi);
+
+		physics->getJacobianNormalFluxWrtConserved(ul,n,dfdl);
+		for(int k = 0; k < NVARS*NVARS; k++)
+			dfdr[k] = 0;
 	}
 	else if(sl <= 0 && sm > 0)
 	{
@@ -1443,14 +1662,91 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 		flux[2] = vni*ul[2] + pi*n[1];
 		flux[3] = vni*(ul[3] + pi);
 
+		physics->getJacobianNormalFluxWrtConserved(ul,n,dfdl);
+		for(int k = 0; k < NVARS*NVARS; k++)
+			dfdr[k] = 0;
+
 		const a_real pstar = ul[0]*(vni-sl)*(vni-sm) + pi;
+		
+		a_real dpsi[NVARS], dpsj[NVARS];
+		dpsi[0] = (vni-sl)*(vni-sm) +ul[0]*(dvni[0]-dsli[0])*(vni-sm)
+			+ul[0]*(vni-sl)*(dvni[0]-dsmi[0]) + dpi[0];
+		dpsj[0] = ul[0]*((-dslj[0])*(vni-sm) + (vni-sl)*(-dsmj[0]));
+		for(int k = 1; k < NVARS; k++) 
+		{
+			dpsi[k] = ul[0]*(dvni[k]-dsli[k])*(vni-sm)+(vni-sl)*(dvni[k]-dsmi[k]) + dpi[k];
+			dpsj[k] = ul[0]*((-dslj[k])*(vni-sm)+(vni-sl)*(-dsmj[k]));
+		}
+		
+		a_real utemp[NVARS], dutempi[NVARS][NVARS], dutempj[NVARS][NVARS];
+
 		utemp[0] = ul[0] * (sl - vni)/(sl-sm);
+
+		dutempi[0][0]=ul[0]*((dsli[0]-dvni[0])*(sl-sm)-(sl-vni)*(dsli[0]-dsmi[0]))/((sl-sm)*(sl-sm))
+			+ (sl-vni)/(sl-sm);
+		dutempj[0][0]=ul[0]*(dslj[0]*(sl-sm)-(sl-vni)*(dsli[0]-dsmi[0])) / ((sl-sm)*(sl-sm));
+		for(int k = 1; k < NVARS; k++) 
+		{
+			dutempi[0][k]=ul[0]*((dsli[k]-dvni[k])*(sl-sm)-(sl-vni)*(dsli[k]-dsmi[k]))
+				/ ((sl-sm)*(sl-sm));
+			dutempj[0][0]=ul[0]*(dslj[k]*(sl-sm)-(sl-vni)*(dsli[k]-dsmi[k])) / ((sl-sm)*(sl-sm));
+		}
+
 		utemp[1] = ( (sl-vni)*ul[1] + (pstar-pi)*n[0] )/(sl-sm);
+
+		for(int k = 0; k < NVARS; k++)
+		{
+			if(k == 1) continue;
+			dutempi[1][k]= ( ((dsli[k]-dvni[k])*ul[1] + (dpsi[k]-dpi[k])*n[0])*(sl-sm)
+				- ((sl-vni)*ul[1]+(pstar-pi)*n[0])*(dsli[k]-dsmi[k]) )/((sl-sm)*(sl-sm));
+			dutempj[1][k]= ( (dslj[k]*ul[1] + dpsj[k]*n[0])*(sl-sm) 
+				- ((sl-vni)*ul[1]+(pstar-pi)*n[0])*(dslj[k]-dsmj[k]) )/((sl-sm)*(sl-sm));
+		}
+		dutempi[1][1]= ( ((dsli[1]-dvni[1])*ul[1]+(sl-vni) + (dpsi[1]-dpi[1])*n[0])*(sl-sm)
+				- ((sl-vni)*ul[1]+(pstar-pi)*n[0])*(dsli[1]-dsmi[1]) )/((sl-sm)*(sl-sm));
+		dutempj[1][1]= ( (dslj[1]*ul[1] + dpsj[1]*n[0])*(sl-sm) 
+			- ((sl-vni)*ul[1]+(pstar-pi)*n[0])*(dslj[1]-dsmj[1]) )/((sl-sm)*(sl-sm));
+
 		utemp[2] = ( (sl-vni)*ul[2] + (pstar-pi)*n[1] )/(sl-sm);
+
+		for(int k = 0; k < NVARS; k++)
+		{
+			if(k == 2) continue;
+			dutempi[2][k]= ( ((dsli[k]-dvni[k])*ul[2] + (dpsi[k]-dpi[k])*n[1])*(sl-sm)
+				- ((sl-vni)*ul[2]+(pstar-pi)*n[1])*(dsli[k]-dsmi[k]) )/((sl-sm)*(sl-sm));
+			dutempj[2][k]= ( (dslj[k]*ul[2] + dpsj[k]*n[1])*(sl-sm) 
+				- ((sl-vni)*ul[2]+(pstar-pi)*n[1])*(dslj[k]-dsmj[k]) )/((sl-sm)*(sl-sm));
+		}
+		dutempi[2][2]= ( ((dsli[2]-dvni[2])*ul[2]+(sl-vni) + (dpsi[2]-dpi[2])*n[1])*(sl-sm)
+				- ((sl-vni)*ul[2]+(pstar-pi)*n[1])*(dsli[2]-dsmi[2]) )/((sl-sm)*(sl-sm));
+		dutempj[2][2]= ( (dslj[2]*ul[2] + dpsj[2]*n[1])*(sl-sm) 
+			- ((sl-vni)*ul[2]+(pstar-pi)*n[1])*(dslj[2]-dsmj[2]) )/((sl-sm)*(sl-sm));
+
 		utemp[3] = ( (sl-vni)*ul[3] - pi*vni + pstar*sm )/(sl-sm);
 
+		for(int k = 0; k < NVARS-1; k++) {
+			dutempi[3][k]= ( ((dsli[k]-dvni[k])*ul[3] -dpi[k]*vni-pi*dvni[k] 
+				+dpsi[k]*sm+pstar*dsmi[k]) * (sl-sm) 
+				- ((sl-vni)*ul[3]-pi*vni+pstar*sm)*(dsli[k]-dsmi[k]) )/((sl-sm)*(sl-sm));
+			dutempj[3][k]= ( (dslj[k]*ul[3] + dpsj[k]*sm+pstar*dsmj[k])*(sl-sm)
+				- ((sl-vni)*ul[3]-pi*vni+pstar*sm)*(dslj[k]-dsmj[k]) )/((sl-sm)*(sl-sm));
+		}
+		dutempi[3][3]= ( ((dsli[3]-dvni[3])*ul[3]+(sl-vni) -dpi[3]*vni-pi*dvni[3] 
+			+dpsi[3]*sm+pstar*dsmi[3]) * (sl-sm) 
+			- ((sl-vni)*ul[3]-pi*vni+pstar*sm)*(dsli[3]-dsmi[3]) )/((sl-sm)*(sl-sm));
+		dutempj[3][3]= ( (dslj[3]*ul[3] + dpsj[3]*sm+pstar*dsmj[3])*(sl-sm)
+			- ((sl-vni)*ul[3]-pi*vni+pstar*sm)*(dslj[3]-dsmj[3]) )/((sl-sm)*(sl-sm));
+
 		for(int ivar = 0; ivar < NVARS; ivar++)
+		{
 			flux[ivar] += sl * ( utemp[ivar] - ul[ivar]);
+			for(int k = 0; k < NVARS; k++)
+			{
+				dfdl[ivar*NVARS+k] += dsli[k]*(utemp[ivar]-ul[ivar]) 
+					+ sl*(dutempi[ivar*NVARS+k] - (ivar==k ? 1.0 : 0.0));
+				dfdr[ivar*NVARS+k] += dslj[k]*(utemp[ivar]-ul[ivar]) + sl*(dutempj[ivar*NVARS+k]);
+			}
+		}
 	}
 	else if(sm <= 0 && sr >= 0)
 	{
@@ -1459,7 +1755,12 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 		flux[2] = vnj*ur[2] + pj*n[1];
 		flux[3] = vnj*(ur[3] + pj);
 
+		physics->getJacobianNormalFluxWrtConserved(ur,n,dfdr);
+		for(int k = 0; k < NVARS*NVARS; k++)
+			dfdl[k] = 0;
+
 		const a_real pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
+		a_real utemp[NVARS];
 		utemp[0] = ur[0] * (sr - vnj)/(sr-sm);
 		utemp[1] = ( (sr-vnj)*ur[1] + (pstar-pj)*n[0] )/(sr-sm);
 		utemp[2] = ( (sr-vnj)*ur[2] + (pstar-pj)*n[1] )/(sr-sm);
@@ -1474,498 +1775,12 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 		flux[1] = vnj*ur[1] + pj*n[0];
 		flux[2] = vnj*ur[2] + pj*n[1];
 		flux[3] = vnj*(ur[3] + pj);
+
+		physics->getJacobianNormalFluxWrtConserved(ur,n,dfdr);
+		for(int k = 0; k < NVARS*NVARS; k++)
+			dfdl[k] = 0;
 	}
-}
 
-/*
-  Differentiation of HLLC_flux in forward (tangent) mode:
-   variations   of useful results: *flux
-   with respect to varying inputs: *ul
-   RW status of diff variables: *flux:out *ul:in
-   Plus diff mem management of: flux:in ul:in
-   Multidirectional mode
-
- * The estimated signal speeds are the Einfeldt estimates, 
- * not the corrected ones given by Remaki et. al.
- */
-void HLLCFlux::getFluxJac_left(const a_real *const ul, const a_real *const ur, 
-		const a_real *const n, 
-		a_real *const __restrict flux, a_real *const __restrict fluxd) 
-{
-    a_real uld[NVARS][NVARS];
-	for(int i = 0; i < NVARS; i++) {
-		for(int j = 0; j < NVARS; j++)
-			uld[i][j] = 0;
-		uld[i][i] = 1.0;
-	}
-	
-    a_real utemp[NVARS];
-    a_real utempd[NVARS][NVARS];
-    a_real vxid[NVARS];
-    int ii1;
-    const a_real vxi = ul[1]/ul[0];
-    a_real vyid[NVARS];
-    const a_real vyi = ul[2]/ul[0];
-    a_real vmag2id[NVARS];
-    const a_real vmag2i = vxi*vxi + vyi*vyi;
-    a_real pid[NVARS];
-    const a_real pi = (g-1.0)*(ul[3]-0.5*ul[0]*vmag2i);
-    a_real arg1d[NVARS];
-    int nd;
-    a_real arg1;
-    arg1 = g*pi/ul[0];
-    a_real vnid[NVARS];
-    a_real cid[NVARS];
-    a_real Hid[NVARS];
-    a_real srd[NVARS], sld[NVARS];
-    for (nd = 0; nd < NVARS; ++nd) {
-        vxid[nd] = (uld[1][nd]*ul[0]-ul[1]*uld[0][nd])/(ul[0]*ul[0]);
-        vyid[nd] = (uld[2][nd]*ul[0]-ul[2]*uld[0][nd])/(ul[0]*ul[0]);
-        vnid[nd] = n[0]*vxid[nd] + n[1]*vyid[nd];
-        vmag2id[nd] = vxid[nd]*vxi + vxi*vxid[nd] + vyid[nd]*vyi + vyi*vyid[nd];
-        pid[nd] = (g-1.0)*(uld[3][nd]-0.5*(uld[0][nd]*vmag2i+ul[0]*vmag2id[nd]));
-        arg1d[nd] = (g*pid[nd]*ul[0]-g*pi*uld[0][nd])/(ul[0]*ul[0]);
-        cid[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-        Hid[nd] = ((uld[3][nd]+pid[nd])*ul[0]-(ul[3]+pi)*uld[0][nd])/(ul[0]*ul[0]);
-        arg1d[nd] = -(ur[0]*uld[0][nd]/(ul[0]*ul[0]));
-        sld[nd] = vnid[nd] - cid[nd];
-    }
-    const a_real vxj = ur[1]/ur[0];
-    const a_real vyj = ur[2]/ur[0];
-    const a_real vni = vxi*n[0] + vyi*n[1];
-    const a_real vnj = vxj*n[0] + vyj*n[1];
-    const a_real vmag2j = vxj*vxj + vyj*vyj;
-    const a_real pj = (g-1.0)*(ur[3]-0.5*ur[0]*vmag2j);
-    const a_real ci = sqrt(arg1);
-    arg1 = g*pj/ur[0];
-    const a_real cj = sqrt(arg1);
-    const a_real Hi = (ul[3]+pi)/ul[0];
-    const a_real Hj = (ur[3]+pj)/ur[0];
-    arg1 = ur[0]/ul[0];
-    a_real Rijd[NVARS];
-    const a_real Rij = sqrt(arg1);
-    a_real vxijd[NVARS];
-    const a_real vxij = (Rij*vxj+vxi)/(Rij+1.0);
-    a_real vyijd[NVARS];
-    a_real vm2ijd[NVARS];
-    a_real vnijd[NVARS];
-    a_real Hijd[NVARS];
-    const a_real vyij = (Rij*vyj+vyi)/(Rij+1.0);
-    for (nd = 0; nd < NVARS; ++nd) {
-        Rijd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-        vxijd[nd] = ((vxj*Rijd[nd]+vxid[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])
-			/((Rij+1.0)*(Rij+1.0));
-        vyijd[nd] = ((vyj*Rijd[nd]+vyid[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])
-			/((Rij+1.0)*(Rij+1.0));
-        Hijd[nd] = ((Hj*Rijd[nd]+Hid[nd])*(Rij+1.0)-(Rij*Hj+Hi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
-        vm2ijd[nd] = vxijd[nd]*vxij + vxij*vxijd[nd] + vyijd[nd]*vyij + vyij*vyijd[nd];
-        vnijd[nd] = n[0]*vxijd[nd] + n[1]*vyijd[nd];
-        arg1d[nd] = (g-1.0)*(Hijd[nd]-0.5*vm2ijd[nd]);
-    }
-    const a_real Hij = (Rij*Hj+Hi)/(Rij+1.0);
-    const a_real vm2ij = vxij*vxij + vyij*vyij;
-    const a_real vnij = vxij*n[0] + vyij*n[1];
-    arg1 = (g-1.0)*(Hij-vm2ij*0.5);
-    a_real cijd[NVARS];
-    for (nd = 0; nd < NVARS; ++nd)
-        cijd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-    const a_real cij = sqrt(arg1);
-    
-	// estimate signal speeds (classical; not Remaki corrected)
-    a_real sr, sl;
-    sl = vni - ci;
-    if (sl > vnij - cij) {
-        for (nd = 0; nd < NVARS; ++nd)
-            sld[nd] = vnijd[nd] - cijd[nd];
-        sl = vnij - cij;
-    }
-    sr = vnj + cj;
-    if (sr < vnij + cij) {
-        for (nd = 0; nd < NVARS; ++nd)
-            srd[nd] = vnijd[nd] + cijd[nd];
-        sr = vnij + cij;
-    } else
-        for (nd = 0; nd < NVARS; ++nd)
-            srd[nd] = 0.0;
-    a_real sm;
-    a_real smd[NVARS];
-    for (nd = 0; nd < NVARS; ++nd)
-        smd[nd] = ((ur[0]*vnj*srd[nd]-(uld[0][nd]*vni+ul[0]*vnid[nd])*(sl-vni)
-            -ul[0]*vni*(sld[nd]-vnid[nd])+pid[nd])*(ur[0]*(sr-vnj)-ul[0]*(sl-
-            vni))-(ur[0]*vnj*(sr-vnj)-ul[0]*vni*(sl-vni)+pi-pj)*(ur[0]*srd[nd]
-            -uld[0][nd]*(sl-vni)-ul[0]*(sld[nd]-vnid[nd])))/((ur[0]*(sr-vnj)-
-            ul[0]*(sl-vni))*(ur[0]*(sr-vnj)-ul[0]*(sl-vni)));
-    sm = (ur[0]*vnj*(sr-vnj)-ul[0]*vni*(sl-vni)+pi-pj)/(ur[0]*(sr-vnj)-ul[0]*(
-        sl-vni));
-    // compute fluxes
-    if (sl > 0) {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = vnid[nd]*ul[0] + vni*uld[0][nd];
-        flux[0] = vni*ul[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = vnid[nd]*ul[1] + vni*uld[1][nd] + n[0]*pid[nd];
-        flux[1] = vni*ul[1] + pi*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = vnid[nd]*ul[2] + vni*uld[2][nd] + n[1]*pid[nd];
-        flux[2] = vni*ul[2] + pi*n[1];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[3*NVARS+nd] = vnid[nd]*(ul[3]+pi) + vni*(uld[3][nd]+pid[nd]);
-        flux[3] = vni*(ul[3]+pi);
-    } else if (sl <= 0 && sm > 0) {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = vnid[nd]*ul[0] + vni*uld[0][nd];
-        flux[0] = vni*ul[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = vnid[nd]*ul[1] + vni*uld[1][nd] + n[0]*pid[nd];
-        flux[1] = vni*ul[1] + pi*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = vnid[nd]*ul[2] + vni*uld[2][nd] + n[1]*pid[nd];
-        flux[2] = vni*ul[2] + pi*n[1];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[3*NVARS+nd] = vnid[nd]*(ul[3]+pi) + vni*(uld[3][nd]+pid[nd]);
-        flux[3] = vni*(ul[3]+pi);
-        a_real pstar;
-        a_real pstard[NVARS];
-        for (nd = 0; nd < NVARS; ++nd) {
-            pstard[nd] = (uld[0][nd]*(vni-sl)+ul[0]*(vnid[nd]-sld[nd]))*(vni-
-                sm) + ul[0]*(vni-sl)*(vnid[nd]-smd[nd]) + pid[nd];
-            for (ii1 = 0; ii1 < NVARS; ++ii1)
-                utempd[ii1][nd] = 0.0;
-            utempd[0][nd] = ((uld[0][nd]*(sl-vni)+ul[0]*(sld[nd]-vnid[nd]))*(
-                sl-sm)-ul[0]*(sl-vni)*(sld[nd]-smd[nd]))/((sl-sm)*(sl-sm));
-        }
-        pstar = ul[0]*(vni-sl)*(vni-sm) + pi;
-        utemp[0] = ul[0]*(sl-vni)/(sl-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[1][nd] = (((sld[nd]-vnid[nd])*ul[1]+(sl-vni)*uld[1][nd]+n[0
-                ]*(pstard[nd]-pid[nd]))*(sl-sm)-((sl-vni)*ul[1]+(pstar-pi)*n[0
-                ])*(sld[nd]-smd[nd]))/((sl-sm)*(sl-sm));
-        utemp[1] = ((sl-vni)*ul[1]+(pstar-pi)*n[0])/(sl-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[2][nd] = (((sld[nd]-vnid[nd])*ul[2]+(sl-vni)*uld[2][nd]+n[1
-                ]*(pstard[nd]-pid[nd]))*(sl-sm)-((sl-vni)*ul[2]+(pstar-pi)*n[1
-                ])*(sld[nd]-smd[nd]))/((sl-sm)*(sl-sm));
-        utemp[2] = ((sl-vni)*ul[2]+(pstar-pi)*n[1])/(sl-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[3][nd] = (((sld[nd]-vnid[nd])*ul[3]+(sl-vni)*uld[3][nd]-pid
-                [nd]*vni-pi*vnid[nd]+pstard[nd]*sm+pstar*smd[nd])*(sl-sm)-((sl
-                -vni)*ul[3]-pi*vni+pstar*sm)*(sld[nd]-smd[nd]))/((sl-sm)*(sl-
-                sm));
-        utemp[3] = ((sl-vni)*ul[3]-pi*vni+pstar*sm)/(sl-sm);
-        for (int ivar = 0; ivar < NVARS; ++ivar) {
-            for (nd = 0; nd < NVARS; ++nd)
-                fluxd[ivar*NVARS+nd] = fluxd[ivar*NVARS+nd] + sld[nd]*(utemp[ivar]-ul[
-                    ivar]) + sl*(utempd[ivar][nd]-uld[ivar][nd]);
-            flux[ivar] += sl*(utemp[ivar]-ul[ivar]);
-        }
-    } else if (sm <= 0 && sr >= 0) {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = 0.0;
-        flux[0] = vnj*ur[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = 0.0;
-        flux[1] = vnj*ur[1] + pj*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = 0.0;
-        flux[2] = vnj*ur[2] + pj*n[1];
-        for (nd = 0; nd < NVARS; ++nd) {
-            fluxd[3*NVARS+nd] = 0.0;
-            for (ii1 = 0; ii1 < NVARS; ++ii1)
-                utempd[ii1][nd] = 0.0;
-        }
-        flux[3] = vnj*(ur[3]+pj);
-        a_real pstar;
-        a_real pstard[NVARS];
-        for (nd = 0; nd < NVARS; ++nd) {
-            pstard[nd] = ur[0]*(-(srd[nd]*(vnj-sm))-(vnj-sr)*smd[nd]);
-            utempd[0][nd] = (ur[0]*srd[nd]*(sr-sm)-ur[0]*(sr-vnj)*(srd[nd]-smd
-                [nd]))/((sr-sm)*(sr-sm));
-        }
-        pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
-        utemp[0] = ur[0]*(sr-vnj)/(sr-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[1][nd] = ((ur[1]*srd[nd]+n[0]*pstard[nd])*(sr-sm)-((sr-vnj)
-                *ur[1]+(pstar-pj)*n[0])*(srd[nd]-smd[nd]))/((sr-sm)*(sr-sm));
-        utemp[1] = ((sr-vnj)*ur[1]+(pstar-pj)*n[0])/(sr-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[2][nd] = ((ur[2]*srd[nd]+n[1]*pstard[nd])*(sr-sm)-((sr-vnj)
-                *ur[2]+(pstar-pj)*n[1])*(srd[nd]-smd[nd]))/((sr-sm)*(sr-sm));
-        utemp[2] = ((sr-vnj)*ur[2]+(pstar-pj)*n[1])/(sr-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[3][nd] = ((ur[3]*srd[nd]+pstard[nd]*sm+pstar*smd[nd])*(sr-
-                sm)-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(srd[nd]-smd[nd]))/((sr-
-                sm)*(sr-sm));
-        utemp[3] = ((sr-vnj)*ur[3]-pj*vnj+pstar*sm)/(sr-sm);
-        for (int ivar = 0; ivar < NVARS; ++ivar) {
-            for (nd = 0; nd < NVARS; ++nd)
-                fluxd[ivar*NVARS+nd] = fluxd[ivar*NVARS+nd] + srd[nd]*(utemp[ivar]-ur[
-                    ivar]) + sr*utempd[ivar][nd];
-            flux[ivar] += sr*(utemp[ivar]-ur[ivar]);
-        }
-    } else {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = 0.0;
-        flux[0] = vnj*ur[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = 0.0;
-        flux[1] = vnj*ur[1] + pj*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = 0.0;
-        flux[2] = vnj*ur[2] + pj*n[1];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[3*NVARS+nd] = 0.0;
-        flux[3] = vnj*(ur[3]+pj);
-    }
-}
-
-/*
-  Differentiation of get_HLLC_flux in forward (tangent) mode:
-   variations   of useful results: *flux
-   with respect to varying inputs: *ur
-   RW status of diff variables: *flux:out *ur:in
-   Plus diff mem management of: flux:in ur:in
-   Multidirectional mode
-
- * Currently, the estimated signal speeds are the Einfeldt estimates, 
- * not the corrected ones given by Remaki et. al.
- */
-void HLLCFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, 
-		const a_real *const n, 
-		a_real *const __restrict flux, a_real *const __restrict fluxd) 
-{
-    a_real urd[NVARS][NVARS];
-	for(int i = 0; i < NVARS; i++) {
-		for(int j = 0; j < NVARS; j++)
-			urd[i][j] = 0;
-		urd[i][i] = 1.0;
-	}
-	
-    a_real utemp[NVARS];
-    a_real utempd[NVARS][NVARS];
-    int ii1;
-    const a_real vxi = ul[1]/ul[0];
-    const a_real vyi = ul[2]/ul[0];
-    a_real vxjd[NVARS];
-    const a_real vxj = ur[1]/ur[0];
-    a_real vyjd[NVARS];
-    const a_real vyj = ur[2]/ur[0];
-    const a_real vmag2i = vxi*vxi + vyi*vyi;
-    a_real vmag2jd[NVARS];
-    const a_real vmag2j = vxj*vxj + vyj*vyj;
-    const a_real pi = (g-1.0)*(ul[3]-0.5*ul[0]*vmag2i);
-    a_real pjd[NVARS];
-    const a_real pj = (g-1.0)*(ur[3]-0.5*ur[0]*vmag2j);
-    a_real arg1d[NVARS];
-    int nd;
-    a_real arg1;
-    arg1 = g*pi/ul[0];
-    const a_real ci = sqrt(arg1);
-    arg1 = g*pj/ur[0];
-    a_real vnjd[NVARS];
-    a_real cjd[NVARS];
-    a_real Hjd[NVARS];
-    for (nd = 0; nd < NVARS; ++nd) {
-        vxjd[nd] = (urd[1][nd]*ur[0]-ur[1]*urd[0][nd])/(ur[0]*ur[0]);
-        vyjd[nd] = (urd[2][nd]*ur[0]-ur[2]*urd[0][nd])/(ur[0]*ur[0]);
-        vnjd[nd] = n[0]*vxjd[nd] + n[1]*vyjd[nd];
-        vmag2jd[nd] = vxjd[nd]*vxj + vxj*vxjd[nd] + vyjd[nd]*vyj + vyj*vyjd[nd];
-        pjd[nd] = (g-1.0)*(urd[3][nd]-0.5*(urd[0][nd]*vmag2j+ur[0]*vmag2jd[nd]));
-        arg1d[nd] = (g*pjd[nd]*ur[0]-g*pj*urd[0][nd])/(ur[0]*ur[0]);
-        cjd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-        Hjd[nd] = ((urd[3][nd]+pjd[nd])*ur[0]-(ur[3]+pj)*urd[0][nd])/(ur[0]*ur[0]);
-        arg1d[nd] = urd[0][nd]/ul[0];
-    }
-    const a_real vni = vxi*n[0] + vyi*n[1];
-    const a_real vnj = vxj*n[0] + vyj*n[1];
-    const a_real cj = sqrt(arg1);
-    const a_real Hi = (ul[3]+pi)/ul[0];
-    const a_real Hj = (ur[3]+pj)/ur[0];
-    arg1 = ur[0]/ul[0];
-    a_real Rijd[NVARS];
-    const a_real Rij = sqrt(arg1);
-    a_real vxijd[NVARS];
-    const a_real vxij = (Rij*vxj+vxi)/(Rij+1.0);
-    a_real vyijd[NVARS];
-    const a_real vyij = (Rij*vyj+vyi)/(Rij+1.0);
-    a_real Hijd[NVARS];
-    a_real vm2ijd[NVARS];
-    a_real vnijd[NVARS];
-    for (nd = 0; nd < NVARS; ++nd) {
-        Rijd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-        vxijd[nd] = ((Rijd[nd]*vxj+Rij*vxjd[nd])*(Rij+1.0)-(Rij*vxj+vxi)*Rijd[nd])
-			/((Rij+1.0)*(Rij+1.0));
-        vyijd[nd] = ((Rijd[nd]*vyj+Rij*vyjd[nd])*(Rij+1.0)-(Rij*vyj+vyi)*Rijd[nd])
-			/((Rij+1.0)*(Rij+1.0));
-        Hijd[nd] = ((Rijd[nd]*Hj+Rij*Hjd[nd])*(Rij+1.0)-(Rij*Hj+Hi)*Rijd[nd])/((Rij+1.0)*(Rij+1.0));
-        vm2ijd[nd] = vxijd[nd]*vxij + vxij*vxijd[nd] + vyijd[nd]*vyij + vyij*vyijd[nd];
-        vnijd[nd] = n[0]*vxijd[nd] + n[1]*vyijd[nd];
-        arg1d[nd] = (g-1.0)*(Hijd[nd]-0.5*vm2ijd[nd]);
-    }
-    const a_real Hij = (Rij*Hj+Hi)/(Rij+1.0);
-    const a_real vm2ij = vxij*vxij + vyij*vyij;
-    const a_real vnij = vxij*n[0] + vyij*n[1];
-    arg1 = (g-1.0)*(Hij-vm2ij*0.5);
-    a_real cijd[NVARS];
-    for (nd = 0; nd < NVARS; ++nd)
-        cijd[nd] = fabs(arg1)<ZERO_TOL ? 0.0 : arg1d[nd]/(2.0*sqrt(arg1));
-    const a_real cij = sqrt(arg1);
-    // estimate signal speeds (classical; not Remaki corrected)
-    a_real sr, sl;
-    a_real srd[NVARS], sld[NVARS];
-    sl = vni - ci;
-    if (sl > vnij - cij) {
-        for (nd = 0; nd < NVARS; ++nd)
-            sld[nd] = vnijd[nd] - cijd[nd];
-        sl = vnij - cij;
-    } else
-        for (nd = 0; nd < NVARS; ++nd)
-            sld[nd] = 0.0;
-    for (nd = 0; nd < NVARS; ++nd)
-        srd[nd] = vnjd[nd] + cjd[nd];
-    sr = vnj + cj;
-    if (sr < vnij + cij) {
-        for (nd = 0; nd < NVARS; ++nd)
-            srd[nd] = vnijd[nd] + cijd[nd];
-        sr = vnij + cij;
-    }
-    a_real sm;
-    a_real smd[NVARS];
-    for (nd = 0; nd < NVARS; ++nd)
-        smd[nd] = (((urd[0][nd]*vnj+ur[0]*vnjd[nd])*(sr-vnj)+ur[0]*vnj*(srd[nd
-            ]-vnjd[nd])-ul[0]*vni*sld[nd]-pjd[nd])*(ur[0]*(sr-vnj)-ul[0]*(sl-
-            vni))-(ur[0]*vnj*(sr-vnj)-ul[0]*vni*(sl-vni)+pi-pj)*(urd[0][nd]*(
-            sr-vnj)+ur[0]*(srd[nd]-vnjd[nd])-ul[0]*sld[nd]))/((ur[0]*(sr-vnj)-
-            ul[0]*(sl-vni))*(ur[0]*(sr-vnj)-ul[0]*(sl-vni)));
-    sm = (ur[0]*vnj*(sr-vnj)-ul[0]*vni*(sl-vni)+pi-pj)/(ur[0]*(sr-vnj)-ul[0]*(
-        sl-vni));
-    // compute fluxes
-    if (sl > 0) {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = 0.0;
-        flux[0] = vni*ul[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = 0.0;
-        flux[1] = vni*ul[1] + pi*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = 0.0;
-        flux[2] = vni*ul[2] + pi*n[1];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[3*NVARS+nd] = 0.0;
-        flux[3] = vni*(ul[3]+pi);
-    } else if (sl <= 0 && sm > 0) {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = 0.0;
-        flux[0] = vni*ul[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = 0.0;
-        flux[1] = vni*ul[1] + pi*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = 0.0;
-        flux[2] = vni*ul[2] + pi*n[1];
-        for (nd = 0; nd < NVARS; ++nd) {
-            fluxd[3*NVARS+nd] = 0.0;
-            for (ii1 = 0; ii1 < NVARS; ++ii1)
-                utempd[ii1][nd] = 0.0;
-        }
-        flux[3] = vni*(ul[3]+pi);
-        a_real pstar;
-        a_real pstard[NVARS];
-        for (nd = 0; nd < NVARS; ++nd) {
-            pstard[nd] = ul[0]*(-(sld[nd]*(vni-sm))-(vni-sl)*smd[nd]);
-            utempd[0][nd] = (ul[0]*sld[nd]*(sl-sm)-ul[0]*(sl-vni)*(sld[nd]-smd
-                [nd]))/((sl-sm)*(sl-sm));
-        }
-        pstar = ul[0]*(vni-sl)*(vni-sm) + pi;
-        utemp[0] = ul[0]*(sl-vni)/(sl-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[1][nd] = ((ul[1]*sld[nd]+n[0]*pstard[nd])*(sl-sm)-((sl-vni)
-                *ul[1]+(pstar-pi)*n[0])*(sld[nd]-smd[nd]))/((sl-sm)*(sl-sm));
-        utemp[1] = ((sl-vni)*ul[1]+(pstar-pi)*n[0])/(sl-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[2][nd] = ((ul[2]*sld[nd]+n[1]*pstard[nd])*(sl-sm)-((sl-vni)
-                *ul[2]+(pstar-pi)*n[1])*(sld[nd]-smd[nd]))/((sl-sm)*(sl-sm));
-        utemp[2] = ((sl-vni)*ul[2]+(pstar-pi)*n[1])/(sl-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[3][nd] = ((ul[3]*sld[nd]+pstard[nd]*sm+pstar*smd[nd])*(sl-
-                sm)-((sl-vni)*ul[3]-pi*vni+pstar*sm)*(sld[nd]-smd[nd]))/((sl-
-                sm)*(sl-sm));
-        utemp[3] = ((sl-vni)*ul[3]-pi*vni+pstar*sm)/(sl-sm);
-        for (int ivar = 0; ivar < NVARS; ++ivar) {
-            for (nd = 0; nd < NVARS; ++nd)
-                fluxd[ivar*NVARS+nd] = fluxd[ivar*NVARS+nd] + sld[nd]*(utemp[ivar]-ul[
-                    ivar]) + sl*utempd[ivar][nd];
-            flux[ivar] += sl*(utemp[ivar]-ul[ivar]);
-        }
-    } else if (sm <= 0 && sr >= 0) {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = vnjd[nd]*ur[0] + vnj*urd[0][nd];
-        flux[0] = vnj*ur[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = vnjd[nd]*ur[1] + vnj*urd[1][nd] + n[0]*pjd[nd];
-        flux[1] = vnj*ur[1] + pj*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = vnjd[nd]*ur[2] + vnj*urd[2][nd] + n[1]*pjd[nd];
-        flux[2] = vnj*ur[2] + pj*n[1];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[3*NVARS+nd] = vnjd[nd]*(ur[3]+pj) + vnj*(urd[3][nd]+pjd[nd]);
-        flux[3] = vnj*(ur[3]+pj);
-        a_real pstar;
-        a_real pstard[NVARS];
-        for (nd = 0; nd < NVARS; ++nd) {
-            pstard[nd] = (urd[0][nd]*(vnj-sr)+ur[0]*(vnjd[nd]-srd[nd]))*(vnj-
-                sm) + ur[0]*(vnj-sr)*(vnjd[nd]-smd[nd]) + pjd[nd];
-            for (ii1 = 0; ii1 < NVARS; ++ii1)
-                utempd[ii1][nd] = 0.0;
-            utempd[0][nd] = ((urd[0][nd]*(sr-vnj)+ur[0]*(srd[nd]-vnjd[nd]))*(
-                sr-sm)-ur[0]*(sr-vnj)*(srd[nd]-smd[nd]))/((sr-sm)*(sr-sm));
-        }
-        pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
-        utemp[0] = ur[0]*(sr-vnj)/(sr-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[1][nd] = (((srd[nd]-vnjd[nd])*ur[1]+(sr-vnj)*urd[1][nd]+n[0
-                ]*(pstard[nd]-pjd[nd]))*(sr-sm)-((sr-vnj)*ur[1]+(pstar-pj)*n[0
-                ])*(srd[nd]-smd[nd]))/((sr-sm)*(sr-sm));
-        utemp[1] = ((sr-vnj)*ur[1]+(pstar-pj)*n[0])/(sr-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[2][nd] = (((srd[nd]-vnjd[nd])*ur[2]+(sr-vnj)*urd[2][nd]+n[1
-                ]*(pstard[nd]-pjd[nd]))*(sr-sm)-((sr-vnj)*ur[2]+(pstar-pj)*n[1
-                ])*(srd[nd]-smd[nd]))/((sr-sm)*(sr-sm));
-        utemp[2] = ((sr-vnj)*ur[2]+(pstar-pj)*n[1])/(sr-sm);
-        for (nd = 0; nd < NVARS; ++nd)
-            utempd[3][nd] = (((srd[nd]-vnjd[nd])*ur[3]+(sr-vnj)*urd[3][nd]-pjd
-                [nd]*vnj-pj*vnjd[nd]+pstard[nd]*sm+pstar*smd[nd])*(sr-sm)-((sr
-                -vnj)*ur[3]-pj*vnj+pstar*sm)*(srd[nd]-smd[nd]))/((sr-sm)*(sr-
-                sm));
-        utemp[3] = ((sr-vnj)*ur[3]-pj*vnj+pstar*sm)/(sr-sm);
-        for (int ivar = 0; ivar < NVARS; ++ivar) {
-            for (nd = 0; nd < NVARS; ++nd)
-                fluxd[ivar*NVARS+nd] = fluxd[ivar*NVARS+nd] + srd[nd]*(utemp[ivar]-ur[
-                    ivar]) + sr*(utempd[ivar][nd]-urd[ivar][nd]);
-            flux[ivar] += sr*(utemp[ivar]-ur[ivar]);
-        }
-    } else {
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[0*NVARS+nd] = vnjd[nd]*ur[0] + vnj*urd[0][nd];
-        flux[0] = vnj*ur[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[1*NVARS+nd] = vnjd[nd]*ur[1] + vnj*urd[1][nd] + n[0]*pjd[nd];
-        flux[1] = vnj*ur[1] + pj*n[0];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[2*NVARS+nd] = vnjd[nd]*ur[2] + vnj*urd[2][nd] + n[1]*pjd[nd];
-        flux[2] = vnj*ur[2] + pj*n[1];
-        for (nd = 0; nd < NVARS; ++nd)
-            fluxd[3*NVARS+nd] = vnjd[nd]*(ur[3]+pj) + vnj*(urd[3][nd]+pjd[nd]);
-        flux[3] = vnj*(ur[3]+pj);
-    }
-}
-
-void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
-{
-	std::cout << " !!!! HLLC Jacobian not available!!\n";
-	a_real flux[NVARS];
-	getFluxJac_left(ul, ur, n, flux, dfdl);
-	getFluxJac_right(ul, ur, n, flux, dfdr);
 	for(int i = 0; i < NVARS*NVARS; i++)
 		dfdl[i] *= -1.0;
 }
@@ -1975,10 +1790,6 @@ void HLLCFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict flux, a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
 	std::cout << " !!!! HLLC Jacobian not available!!\n";
-	getFluxJac_left(ul, ur, n, flux, dfdl);
-	getFluxJac_right(ul, ur, n, flux, dfdr);
-	for(int i = 0; i < NVARS*NVARS; i++)
-		dfdl[i] *= -1.0;
 }
 
 } // end namespace acfd

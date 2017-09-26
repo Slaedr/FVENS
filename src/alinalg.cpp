@@ -652,8 +652,8 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 		step++;
 	}
 
-	if(step == maxiter)
-		std::cout << " ! BiCGSTAB: Hit max iterations!\n";
+	/*if(step == maxiter)
+		std::cout << " ! BiCGSTAB: Hit max iterations!\n";*/
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;

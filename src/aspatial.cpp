@@ -724,9 +724,13 @@ void FlowFV::computeViscousFlux(const a_int iface,
 		ldiv += grad[j][j+1];
 	ldiv *= 2.0/3.0*muRe;
 
+	/* vflux is assigned all negative quantities, as should be the case when the residual is
+	 * assumed to be on the left of the equals sign: du/dt + r(u) = 0.
+	 */
+
 	vflux[0] = 0.0;
-	vflux[1] = n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]);
-	vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv);
+	vflux[1] = -(n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]));
+	vflux[2] = -(n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv));
 
 	// energy dissipation terms in the 2 directions
 	a_real sp[NDIM] = {0.0, 0.0};
@@ -734,12 +738,12 @@ void FlowFV::computeViscousFlux(const a_int iface,
 		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
 		+ kdiff*grad[0][3];
 	sp[1] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
-		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2*muRe*grad[1][2]-ldiv)
+		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2.0*muRe*grad[1][2]-ldiv)
 		+ kdiff*grad[1][3];
 
 	vflux[3] = 0;
 	for(int i = 0; i < NDIM; i++)
-		vflux[3] += n[i]*sp[i];
+		vflux[3] -= n[i]*sp[i];
 }
 
 void FlowFV::computeViscousFluxJacobian(const a_int iface,
@@ -815,32 +819,182 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	if(!constVisc) {
 		physics.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
 		physics.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
+		for(int k = 0; k < NVARS; k++) {
+			dmul[k] *= 0.5;
+			dmur[k] *= 0.5;
+		}
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
 	}
 
 	// divergence of velocity times second viscosity
+	
 	a_real ldiv = 0;
-	for(int j = 0; j < NDIM; j++)
+	a_real dldivl[NVARS]; a_real dldivr[NVARS]; 
+	for(int k = 0; k < NVARS; k++) { 
+		dldivl[k] = 0;
+		dldivr[k] = 0;
+	}
+
+	for(int j = 0; j < NDIM; j++) {
 		ldiv += grad[j][j+1];
+		for(int k = 0; k < NVARS; k++) {
+			dldivl[k] += dgradl[j][j+1][k];
+			dldivr[k] += dgradr[j][j+1][k];
+		}
+	}
+
 	ldiv *= 2.0/3.0*muRe;
+	for(int k = 0; k < NVARS; k++) {
+		dldivl[k] *= 2.0/3.0 * muRe;
+		dldivr[k] *= 2.0/3.0 * muRe;
+	}
 
 	vflux[0] = 0.0;
-	vflux[1] = n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]);
-	vflux[2] = n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv);
+	vflux[1] = -(n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]));
 
-	// energy dissipation terms in the 2 directions
+	for(int k = 0; k < NVARS; k++)
+	{
+		dvfi[NVARS+k] -= n[0]*(2.0*dmul[k]*grad[0][1]+2.0*muRe*dgradl[0][1][k] - dldivl[k])
+			+ n[1]*(dmul[k]*(grad[1][1]+grad[0][2])+muRe*(dgradl[1][1][k]+dgradl[0][2][k]));
+		dvfj[NVARS+k] -= n[0]*(2.0*dmur[k]*grad[0][1]+2.0*muRe*dgradr[0][1][k] - dldivr[k])
+			+ n[1]*(dmur[k]*(grad[1][1]+grad[0][2])+muRe*(dgradr[1][1][k]+dgradr[0][2][k]));
+	}
+
+	vflux[2] = -(n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv));
+
+	for(int k = 0; k < NVARS; k++)
+	{
+		dvfi[2*NVARS+k] -= n[0]*(dmul[k]*(grad[1][1]+grad[0][2])
+				+muRe*(dgradl[1][1][k]+dgradl[0][2][k]))
+			+n[1]*(2.0*dmul[k]*grad[1][2]+2.0*muRe*dgradl[1][2][k] - dldivl[k]);
+		dvfj[2*NVARS+k] -= n[0]*(dmur[k]*(grad[1][1]+grad[0][2])
+				+muRe*(dgradr[1][1][k]+dgradr[0][2][k]))
+			+n[1]*(2.0*dmur[k]*grad[1][2]+2.0*muRe*dgradr[1][2][k] - dldivr[k]);
+	}
+
+	// energy dissipation terms in the 2 directions	
 	a_real sp[NDIM] = {0.0, 0.0};
+
 	sp[0] = 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*muRe*grad[0][1]-ldiv)
 		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * muRe*(grad[1][1]+grad[0][2])
 		+ kdiff*grad[0][3];
+
+	// reuse dupl and dupr for derivatives of sp[0] and sp[1]
+	
+	// first, left and right derivatives of sp[0]
+	
+	dupl[0*NVARS+0] = 0.5/(ul[0]*ul[0])*(-ul[1])*(2.0*muRe*grad[0][1]-ldiv)
+	    +0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmul[0]*grad[0][1]+2.0*muRe*dgradl[0][1][0] -dldivl[0])
+	  + 0.5/(ul[0]*ul[0])*(-ul[2]) *(muRe*(grad[1][1]+grad[0][2])) 
+	    + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmul[0]*(grad[1][1]+grad[0][2]) +
+		muRe*(dgradl[1][1][0]+dgradl[0][2][0])) 
+	  + dkdl[0]*grad[0][3] + kdiff*dgradl[0][3][0];
+	
+	dupl[0*NVARS+1] = 0.5/ul[0]*(2.0*muRe*grad[0][1]-ldiv)
+	  + 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmul[1]*grad[0][1]+2.0*muRe*dgradl[0][1][1] - dldivl[1])
+	  + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*( dmul[1]*(grad[1][1]+grad[0][2])
+			  +muRe*(dgradl[1][1][1]+dgradl[0][2][1]) ) 
+	  + dkdl[1]*grad[0][3] + kdiff*dgradl[0][3][1];
+
+	dupl[0*NVARS+2] = 
+		0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*dmul[2]*grad[0][1]+2.0*muRe*dgradl[0][1][2]-dldivl[2])
+		+0.5/ul[0]*muRe*(grad[1][1]+grad[0][2])
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmul[2]*(grad[1][1]+grad[0][2])
+				+muRe*(dgradl[1][1][2]+dgradl[0][2][2]))
+		+ dkdl[2]*grad[0][3] + kdiff*dgradl[0][3][2];
+
+	dupl[0*NVARS+3] = 
+		0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmul[3]*grad[0][1]+2.0*muRe*dgradl[0][1][3] -dldivl[3])
+		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmul[3]*(grad[1][1]+grad[0][2])
+				+muRe*(dgradl[1][1][3]+dgradl[0][2][3]))
+		+ dkdl[3]*grad[0][3] + kdiff*dgradl[0][3][3];
+
+	dupr[0*NVARS+0] = 0.5/(ur[0]*ur[0])*(-ur[1])*(2.0*muRe*grad[0][1]-ldiv)
+	    +0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmur[0]*grad[0][1]+2.0*muRe*dgradr[0][1][0] -dldivr[0])
+	  + 0.5/(ur[0]*ur[0])*(-ur[2]) *(muRe*(grad[1][1]+grad[0][2])) 
+	    + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmur[0]*(grad[1][1]+grad[0][2]) +
+		muRe*(dgradr[1][1][0]+dgradr[0][2][0])) 
+	  + dkdr[0]*grad[0][3] + kdiff*dgradr[0][3][0];
+	
+	dupr[0*NVARS+1] = 0.5/ur[0]*(2.0*muRe*grad[0][1]-ldiv)
+	  + 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmur[1]*grad[0][1]+2.0*muRe*dgradr[0][1][1] - dldivr[1])
+	  + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*( dmur[1]*(grad[1][1]+grad[0][2])
+			  +muRe*(dgradr[1][1][1]+dgradr[0][2][1]) ) 
+	  + dkdr[1]*grad[0][3] + kdiff*dgradr[0][3][1];
+
+	dupr[0*NVARS+2] = 
+		0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*dmur[2]*grad[0][1]+2.0*muRe*dgradr[0][1][2]-dldivr[2])
+		+0.5/ur[0]*muRe*(grad[1][1]+grad[0][2])
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmur[2]*(grad[1][1]+grad[0][2])
+				+muRe*(dgradr[1][1][2]+dgradr[0][2][2]))
+		+ dkdr[2]*grad[0][3] + kdiff*dgradr[0][3][2];
+
+	dupr[0*NVARS+3] = 
+		0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmur[3]*grad[0][1]+2.0*muRe*dgradr[0][1][3] -dldivr[3])
+		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmur[3]*(grad[1][1]+grad[0][2])
+				+muRe*(dgradr[1][1][3]+dgradr[0][2][3]))
+		+ dkdr[3]*grad[0][3] + kdiff*dgradr[0][3][3];
+
+	// next, left and right derivatives of sp[1]
 	sp[1] = 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * muRe*(grad[1][1]+grad[0][2])
-		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * (2*muRe*grad[1][2]-ldiv)
+		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * (2.0*muRe*grad[1][2]-ldiv)
 		+ kdiff*grad[1][3];
 
+	dupl[NVARS+0] = 0.5/(ul[0]*ul[0])*(-ul[1])*muRe*(grad[1][1]+grad[0][2]) 
+		+ 0.5*(ul[1]/ul[0]+ur[1]/ur[0])
+		*(dmul[0]*(grad[1][1]+grad[0][2])+muRe*(dgradl[1][1][0]+dgradl[0][2][0])) + 
+		0.5/(ul[0]*ul[0])*(-ul[2])*(2*muRe*grad[1][2]-ldiv) + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*
+		(2.0*dmul[0]*grad[1][2]+2.0*muRe*dgradl[1][2][0]-dldivl[0])
+		+ dkdl[0]*grad[1][3] + kdiff*dgradl[1][3][0];
+
+	dupl[NVARS+1]= 0.5/ul[0]*muRe*(grad[1][1]+grad[0][2])+0.5*(ul[1]/ul[0]+ur[1]/ur[0])
+		*(dmul[1]*(grad[1][1]+grad[0][2])+muRe*(dgradl[1][1][1]+dgradl[0][2][1]))
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmul[1]*grad[1][2]+2.0*muRe*dgradl[1][2][1]-dldivl[1])
+		+ dkdl[1]*grad[1][3] + kdiff*dgradl[1][3][1];
+
+	dupl[NVARS+2]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(dmul[2]*(grad[1][1]+grad[0][2])+
+			muRe*(dgradl[1][1][2]+dgradl[0][2][2])) + 0.5/ul[0]*(2.0*muRe*grad[1][2]-ldiv)
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmul[2]*grad[1][2]+2.0*muRe*dgradl[1][2][2]-dldivl[2])
+		+ dkdl[2]*grad[1][3] + kdiff*dgradl[1][3][2];
+
+	dupl[NVARS+3]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (dmul[3]*(grad[1][1]+grad[0][2])
+			+muRe*(dgradl[1][1][3]+dgradl[0][2][3])) 
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmul[3]*grad[1][2]+2.0*muRe*dgradl[1][2][3]-dldivl[3])
+		+ dkdl[3]*grad[1][3] + kdiff*dgradl[1][3][3];
+
+	dupr[NVARS+0] = 0.5/(ur[0]*ur[0])*(-ur[1])*muRe*(grad[1][1]+grad[0][2]) 
+		+ 0.5*(ul[1]/ul[0]+ur[1]/ur[0])
+		*(dmur[0]*(grad[1][1]+grad[0][2])+muRe*(dgradr[1][1][0]+dgradr[0][2][0])) + 
+		0.5/(ur[0]*ur[0])*(-ur[2])*(2*muRe*grad[1][2]-ldiv) + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*
+		(2.0*dmur[0]*grad[1][2]+2.0*muRe*dgradr[1][2][0]-dldivr[0])
+		+ dkdr[0]*grad[1][3] + kdiff*dgradr[1][3][0];
+
+	dupr[NVARS+1]= 0.5/ur[0]*muRe*(grad[1][1]+grad[0][2])+0.5*(ul[1]/ul[0]+ur[1]/ur[0])
+		*(dmur[1]*(grad[1][1]+grad[0][2])+muRe*(dgradr[1][1][1]+dgradr[0][2][1]))
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmur[1]*grad[1][2]+2.0*muRe*dgradr[1][2][1]-dldivr[1])
+		+ dkdr[1]*grad[1][3] + kdiff*dgradr[1][3][1];
+
+	dupr[NVARS+2]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(dmur[2]*(grad[1][1]+grad[0][2])+
+			muRe*(dgradr[1][1][2]+dgradr[0][2][2])) + 0.5/ur[0]*(2.0*muRe*grad[1][2]-ldiv)
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmur[2]*grad[1][2]+2.0*muRe*dgradr[1][2][2]-dldivr[2])
+		+ dkdr[2]*grad[1][3] + kdiff*dgradr[1][3][2];
+
+	dupr[NVARS+3]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (dmur[3]*(grad[1][1]+grad[0][2])
+			+muRe*(dgradr[1][1][3]+dgradr[0][2][3])) 
+		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmur[3]*grad[1][2]+2.0*muRe*dgradr[1][2][3]-dldivr[3])
+		+ dkdr[3]*grad[1][3] + kdiff*dgradr[1][3][3];
+
 	vflux[3] = 0;
-	for(int i = 0; i < NDIM; i++)
-		vflux[3] += n[i]*sp[i];
+	for(int i = 0; i < NDIM; i++) 
+	{
+		vflux[3] -= n[i]*sp[i];
+
+		for(int k = 0; k < NVARS; k++) {
+			dvfi[3*NVARS+k] -= n[i]*dupl[i*NVARS+k];
+			dvfj[3*NVARS+k] -= n[i]*dupr[i*NVARS+k];
+		}
+	}
 }
 
 void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 
@@ -977,7 +1131,7 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 				computeViscousFlux(ied, u, ug, dudx, dudy, uleft, uright, vflux);
 
 				for(short ivar = 0; ivar < NVARS; ivar++)
-					fluxes[ivar] -= vflux[ivar]*len;
+					fluxes[ivar] += vflux[ivar]*len;
 			}
 
 			for(int ivar = 0; ivar < NVARS; ivar++) {

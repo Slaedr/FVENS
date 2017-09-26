@@ -8,7 +8,7 @@
 	
 namespace acfd {
 
-void IdealGasPhysics::evaluate_normal_flux(const a_real *const u, const a_real* const n, 
+void IdealGasPhysics::getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
 		a_real *const __restrict flux) const
 {
 	a_real vn = (u[1]*n[0] + u[2]*n[1])/u[0];
@@ -19,7 +19,8 @@ void IdealGasPhysics::evaluate_normal_flux(const a_real *const u, const a_real* 
 	flux[3] = vn*(u[3] + p);
 }
 
-void IdealGasPhysics::evaluate_normal_jacobian(const a_real *const u, const a_real* const n, 
+void IdealGasPhysics::getJacobianNormalFluxWrtConserved(const a_real *const u, 
+		const a_real* const n, 
 		a_real *const __restrict dfdu) const
 {
 	a_real rhovn = u[1]*n[0]+u[2]*n[1], u02 = u[0]*u[0];

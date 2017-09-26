@@ -1,5 +1,5 @@
 /** \file anumericalflux.hpp
- * \brief Numerical flux schemes for Euler and Navier-Stokes equations.
+ * \brief Numerical flux schemes for the compressible Euler equations.
  * \author Aditya Kashi
  * \date March 2015
  */
@@ -47,6 +47,7 @@ public:
 	 * while dfdr is the `upper' block.
 	 * The negative of the lower block is the contribution to diagonal block of left cell, and
 	 * the negative of the upper block is the contribution to diagonal block of right cell.
+	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, 
 			const a_real* const n,
@@ -144,6 +145,9 @@ public:
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	
+	/** 
+	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
+	 */
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 	
@@ -156,22 +160,19 @@ public:
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
-/** Implemented as described by Remaki et al. \cite invflux_remaki
+/** Implemented as described by Batten et al. \cite invflux_hllc_batten
  */
 class HLLCFlux : public InviscidFlux
 {
-	/// Computes the Jacobian of the numerical flux w.r.t. left state
-	void getFluxJac_left(const a_real *const ul, const a_real *const ur, const a_real *const n, 
-			a_real *const flux, a_real *const fluxd);
-	/// Computes the Jacobian of the numerical flux w.r.t. right state
-	void getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
-			a_real *const flux, a_real *const fluxd);
 public:
 	HLLCFlux(const IdealGasPhysics *const analyticalflux);
 	
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	
+	/** 
+	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
+	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 	

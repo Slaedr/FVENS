@@ -16,11 +16,11 @@ class Physics
 {
 public:
 	/// Computes the flux vector along some direction
-	virtual void evaluate_normal_flux(const a_real *const u, const a_real* const n, 
+	virtual void getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
 			a_real *const flux) const = 0;
 
 	/// Computes the Jacobian of the flux along some direction, at the given state
-	virtual void evaluate_normal_jacobian(const a_real *const u, const a_real* const n, 
+	virtual void getJacobianNormalFluxWrtConserved(const a_real *const u, const a_real* const n, 
 			a_real *const dfdu) const = 0;
 };
 	
@@ -45,13 +45,13 @@ public:
 	}
 
 	/// Computes the analytical convective flux across a face oriented in some direction
-	void evaluate_normal_flux(const a_real *const u, const a_real* const n, 
+	void getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict flux) const;
 	
 	/// Computes the Jacobian of the flux along some direction, at the given state
 	/** The flux Jacobian matrix dfdu is assumed stored in a row-major 1-dimensional array.
 	 */
-	void evaluate_normal_jacobian(const a_real *const u, const a_real* const n, 
+	void getJacobianNormalFluxWrtConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict dfdu) const;
 
 	/// Computes pressure from conserved variables
@@ -359,7 +359,7 @@ public:
 	 * given derivatives of the non-dim viscosity coeff w.r.t. conserved variables.
 	 */
 	void getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(
-			const a_real *const dmuhat, a_real *const __restrict dkhat)
+			const a_real *const dmuhat, a_real *const __restrict dkhat) const
 	{
 		for(int k = 0; k < NVARS; k++)
 			dkhat[k] = dmuhat[k]/(Minf*Minf*(g-1.0)*Pr);
