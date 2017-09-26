@@ -24,13 +24,9 @@ namespace acfd {
  */
 class InviscidFlux
 {
-protected:
-	const IdealGasPhysics *const physics;		///< Analytical flux context
-	a_real g;								///< Adiabatic index
-
 public:
 	/// Sets up data for the inviscid flux scheme
-	InviscidFlux(const IdealGasPhysics *const analyticalflux);
+	InviscidFlux(const IdealGasPhysics *const physcs);
 
 	/** Computes flux across a face with
 	 * \param[in] uleft is the vector of left states for the face
@@ -54,6 +50,10 @@ public:
 			a_real *const dfdl, a_real *const dfdr) = 0;
 
 	virtual ~InviscidFlux();
+
+protected:
+	const IdealGasPhysics *const physics;        ///< Functionality replated to gas constitutive law
+	a_real g;                                    ///< Adiabatic index
 };
 
 class LocalLaxFriedrichsFlux : public InviscidFlux

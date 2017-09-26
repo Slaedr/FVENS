@@ -1477,7 +1477,6 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
 {
-	std::cout << " !!!! HLLC Jacobian not available!!\n";
 	a_real flux[NVARS];
 
 	const a_real vxi = ul[1]/ul[0]; const a_real vyi = ul[2]/ul[0];
@@ -1492,8 +1491,7 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	// speeds of sound
 	const a_real ci = sqrt(g*pi/ul[0]);
 	const a_real cj = sqrt(g*pj/ur[0]);
-	// enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
-	// (actually specific enthalpy := enthalpy per unit mass)
+	// specific enthalpies (E + p/rho = u(3)/u(0) + p/u(0) 
 	const a_real Hi = (ul[3] + pi)/ul[0];
 	const a_real Hj = (ur[3] + pj)/ur[0];
 
@@ -1760,14 +1758,88 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 			dfdl[k] = 0;
 
 		const a_real pstar = ur[0]*(vnj-sr)*(vnj-sm) + pj;
+
+		a_real dpsi[NVARS], dpsj[NVARS];
+		for(int k = 1; k < NVARS; k++)
+		{
+			dpsi[k] = ur[0]*(-dsri[k]*(vnj-sm)+(vnj-sr)*(-dsmi[k]));
+			dpsj[k] = ur[0]*((dvnj[k]-dsrj[k])*(vnj-sm)+(vnj-sr)*(dvnj[k]-dsmj[k])) + dpj[k];
+		}
+		dpsi[0] = ur[0]*(-dsri[0]*(vnj-sm)+(vnj-sr)*(-dsmi[0]));
+		dpsj[0] = (vnj-sr)*(vnj-sm) +ur[0]*(dvnj[0]-dsrj[0])*(vnj-sm) 
+			+ur[0]*(vnj-sr)*(dvnj[0]-dsmj[0]) + dpj[0];
+		
 		a_real utemp[NVARS];
+		a_real dutempi[NVARS][NVARS], dutempj[NVARS][NVARS];
+
 		utemp[0] = ur[0] * (sr - vnj)/(sr-sm);
+
+		for(int k = 1; k < NVARS; k++)
+		{
+			dutempi[0][k] = ur[0]*(dsri[k]*(sr-sm)-(sr-vnj)*(dsri[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
+			dutempj[0][k] = ur[0]*((dsrj[k]-dvnj[k])*(sr-sm)-(sr-vnj)*(dsrj[k]-dsmj[k])) / 
+				((sr-sm)*(sr-sm));
+		}
+		dutempi[0][0] = ur[0]*(dsri[0]*(sr-sm)-(sr-vnj)*(dsri[0]-dsmi[0])) / ((sr-sm)*(sr-sm));
+		dutempj[0][0] = ur[0]*((dsrj[k]-dvnj[k])*(sr-sm)-(sr-vnj)*(dsrj[k]-dsmj[k])) / 
+			((sr-sm)*(sr-sm)) + (sr-vnj)/(sr-sm);
+
 		utemp[1] = ( (sr-vnj)*ur[1] + (pstar-pj)*n[0] )/(sr-sm);
+
+		for(int k = 0; k < NVARS; k++)
+		{
+			if(k == 1) continue;
+			dutempi[1][k] = ((dsri[k]*ur[1] +dpsi[k]*n[0])*(sr-sm) 
+				-((sr-vnj)*ur[1]+(pstar-pj)*n[0])*(dsri[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
+			dutempj[1][k] = (((dsrj[k]-dvnj[k])*ur[1] +(dpsj[k]-dpj[k])*n[0])*(sr-sm) -
+				((sr-vnj)*ur[1]+(pstar-pj)*n[0])*(dsrj[k]-dsmj[k])) / ((sr-sm)*(sr-sm));
+		}
+		dutempi[1][1] = ((dsri[1]*ur[1] +dpsi[1]*n[0])*(sr-sm) +((sr-vnj)*ur[1]+(pstar-pj)*n[0])*
+			(dsri[1]-dsmi[1])) / ((sr-sm)*(sr-sm));
+		dutempj[1][1] = (((dsrj[1]-dvnj[1])*ur[1] +sr-vnj +(dpsj[1]-dpj[1])*n[0])*(sr-sm) -
+			((sr-vnj)*ur[1]+(pstar-pj)*n[0])*(dsrj[1]-dsmj[1])) / ((sr-sm)*(sr-sm));
+
 		utemp[2] = ( (sr-vnj)*ur[2] + (pstar-pj)*n[1] )/(sr-sm);
+
+		for(int k = 0; k < NVARS; k++)
+		{
+			if(k == 2) continue;
+			dutempi[2][k] = ((dsri[k]*ur[2] +dpsi[k]*n[1])*(sr-sm) 
+				-((sr-vnj)*ur[2]+(pstar-pj)*n[1])*(dsri[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
+			dutempj[2][k] = (((dsrj[k]-dvnj[k])*ur[2] +(dpsj[k]-dpj[k])*n[1])*(sr-sm) -
+				((sr-vnj)*ur[2]+(pstar-pj)*n[1])*(dsrj[k]-dsmj[k])) / ((sr-sm)*(sr-sm));
+		}
+		dutempi[2][2] = ((dsri[2]*ur[2] +dpsi[2]*n[1])*(sr-sm) -((sr-vnj)*ur[2]+(pstar-pj)*n[1])*
+			(dsri[2]-dsmi[2])) / ((sr-sm)*(sr-sm));
+		dutempj[2][2] = (((dsrj[2]-dvnj[2])*ur[2] +sr-vnj +(dpsj[2]-dpj[2])*n[1])*(sr-sm) -
+			((sr-vnj)*ur[2]+(pstar-pj)*n[1])*(dsrj[2]-dsmj[2])) / ((sr-sm)*(sr-sm));
+
 		utemp[3] = ( (sr-vnj)*ur[3] - pj*vnj + pstar*sm )/(sr-sm);
 
+		for(int k = 0; k < NVARS-1; k++)
+		{
+			dutempi[3][k] = ((dsri[k]*ur[3] +dpsi[k]*sm+pstar*dsmi[k])*(sr-sm)
+				-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsri[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
+			dutempj[3][k]= (((dsrj[k]-dvnj[k])*ur[3] -dpj[k]*vnj-pj*dvnj[k] 
+				+dpsj[k]*sm+pstar*dsmj[k])*(sr-sm) 
+				-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsrj[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
+		}
+		dutempi[3][3] = ((dsri[3]*ur[3] +dpsi[3]*sm+pstar*dsmi[3])*(sr-sm)
+			-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsri[3]-dsmi[3])) / ((sr-sm)*(sr-sm));
+		dutempj[3][3]= (((dsrj[3]-dvnj[3])*ur[3]+(sr-vnj) -dpj[3]*vnj-pj*dvnj[3] 
+			+dpsj[3]*sm+pstar*dsmj[3])*(sr-sm) 
+			-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsrj[3]-dsmi[3])) / ((sr-sm)*(sr-sm));
+
 		for(int ivar = 0; ivar < NVARS; ivar++)
+		{
 			flux[ivar] += sr * ( utemp[ivar] - ur[ivar]);
+
+			for(int k = 0; k < NVARS; k++) {
+				dfdl[ivar*NVARS+k] += dsri[k]*(utemp[ivar]-ur[ivar]) +sr*dutempi[ivar][k];
+				dfdr[ivar*NVARS+k] += dsrj[k]*(utemp[ivar]-ur[ivar])
+										+ sr*(dutempj[k] - (ivar==k ? 1.0:0.0));
+			}
+		}
 	}
 	else
 	{
