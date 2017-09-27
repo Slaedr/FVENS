@@ -48,10 +48,44 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	{
 		int bsf = wbcm[im];
 
-		std::string fname = basename+"-surf_"+".dat";
+		std::string fname = basename+"-surf_w"+std::to_string(wbcm[im])+".dat";
 		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces, 3+NDIM);
 
+		std::ofstream fout(fname);
+		fout << "x \t y \t Cp  \t Cf \n";
+
 		// iterate over faces
+		for(a_int iface = 0; iface < m->gnbface(); iface++)
+		{
+			if(m->ggallfa(iface,3) == wbcm[im])
+			{
+				a_int lelem = m->gintfac(iface,0);
+				a_real n[NDIM];
+				for(int j = 0; j < NDIM; j++)
+					n[j] = m->ggallfa(iface,j);
+				const a_real len = m->ggallfa(iface,2);
+
+				// coords of face center
+				a_real ijp[NDIM];
+				ijp[0] = m->gintfac(iface,2);
+				ijp[1] = m->gintfac(iface,3);
+				a_real coord[NDIM];
+				for(int j = 0; j < NDIM; j++) 
+				{
+					coords[j] = 0;
+					for(int inofa = 0; inofa < m->gnnofa(); inofa++)
+						coord[j] += m->gcoords(ijp[inofa],j);
+					coords[j] /= m->gnnofa();
+				}
+
+				/** Pressure coefficient: C_p = (p - p_inf)/(rho_inf * v_inf^2)
+				 * = p* - p_inf* where *'s indicate non-dimensional values.
+				 * We note that p_inf* = 1/(gamma Minf).
+				 */
+			}
+		}
+
+		fout.close();
 	}
 }
 

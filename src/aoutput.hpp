@@ -48,8 +48,9 @@ public:
 	void exportVolumeData(const MVector& u, const std::string volfile) const;
 
 	/// Export surface data
-	/** We compute pressure, lift and drag coefficients for wall boundaries, and
+	/** We compute pressure and skin-friction coefficients for wall boundaries, and
 	 * normalized x- and y-velocities along other boundaries.
+	 * We also compute lift and drag for wall boundaries.
 	 * \sa Output::exportSurfaceData
 	 */
 	void exportSurfaceData(const MVector& u, const std::vector<int> wbcm,
