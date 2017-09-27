@@ -144,7 +144,7 @@ class VenkatakrishnanLimiter: public FaceDataComputation
 public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
 	 *             higher values improve convergence at the expense of some oscillations
-	 *             in the solution. Defaults to 2.0.
+	 *             in the solution.
 	 */
     VenkatakrishnanLimiter(const UMesh2dh* mesh, 
 			const amat::Array2d<a_real>* c_centres, 

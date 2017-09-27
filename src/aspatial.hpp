@@ -40,26 +40,6 @@ namespace acfd {
 template<short nvars>
 class Spatial
 {
-protected:
-	/// Mesh context
-	const UMesh2dh *const m;
-
-	/// Cell centers of both real cells and ghost cells
-	amat::Array2d<a_real> rc;
-
-	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
-	/// naface x nguass x ndim (in that order)
-	amat::Array2d<a_real>* gr;
-	
-	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
-	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg);
-
-	/// computes ghost cell centers assuming symmetry about the face
-	void compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg);
-
-	/// step length for finite difference Jacobian
-	const a_real eps;
-
 public:
 	/// Common setup required for finite volume discretizations
 	/** Computes and stores cell centre coordinates, ghost cells' centres, and 
@@ -104,6 +84,29 @@ public:
 			const a_real b, const MVector& w,
 			MVector& __restrict aux,
 			MVector& __restrict prod);
+
+	/// Computes gradients of field variables and stores them in the argument
+	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
+
+protected:
+	/// Mesh context
+	const UMesh2dh *const m;
+
+	/// Cell centers of both real cells and ghost cells
+	amat::Array2d<a_real> rc;
+
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
+	/// naface x nguass x ndim (in that order)
+	amat::Array2d<a_real>* gr;
+	
+	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
+	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg);
+
+	/// computes ghost cell centers assuming symmetry about the face
+	void compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg);
+
+	/// step length for finite difference Jacobian
+	const a_real eps;
 };
 
 /// Computes the integrated fluxes and their Jacobians for compressible flow
@@ -174,6 +177,8 @@ public:
 	 */
 	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A);
 #endif
+	
+	void getGradients(const MVector& u, MVector grad[NDIM]) const;
 
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
@@ -309,6 +314,8 @@ public:
 	
 	virtual void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A) = 0;
+	
+	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
 
 	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& up);
 
@@ -354,6 +361,8 @@ public:
 	
 	void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A);
+	
+	void getGradients(const MVector& u, MVector grad[NDIM]) const;
 
 	~DiffusionMA();
 

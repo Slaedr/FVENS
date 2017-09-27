@@ -28,7 +28,10 @@
 #define A_SMALL_NUMBER 1e-12
 
 #define NDIM 2
+
+/// Number of coupled variables for compressible flow computations
 #define NVARS 4
+
 #define NGAUSS 1
 
 #ifndef MESHDATA_DOUBLE_PRECISION

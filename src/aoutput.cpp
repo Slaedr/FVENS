@@ -4,11 +4,60 @@
 
 #include "aoutput.hpp"
 
-/* Writes multiple scalar data sets and one vector data set, all cell-centered data, to a file in VTU format.
- * If either x or y is a 0x0 matrix, it is ignored.
- * \param fname is the output vtu file name
- */
-void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, const amat::Array2d<double>& x, std::string scaname[], const amat::Array2d<double>& y, std::string vecname)
+namespace acfd {
+
+template <short nvars>
+Output<nvars>::Output(const UMesh2dh *const mesh, const Spatial<nvars> *const fv)
+	: m(mesh), space(fv)
+{ }
+
+FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const fv)
+	: Output<NVARS>(mesh, fv)
+{
+	//
+}
+
+void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
+{
+	// TODO
+}
+
+void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm, 
+		std::vector<int> obcm, std::string basename) const
+{
+	// Get conserved variables' gradients
+	MVector grad[NDIM];
+	for(int j = 0; j < NDIM; j++)
+		grad[j].resize(m->gnelem(), NVARS);
+
+	space->getGradients(u, grad);
+
+	// get number of faces in wall boundary and other boundary
+	
+	int nwbfaces = 0, nobfaces = 0;
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		for(int im = 0; im < static_cast<int>(wbcm.size()); im++)
+			if(m->ggallfa(iface,3) == wbcm[im]) nwbfaces++;
+		for(int im = 0; im < static_cast<int>(obcm.size()); im++)
+			if(m->ggallfa(iface,3) == obcm[im]) nobfaces++;
+	}
+
+	// Iterate over wall boundary markers
+	for(int im=0; im < static_cast<int>(wbcm.size()); im++)
+	{
+		int bsf = wbcm[im];
+
+		std::string fname = basename+"-surf_"+".dat";
+		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces, 3+NDIM);
+
+		// iterate over faces
+	}
+}
+
+void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, 
+		const amat::Array2d<double>& x, std::string scaname[], 
+		const amat::Array2d<double>& y, std::string vecname)
 {
 	int elemcode;
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
@@ -18,9 +67,8 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 
 	out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
 	out << "<UnstructuredGrid>\n";
-	out << "\t<Piece NumberOfPoints=\"" << m.gnpoin() << "\" NumberOfCells=\"" << m.gnelem() << "\">\n";
-
-	//out << "\t\t<CellData Scalars=\""<<scaname[0]<< "\" Vectors=\"" << vecname << "\">\n";
+	out << "\t<Piece NumberOfPoints=\"" << m.gnpoin() << "\" NumberOfCells=\"" << m.gnelem() 
+		<< "\">\n";
 	
 	if(x.msize()>0 || y.msize()>0) {
 		out << "\t\t<CellData ";
@@ -33,10 +81,10 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 	
 	//enter cell scalar data if available
 	if(x.msize() > 0) {
-		//cout << "aoutput: Writing scalars..\n";
 		for(int in = 0; in < nscalars; in++)
 		{
-			out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << scaname[in] << "\" Format=\"ascii\">\n";
+			out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << scaname[in] 
+				<< "\" Format=\"ascii\">\n";
 			for(int i = 0; i < m.gnelem(); i++)
 				out << "\t\t\t\t" << x.get(i,in) << '\n';
 			out << "\t\t\t</DataArray>\n";
@@ -46,7 +94,8 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 
 	//enter vector cell data if available
 	if(y.msize() > 0) {
-		out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << vecname << "\" NumberOfComponents=\"3\" Format=\"ascii\">\n";
+		out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << vecname 
+			<< "\" NumberOfComponents=\"3\" Format=\"ascii\">\n";
 		for(int i = 0; i < m.gnelem(); i++)
 		{
 			out << "\t\t\t\t";
@@ -141,9 +190,8 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 
 	out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
 	out << "<UnstructuredGrid>\n";
-	out << "\t<Piece NumberOfPoints=\"" << m.gnpoin() << "\" NumberOfCells=\"" << m.gnelem() << "\">\n";
-
-	//out << "\t\t<CellData Scalars=\""<<scaname[0]<< "\" Vectors=\"" << vecname << "\">\n";
+	out << "\t<Piece NumberOfPoints=\"" << m.gnpoin() << "\" NumberOfCells=\"" << m.gnelem() 
+		<< "\">\n";
 	
 	if(x.msize()>0 || y.msize()>0) {
 		out << "\t\t<PointData ";
@@ -156,10 +204,10 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 	
 	//enter cell scalar data if available
 	if(x.msize() > 0) {
-		//cout << "aoutput: Writing scalars..\n";
 		for(int in = 0; in < nscalars; in++)
 		{
-			out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << scaname[in] << "\" Format=\"ascii\">\n";
+			out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << scaname[in] 
+				<< "\" Format=\"ascii\">\n";
 			for(int i = 0; i < m.gnpoin(); i++)
 				out << "\t\t\t\t" << x.get(i,in) << '\n';
 			out << "\t\t\t</DataArray>\n";
@@ -169,7 +217,8 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 
 	//enter vector cell data if available
 	if(y.msize() > 0) {
-		out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << vecname << "\" NumberOfComponents=\"3\" Format=\"ascii\">\n";
+		out << "\t\t\t<DataArray type=\"Float64\" Name=\"" << vecname 
+			<< "\" NumberOfComponents=\"3\" Format=\"ascii\">\n";
 		for(int i = 0; i < m.gnpoin(); i++)
 		{
 			out << "\t\t\t\t";
@@ -263,7 +312,8 @@ void writeMeshToVtu(std::string fname, acfd::UMesh2dh& m)
 
 	out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
 	out << "<UnstructuredGrid>\n";
-	out << "\t<Piece NumberOfPoints=\"" << m.gnpoin() << "\" NumberOfCells=\"" << m.gnelem() << "\">\n";
+	out << "\t<Piece NumberOfPoints=\"" << m.gnpoin() << "\" NumberOfCells=\"" << m.gnelem() 
+		<< "\">\n";
 
 	//enter points
 	out << "\t\t<Points>\n";
@@ -311,4 +361,6 @@ void writeMeshToVtu(std::string fname, acfd::UMesh2dh& m)
 	out << "</VTKFile>";
 	out.close();
 	std::cout << "Vtu file written.\n";
+}
+
 }

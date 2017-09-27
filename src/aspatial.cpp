@@ -1377,6 +1377,27 @@ void FlowFV::compute_jacobian(const MVector& u,
 
 #endif
 
+void FlowFV::getGradients(const MVector& u, MVector grad[NDIM]) const
+{
+	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
+	}
+
+	amat::Array2d<a_real> dudx(m->gnelem(), NVARS), dudy(m->gnelem(), NVARS);
+	rec->compute_gradients(&u, &ug, &dudx, &dudy);
+
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int ivar = 0; ivar < NVARS; ivar++) {
+			grad[0](ielem,ivar) = dudx(ielem,ivar);
+			grad[1](ielem,ivar) = dudy(ielem,ivar);
+		}
+	}
+}
+
 void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 		amat::Array2d<a_real>& velocities)
 {
@@ -1731,6 +1752,28 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		}
 
 		A->updateDiagBlock(lelem*nvars, ll, nvars);
+	}
+}
+
+template <short nvars>
+void DiffusionMA<nvars>::getGradients(const MVector& u, MVector grad[NDIM]) const
+{
+	amat::Array2d<a_real> ug(m->gnbface(),nvars);
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		a_int lelem = m->gintfac(iface,0);
+		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
+	}
+
+	amat::Array2d<a_real> dudx(m->gnelem(), nvars), dudy(m->gnelem(), nvars);
+	rec->compute_gradients(&u, &ug, &dudx, &dudy);
+
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int ivar = 0; ivar < nvars; ivar++) {
+			grad[0](ielem,ivar) = dudx(ielem,ivar);
+			grad[1](ielem,ivar) = dudy(ielem,ivar);
+		}
 	}
 }
 
