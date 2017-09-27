@@ -1528,8 +1528,8 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	physics->getJacobianSoundSpeedWrtConserved(ur, dcj);
 	
 	// initially use dsli and dslj to get derivatives of Rij and...
-	dsli[0] = 0.5/sqrt(ur[0]/ul[0]) * (-ur[0])/(ul[0]*ul[0]);
-	dslj[0] = 0.5/sqrt(ur[0]/ul[0]) / ul[0];
+	dsli[0] = 0.5/Rij * (-ur[0])/(ul[0]*ul[0]);
+	dslj[0] = 0.5/Rij / ul[0];
 	for(int k = 1; k < NVARS; k++) {
 		dsli[k] = 0; dslj[k] = 0;
 	}
@@ -1546,28 +1546,31 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 
 	// derivatives of Roe velocities
 	a_real dvxiji[NVARS], dvxijj[NVARS], dvyiji[NVARS], dvyijj[NVARS];
+	const a_real rden2 = (Rij+1.0)*(Rij+1.0);
 	
-	// Note: vxij = Rij * ur[1]/ur[0] + ul[1]/ul[0]
-	dvxiji[0] = dsli[0]*ur[1]/ur[0] - ul[1]/(ul[0]*ul[0]);
-	dvxiji[1] = dsli[1]*ur[1]/ur[0] + 1.0/ul[0];
-	dvxiji[2] = dsli[2]*ur[1]/ur[0]; 
-	dvxiji[3] = dsli[3]*ur[1]/ur[0];
+	// Note: vxij = (Rij * ur[1]/ur[0] + ul[1]/ul[0]) / (Rij+1)
+	dvxiji[0] = ((dsli[0]*ur[1]/ur[0] -ul[1]/(ul[0]*ul[0]))*(Rij+1.0)-(Rij*vxj+vxi)*dsli[0])/rden2;
+	dvxiji[1] = ((dsli[1]*ur[1]/ur[0] + 1.0/ul[0])*(Rij+1.0)-(Rij*vxj+vxi)*dsli[1])/rden2;
+	dvxiji[2] = (dsli[2]*ur[1]/ur[0] *(Rij+1.0)- (Rij*vxj+vxi)*dsli[2])/rden2; 
+	dvxiji[3] = (dsli[3]*ur[1]/ur[0] *(Rij+1.0)- (Rij*vxj+vxi)*dsli[3])/rden2;
 
-	dvxijj[0] = dslj[0]*ur[1]/ur[0] + Rij/(ur[0]*ur[0])*(-ur[1]);
-	dvxijj[1] = dslj[1]*ur[1]/ur[0] + Rij/ur[0];
-	dvxijj[2] = dslj[2]*ur[1]/ur[0];
-	dvxijj[3] = dslj[3]*ur[1]/ur[0];
+	dvxijj[0] = ((dslj[0]*ur[1]/ur[0] +Rij/(ur[0]*ur[0])*(-ur[1]))*(Rij+1.0)-(Rij*vxj+vxi)*dslj[0])
+			/ rden2;
+	dvxijj[1] = ((dslj[1]*ur[1]/ur[0] +Rij/ur[0])*(Rij+1.0)-(Rij*vxj+vxi)*dslj[1]) / rden2;
+	dvxijj[2] = (dslj[2]*ur[1]/ur[0] *(Rij+1.0) - (Rij*vxj+vxi)*dslj[2]) / rden2;
+	dvxijj[3] = (dslj[3]*ur[1]/ur[0] *(Rij+1.0) - (Rij*vxj+vxi)*dslj[3]) / rden2;
 
-	// Note: vyij = Rij * ur[2]/ur[0] + ul[2]/ul[0]
-	dvyiji[0] = ur[2]/ur[0]*dsli[0] - ul[2]/(ul[0]*ul[0]);
-	dvyiji[1] = ur[2]/ur[0]*dsli[1];
-	dvyiji[2] = ur[2]/ur[0]*dsli[2] + 1.0/ul[0];
-	dvyiji[3] = ur[2]/ur[0]*dsli[3];
+	// Note: vyij = (Rij *ur[2]/ur[0] + ul[2]/ul[0] ) / (Rij+1)
+	dvyiji[0] = ((ur[2]/ur[0]*dsli[0] - ul[2]/(ul[0]*ul[0]))*(Rij+1.0)-(Rij*vyj+vyi)*dsli[0])/rden2;
+	dvyiji[1] = (ur[2]/ur[0]*dsli[1] *(Rij+1.0) - (Rij*vyj+vyi)*dsli[1]) / rden2;
+	dvyiji[2] = ((ur[2]/ur[0]*dsli[2] + 1.0/ul[0])*(Rij+1.0) -(Rij*vyj+vyi)*dsli[2]) / rden2;
+	dvyiji[3] = (ur[2]/ur[0]*dsli[3] *(Rij+1.0) -(Rij*vyj+vyi)*dsli[3]) / rden2;
 
-	dvyijj[0] = dslj[0]*ur[2]/ur[0] + Rij/(ur[0]*ur[0])*(-ur[2]);
-	dvyijj[1] = dslj[1]*ur[2]/ur[0];
-	dvyijj[2] = dslj[2]*ur[2]/ur[0] + Rij/ur[0];
-	dvyijj[3] = dslj[3]*ur[2]/ur[0];
+	dvyijj[0] = ((dslj[0]*ur[2]/ur[0] + Rij/(ur[0]*ur[0])*(-ur[2]))*(Rij+1.0) 
+		-(Rij*vyj+vyi)*dslj[0] ) / rden2;
+	dvyijj[1] = (dslj[1]*ur[2]/ur[0] *(Rij+1.0) -(Rij*vyj+vyi)*dslj[1]) / rden2;
+	dvyijj[2] = ((dslj[2]*ur[2]/ur[0] + Rij/ur[0])*(Rij+1.0) -(Rij*vyj+vyi)*dslj[2]) / rden2;
+	dvyijj[3] = (dslj[3]*ur[2]/ur[0] *(Rij+1.0) - (Rij*vyj+vyi)*dslj[3]) / rden2;
 
 	// derivative of Roe normal velocity and Roe velocity magnitude
 	for(int k = 0; k < NVARS; k++) {
@@ -1578,16 +1581,17 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	}
 
 	// derivative of Roe speed of sound
+	// cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) ) = sqrt( (g-1)*((Rij*Hj+Hi)/(Rij+1) - vm2ij*0.5) )
 	for(int k = 0; k < NVARS; k++) {
 		dciji[k] = 0.5/cij*(g-1.0)
-		  * ((dsli[k]*Hj+dsri[k])*(Rij+1)-(Rij*Hj+Hi)*dsli[k] - 0.5*dvm2iji[k]);
+		  * (((dsli[k]*Hj+dsri[k])*(Rij+1)-(Rij*Hj+Hi)*dsli[k])/((Rij+1)*(Rij+1)) -0.5*dvm2iji[k]);
 		dcijj[k] = 0.5/cij*(g-1.0)
 		  * (((dslj[k]*Hj+Rij*dsrj[k])*(Rij+1) - (Rij*Hj+Hi)*dslj[k])/((Rij+1)*(Rij+1))
-		    - 0.5*dm2ijj[k] );
+		    - 0.5*dvm2ijj[k] );
 	}
 
 	// We no longer need derivatives of Rij, Hi or Hj, so
-	// we now use dsl and dsr for the signal speeds sl and sr.
+	// we now use dsl i/j and dsr i/j for the signal speeds sl and sr.
 
 	// estimate signal speeds 
 	a_real sr, sl;
@@ -1618,26 +1622,24 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	}
 
 	const a_real num = ( ur[0]*vnj*(sr-vnj) - ul[0]*vni*(sl-vni) + pi-pj );
-	const a_real denom2 = ((ur[0]*(sr-vnj) - ul[0]*(sl-vni))*(ur[0]*(sr-vnj) - ul[0]*(sl-vni)));
+	const a_real denom = (ur[0]*(sr-vnj) - ul[0]*(sl-vni));
 
-	const a_real sm = num / ( ur[0]*(sr-vnj) - ul[0]*(sl-vni) );
+	const a_real sm = num / denom;
 
 	dsmi[0]= ( (ur[0]*vnj*dsri[0] -vni*(sl-vni)-ul[0]*dvni[0]*(sl-vni)-ul[0]*vni*(dsli[0]-dvni[0])
-		+ dpi[0] )*(ur[0]*(sr-vnj)-ul[0]*(sl-vni))
-		-num*(ur[0]*dsri[0] - (sl-vni)-ul[0]*(dsli[0]-dvni[0])) ) / denom2;
+		+ dpi[0] )*denom
+		-num*(ur[0]*dsri[0] - (sl-vni)-ul[0]*(dsli[0]-dvni[0])) ) / (denom*denom);
 
 	dsmj[0]= ( (vnj*(sr-vnj)+ur[0]*dvnj[0]*(sr-vnj)+ur[0]*vnj*(dsrj[0]-dvnj[0]) -ul[0]*vni*dslj[0]
-		- dpj[0])*(ur[0]*(sr-vnj) - ul[0]*(sl-vni))
-		-num*((sr-vnj)+ur[0]*(dsrj[0]-dvnj[0]) - ul[0]*dslj[0]) ) / denom2;
+		- dpj[0])*denom
+		-num*((sr-vnj)+ur[0]*(dsrj[0]-dvnj[0]) - ul[0]*dslj[0]) ) / (denom*denom);
 	
 	for(int k = 1; k < NVARS; k++) {
 		dsmi[k]= ( (ur[0]*vnj*dsri[k] - ul[0]*(dvni[k]*(sl-vni)+vni*(dsli[k]-dvni[k])) +dpi[k])
-		  * (ur[0]*(sr-vnj)-ul[0]*(sl-vni))
-		  - num *(ur[0]*dsri[k] -ul[0]*(dsli[k]-dvni[k])) ) / denom2;
+		  * denom - num *(ur[0]*dsri[k] -ul[0]*(dsli[k]-dvni[k])) ) / (denom*denom);
 
 		dsmj[k]= ( (ur[0]*(dvnj[k]*(sr-vnj)+vnj*(dsrj[k]-dvnj[k])) -ul[0]*vni*dslj[k] -dpj[k])
-			*(ur[0]*(sr-vnj)-ul[0]*(sl-vni))
-			-num * (ur[0]*(dsrj[k]-dvnj[k]) - ul[0]*dslj[k]) ) / denom2;
+			* denom - num * (ur[0]*(dsrj[k]-dvnj[k]) - ul[0]*dslj[k]) ) / (denom*denom);
 	}
 
 	// compute fluxes
@@ -1682,12 +1684,12 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 
 		dutempi[0][0]=ul[0]*((dsli[0]-dvni[0])*(sl-sm)-(sl-vni)*(dsli[0]-dsmi[0]))/((sl-sm)*(sl-sm))
 			+ (sl-vni)/(sl-sm);
-		dutempj[0][0]=ul[0]*(dslj[0]*(sl-sm)-(sl-vni)*(dsli[0]-dsmi[0])) / ((sl-sm)*(sl-sm));
+		dutempj[0][0]=ul[0]*(dslj[0]*(sl-sm)-(sl-vni)*(dslj[0]-dsmj[0])) / ((sl-sm)*(sl-sm));
 		for(int k = 1; k < NVARS; k++) 
 		{
 			dutempi[0][k]=ul[0]*((dsli[k]-dvni[k])*(sl-sm)-(sl-vni)*(dsli[k]-dsmi[k]))
 				/ ((sl-sm)*(sl-sm));
-			dutempj[0][0]=ul[0]*(dslj[k]*(sl-sm)-(sl-vni)*(dsli[k]-dsmi[k])) / ((sl-sm)*(sl-sm));
+			dutempj[0][k]=ul[0]*(dslj[k]*(sl-sm)-(sl-vni)*(dslj[k]-dsmj[k])) / ((sl-sm)*(sl-sm));
 		}
 
 		utemp[1] = ( (sl-vni)*ul[1] + (pstar-pi)*n[0] )/(sl-sm);
@@ -1741,8 +1743,8 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 			for(int k = 0; k < NVARS; k++)
 			{
 				dfdl[ivar*NVARS+k] += dsli[k]*(utemp[ivar]-ul[ivar]) 
-					+ sl*(dutempi[ivar*NVARS+k] - (ivar==k ? 1.0 : 0.0));
-				dfdr[ivar*NVARS+k] += dslj[k]*(utemp[ivar]-ul[ivar]) + sl*(dutempj[ivar*NVARS+k]);
+					+ sl*(dutempi[ivar][k] - (ivar==k ? 1.0 : 0.0));
+				dfdr[ivar*NVARS+k] += dslj[k]*(utemp[ivar]-ul[ivar]) + sl*dutempj[ivar][k];
 			}
 		}
 	}
@@ -1781,7 +1783,7 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 				((sr-sm)*(sr-sm));
 		}
 		dutempi[0][0] = ur[0]*(dsri[0]*(sr-sm)-(sr-vnj)*(dsri[0]-dsmi[0])) / ((sr-sm)*(sr-sm));
-		dutempj[0][0] = ur[0]*((dsrj[k]-dvnj[k])*(sr-sm)-(sr-vnj)*(dsrj[k]-dsmj[k])) / 
+		dutempj[0][0] = ur[0]*((dsrj[0]-dvnj[0])*(sr-sm)-(sr-vnj)*(dsrj[0]-dsmj[0])) / 
 			((sr-sm)*(sr-sm)) + (sr-vnj)/(sr-sm);
 
 		utemp[1] = ( (sr-vnj)*ur[1] + (pstar-pj)*n[0] )/(sr-sm);
@@ -1822,13 +1824,13 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 				-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsri[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
 			dutempj[3][k]= (((dsrj[k]-dvnj[k])*ur[3] -dpj[k]*vnj-pj*dvnj[k] 
 				+dpsj[k]*sm+pstar*dsmj[k])*(sr-sm) 
-				-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsrj[k]-dsmi[k])) / ((sr-sm)*(sr-sm));
+				-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsrj[k]-dsmj[k])) / ((sr-sm)*(sr-sm));
 		}
 		dutempi[3][3] = ((dsri[3]*ur[3] +dpsi[3]*sm+pstar*dsmi[3])*(sr-sm)
 			-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsri[3]-dsmi[3])) / ((sr-sm)*(sr-sm));
 		dutempj[3][3]= (((dsrj[3]-dvnj[3])*ur[3]+(sr-vnj) -dpj[3]*vnj-pj*dvnj[3] 
 			+dpsj[3]*sm+pstar*dsmj[3])*(sr-sm) 
-			-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsrj[3]-dsmi[3])) / ((sr-sm)*(sr-sm));
+			-((sr-vnj)*ur[3]-pj*vnj+pstar*sm)*(dsrj[3]-dsmj[3])) / ((sr-sm)*(sr-sm));
 
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
@@ -1837,7 +1839,7 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 			for(int k = 0; k < NVARS; k++) {
 				dfdl[ivar*NVARS+k] += dsri[k]*(utemp[ivar]-ur[ivar]) +sr*dutempi[ivar][k];
 				dfdr[ivar*NVARS+k] += dsrj[k]*(utemp[ivar]-ur[ivar])
-										+ sr*(dutempj[k] - (ivar==k ? 1.0:0.0));
+										+ sr*(dutempj[ivar][k] - (ivar==k ? 1.0:0.0));
 			}
 		}
 	}

@@ -1328,6 +1328,10 @@ void FlowFV::compute_jacobian(const MVector& u,
 		
 		compute_boundary_state(iface, &u(lelem,0), uface);
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
+
+		if(computeViscous) {
+			computeViscousFluxJacobian(iface, &u(lelem,0), uface, &left(0,0), &right(0,0));
+		}
 		
 		// multiply by length of face and negate, as -ve of L is added to D
 		left = -len*left;
@@ -1349,6 +1353,10 @@ void FlowFV::compute_jacobian(const MVector& u,
 	
 		/// NOTE: the values of L and U get REPLACED here, not added to
 		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
+
+		if(computeViscous) {
+			computeViscousFluxJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
+		}
 
 		L *= len; U *= len;
 		if(A->type()=='d') {

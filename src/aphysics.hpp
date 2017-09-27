@@ -98,10 +98,12 @@ public:
 		a_real p =getPressureFromConserved(uc);
 		a_real dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
 		getJacobianPressureWrtConserved(uc, dp);
+
+		const a_real c = std::sqrt(g*p/uc[0]);
 		
-		dc[0] += 0.5/std::sqrt(g*p/uc[0]) * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
+		dc[0] += 0.5/c * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
 		for(int i = 1; i < NVARS; i++)
-			dc[i] += 0.5/std::sqrt(g*p/uc[0]) * g*dp[i]/uc[0];
+			dc[i] += 0.5/c * g*dp[i]/uc[0];
 	}
 
 	/// Computes an entropy \f$ p/ \rho^\gamma \f$ from conserved variables
