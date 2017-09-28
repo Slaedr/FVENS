@@ -43,7 +43,11 @@ protected:
 class FlowOutput : public Output<NVARS>
 {
 public:
-	FlowOutput(const UMesh2dh *const m, const Spatial<NVARS> *const fv);
+	/// Sets required data
+	/** \param[in] angleOfAttack The angle of attack in radians
+	 */
+	FlowOutput(const UMesh2dh *const m, const Spatial<NVARS> *const fv,
+			const IdealGasPhysics *const physics, const a_real angleOfAttack);
 	
 	void exportVolumeData(const MVector& u, const std::string volfile) const;
 
@@ -59,6 +63,8 @@ public:
 protected:
 	using Output<NVARS>::m;
 	using Output<NVARS>::space;
+	const IdealGasPhysics *const phy;
+	const a_real av[NDIM];				///< Unit vector in the direction of flow
 };
 
 /** \brief Writes multiple scalar data sets and one vector data set, 

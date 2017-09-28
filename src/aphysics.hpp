@@ -367,6 +367,12 @@ public:
 			dkhat[k] = dmuhat[k]/(Minf*Minf*(g-1.0)*Pr);
 	}
 
+	/// Returns the non-dimensionalized free-stream pressure
+	a_real getFreestreamPressure() const
+	{
+		return 1.0/(g*Minf*Minf);
+	}
+
 	/// Adiabatic constant
 	const a_real g;
 	/// Free-stream Mach number

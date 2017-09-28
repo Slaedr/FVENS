@@ -11,10 +11,10 @@ Output<nvars>::Output(const UMesh2dh *const mesh, const Spatial<nvars> *const fv
 	: m(mesh), space(fv)
 { }
 
-FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const fv)
-	: Output<NVARS>(mesh, fv)
+FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const fv,
+		const IdealGasPhysics *const physics, const a_real aoa)
+	: Output<NVARS>(mesh, fv), phy(physics), av[0]{std::cos(aoa)}, av[1]{std::sin(aoa)}
 {
-	//
 }
 
 void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
@@ -42,6 +42,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		for(int im = 0; im < static_cast<int>(obcm.size()); im++)
 			if(m->ggallfa(iface,3) == obcm[im]) nobfaces++;
 	}
+	
+	a_real pinf = phy->getFreestreamPressure();
 
 	// Iterate over wall boundary markers
 	for(int im=0; im < static_cast<int>(wbcm.size()); im++)
@@ -50,6 +52,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 
 		std::string fname = basename+"-surf_w"+std::to_string(wbcm[im])+".dat";
 		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces, 3+NDIM);
+		a_real totallen = 0;		// total area of the surface with this boundary marker
 
 		std::ofstream fout(fname);
 		fout << "x \t y \t Cp  \t Cf \n";
@@ -64,6 +67,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				for(int j = 0; j < NDIM; j++)
 					n[j] = m->ggallfa(iface,j);
 				const a_real len = m->ggallfa(iface,2);
+				totallen += len;
 
 				// coords of face center
 				a_real ijp[NDIM];
@@ -72,18 +76,68 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				a_real coord[NDIM];
 				for(int j = 0; j < NDIM; j++) 
 				{
-					coords[j] = 0;
+					coord[j] = 0;
 					for(int inofa = 0; inofa < m->gnnofa(); inofa++)
 						coord[j] += m->gcoords(ijp[inofa],j);
-					coords[j] /= m->gnnofa();
+					coord[j] /= m->gnnofa();
+					
+					output(iface,j) = coord[j];
 				}
 
 				/** Pressure coefficient: C_p = (p - p_inf)/(rho_inf * v_inf^2)
 				 * = p* - p_inf* where *'s indicate non-dimensional values.
 				 * We note that p_inf* = 1/(gamma Minf).
 				 */
+				output(iface, NDIM) = phy->getPressureFromConserved(&u(lelem,0)) - pinf;
+
+				/** Skin friction coefficient \f% C_f = \tau_w / (\frac12 \rho v_\infty^2) \f$.
+				 * 
+				 * We can define \f$ \tau_w \f$, the wall shear stress, as
+				 * \f$ \tau_w = (\mathbf{\Tau} \hat{\mathbf{n}}).\hat{\mathbf{t}} \f$
+				 * where \f$ \mathbf{\Tau} \f$ is the viscous stress tensor, 
+				 * \f$ \hat{\mathbf{n}} \f$ is the unit normal to the face and 
+				 * \f$ \hat{\mathbf{t}} \f$ is a consistent unit tangent to the face.
+				 * 
+				 * Note that because of our non-dimensionalization,
+				 * \f$ C_f = \hat{\mu} \tau_w / 2 \f$.
+				 *
+				 * But we could also use, for incompressible flow,
+				 * \f$ \tau_w = \mu \nabla\mathbf{u} \hat{\mathbf{n}} . \hat{\mathbf{t}} \f$.
+				 */
+
+				// non-dim viscosity / Re_inf
+				a_real muhat = phy->getViscosityCoeffFromConserved(&u(lelem,0));
+				a_real lhat = -2.0/3.0 * muhat;
+
+				// velocity gradient tensor
+				a_real gradu[NDIM][NDIM];
+				gradu[0][0] = (grad[0](lelem,1)*u(lelem,0)-u(lelem,1)*grad[0](lelem,0))
+				                / (u(lelem,0)*u(lelem,0));
+				gradu[0][1] = (grad[1](lelem,1)*u(lelem,0)-u(lelem,1)*grad[1](lelem,0))
+				                / (u(lelem,0)*u(lelem,0));
+				gradu[1][0] = (grad[0](lelem,2)*u(lelem,0)-u(lelem,2)*grad[0](lelem,0))
+				                / (u(lelem,0)*u(lelem,0));
+				gradu[1][1] = (grad[1](lelem,2)*u(lelem,0)-u(lelem,2)*grad[1](lelem,0))
+				                / (u(lelem,0)*u(lelem,0));
+
+				// stress tensor
+				a_real tau[NDIM][NDIM];
+				a_real divu = gradu[0][0] + gradu[1][1];
+				tau[0][0] = lhat*divu + 2.0*muhat*gradu[0][0];
+				tau[0][1] = muhat*(grad[0][1]+grad[1][0]);
+				tau[1][0] = tau[0][1];
+				tau[1][1] = lhat*divu + 2.0*muhat*gradu[1][1];
+
+				a_real tauw = -tau[0][0]*n[0]*n[1] - tau[0][1]*n[1]*n[1]
+					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];
+
+				output(iface, NDIM+1) = tauw/2.0;
+
+				// TODO: add contributions to Cdp, Cdf
 			}
 		}
+
+		// TODO: write out the output
 
 		fout.close();
 	}
