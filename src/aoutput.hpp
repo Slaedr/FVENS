@@ -64,7 +64,7 @@ protected:
 	using Output<NVARS>::m;
 	using Output<NVARS>::space;
 	const IdealGasPhysics *const phy;
-	const a_real av[NDIM];				///< Unit vector in the direction of flow
+	const a_real av[NDIM];				///< Unit vector in the direction of freestream flow
 };
 
 /** \brief Writes multiple scalar data sets and one vector data set, 

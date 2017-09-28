@@ -13,7 +13,7 @@ Output<nvars>::Output(const UMesh2dh *const mesh, const Spatial<nvars> *const fv
 
 FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const fv,
 		const IdealGasPhysics *const physics, const a_real aoa)
-	: Output<NVARS>(mesh, fv), phy(physics), av[0]{std::cos(aoa)}, av[1]{std::sin(aoa)}
+	: Output<NVARS>(mesh, fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
 {
 }
 
@@ -34,30 +34,35 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 
 	// get number of faces in wall boundary and other boundary
 	
-	int nwbfaces = 0, nobfaces = 0;
+	std::vector<int> nwbfaces(wbcm.size(),0), nobfaces(obcm.size(),0);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		for(int im = 0; im < static_cast<int>(wbcm.size()); im++)
-			if(m->ggallfa(iface,3) == wbcm[im]) nwbfaces++;
+			if(m->ggallfa(iface,3) == wbcm[im]) nwbfaces[im]++;
 		for(int im = 0; im < static_cast<int>(obcm.size()); im++)
-			if(m->ggallfa(iface,3) == obcm[im]) nobfaces++;
+			if(m->ggallfa(iface,3) == obcm[im]) nobfaces[im]++;
 	}
 	
 	a_real pinf = phy->getFreestreamPressure();
 
+	// unit vector normal to the free-stream flow direction
+	a_real flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
+
 	// Iterate over wall boundary markers
 	for(int im=0; im < static_cast<int>(wbcm.size()); im++)
 	{
-		int bsf = wbcm[im];
-
 		std::string fname = basename+"-surf_w"+std::to_string(wbcm[im])+".dat";
-		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces, 3+NDIM);
-		a_real totallen = 0;		// total area of the surface with this boundary marker
-
 		std::ofstream fout(fname);
+		
+		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces[im], 2+NDIM);
+
+		a_int facecoun = 0;			// face iteration counter for this boundary marker
+		a_real totallen = 0;		// total area of the surface with this boundary marker
+		a_real Cdf=0, Cdp=0, Cl=0;
+
 		fout << "x \t y \t Cp  \t Cf \n";
 
-		// iterate over faces
+		// iterate over faces having this boundary marker
 		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
 			if(m->ggallfa(iface,3) == wbcm[im])
@@ -81,14 +86,15 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 						coord[j] += m->gcoords(ijp[inofa],j);
 					coord[j] /= m->gnnofa();
 					
-					output(iface,j) = coord[j];
+					output(facecoun,j) = coord[j];
 				}
 
-				/** Pressure coefficient: C_p = (p - p_inf)/(rho_inf * v_inf^2)
+				/** Pressure coefficient: 
+				 * \f$ C_p = (p-p_\infty)/(\frac12 rho_\infty * v_\infty^2) \f$
 				 * = p* - p_inf* where *'s indicate non-dimensional values.
-				 * We note that p_inf* = 1/(gamma Minf).
+				 * We note that p_inf* = 1/(gamma Minf^2).
 				 */
-				output(iface, NDIM) = phy->getPressureFromConserved(&u(lelem,0)) - pinf;
+				output(facecoun, NDIM) = (phy->getPressureFromConserved(&u(lelem,0)) - pinf)/2.0;
 
 				/** Skin friction coefficient \f% C_f = \tau_w / (\frac12 \rho v_\infty^2) \f$.
 				 * 
@@ -101,7 +107,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				 * Note that because of our non-dimensionalization,
 				 * \f$ C_f = \hat{\mu} \tau_w / 2 \f$.
 				 *
-				 * But we could also use, for incompressible flow,
+				 * But we could maybe also use, for incompressible flow,
 				 * \f$ \tau_w = \mu \nabla\mathbf{u} \hat{\mathbf{n}} . \hat{\mathbf{t}} \f$.
 				 */
 
@@ -124,20 +130,102 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				a_real tau[NDIM][NDIM];
 				a_real divu = gradu[0][0] + gradu[1][1];
 				tau[0][0] = lhat*divu + 2.0*muhat*gradu[0][0];
-				tau[0][1] = muhat*(grad[0][1]+grad[1][0]);
+				tau[0][1] = muhat*(gradu[0][1]+gradu[1][0]);
 				tau[1][0] = tau[0][1];
 				tau[1][1] = lhat*divu + 2.0*muhat*gradu[1][1];
 
 				a_real tauw = -tau[0][0]*n[0]*n[1] - tau[0][1]*n[1]*n[1]
 					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];
 
-				output(iface, NDIM+1) = tauw/2.0;
+				output(iface, NDIM+1) = 2.0*tauw;
 
-				// TODO: add contributions to Cdp, Cdf
+				// add contributions to Cdp, Cdf and Cl
+				
+				// face normal dot free-stream direction
+				const a_real ndotf = n[0]*av[0]+n[1]*av[1];
+				// face normal dot "up" direction perpendicular to free stream
+				const a_real ndotnf = n[0]*flownormal[0]+n[1]*flownormal[1];
+				// face tangent dot free-stream direction
+				const a_real tdotf = -n[1]*av[0]+n[0]*av[1];
+
+				Cdp += output(facecoun,NDIM)*ndotf*len;
+				Cdf += output(facecoun,NDIM+1)*tdotf*len;
+				Cl += output(facecoun,NDIM)*ndotnf*len;
+
+				facecoun++;
 			}
 		}
 
-		// TODO: write out the output
+		// Normalize drag and lift by reference area
+		Cdp /= totallen; Cdf /= totallen; Cl /= totallen;
+
+		// write out the output
+
+		for(a_int i = 0; i < output.rows(); i++)
+		{
+			for(int j = 0; j < output.cols(); j++)
+				fout << "  " << output(i,j);
+			fout << '\n';
+		}
+
+		fout << "# Cl      Cdp      Cdf\n";
+		fout << "# " << Cl << "  " << Cdp << "  " << Cdf << '\n';
+
+		fout.close();
+	}
+
+	// Iterate over `other' boundary markers and compute normalized velocities
+	
+	for(int im=0; im < static_cast<int>(obcm.size()); im++)
+	{
+		std::string fname = basename+"-surf_o"+std::to_string(obcm[im])+".dat";
+		std::ofstream fout(fname);
+		
+		Matrix<a_real,Dynamic,Dynamic> output(nobfaces[im], 2+NDIM);
+		a_int facecoun = 0;
+
+		fout << "#   x         y          u           v\n";
+
+		for(a_int iface = 0; iface < m->gnbface(); iface++)
+		{
+			if(m->ggallfa(iface,3) == obcm[im])
+			{
+				a_int lelem = m->gintfac(iface,0);
+				/*a_real n[NDIM];
+				for(int j = 0; j < NDIM; j++)
+					n[j] = m->ggallfa(iface,j);
+				const a_real len = m->ggallfa(iface,2);*/
+
+				// coords of face center
+				a_real ijp[NDIM];
+				ijp[0] = m->gintfac(iface,2);
+				ijp[1] = m->gintfac(iface,3);
+				a_real coord[NDIM];
+				for(int j = 0; j < NDIM; j++) 
+				{
+					coord[j] = 0;
+					for(int inofa = 0; inofa < m->gnnofa(); inofa++)
+						coord[j] += m->gcoords(ijp[inofa],j);
+					coord[j] /= m->gnnofa();
+					
+					output(facecoun,j) = coord[j];
+				}
+
+				output(facecoun,NDIM) =  u(lelem,1)/u(lelem,0);
+				output(facecoun,NDIM+1)= u(lelem,2)/u(lelem,0);
+
+				facecoun++;
+			}
+		}
+		
+		// write out the output
+
+		for(a_int i = 0; i < output.rows(); i++)
+		{
+			for(int j = 0; j < output.cols(); j++)
+				fout << "  " << output(i,j);
+			fout << '\n';
+		}
 
 		fout.close();
 	}
