@@ -129,6 +129,11 @@ public:
 	 * \param[in] useConstVisc Set true to use constant free-stream viscosity throughout
 	 * \param[in] isothermal_marker The boundary marker in the mesh file corresponding to
 	 *   isothermal wall boundaries
+	 * \param[in] farfield_marker ID for boundaries where farfield conditions are imposed in ghost
+	 *   cells
+	 * \param[in] inflowoutflow_marker ID for boundaries where farfield condititions are imposed in
+	 *   ghost cells of inflow boundaries, and only farfield pressure is imposed in ghost cells
+	 *   of outflow boundaries
 	 * \param[in] extrap_marker Boundary marker for extrapolation BC
 	 * \param[in] isothermal_Temperature Wall temperature boundary value in Kelvin; this is
 	 *   divided by free-stream temperature in this routine and the non-dimensional value is stored
@@ -144,7 +149,8 @@ public:
 		const a_real Reinf, const a_real Pr, const a_real aoa, 
 		const bool compute_viscous, const bool useConstVisc,
 		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker, 
-		const int slip_marker, const int inflowoutflow_marker, const int extrap_marker,
+		const int slip_marker, const int farfield_marker, const int inflowoutflow_marker,
+		const int extrap_marker,
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel, 
 		const a_real adiabisobaric_Temperature, const a_real adiabisobaric_TangVel, 
 		const a_real adiabisobaric_Pressure,
@@ -230,7 +236,8 @@ protected:
 	const int isothermalbaric_wall_id;			/**< Marker for adiabatic wall with a pressure value 
 													additionally imposed */
 	const int slip_wall_id;						///< Boundary marker corresponding to solid wall
-	const int inflow_outflow_id;				///< Boundary marker corresponding to inflow/outflow
+	const int farfield_id;				///< Boundary marker corresponding to farfield
+	const int inflowoutflow_id;			///< Boundary marker corresponding to inflow/outflow
 	const int extrap_id;						///< Marker for extrapolation boundary
 
 	const a_real isothermal_wall_temperature;      ///< Temperature imposed at isothermal wall

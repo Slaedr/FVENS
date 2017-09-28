@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-cylinder/grids/2dcylstruct4.msh
+../testcases/visc-cylinder/grids/sqcylquad3.msh
 ---Output-file
 ../data/vcyl4.vtu
 ---Log-file-for-runtimes
@@ -29,6 +29,8 @@ NO
 ---Slip-wall-marker
 -1
 ---Farfield-marker
+-1
+---Inflow-outflow-marker
 4
 ---Extrapolation-marker
 -1
@@ -57,9 +59,9 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-25.0
+200.0
 ---final-CFL
-25.0
+200.0
 ---ramp-start-step-and-end-step
 400 500
 ---Tolerance
@@ -70,11 +72,11 @@ IMPLICIT
 ---use-first-order-initial-condition
 1
 ---CFL-for-initialization-run
-15.0
+5.0
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-200
+400
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 HLL
@@ -85,7 +87,7 @@ b
 ---linear-solver(RICHARDSON,BCGSTB,GMRES)
 RICHARDSON
 ---Linear-solver-tolerance
-1e-3
+1e-2
 ---Linear-solver-max-iterations-initial
 80
 ---Linear-solver-max-iterations-end
@@ -95,4 +97,4 @@ RICHARDSON
 ---preconditioner(J=Jacobi,SGS,ILU0)
 ILU0
 ---preconditioner-build-and-application-sweeps
-3 3
+1 1

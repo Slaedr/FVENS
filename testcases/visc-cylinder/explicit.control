@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-cylinder/grids/2dcylstruct3.msh
+../testcases/visc-cylinder/grids/sqcylquad3.msh
 ---Output-file
-../data/vcyl3.vtu
+../data/vsqcyl3.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -29,6 +29,8 @@ NO
 ---Slip-wall-marker
 -1
 ---Farfield-marker
+-1
+---Inflow-outflow-marker
 4
 ---Extrapolation-marker
 -1

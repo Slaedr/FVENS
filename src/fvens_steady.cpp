@@ -18,19 +18,21 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	string constvisc;
+	string constvisc, surfnamepref, volnamepref, isVolOutReq;
 	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
 		   firstcfl, firsttolerance;
 	double Reinf=0, Tinf=0, Pr=0, gamma, twalltemp=0, twallvel = 0;
 	double tpwalltemp=0, tpwallpressure=0, tpwallvel=0, adiawallvel;
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, 
-		restart_vecs, farfield_marker, slipwall_marker, isothermalwall_marker=-1,
+		restart_vecs, farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker=-1,
 		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, extrap_marker=-1;
+	int out_nwalls, out_nothers;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
 	bool use_matrix_free, lognres, reconstPrim, useconstvisc=false, viscsim=false,
 		 order2 = true;
 	char mattype, dumc;
+	std::vector<int> lwalls, lothers;
 
 	std::getline(control,dum); control >> meshfile;
 	control >> dum; control >> outf;
@@ -54,9 +56,10 @@ int main(int argc, char* argv[])
 	if(inittype == 1) {
 		control >> dum; control >> initcondfile;
 	}
-	control.get(dumc); std::getline(control,dum);
+	control.get(dumc); std::getline(control,dum); // FIXME
 	control >> dum; control >> slipwall_marker;
 	control >> dum; control >> farfield_marker;
+	control >> dum; control >> inout_marker;
 	control >> dum; control >> extrap_marker;
 	if(viscsim) {
 		std::getline(control,dum); std::getline(control,dum); control >> isothermalwall_marker;
@@ -67,6 +70,24 @@ int main(int argc, char* argv[])
 		std::getline(control,dum); std::getline(control,dum); control >> tpwalltemp >> tpwallvel 
 			>> tpwallpressure;
 	}
+	control >> dum; control >> out_nwalls;
+	lwalls.resize(out_nwalls);
+	control >> dum;
+	for(int i = 0; i < out_nwalls; i++)
+		control >> lwalls[i];
+	control >> dum; control >> out_nothers;
+	lothers.resize(out_nothers);
+	if(out_nothers > 0) {
+		control >> dum;
+		for(int i = 0; i < out_nwalls; i++)
+			control >> lothers[i];
+	}
+	control >> dum; control >> surfnamepref;
+	control >> dum; control >> isVolOutReq;
+	if(isVolOutReq == "YES") {
+		control >> dum; control >> volnamepref;
+	}
+
 	control >> dum;
 	control >> dum; control >> invflux;
 	control >> dum; control >> reconst;
@@ -139,13 +160,13 @@ int main(int argc, char* argv[])
 	std::cout << "Setting up main spatial scheme.\n";
 	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-			slipwall_marker, farfield_marker, extrap_marker,
+			slipwall_marker, farfield_marker, inout_marker, extrap_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
 	std::cout << "Setting up spatial scheme for the initial guess.\n";
 	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-			slipwall_marker, farfield_marker, extrap_marker,
+			slipwall_marker, farfield_marker, inout_marker, extrap_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",false,true);
 	
@@ -174,9 +195,10 @@ int main(int argc, char* argv[])
 	startprob.initializeUnknowns(false, initcondfile, time->unknowns());
 
 	// computation
+	
 	time->solve(logfile);
 
-	// export output
+	// export output to VTU
 
 	Array2d<a_real> scalars;
 	Array2d<a_real> velocities;
@@ -184,6 +206,12 @@ int main(int argc, char* argv[])
 
 	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
+
+	// export surface data like pressure coeff etc
+	IdealGasPhysics phy(gamma, Minf, Tinf, Reinf, Pr);
+	FlowOutput out(&m, &prob, &phy, alpha);
+	const MVector& u = time->unknowns();
+	out.exportSurfaceData(u, lwalls, lothers, surfnamepref);
 
 	delete time;
 	cout << "\n--------------- End --------------------- \n\n";

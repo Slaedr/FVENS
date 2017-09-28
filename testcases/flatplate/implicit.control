@@ -29,6 +29,8 @@ NO
 ---Slip-wall-marker
 3
 ---Farfield-marker
+-1
+---Inflow-outflow-marker
 4
 ---Extrapolation-marker
 -1
@@ -48,7 +50,7 @@ NO
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
-LEASTSQUARES
+NONE
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
 ---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
@@ -68,7 +70,7 @@ IMPLICIT
 5000
 #######################################################################
 ---use-first-order-initial-condition
-1
+0
 ---CFL-for-initialization-run
 200.0
 ---tolerance-for-initialization

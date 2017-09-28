@@ -19,7 +19,29 @@ FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const f
 
 void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
 {
-	// TODO
+	std::ofstream fout(volfile+"-vol.out");
+	fout << "#   x    y    rho     u      v      p      T      M \n";
+
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		const a_real T = phy->getTemperatureFromConserved(&u(iel,0));
+		const a_real c = phy->getSoundSpeedFromConserved(&u(iel,0));
+		const a_real p = phy->getPressureFromConserved(&u(iel,0));
+		a_real vmag = std::sqrt(u(iel,1)/u(iel,0)*u(iel,1)/u(iel,0)
+				+u(iel,2)/u(iel,0)*u(iel,2)/u(iel,0));
+
+		a_real rc[NDIM] = {0.0,0.0};
+		for(int ino = 0; ino < m->gnnode(iel); ino++)
+			for(int j = 0; j < NDIM; j++)
+				rc[j] += m->gcoords(m->ginpoel(iel,ino),j);
+		for(int j = 0; j < NDIM; j++)
+			rc[j] /= m->gnnode(iel);
+
+		fout << rc[0] << " " << rc[1] << " " << u(iel,0) << " " << u(iel,1)/u(iel,0) << " "
+			<< u(iel,2)/u(iel,0) << " " << p << " " << T << " " << vmag/c << '\n';
+	}
+
+	fout.close();
 }
 
 void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm, 
@@ -51,7 +73,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	// Iterate over wall boundary markers
 	for(int im=0; im < static_cast<int>(wbcm.size()); im++)
 	{
-		std::string fname = basename+"-surf_w"+std::to_string(wbcm[im])+".dat";
+		std::string fname = basename+"-surf_w"+std::to_string(wbcm[im])+".out";
 		std::ofstream fout(fname);
 		
 		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces[im], 2+NDIM);
@@ -137,7 +159,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				a_real tauw = -tau[0][0]*n[0]*n[1] - tau[0][1]*n[1]*n[1]
 					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];
 
-				output(iface, NDIM+1) = 2.0*tauw;
+				output(facecoun, NDIM+1) = 2.0*tauw;
 
 				// add contributions to Cdp, Cdf and Cl
 				

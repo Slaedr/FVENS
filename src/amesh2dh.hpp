@@ -131,12 +131,6 @@ public:
 	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
 	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
-	/*int gbpoints(a_int poin, int i) const { return bpoints.get(poin,i); }
-	int gbpointsb(a_int poin, int i) const { return bpointsb.get(poin,i); }
-	int gbfacebp(a_int iface, int i) const { return bfacebp.get(iface,i); }
-	int gbifmap(a_int intfacno) const { return bifmap.get(intfacno); }
-	int gifbmap(a_int bfaceno) const { return ifbmap.get(bfaceno); }
-	double gjacobians(a_int ielem) const { return jacobians.get(ielem,0); }*/
 
 	a_int gnpoin() const { return npoin; }
 	a_int gnelem() const { return nelem; }
@@ -149,7 +143,6 @@ public:
 	int gnnofa() const { return nnofa; }
 	int gnbtag() const{ return nbtag; }
 	int gndtag() const { return ndtag; }
-	//int gnbpoin() const { return nbpoin; }
 
 	/// Set coordinates of a certain point
 	/** 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
@@ -170,6 +163,19 @@ public:
 
 	void modify_bface_marker(int iface, int pos, int number)
 	{ bface(iface, pos) = number; }
+
+	/// Reads a mesh file
+	/** The file should be in either the Gmsh 2.0 format, the 2D structured Plot3D file
+	 * or the rDGFLO Domn format. The file extensions should be
+	 * - msh for Gmsh 2.0
+	 * - p2d for 2D structured Plot3D
+	 * - domn for rDGFLO Domn file.
+	 */
+	//void readMesh(std::string mfile);
+
+	/// Reads a file in the 2D version of the Plot3D structured format
+	void readPlot2d(std::string mfile, const int bci0, const int bcimx, 
+			const int bcj0, const int bcjmx);
 
 	/// Reads mesh from Gmsh 2 format file
 	void readGmsh2(std::string mfile, int dimensions);

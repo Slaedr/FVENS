@@ -49,6 +49,9 @@ public:
 	FlowOutput(const UMesh2dh *const m, const Spatial<NVARS> *const fv,
 			const IdealGasPhysics *const physics, const a_real angleOfAttack);
 	
+	/** For each cell, writes out the coordinates of the cell-centre,
+	 * density, velocities, pressure, temperature and Mach number.
+	 */
 	void exportVolumeData(const MVector& u, const std::string volfile) const;
 
 	/// Export surface data

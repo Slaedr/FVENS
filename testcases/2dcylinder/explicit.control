@@ -22,6 +22,8 @@ EULER
 2
 ---Farfield-marker
 4
+---Inflow-outflow-marker
+-1
 ---Extrapolation-marker
 0
 ######################################################################

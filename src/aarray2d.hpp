@@ -66,12 +66,9 @@ private:
 	bool isalloc;
 
 public:
-	///No-arg constructor. Note: no memory allocation! Make sure Array2d::setup(a_int,a_int,MStype) is used.
-	Array2d()
-	{
-		nrows = 0; ncols = 0; size = 0;
-		isalloc = false;
-	}
+	/// No-arg constructor. Note: no memory allocation! Make sure Array2d::resize is used.
+	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}, isalloc{false}
+	{ }
 
 	// Full-arg constructor
 	Array2d(a_int nr, a_int nc)

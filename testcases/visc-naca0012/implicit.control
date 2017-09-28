@@ -14,11 +14,11 @@ NAVIERSTOKES
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.4
+0.5
 ---Free-stream-temperature(K)
 293.15
 ---Free-stream-Reynolds-number
-2000.0
+5000.0
 ---Prandtl-number
 0.72
 ---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
@@ -30,6 +30,8 @@ NO
 -1
 ---Farfield-marker
 4
+---Inflow-outflow-marker
+-1
 ---Extrapolation-marker
 -1
 ---Isothermal-wall-Marker
@@ -43,7 +45,17 @@ NO
 ---Isothermal-isobaric-wall-Marker
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
-							  223.15                      1.0                           1.0
+							  293.15                      1.0                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+0
+---Prefix-for-name-of-surface-output-file
+../data/visc-naca
+---Is-volume-output-of-cell-centred-variables-required?
+NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL

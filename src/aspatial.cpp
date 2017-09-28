@@ -197,7 +197,8 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
 		const a_real a, const bool compute_viscous, const bool useConstVisc,
 		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker,
-		const int slip_marker, const int inflowoutflow_marker, const int extrap_marker,
+		const int slip_marker, const int farfield_marker, const int inoutflow_marker, 
+		const int extrap_marker,
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel,
 		const a_real adiabatic_TangVel,
 		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
@@ -209,7 +210,8 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	computeViscous{compute_viscous}, constVisc(useConstVisc),
 	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
 	isothermalbaric_wall_id{isothermalbaric_marker},
-	slip_wall_id{slip_marker}, inflow_outflow_id{inflowoutflow_marker}, extrap_id{extrap_marker},
+	slip_wall_id{slip_marker}, farfield_id{farfield_marker}, inflowoutflow_id{inoutflow_marker},
+	extrap_id{extrap_marker},
 	isothermal_wall_temperature{isothermal_Temperature/Tinf},
 	isothermal_wall_tangvel{isothermal_TangVel}, 
 	adiabatic_wall_tangvel{adiabatic_TangVel},
@@ -221,7 +223,8 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 {
 #ifdef DEBUG
 	std::cout << " FlowFV: Boundary markers:\n";
-	std::cout << "  Farfield " << inflow_outflow_id << ", slip wall " << slip_wall_id;
+	std::cout << "  Farfield " << farfield_id << ", inflow/outflow " << inflowoutflow_id
+		<< ", slip wall " << slip_wall_id;
 	std::cout << "  Extrapolation " << extrap_id << '\n';
 	std::cout << "  Isothermal " << isothermal_wall_id;
 	std::cout << "  Adiabatic " << adiabatic_wall_id;
@@ -349,7 +352,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	}
 	else if(limiter == "VENKATAKRISHNAN")
 	{
-		lim = new VenkatakrishnanLimiter(m, &rc, gr, 3.75);
+		lim = new VenkatakrishnanLimiter(m, &rc, gr, 6.0);
 		std::cout << "  FlowFV: Venkatakrishnan limiter selected.\n";
 	}
 	
@@ -424,7 +427,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 	/* Ghost cell values are always free-stream values.
 	 */
-	if(m->ggallfa(ied,3) == inflow_outflow_id)
+	if(m->ggallfa(ied,3) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			bs[i] = uinf(0,i);
@@ -465,16 +468,13 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		}
 	}
 
-	/* This BC is NOT TESTED and mostly DOES NOT WORK.
+	/* This BC is NOT TESTED
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 * Commented below: Kind of according to FUN3D BCs paper
-	 * TODO: Instead, the Mach number based on the Riemann solution state should be used.
 	 */
-	constexpr int characteristic_id = -1;
-	if(m->ggallfa(ied,3) == characteristic_id)
+	if(m->ggallfa(ied,3) == inflowoutflow_id)
 	{
-		std::cout << " Bad characteristic boundary\n";
 		a_real ci = physics.getSoundSpeedFromConserved(ins);
 		a_real Mni = vni/ci;
 		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
@@ -483,11 +483,18 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		a_real Mninf = vninf/cinf;
 		a_real pi = physics.getPressureFromConserved(ins);*/
 
+		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
+		 * takes care of signal propagation at the boundary.
+		 */
 		if(Mni <= 0)
 		{
 			for(short i = 0; i < NVARS; i++)
 				bs[i] = uinf(0,i);
 		}
+
+		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
+		 * are taken from the interior.
+		 */
 		else if(Mni <= 1)
 		{
 			bs[0] = ins[0];
@@ -495,36 +502,13 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			bs[2] = ins[2];
 			bs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
 		}
+		
+		// At supersonic outflow, everything is taken from the interior
 		else
 		{
 			for(int i = 0; i < NVARS; i++)
 				bs[i] = ins[i];
 		}
-		
-		/*if(Mni <= -1.0)
-		{
-			for(int i = 0; i < NVARS; i++)
-				bs[i] = uinf(0,i);
-		}
-		else if(Mni > -1.0 && Mni < 0)
-		{
-			// subsonic inflow, specify rho and u according to FUN3D BCs paper
-			for(i = 0; i < NVARS-1; i++)
-				bs(ied,i) = uinf.get(0,i);
-			bs(ied,3) = pi/(g-1.0) 
-						+ 0.5*( uinf(0,1)*uinf(0,1) + uinf(0,2)*uinf(0,2) )/uinf(0,0);
-		}
-		else if(Mni >= 0 && Mni < 1.0)
-		{
-			// subsonic ourflow, specify p accoording FUN3D BCs paper
-			for(i = 0; i < NVARS-1; i++)
-				bs(ied,i) = ins.get(ied,i);
-			bs(ied,3) = pinf/(g-1.0) 
-						+ 0.5*( ins(ied,1)*ins(ied,1) + ins(ied,2)*ins(ied,2) )/ins(ied,0);
-		}
-		else
-			for(i = 0; i < NVARS; i++)
-				bs(ied,i) = ins.get(ied,i);*/
 	}
 }
 
