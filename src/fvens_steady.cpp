@@ -72,14 +72,16 @@ int main(int argc, char* argv[])
 	}
 	control >> dum; control >> out_nwalls;
 	lwalls.resize(out_nwalls);
-	control >> dum;
-	for(int i = 0; i < out_nwalls; i++)
-		control >> lwalls[i];
+	if(out_nwalls > 0) {
+		control >> dum;
+		for(int i = 0; i < out_nwalls; i++)
+			control >> lwalls[i];
+	}
 	control >> dum; control >> out_nothers;
 	lothers.resize(out_nothers);
 	if(out_nothers > 0) {
 		control >> dum;
-		for(int i = 0; i < out_nwalls; i++)
+		for(int i = 0; i < out_nothers; i++)
 			control >> lothers[i];
 	}
 	control >> dum; control >> surfnamepref;
@@ -155,6 +157,8 @@ int main(int argc, char* argv[])
 	m.compute_jacobians();
 	m.compute_face_data();
 
+	std::cout << " Mesh set up!\n";
+
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
@@ -212,6 +216,7 @@ int main(int argc, char* argv[])
 	FlowOutput out(&m, &prob, &phy, alpha);
 	const MVector& u = time->unknowns();
 	out.exportSurfaceData(u, lwalls, lothers, surfnamepref);
+	out.exportVolumeData(u, volnamepref);
 
 	delete time;
 	cout << "\n--------------- End --------------------- \n\n";

@@ -129,13 +129,13 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				 * Note that because of our non-dimensionalization,
 				 * \f$ C_f = \hat{\mu} \tau_w / 2 \f$.
 				 *
-				 * But we could maybe also use, for incompressible flow,
-				 * \f$ \tau_w = \mu \nabla\mathbf{u} \hat{\mathbf{n}} . \hat{\mathbf{t}} \f$.
+				 * But we could maybe also use, by removing the normal stresses,
+				 * \f$ \tau_w = \mu (\nabla\mathbf{u}+\nabla\mathbf{u}^T) \hat{\mathbf{n}}
+				 *                                           .\hat{\mathbf{t}} \f$.
 				 */
 
 				// non-dim viscosity / Re_inf
 				a_real muhat = phy->getViscosityCoeffFromConserved(&u(lelem,0));
-				a_real lhat = -2.0/3.0 * muhat;
 
 				// velocity gradient tensor
 				a_real gradu[NDIM][NDIM];
@@ -149,6 +149,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				                / (u(lelem,0)*u(lelem,0));
 
 				// stress tensor
+				/*a_real lhat = -2.0/3.0 * muhat;
 				a_real tau[NDIM][NDIM];
 				a_real divu = gradu[0][0] + gradu[1][1];
 				tau[0][0] = lhat*divu + 2.0*muhat*gradu[0][0];
@@ -157,7 +158,10 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				tau[1][1] = lhat*divu + 2.0*muhat*gradu[1][1];
 
 				a_real tauw = -tau[0][0]*n[0]*n[1] - tau[0][1]*n[1]*n[1]
-					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];
+					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];*/
+				
+				a_real tauw = muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
+						+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 
 				output(facecoun, NDIM+1) = 2.0*tauw;
 
@@ -200,7 +204,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	
 	for(int im=0; im < static_cast<int>(obcm.size()); im++)
 	{
-		std::string fname = basename+"-surf_o"+std::to_string(obcm[im])+".dat";
+		std::string fname = basename+"-surf_o"+std::to_string(obcm[im])+".out";
 		std::ofstream fout(fname);
 		
 		Matrix<a_real,Dynamic,Dynamic> output(nobfaces[im], 2+NDIM);

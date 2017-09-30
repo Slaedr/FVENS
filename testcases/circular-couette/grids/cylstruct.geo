@@ -1,7 +1,7 @@
 // flow past cylinder
 
 // (1D) Refine factor
-ref = 4;
+ref = 8;
 
 // actual boundary
 srad = 0.5;

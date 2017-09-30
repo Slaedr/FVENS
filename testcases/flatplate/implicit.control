@@ -29,15 +29,15 @@ NO
 ---Slip-wall-marker
 3
 ---Farfield-marker
--1
----Inflow-outflow-marker
 4
+---Inflow-outflow-marker
+5
 ---Extrapolation-marker
 -1
 ---Isothermal-wall-Marker
 		-1
 ---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
-		                     298.0                        0.0
+		                     0.0                        0.0
 ---Adiabatic-wall-Marker
 		2
 ---Adiabatic-wall:           Tang. velocity (normalized)
@@ -45,12 +45,24 @@ NO
 ---Isothermal-isobaric-wall-Marker
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
-							  298.0                       1.1                           1.0
+							  0.0                       1.1                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-other-boundaries-at-which-surface-output-is-needed
+5
+---Prefix-for-name-of-surface-output-file
+../data/flatplate
+---Is-volume-output-of-cell-centred-variables-required?
+NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
-NONE
+LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
 ---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
@@ -70,13 +82,13 @@ IMPLICIT
 5000
 #######################################################################
 ---use-first-order-initial-condition
-0
+1
 ---CFL-for-initialization-run
 200.0
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-500
+1000
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 HLL
@@ -87,7 +99,7 @@ b
 ---linear-solver(RICHARDSON,BCGSTB,GMRES)
 RICHARDSON
 ---Linear-solver-tolerance
-1e-2
+1e-4
 ---Linear-solver-max-iterations-initial
 60
 ---Linear-solver-max-iterations-end
