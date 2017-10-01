@@ -263,6 +263,11 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		inviflux = new AUSMFlux(&physics);
 		std::cout << "  FlowFV: Using AUSM fluxes." << std::endl;
 	}
+	else if(invflux == "AUSMPLUS")
+	{
+		inviflux = new AUSMPlusFlux(&physics);
+		std::cout << "  FlowFV: Using AUSM+ fluxes." << std::endl;
+	}
 	else
 		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
 	
@@ -300,6 +305,12 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	{
 		jflux = new AUSMFlux(&physics);
 		std::cout << "  FlowFV: Using AUSM fluxes for Jacobian." << std::endl;
+		allocflux = true;
+	}
+	else if(jacflux == "AUSMPLUS")
+	{
+		jflux = new AUSMPlusFlux(&physics);
+		std::cout << "  FlowFV: Using AUSM+ fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else

@@ -1,4 +1,5 @@
-# Coarsest grid diverged
+# Coarsest grid uses Van Albada Limiter
+-1.0536  -0.9903098555
 -1.35463  -1.960943875
 -1.65566  -2.463307679
 -1.95669  -2.992876389

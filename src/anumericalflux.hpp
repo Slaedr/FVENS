@@ -115,9 +115,8 @@ public:
 			a_real *const dfdl, a_real *const dfdr);
 };
 
-/// Roe flux-difference splitting
-/** From Blazek's version: \cite{blazek}.
- * \warning Does not work!
+/// Roe-Pike flux-difference splitting
+/** From Blazek \cite{blazek}.
  */
 class RoeFlux : public InviscidFlux
 {
