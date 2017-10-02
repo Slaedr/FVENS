@@ -1008,6 +1008,15 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		drhoiji[k] = 0;
 		drhoijj[k] = 0;
 	}
+	
+	// derivatives of Roe-averaged specific enthalpy
+	// Hij = (Rij*Hj + Hi)/(Rij + 1.0)
+	a_real dHiji[NVARS], dHijj[NVARS];
+	for(int k = 0; k < NVARS; k++)
+	{
+		dHiji[k] = ((dsli[k]*Hj+dsri[k])*(Rij+1.0)-(Rij*Hj+Hi)*dsli[k])/rden2;
+		dHijj[k] = ((dslj[k]*Hj+Rij*dsrj[k])*(Rij+1.0)-(Rij*Hj+Hi)*dslj[k])/rden2;
+	}
 
 	//> eigenvalues
 	
@@ -1050,36 +1059,79 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	//> A_Roe * dU
 	
 	const a_real dvn = vnj-vni, dp = pj-pi, drho = ur[0]-ul[0];
+	
 	a_real ddrhoi[NVARS], ddrhoj[NVARS];
 	ddrhoi[0] = -1.0; ddrhoj[0] = 1.0;
 	for(int k = 1; k < NVARS; k++) {
 		ddrhoi[k] = 0; ddrhoj[k] = 0;
 	}
 
-	a_real adu[NVARS]; a_real dadui[NVARS][NVARS], daduj[NVARS][NVARS];
-
 	// product of eigenvalues and wave strengths
 	
 	a_real lalpha[NVARS]; a_real dlalphai[NVARS][NVARS], dlalphaj[NVARS][NVARS];
+	a_real cij4 = cij*cij*cij*cij;
 
 	lalpha[0] = l[0]*(dp-rhoij*cij*dvn)/(2.0*cij*cij);
-	a_real cij4 = cij*cij*cij*cij;
 	for(int k = 0; k < NVARS; k++)
 	{
-		dlalphai[0][k] = ( dli[0][k]*(dp-rhoij*cij*dvn) +l[0]*(-dpi[k] - drhoiji[k]*cij*dvn
-			-rhoij*dciji[k]*dvn-rhoij*cij*(-dvni[k]))*2.0*cij*cij - l[0]*(dp-rhoij*cij*dvn) *
+		dlalphai[0][k] = (( dli[0][k]*(dp-rhoij*cij*dvn) +l[0]*(-dpi[k] - drhoiji[k]*cij*dvn
+			-rhoij*dciji[k]*dvn-rhoij*cij*(-dvni[k])))*2.0*cij*cij - l[0]*(dp-rhoij*cij*dvn) *
 			4.0*cij*dciji[k] ) / (4.0*cij4);
+		dlalphaj[0][k] = (( dlj[0][k]*(dp-rhoij*cij*dvn) +l[0]*(dpj[k] - drhoijj[k]*cij*dvn
+			-rhoij*dcijj[k]*dvn-rhoij*cij*dvnj[k]))*2.0*cij*cij - l[0]*(dp-rhoij*cij*dvn) *
+			4.0*cij*dcijj[k] ) / (4.0*cij4);
 	}
 
 	lalpha[1] = l[1]*(drho - dp/(cij*cij));
+	for(int k = 0; k < NVARS; k++)
+	{
+		dlalplhai[1][k] = dli[1][k]*(drho-dp/(cij*cij))+l[1]*(ddrhoi[k] - ((-dpi[k])*cij*cij
+			- dp*2.0*cij*dciji[k])/cij4);
+		dlalplhaj[1][k] = dlj[1][k]*(drho-dp/(cij*cij))+l[1]*(ddrhoj[k] - (dpj[k]*cij*cij
+			- dp*2.0*cij*dcijj[k])/cij4);
+	}
+
 	lalpha[2] = l[1]*rhoij;
+	for(int k = 0; k < NVARS; k++)
+	{
+		dlalphai[2][k] = dli[1][NVARS]*rhoij + l[1]*drhoiji[k];
+		dlalphaj[2][k] = dlj[1][NVARS]*rhoij + l[1]*drhoijj[k];
+	}
+
 	lalpha[3] = l[3]*(dp+rhoij*cij*dvn)/(2.0*cij*cij);
+	for(int k = 0; k < NVARS; k++)
+	{
+		dlalphai[3][k] = ((dli[3][k]*(dp+rhoij*cij*dvn) + l[3]*(-dpi[k] +drhoiji[k]*cij*dvn
+			+rhoij*dciji[k]*dvn+rhoij*cij*(-dvni[k])))*2.0*cij*cij - l[3]*(dp+rhoij*cij*dvn)
+			*4.0*cij*dciji[k]) / (4.0*cij4);
+		dlalphaj[3][k] = ((dlj[3][k]*(dp+rhoij*cij*dvn) + l[3]*(dpj[k] +drhoijj[k]*cij*dvn
+			+rhoij*dcijj[k]*dvn+rhoij*cij*dvnj[k]))*2.0*cij*cij - l[3]*(dp+rhoij*cij*dvn)
+			*4.0*cij*dcijj[k]) / (4.0*cij4);
+	}
+
+	// dissipation terms
+	
+	a_real adu[NVARS]; a_real dadui[NVARS][NVARS], daduj[NVARS][NVARS];
 
 	// un-c:
 	adu[0] = lalpha[0];
 	adu[1] = lalpha[0]*(vxij-cij*n[0]);
 	adu[2] = lalpha[0]*(vyij-cij*n[1]);
 	adu[3] = lalpha[0]*(Hij-cij*vnij);
+	for(int k = 0; k < NVARS; k++)
+	{
+		dadui[0][k] = dlalphai[0][k];
+		dadui[1][k] = dlalphai[0][k]*(vxij-cij*n[0]) + lalpha[0]*(dvxiji[k]-dciji[k]*n[0]);
+		dadui[2][k] = dlalphai[0][k]*(vyij-cij*n[1]) + lalpha[0]*(dvyiji[k]-dciji[k]*n[1]);
+		dadui[3][k] = dlalphai[0][k]*(Hij-cij*vnij) 
+						+ lalpha[0]*(dHiji[k]-dciji[k]*vnij-cij*dvniji[k]);
+		
+		daduj[0][k] = dlalphaj[0][k];
+		daduj[1][k] = dlalphaj[0][k]*(vxij-cij*n[0]) + lalpha[0]*(dvxijj[k]-dcijj[k]*n[0]);
+		daduj[2][k] = dlalphaj[0][k]*(vyij-cij*n[1]) + lalpha[0]*(dvyijj[k]-dcijj[k]*n[1]);
+		daduj[3][k] = dlalphaj[0][k]*(Hij-cij*vnij) 
+						+ lalpha[0]*(dHijj[k]-dcijj[k]*vnij-cij*dvnijj[k]);
+	}
 
 	// un:
 	adu[0] += lalpha[1];
