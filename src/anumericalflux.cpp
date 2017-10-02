@@ -1,7 +1,7 @@
 /** \file anumericalflux.cpp
  * \brief Implements numerical flux schemes for Euler and Navier-Stokes equations.
  * \author Aditya Kashi
- * \date March 2015
+ * \date March 2015, June 2017, September-October 2017
  */
 
 /* Tapenade notes:
@@ -14,7 +14,7 @@
 namespace acfd {
 
 InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx) 
-	: physics(phyctx), g(phyctx->g)
+	: physics(phyctx), g{phyctx->g}
 { }
 
 void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, 
@@ -912,15 +912,23 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	const a_real vnij = vxij*n[0] + vyij*n[1];
 	const a_real cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 	
-	//> Derivatives of Roe-averaged quantities
+	// Derivatives
 	
-	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvniji[NVARS], dvnijj[NVARS],
+	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvxi[NVARS], dvxj[NVARS],
+	dvyi[NVARS],dvyj[NVARS], dvniji[NVARS], dvnijj[NVARS],
 	dvm2iji[NVARS], dvm2ijj[NVARS], dci[NVARS], dcj[NVARS], dciji[NVARS], dcijj[NVARS],
 	dsli[NVARS], dslj[NVARS], dsri[NVARS], dsrj[NVARS], drhoiji[NVARS], drhoijj[NVARS];
 	for(int k = 0; k < NVARS; k++)
 	{
 		dpi[k] = dpj[k] = dci[k] = dcj[k] = 0;
+		dvxi[k] = dvxj[k] = dvyi[k] = dvyj[k] = 0;
 	}
+
+	dvxi[0] = -ul[1]/(ul[0]*ul[0]);        dvxj[0] = -ur[1]/(ur[0]*ur[0]);
+	dvxi[1] = 1.0/ul[0];                   dvxj[1] = 1.0/ur[0];
+
+	dvyi[0] = -ul[2]/(ul[0]*ul[0]);        dvyj[0] = -ur[2]/(ur[0]*ur[0]);
+	dvyi[2] = 1.0/ul[0];                   dvyj[2] = 1.0/ur[0];
 
 	dvni[0] = -(ul[1]*n[0]+ul[2]*n[1])/(ul[0]*ul[0]);
 	dvni[1] = n[0]/ul[0];
@@ -1138,6 +1146,20 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	adu[1] += lalpha[1]*vxij +      lalpha[2]*(vxj-vxi - dvn*n[0]); 
 	adu[2] += lalpha[1]*vyij +      lalpha[2]*(vyj-vyi - dvn*n[1]);
 	adu[3] += lalpha[1]*vm2ij/2.0 + lalpha[2] *(vxij*(vxj-vxi) +vyij*(vyj-vyi) -vnij*dvn);
+	for(int k = 0; k < NVARS; k++)
+	{
+		dadui[0][k] += dlalpha[1][k];
+		dadui[1][k] += dlalpha[1][k]*vxij+lalpha[1]*dvxiji[k]
+			+dlalpha[2][k]*(vxj-vxi-dvn*n[0]) +lalpha[2]*(-dvxi[k]+dvni[k]*n[0]);
+		dadui[2][k] += dlalpha[1][k]*vyij+lalpha[1]*dvyiji[k]
+			+dlalpha[2][k]*(vyj-vyi-dvn*n[1]) +lalpha[2]*(-dvyi[k]+dvni[k]*n[1]);
+		dadui[3][k] += dlalpha[1][k]*vm2ij/2.0+lalpha[1]*dvm2iji[k]/2.0
+			+dlalpha[2][k]*(vxij*(vxj-vxi)+vyij*(vyj-vyi)-vnij*dvn) 
+			+ lalpha[2]*(dvxiji[k]*(vxj-vxi)+vxij*(-dvxi[k]) + dvyiji[k]*(vyj-vyi)+vyij*(-dvyi[k])
+			-dvniji[k]*dvn-vnij*(-dvni[k]));
+
+		daduj[0][k]
+	}
 
 	// un+c:
 	adu[0] += lalpha[3];

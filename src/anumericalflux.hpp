@@ -1,7 +1,7 @@
 /** \file anumericalflux.hpp
  * \brief Numerical flux schemes for the compressible Euler equations.
  * \author Aditya Kashi
- * \date March 2015
+ * \date March 2015, September 2017
  */
 
 #ifndef __ANUMERICALFLUX_H
@@ -53,7 +53,7 @@ public:
 
 protected:
 	const IdealGasPhysics *const physics;        ///< Functionality replated to gas constitutive law
-	a_real g;                                    ///< Adiabatic index
+	const a_real g;                              ///< Adiabatic index
 };
 
 class LocalLaxFriedrichsFlux : public InviscidFlux
