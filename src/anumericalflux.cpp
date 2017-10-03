@@ -758,9 +758,9 @@ void RoeAverageBasedFlux::getJacobiansRoeAveragesWrtConserved (
 		dRijj[k] = 0;
 	}
 
-	// derivatives of Roe velocities
 	const a_real rden2 = (Rij+1.0)*(Rij+1.0);
 	
+	// derivatives of Roe velocities
 	// Note: vxij = (Rij * ur[1]/ur[0] + ul[1]/ul[0]) / (Rij+1)
 	dvxiji[0] = ((dRiji[0]*ur[1]/ur[0] -ul[1]/(ul[0]*ul[0]))*(Rij+1.0)
 			-(Rij*vxj+vxi)*dRiji[0])/rden2;
@@ -799,10 +799,9 @@ void RoeAverageBasedFlux::getJacobiansRoeAveragesWrtConserved (
 	// cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) ) = sqrt( (g-1)*((Rij*Hj+Hi)/(Rij+1) - vm2ij*0.5) )
 	for(int k = 0; k < NVARS; k++) {
 		dciji[k] = 0.5/cij*(g-1.0)
-		  * (((dRiji[k]*Hj+dHi[k])*(Rij+1)-(Rij*Hj+Hi)*dRiji[k])/((Rij+1)*(Rij+1)) -0.5*dvm2iji[k]);
+		  * (((dRiji[k]*Hj+dHi[k])*(Rij+1)-(Rij*Hj+Hi)*dRiji[k])/rden2 - 0.5*dvm2iji[k]);
 		dcijj[k] = 0.5/cij*(g-1.0)
-		  * (((dRijj[k]*Hj+Rij*dHj[k])*(Rij+1) - (Rij*Hj+Hi)*dRijj[k])/((Rij+1)*(Rij+1))
-			- 0.5*dvm2ijj[k] );
+		  * (((dRijj[k]*Hj+Rij*dHj[k])*(Rij+1) - (Rij*Hj+Hi)*dRijj[k])/rden2 - 0.5*dvm2ijj[k] );
 	}
 
 	// derivatives of Roe-averaged density
@@ -824,7 +823,7 @@ void RoeAverageBasedFlux::getJacobiansRoeAveragesWrtConserved (
 }
 
 RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux) 
-	: RoeAverageBasedFlux(analyticalflux), fixeps{1.0e-6}
+	: RoeAverageBasedFlux(analyticalflux), fixeps{1.0e-4}
 { }
 
 void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
@@ -1009,7 +1008,7 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 			+rhoij*dciji[k]*devn+rhoij*cij*(-dvni[k])))*2.0*cij*cij - l[3]*(dep+rhoij*cij*devn)
 			*4.0*cij*dciji[k]) / (4.0*cij4);
 		dlalphaj[3][k] = ((dlj[3][k]*(dep+rhoij*cij*devn) + l[3]*(dpj[k] +drhoijj[k]*cij*devn
-			+rhoij*dcijj[k]*devn+rhoij*cij*dvnj[k]))*2.0*cij*cij - l[3]*(dep+rhoij*cij*devn)
+			+rhoij*dcijj[k]*devn +rhoij*cij*dvnj[k]))*2.0*cij*cij - l[3]*(dep+rhoij*cij*devn)
 			*4.0*cij*dcijj[k]) / (4.0*cij4);
 	}
 
@@ -1098,8 +1097,8 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		//flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar]);
 		for(int k = 0; k < NVARS; k++)
 		{
-			dfdl[ivar*NVARS+k] = -0.5*(dfdl[ivar*NVARS+k] - dadui[ivar][k]);
-			dfdr[ivar*NVARS+k] = 0.5*(dfdr[ivar*NVARS+k] - daduj[ivar][k]);
+			dfdl[ivar*NVARS+k] = - 0.5*(dfdl[ivar*NVARS+k] - dadui[ivar][k]);
+			dfdr[ivar*NVARS+k] =   0.5*(dfdr[ivar*NVARS+k] - daduj[ivar][k]);
 		}
 	}
 }
@@ -1693,7 +1692,7 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	sr = vnj+cj;
 	for(int k = 0; k < NVARS; k++) {
 		dsri[k] = 0;
-		dsrj[k] = dvnj[k] - dcj[k];
+		dsrj[k] = dvnj[k] + dcj[k];
 	}
 	if(sr < vnij+cij) {
 		sr = vnij+cij;
