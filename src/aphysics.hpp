@@ -96,7 +96,7 @@ public:
 	/// Computes derivatives of variables computed in getVarsFromConserved
 	/** \warning The result is added to the original content of the  output variables!
 	 */
-	void getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,
+	inline void getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,
 		a_real dvx[NVARS], a_real dvy[NVARS], a_real dvn[NVARS],
 		a_real dp[NVARS], a_real dH[NVARS]) const
 	{

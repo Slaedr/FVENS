@@ -1,9 +1,9 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. A WENO (weighted essentially non-oscillatory) limiter is available for flows with shocks. A number of numerical convective fluxes are available - local Lax-Friedrichs, Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer) and HLLC. It currently solves only steady-state problems.
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory) and Venkatakrishnan limiters are available for flows with shocks. A number of numerical convective fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. 
 
-Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme. Local time-stepping is used. A number of linear solvers and preconditioners are available. One of the focus areas for the project is massively parallel preconditioners for shared-memory machines.
+Currently, only steady-state problems are supported. Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. A number of linear solvers and preconditioners are available.
 
 Building
 --------
@@ -11,7 +11,7 @@ The following libraries are required:
 - The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (version 3.3.4) - needs an environment variable called EIGEN_DIR to be set to the top-level Eigen directory
 - [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called BLASTED_DIR to be set to the top level BLASTed directory.
 
-Optionally, OpenMP can be used if available (default builds of GCC have this, for instance).
+Optionally, OpenMP can be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
 
 To build, issue
 

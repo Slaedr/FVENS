@@ -998,8 +998,8 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	lalpha[2] = l[1]*rhoij;
 	for(int k = 0; k < NVARS; k++)
 	{
-		dlalphai[2][k] = dli[1][NVARS]*rhoij + l[1]*drhoiji[k];
-		dlalphaj[2][k] = dlj[1][NVARS]*rhoij + l[1]*drhoijj[k];
+		dlalphai[2][k] = dli[1][k]*rhoij + l[1]*drhoiji[k];
+		dlalphaj[2][k] = dlj[1][k]*rhoij + l[1]*drhoijj[k];
 	}
 
 	lalpha[3] = l[3]*(dep+rhoij*cij*devn)/(2.0*cij*cij);
@@ -1053,8 +1053,16 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 			+dlalphai[2][k]*(vxij*(vxj-vxi)+vyij*(vyj-vyi)-vnij*devn) 
 			+ lalpha[2]*(dvxiji[k]*(vxj-vxi)+vxij*(-dvxi[k]) + dvyiji[k]*(vyj-vyi)+vyij*(-dvyi[k])
 			-dvniji[k]*devn-vnij*(-dvni[k]));
-
-		//daduj[0][k]
+		
+		daduj[0][k] += dlalphaj[1][k];
+		daduj[1][k] += dlalphaj[1][k]*vxij+lalpha[1]*dvxijj[k]
+			+dlalphaj[2][k]*(vxj-vxi-devn*n[0]) +lalpha[2]*(dvxj[k]-dvnj[k]*n[0]);
+		daduj[2][k] += dlalphaj[1][k]*vyij+lalpha[1]*dvyijj[k]
+			+dlalphaj[2][k]*(vyj-vyi-devn*n[1]) +lalpha[2]*(dvyj[k]-dvnj[k]*n[1]);
+		daduj[3][k] += dlalphaj[1][k]*vm2ij/2.0+lalpha[1]*dvm2ijj[k]/2.0
+			+dlalphaj[2][k]*(vxij*(vxj-vxi)+vyij*(vyj-vyi)-vnij*devn) 
+			+ lalpha[2]*(dvxijj[k]*(vxj-vxi)+vxij*dvxj[k] + dvyijj[k]*(vyj-vyi)+vyij*dvyj[k]
+			-dvnijj[k]*devn-vnij*dvnj[k]);
 	}
 
 	// un+c:
@@ -1062,18 +1070,37 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	adu[1] += lalpha[3]*(vxij+cij*n[0]);
 	adu[2] += lalpha[3]*(vyij+cij*n[1]);
 	adu[3] += lalpha[3]*(Hij+cij*vnij);
+	for(int k = 0; k < NVARS; k++)
+	{
+		dadui[0][k] += dlalphai[3][k];
+		dadui[1][k] += dlalphai[3][k]*(vxij+cij*n[0]) + lalpha[3]*(dvxiji[k]+dciji[k]*n[0]);
+		dadui[2][k] += dlalphai[3][k]*(vyij+cij*n[1]) + lalpha[3]*(dvyiji[k]+dciji[k]*n[1]);
+		dadui[3][k] += dlalphai[3][k]*(Hij+cij*vnij) 
+						+ lalpha[3]*(dHiji[k]+dciji[k]*vnij+cij*dvniji[k]);
+		
+		daduj[0][k] += dlalphaj[3][k];
+		daduj[1][k] += dlalphaj[3][k]*(vxij+cij*n[0]) + lalpha[3]*(dvxijj[k]+dcijj[k]*n[0]);
+		daduj[2][k] += dlalphaj[3][k]*(vyij+cij*n[1]) + lalpha[3]*(dvyijj[k]+dcijj[k]*n[1]);
+		daduj[3][k] += dlalphaj[3][k]*(Hij+cij*vnij) 
+						+ lalpha[3]*(dHijj[k]+dcijj[k]*vnij+cij*dvnijj[k]);
+	}
 
-	// get one-sided flux vectors
-	a_real fi[4], fj[4];
-	fi[0] = ul[0]*vni;						fj[0] = ur[0]*vnj;
-	fi[1] = ul[0]*vni*vxi + pi*n[0];		fj[1] = ur[0]*vnj*vxj + pj*n[0];
-	fi[2] = ul[0]*vni*vyi + pi*n[1];		fj[2] = ur[0]*vnj*vyj + pj*n[1];
-	fi[3] = vni*(ul[3] + pi);				fj[3] = vnj*(ur[3] + pj);
+	// get one-sided Jacobians
+	/*a_real fi[4], fj[4];
+	physics->getNormalFluxEfficiently(ul,n,vni,pi,fi);
+	physics->getNormalFluxEfficiently(ur,n,vnj,pj,fj);*/
+	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
 
 	// finally compute fluxes
 	for(int ivar = 0; ivar < NVARS; ivar++)
 	{
-		//flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar])
+		//flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar]);
+		for(int k = 0; k < NVARS; k++)
+		{
+			dfdl[ivar*NVARS+k] = -0.5*(dfdl[ivar*NVARS+k] - dadui[ivar][k]);
+			dfdr[ivar*NVARS+k] = 0.5*(dfdr[ivar*NVARS+k] - daduj[ivar][k]);
+		}
 	}
 }
 

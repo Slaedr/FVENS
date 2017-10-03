@@ -174,6 +174,8 @@ int main(int argc, char* argv[])
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",false,true);
 	
+	// set up time discrization
+
 	SteadySolver<4>* time;
 	if(timesteptype == "IMPLICIT") {
 		if(use_matrix_free)
@@ -211,12 +213,16 @@ int main(int argc, char* argv[])
 	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
 
-	// export surface data like pressure coeff etc
+	// export surface data like pressure coeff etc and volume data as plain text files
+	
 	IdealGasPhysics phy(gamma, Minf, Tinf, Reinf, Pr);
 	FlowOutput out(&m, &prob, &phy, alpha);
 	const MVector& u = time->unknowns();
+	
 	out.exportSurfaceData(u, lwalls, lothers, surfnamepref);
-	out.exportVolumeData(u, volnamepref);
+	
+	if(isVolOutReq == "YES")
+		out.exportVolumeData(u, volnamepref);
 
 	delete time;
 	cout << "\n--------------- End --------------------- \n\n";
