@@ -37,7 +37,7 @@ EULER
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
----Inviscid-flux(LLF,VANLEER,HLL,HLLC)
+---Inviscid-flux(LLF,VANLEER,HLL,HLLC,ROE)
 HLL
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES

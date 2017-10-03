@@ -11,12 +11,9 @@ namespace acfd {
 void IdealGasPhysics::getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
 		a_real *const __restrict flux) const
 {
-	a_real vn = (u[1]*n[0] + u[2]*n[1])/u[0];
-	a_real p = (g-1.0)*(u[3] - 0.5*(u[1]*u[1] + u[2]*u[2])/u[0]);
-	flux[0] = u[0] * vn;
-	flux[1] = vn*u[1] + p*n[0];
-	flux[2] = vn*u[2] + p*n[1];
-	flux[3] = vn*(u[3] + p);
+	const a_real vn = (u[1]*n[0] + u[2]*n[1])/u[0];
+	const a_real p = (g-1.0)*(u[3] - 0.5*(u[1]*u[1] + u[2]*u[2])/u[0]);
+	getNormalFluxEfficiently(u, n, vn, p, flux);
 }
 
 void IdealGasPhysics::getJacobianNormalFluxWrtConserved(const a_real *const u, 

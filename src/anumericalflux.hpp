@@ -115,10 +115,54 @@ public:
 			a_real *const dfdl, a_real *const dfdr);
 };
 
+/// Abstract class for fluxes which depend on Roe-averages
+class RoeAverageBasedFlux : public InviscidFlux
+{
+public:
+	RoeAverageBasedFlux(const IdealGasPhysics *const analyticalflux);
+	virtual void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const flux) = 0;
+	virtual void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+			a_real *const dfdl, a_real *const dfdr) = 0;
+
+protected:
+
+	/// Computes Roe-averaged quantities
+	void getRoeAverages(const a_real ul[NVARS], const a_real ur[NVARS], const a_real n[NDIM],
+		const a_real vxi, const a_real vyi, const a_real Hi,
+		const a_real vxj, const a_real vyj, const a_real Hj,
+		a_real& Rij, a_real& rhoij, a_real& vxij, a_real& vyij, a_real &vm2ij, a_real& vnij,
+		a_real& Hij, a_real& cij)
+	{
+		Rij = std::sqrt(ur[0]/ul[0]);
+		rhoij = Rij*ul[0];
+		vxij = (Rij*vxj + vxi)/(Rij + 1.0);
+		vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+		Hij = (Rij*Hj + Hi)/(Rij + 1.0);
+		vm2ij = vxij*vxij + vyij*vyij;
+		vnij = vxij*n[0] + vyij*n[1];
+		cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
+	}
+	
+	/// Computes derivatives of Roe-averaged quantities w.r.t. conserved variables
+	/** \note The output vectors are assigned to, so any prior contents are lost.
+	 */
+	void getJacobiansRoeAveragesWrtConserved(
+		const a_real ul[NVARS], const a_real ur[NVARS], const a_real n[NDIM],
+		const a_real vxi, const a_real vyi, const a_real Hi,
+		const a_real vxj, const a_real vyj, const a_real Hj,
+		const a_real dvxi[NVARS], const a_real dvyi[NVARS], const a_real dHi[NVARS],
+		const a_real dvxj[NVARS], const a_real dvyj[NVARS], const a_real dHj[NVARS],
+		a_real dRiji[NVARS], a_real drhoiji[NVARS], a_real dvxiji[NVARS], a_real dvyiji[NVARS],
+		a_real dvm2iji[NVARS], a_real dvniji[NVARS], a_real dHiji[NVARS], a_real dciji[NVARS],
+		a_real dRijj[NVARS], a_real drhoijj[NVARS], a_real dvxijj[NVARS], a_real dvyijj[NVARS],
+		a_real dvm2ijj[NVARS], a_real dvnijj[NVARS], a_real dHijj[NVARS], a_real dcijj[NVARS] );
+};
+
 /// Roe-Pike flux-difference splitting
 /** From Blazek \cite{blazek}.
  */
-class RoeFlux : public InviscidFlux
+class RoeFlux : public RoeAverageBasedFlux
 {
 public:
 	RoeFlux(const IdealGasPhysics *const analyticalflux);
@@ -126,10 +170,16 @@ public:
 			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
+protected:
+	/// Entropy fix parameter
+	const a_real fixeps;
 };
 
 /// Harten Lax Van-Leer numerical flux
-class HLLFlux : public InviscidFlux
+/** Good for inviscid flows.
+ * \cite invflux_batten
+ */
+class HLLFlux : public RoeAverageBasedFlux
 {
 	/// Computes the Jacobian of the numerical flux w.r.t. left state
 	void getFluxJac_left(const a_real *const ul, const a_real *const ur, const a_real *const n, 
@@ -160,8 +210,9 @@ public:
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
 /** Implemented as described by Batten et al. \cite invflux_hllc_batten
+ * Good for both inviscid and viscous flows.
  */
-class HLLCFlux : public InviscidFlux
+class HLLCFlux : public RoeAverageBasedFlux
 {
 public:
 	HLLCFlux(const IdealGasPhysics *const analyticalflux);

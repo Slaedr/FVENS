@@ -44,6 +44,23 @@ public:
 			<< "\n   Re_infty = " << Reinf << ", Pr = " << Pr << std::endl;
 	}
 
+	/// Computes normal flux efficiently using specific data
+	/** \param[in] uc Vector of conserved variables
+	 * \param[in] n Normal vector
+	 * \param[in] vn Normal velocity (w.r.t. the the normal n above)
+	 * \param[in] p Pressure
+	 * \param[in|out] flux Output vector for the flux; note that any pre-existing contents
+	 *   will be replaced!
+	 */
+	void getNormalFluxEfficiently(const a_real *const uc, const a_real *const n,
+			const a_real vn, const a_real p, a_real *const __restrict flux) const
+	{
+		flux[0] = uc[0]*vn;
+		flux[1] = vn*uc[1] + p*n[0];
+		flux[2] = vn*uc[2] + p*n[1];
+		flux[3] = vn*(uc[3] + p);
+	}
+
 	/// Computes the analytical convective flux across a face oriented in some direction
 	void getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict flux) const;
@@ -53,6 +70,59 @@ public:
 	 */
 	void getJacobianNormalFluxWrtConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict dfdu) const;
+
+	/// Outputs various quantities, especially needed by numerical fluxes
+	/** \param[in] uc Conserved variables
+	 * \param[in] n Normal vector
+	 * \param[out] vx X-velocity
+	 * \param[out] vy Y-velocity
+	 * \param[out] vn Normal velocity
+	 * \param[out] vm2 Square of velocity magnitude
+	 * \param[out] p Pressure
+	 * \param[out] H Specific enthalpy
+	 */
+	void getVarsFromConserved(const a_real *const uc, const a_real *const n,
+			a_real& vx, a_real& vy,
+			a_real& vn,
+			a_real& p, a_real& H ) const
+	{
+		vx = uc[1]/uc[0]; 
+		vy = uc[2]/uc[0];
+		vn = vx*n[0] + vy*n[1];
+		p = (g-1.0)*(uc[3] - 0.5*uc[0]*(vx*vx+vy*vy));
+		H = (uc[3]+p)/uc[0];
+	}
+
+	/// Computes derivatives of variables computed in getVarsFromConserved
+	/** \warning The result is added to the original content of the  output variables!
+	 */
+	void getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,
+		a_real dvx[NVARS], a_real dvy[NVARS], a_real dvn[NVARS],
+		a_real dp[NVARS], a_real dH[NVARS]) const
+	{
+		dvx[0] += -uc[1]/(uc[0]*uc[0]);
+		dvx[1] += 1.0/uc[0];
+
+		dvy[0] += -uc[2]/(uc[0]*uc[0]);
+		dvy[2] += 1.0/uc[0];
+
+		dvn[0] += -(uc[1]*n[0]+uc[2]*n[1])/(uc[0]*uc[0]);
+		dvn[1] += n[0]/uc[0];
+		dvn[2] += n[1]/uc[0];
+
+		const a_real rvm2 = uc[1]*uc[1]+uc[2]*uc[2];
+		const a_real p = (g-1.0)*(uc[3]-0.5*rvm2/uc[0]);
+		
+		dp[0] = (g-1.0)*0.5*rvm2/(uc[0]*uc[0]);
+		dp[1] = -(g-1.0)*uc[1]/uc[0];
+		dp[2] = -(g-1.0)*uc[2]/uc[0];
+		dp[3] = (g-1.0);
+
+		dH[0] += (dp[0]*uc[0] - (uc[3]+p))/(uc[0]*uc[0]);
+		dH[1] += dp[1]/uc[0];
+		dH[2] += dp[2]/uc[0];
+		dH[3] += (1.0+dp[3])/uc[0];
+	}
 
 	/// Computes pressure from conserved variables
 	a_real getPressureFromConserved(const a_real *const uc) const
@@ -101,6 +171,22 @@ public:
 
 		const a_real c = std::sqrt(g*p/uc[0]);
 		
+		dc[0] += 0.5/c * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
+		for(int i = 1; i < NVARS; i++)
+			dc[i] += 0.5/c * g*dp[i]/uc[0];
+	}
+
+	/// Computes speed of sound from conserved variables and pressure
+	a_real getSoundSpeedFromConservedEfficiently(const a_real *const uc, const a_real p) const
+	{
+		return std::sqrt(g * p/uc[0]);
+	}
+
+	/// Derivative of sound speed w.r.t. conserved variables
+	void getJacobianSoundSpeedWrtConservedEfficiently(const a_real *const uc,
+			const a_real p, const a_real dp[NVARS], const a_real c,
+			a_real *const __restrict dc) const
+	{
 		dc[0] += 0.5/c * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
 		for(int i = 1; i < NVARS; i++)
 			dc[i] += 0.5/c * g*dp[i]/uc[0];
@@ -192,6 +278,7 @@ public:
 		uc[NDIM+1] = up[NDIM+1]/(g-1.0) + 0.5*up[0]*vmag2;
 	}
 
+	/// Converts primitive variables to `primitive2', ie, replaces pressure with temperature
 	void convertPrimitiveToPrimitive2(const a_real *const up, a_real *const up2) const
 	{
 		a_real t = getTemperatureFromPrimitive(up);
