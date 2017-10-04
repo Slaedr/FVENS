@@ -25,7 +25,7 @@ namespace acfd {
 class InviscidFlux
 {
 public:
-	/// Sets up data for the inviscid flux scheme
+	/// Sets the physics context for the inviscid flux scheme
 	InviscidFlux(const IdealGasPhysics *const physcs);
 
 	/** Computes flux across a face with
@@ -60,12 +60,24 @@ class LocalLaxFriedrichsFlux : public InviscidFlux
 {
 public:
 	LocalLaxFriedrichsFlux(const IdealGasPhysics *const analyticalflux);
+	
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const flux);
+	
+	/** Currently computes an approximate Jacobian with frozen spectral radius.
+	 * This has been found to perform no worse than the exact Jacobian for inviscid flows.
+	 * \sa InviscidFlux::get_jacobian
+	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
+	 */
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
-	
-	void get_frozen_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+
+	/** Computes the exact Jacobian.
+	 * This has been done to make the frozen Jacobian default.
+	 */
+	void get_jacobian_2(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 };
 
@@ -74,6 +86,8 @@ class VanLeerFlux : public InviscidFlux
 {
 public:
 	VanLeerFlux(const IdealGasPhysics *const analyticalflux);
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -91,9 +105,14 @@ class AUSMFlux : public InviscidFlux
 public:
 	AUSMFlux(const IdealGasPhysics *const analyticalflux);
 	
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	
+	/** \sa InviscidFlux::get_jacobian
+	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
+	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 	
@@ -109,6 +128,8 @@ class AUSMPlusFlux : public InviscidFlux
 {
 public:
 	AUSMPlusFlux(const IdealGasPhysics *const analyticalflux);
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -166,8 +187,15 @@ class RoeFlux : public RoeAverageBasedFlux
 {
 public:
 	RoeFlux(const IdealGasPhysics *const analyticalflux);
+	
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
+	
+	/** \sa InviscidFlux::get_jacobian
+	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
+	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 protected:
@@ -176,7 +204,7 @@ protected:
 };
 
 /// Harten Lax Van-Leer numerical flux
-/** Good for inviscid flows.
+/** Decent for inviscid flows.
  * \cite invflux_batten
  */
 class HLLFlux : public RoeAverageBasedFlux
@@ -191,10 +219,12 @@ class HLLFlux : public RoeAverageBasedFlux
 public:
 	HLLFlux(const IdealGasPhysics *const analyticalflux);
 	
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	
-	/** 
+	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
@@ -217,10 +247,12 @@ class HLLCFlux : public RoeAverageBasedFlux
 public:
 	HLLCFlux(const IdealGasPhysics *const analyticalflux);
 	
+	/** \sa InviscidFlux::get_flux
+	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
 	
-	/** 
+	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
