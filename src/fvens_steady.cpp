@@ -1,3 +1,4 @@
+#include <blockmatrices.hpp>
 #include "aoutput.hpp"
 #include "aodesolver.hpp"
 
@@ -19,19 +20,25 @@ int main(int argc, char* argv[])
 	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
 	string constvisc, surfnamepref, volnamepref, isVolOutReq;
+	
 	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
-		   firstcfl, firsttolerance;
+		   firstinitcfl, firstendcfl, firsttolerance;
 	double Reinf=0, Tinf=0, Pr=0, gamma, twalltemp=0, twallvel = 0;
 	double tpwalltemp=0, tpwallpressure=0, tpwallvel=0, adiawallvel;
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, 
+	
+	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, 
+		firstmaxiter, firstrampstart, firstrampend,
 		restart_vecs, farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker=-1,
 		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, extrap_marker=-1;
 	int out_nwalls, out_nothers;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
+	
 	bool use_matrix_free, lognres, reconstPrim, useconstvisc=false, viscsim=false,
 		 order2 = true;
+	
 	char mattype, dumc;
+	
 	std::vector<int> lwalls, lothers;
 
 	std::getline(control,dum); control >> meshfile;
@@ -106,7 +113,9 @@ int main(int argc, char* argv[])
 	control >> dum; control >> maxiter;
 	control >> dum;
 	control >> dum; control >> usestarter;
-	control >> dum; control >> firstcfl;
+	control >> dum; control >> firstinitcfl;
+	control >> dum; control >> firstendcfl;
+	control >> dum; control >> firstrampstart >> firstrampend;
 	control >> dum; control >> firsttolerance;
 	control >> dum; control >> firstmaxiter;
 	if(timesteptype == "IMPLICIT") {
@@ -157,8 +166,6 @@ int main(int argc, char* argv[])
 	m.compute_jacobians();
 	m.compute_face_data();
 
-	std::cout << " Mesh set up!\n";
-
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
@@ -174,41 +181,80 @@ int main(int argc, char* argv[])
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",false,true);
 	
-	// set up time discrization
+	// solution vector
+	MVector u(m.gnelem(),NVARS);
 
-	SteadySolver<4>* time;
-	if(timesteptype == "IMPLICIT") {
-		if(use_matrix_free)
-			time = new SteadyMFBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
-					initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-					lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
-					nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, 
-					restart_vecs, lognres);
-		else
-			time = new SteadyBackwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
-					initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-					mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
-					nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, 
-					restart_vecs, lognres);
-		std::cout << "Set up backward Euler temporal scheme.\n";
+	// Initialize Jacobian for implicit schemes; no storage allocated here
+	blasted::LinearOperator<a_real,a_int> * M;
+	if(mattype == 'd') {
+		M = new blasted::DLUMatrix<NVARS>(&m,nbuildsweeps,napplysweeps);
+		std::cout << " Selected DLU matrix for Jacobian storage, if required.\n";
+	}
+	else if(mattype == 'c') {
+		M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
+		std::cout << " Selected CSR matrix for Jacobian storage, if required.\n";
 	}
 	else {
-		time = new SteadyForwardEulerSolver<4>(&m, &prob, &startprob, usestarter, 
-				tolerance, maxiter, initcfl, firsttolerance, firstmaxiter, firstcfl, lognres);
+		M = new blasted::BSRMatrix<a_real,a_int,NVARS>(nbuildsweeps,napplysweeps);
+		std::cout << " Selected BSR matrix for Jacobian storage, if required.\n";
+	}
+
+	// set up time discrization
+
+	SteadySolver<4> * starttime=nullptr, * time=nullptr;
+
+	if(timesteptype == "IMPLICIT") 
+	{
+		if(use_matrix_free)
+			std::cout << "!! Matrix-free not implemented yet! Using matrix-storage instead.\n";
+			
+		// Pre-allocate storage for Jacobian matrix	
+		setupMatrixStorage<NVARS>(&m, mattype, M);
+		
+		if(usestarter != 0)
+			starttime = new SteadyBackwardEulerSolver<4>(&m, &startprob, u, M,
+				firstinitcfl, firstendcfl, firstrampstart, firstrampend, firsttolerance, firstmaxiter, 
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
+				restart_vecs, lognres);
+
+		time = new SteadyBackwardEulerSolver<4>(&m, &prob, u, M,
+				initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
+				restart_vecs, lognres);
+
+		std::cout << "Set up backward Euler temporal scheme.\n";
+	}
+	else 
+	{
+		if(usestarter != 0)
+			starttime = new SteadyForwardEulerSolver<4>(&m, &startprob, u,
+					tolerance, maxiter, initcfl, lognres);
+
+		time = new SteadyForwardEulerSolver<4>(&m, &prob, u,
+				tolerance, maxiter, initcfl, lognres);
+
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}
 	
-	startprob.initializeUnknowns(false, initcondfile, time->unknowns());
+	// Ask the spatial discretization context to initialize flow variables
+	startprob.initializeUnknowns(false, initcondfile, u);
 
 	// computation
 	
+	if(usestarter != 0)
+		// solve the starter problem to get the initial solution
+		starttime->solve(logfile);
+
+	/* Solve the main problem using either the initial solution
+	 * set by initializeUnknowns or the one computed by the starter problem.
+	 */
 	time->solve(logfile);
 
 	// export output to VTU
 
 	Array2d<a_real> scalars;
 	Array2d<a_real> velocities;
-	prob.postprocess_point(time->unknowns(), scalars, velocities);
+	prob.postprocess_point(u, scalars, velocities);
 
 	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
@@ -217,14 +263,16 @@ int main(int argc, char* argv[])
 	
 	IdealGasPhysics phy(gamma, Minf, Tinf, Reinf, Pr);
 	FlowOutput out(&m, &prob, &phy, alpha);
-	const MVector& u = time->unknowns();
 	
 	out.exportSurfaceData(u, lwalls, lothers, surfnamepref);
 	
 	if(isVolOutReq == "YES")
 		out.exportVolumeData(u, volnamepref);
 
+	if(usestarter != 0)
+		delete starttime;
 	delete time;
+
 	cout << "\n--------------- End --------------------- \n\n";
 	return 0;
 }

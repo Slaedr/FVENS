@@ -3,16 +3,12 @@
  * @author Aditya Kashi
  * @date 24 Feb 2016; modified 13 May 2017
  */
-#ifndef __AODESOLVER_H
-#define __AODESOLVER_H 1
+#ifndef AODESOLVER_H
+#define AODESOLVER_H 1
 
-#ifndef __ASPATIAL_H
 #include "aspatial.hpp"
-#endif
 
-#ifndef __ALINALG_H
 #include "alinalg.hpp"
-#endif
 
 namespace acfd {
 
@@ -25,11 +21,9 @@ class SteadySolver
 {
 protected:
 	const UMesh2dh *const m;
-	Spatial<nvars> *const eul;
-	Spatial<nvars> *const starter;
+	const Spatial<nvars> * eul;
+	MVector& u;
 	MVector residual;
-	MVector u;
-	const short usestarter;
 	double cputime;
 	double walltime;
 	bool lognres;
@@ -38,24 +32,18 @@ public:
 	/** 
 	 * \param[in] mesh Mesh context
 	 * \param[in] spatial Spatial discretization context
-	 * \param[in] starterfv Spatial discretization used to generate an approximate solution initially
+	 * \param[in] soln The solution vector to use and update
 	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
 	 * \param[in] log_nonlinear_residual Set to true if output of convergence history is needed
 	 */
-	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, 
-			Spatial<nvars> *const starterfv, const short use_starter,
+	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
 			bool log_nonlinear_residual)
-		: m(mesh), eul(spatial), starter(starterfv), usestarter(use_starter), 
-			cputime{0.0}, walltime{0.0}, lognres{log_nonlinear_residual}
+		: m(mesh), eul(spatial), u(soln), cputime{0.0}, walltime{0.0}, 
+		  lognres{log_nonlinear_residual}
 	{ }
 
 	const MVector& residuals() const {
 		return residual;
-	}
-	
-	/// Write access to the conserved variables
-	MVector& unknowns() {
-		return u;
 	}
 
 	/// Get timing data
@@ -81,10 +69,8 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
 	using SteadySolver<nvars>::m;
 	using SteadySolver<nvars>::eul;
-	using SteadySolver<nvars>::starter;
 	using SteadySolver<nvars>::residual;
 	using SteadySolver<nvars>::u;
-	using SteadySolver<nvars>::usestarter;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 	using SteadySolver<nvars>::lognres;
@@ -93,17 +79,12 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	const double tol;
 	const int maxiter;
 	const double cfl;
-	
-	const double starttol;
-	const int startmaxiter;
-	const double startcfl;
 
 public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
-			Spatial<nvars> *const euler, Spatial<nvars> *const starterfv, 
-			const short use_starter, const double toler, const int maxits, const double cfl,
-			const double ftoler, const int fmaxits, const double fcfl,
+	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, MVector& sol,
+			const double toler, const int maxits, const double cfl,
 			bool log_nonlinear_res);
+	
 	~SteadyForwardEulerSolver();
 
 	/// Solves the steady problem by a first-order explicit method, using local time-stepping
@@ -111,19 +92,13 @@ public:
 };
 
 /// Implicit pseudo-time iteration to steady state
-/** Optionally runs a `starter' time stepping loop to generate an initial solution
- * before starting the `main' loop.
- * The starter can, perhaps, use a lower CFL number or use a first-order discretization.
- */
 template <short nvars>
 class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 {
 	using SteadySolver<nvars>::m;
 	using SteadySolver<nvars>::eul;
-	using SteadySolver<nvars>::starter;
 	using SteadySolver<nvars>::residual;
 	using SteadySolver<nvars>::u;
-	using SteadySolver<nvars>::usestarter;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 	using SteadySolver<nvars>::lognres;
@@ -132,7 +107,12 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 
 	IterativeSolver<nvars> * linsolv;        ///< Linear solver context
 	Preconditioner<nvars>* prec;             ///< preconditioner context
-	LinearOperator<a_real,a_int>* A;         ///< Sparse matrix to hold the Jacobian or LHS
+
+	/// Sparse matrix of the preconditioning Jacobian
+	/** Note that the same matrix is used as the actual LHS as well,
+	 * if matrix-free solution is disabled.
+	 */
+	LinearOperator<a_real,a_int>* M;
 
 	const double cflinit;
 	double cflfin;
@@ -143,10 +123,6 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 	double lintol;
 	int linmaxiterstart;
 	int linmaxiterend;
-	
-	const double starttol;
-	const int startmaxiter;
-	const double startcfl;
 
 public:
 	
@@ -154,8 +130,8 @@ public:
 	/** 
 	 * \param[in] mesh Mesh context
 	 * \param[in] spatial Spatial discretization context
-	 * \param[in] starterfv Spatial discretization used to generate an approximate solution initially
-	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
+	 * \param[in] soln Reference to the solution vector
+	 * \param[in] pmat Jacobian matrix context for the preconditioner (and perhaps the solver)
 	 * \param[in] cfl_init CFL to be used when the main solver starts
 	 * \param[in] cfl_fin Final CFL number attained at \ref ramp_end iterations
 	 * \param[in] ramp_start Iteration number of main solver at which 
@@ -163,9 +139,6 @@ public:
 	 * \param[in] ramp_end Iteration number of the main solver at which CFL ramping ends
 	 * \param[in] toler Relative residual tolerance for the ODE solver for the main solver
 	 * \param[in] maxits Maximum number of pseudo-time steps for the main solver
-	 * \param[in] mat_type A character which selects the matrix storage scheme for the Jacobian.
-	 *            Possible values: 'p' (point CSR storage), 'b' (block CSR storage) 
-	 *            or 'd' ('DLU' storage)
 	 * \param[in] linmaxiterstart Maximum iterations per time step for the linear solver
 	 *              both for the starting ODE solver and initially for the main ODE solver
 	 * \param[in] linmaxiterend Maximum iterations per time step at the end of the CFL ramping
@@ -174,24 +147,15 @@ public:
 	 *              "RICHARDSON", "BCGSTB" (BiCGStab)
 	 * \param[in] precond Selects preconditioner to use for the linear solver; possible values:
 	 *              "BSGS", "BILU0", "BJ"
-	 * \param[in] nbuildsweeps Number of sweeps to use while asynchronously building 
-	 *            the ILU0 preconditioner
-	 * \param[in] napplysweeps Number of sweeps to use for each asynchronous loop 
-	 *            during application of preconditioners
-	 * \param[in] ftoler Tolerance for the starting ODE solver
-	 * \param[in] fmaxits Maximum iterations for the starting ODE solver
-	 * \param[in] fcfl CFL number to use for starting ODE solver
 	 * \param[in] restart_vecs Number of Krylov subspace vectors to store per restart iteration
 	 * \param[in] log_nonlinear_res True if you want nonlinear convergence history
 	 */
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, 
-		Spatial<nvars> *const starterfv, const short use_starter,
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial,
+		MVector& soln, LinearOperator<a_real,a_int> *const pmat,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
-		const char mat_type, const double lin_tol, const int linmaxiterstart, 
+		const double lin_tol, const int linmaxiterstart, 
 		const int linmaxiterend, std::string linearsolver, std::string precond,
-		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl,
 		const int restart_vecs, bool log_nonlinear_res);
 	
 	~SteadyBackwardEulerSolver();
@@ -200,69 +164,8 @@ public:
 	/** Appends a line of timing-related data to a log file as follows.
 	 *  num-cells num-threads  wall-time  CPU-time   avg-linear-solver-iterations 
 	 *      number-of-time-steps  <\n>
-	 * All data corresponds to the main solver only, not the starter.
 	 * \param[in] logfile The file name to append timing data to
 	 */
-	void solve(std::string logfile);
-};
-
-/// Implicit pseudo-time iteration to steady state using a martrix-free linear solver
-template <short nvars>
-class SteadyMFBackwardEulerSolver : public SteadySolver<nvars>
-{
-	using SteadySolver<nvars>::m;
-	using SteadySolver<nvars>::eul;
-	using SteadySolver<nvars>::starter;
-	using SteadySolver<nvars>::residual;
-	using SteadySolver<nvars>::u;
-	using SteadySolver<nvars>::usestarter;
-	using SteadySolver<nvars>::cputime;
-	using SteadySolver<nvars>::walltime;
-	using SteadySolver<nvars>::lognres;
-
-	/// Stores allowable local time step for each cell
-	amat::Array2d<a_real> dtm; 
-
-	MFIterativeSolver<nvars> * startlinsolv;    ///< Linear solver context for starting run
-	MFIterativeSolver<nvars> * linsolv;         ///< Linear solver context for main run
-	Preconditioner<nvars>* prec;                ///< preconditioner context
-	LinearOperator<a_real,a_int>* M;            ///< Preconditioning matrix
-
-	/// Temporary storage needed for matrix-free derivative evaluation
-	MVector aux;
-
-	// TEMPORARY - REMOVE!
-	Matrix<a_real,nvars,nvars,RowMajor>* D;
-	Matrix<a_real,nvars,nvars,RowMajor>* L;
-	Matrix<a_real,nvars,nvars,RowMajor>* U;
-
-	const double cflinit;
-	double cflfin;
-	int rampstart;
-	int rampend;
-	double tol;
-	int maxiter;
-	double lintol;
-	int linmaxiterstart;
-	int linmaxiterend;
-	
-	const double starttol;
-	const int startmaxiter;
-	const double startcfl;
-
-public:
-	SteadyMFBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial, 
-		Spatial<nvars> *const starterfv, const short use_starter,
-		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, 
-		const double lin_tol, const int linmaxiterstart, const int linmaxiterend, 
-		std::string linearsolver, std::string precond,
-		const short nbuildsweeps, const short napplysweeps,
-		const double ftoler, const int fmaxits, const double fcfl, const int restart_vecs,
-		bool log_nonlinear_res);
-	
-	~SteadyMFBackwardEulerSolver();
-
 	void solve(std::string logfile);
 };
 

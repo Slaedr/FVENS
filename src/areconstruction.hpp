@@ -4,11 +4,10 @@
  * @date February 3, 2016
  */
 
-#ifndef __AMESH2DH_H
-#include "amesh2dh.hpp"
-#endif
+#ifndef ARECONSTRUCTION_H
+#define ARECONSTRUCTION_H 1
 
-#define __ARECONSTRUCTION_H 1
+#include "amesh2dh.hpp"
 
 namespace acfd
 {
@@ -85,3 +84,4 @@ public:
 
 
 } // end namespace
+#endif

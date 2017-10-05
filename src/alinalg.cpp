@@ -12,15 +12,9 @@ DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh,
 	const short n_buildsweeps, const short n_applysweeps)
 	: LinearOperator<a_real,a_int>('d'),
 	  m(mesh), D(nullptr), L(nullptr), U(nullptr), luD(nullptr), luL(nullptr), luU(nullptr),
-	  nbuildsweeps(n_buildsweeps), napplysweeps(n_applysweeps),
-	  thread_chunk_size(200)
+	  nbuildsweeps{n_buildsweeps}, napplysweeps{n_applysweeps},
+	  thread_chunk_size{200}
 {
-	D = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
-	L = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
-	U = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
-#ifdef DEBUG
-	std::cout << " DLUMatrix: Setting up\n";
-#endif
 }
 
 template <int bs>
@@ -36,6 +30,17 @@ DLUMatrix<bs>::~DLUMatrix()
 	if(luU)
 		delete [] luU;
 	D=L=U=luD=luU=luL = nullptr;
+}
+
+template<int bs>
+void DLUMatrix<bs>::setStructure(const a_int n, const a_int *const v1, const a_int *const v2)
+{
+	D = new Matrix<a_real,bs,bs,RowMajor>[m->gnelem()];
+	L = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
+	U = new Matrix<a_real,bs,bs,RowMajor>[m->gnaface()-m->gnbface()];
+#ifdef DEBUG
+	std::cout << " DLUMatrix: Storage allocated.\n";
+#endif
 }
 
 template <int bs>
@@ -870,6 +875,180 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 	return step;
 }
 
+/// Ordering function for qsort - ascending order
+/*int order_ascending(const void* a, const void* b) {
+	if(*(a_int*)a < *(a_int*)b)
+		return -1;
+	else if(*(a_int*)a == *(a_int*)b)
+		return 0;
+	else
+		return 1;
+}*/
+
+template <short nvars>
+void setupMatrixStorage(const UMesh2dh *const m, const char mattype,
+	LinearOperator<a_real,a_int> *const M)
+{
+	// set Jacobian storage
+	if(mattype == 'd')
+	{
+		M->setStructure(0,nullptr,nullptr);
+	}
+	else if(mattype == 'c') {
+		// construct non-zero structure for sparse format
+
+		a_int* colinds, * rowptr;
+		a_int nnz = (m->gnelem()+2*(m->gnaface()-m->gnbface()))*nvars*nvars;
+		a_int nrows = m->gnelem()*nvars;
+
+		rowptr = new a_int[nrows+1];
+		colinds = new a_int[nnz];
+		for(a_int i = 0; i < nrows+1; i++)
+			rowptr[i] = nvars;
+
+		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		{
+			// each face represents an interaction between the two cells on either side
+			// we add the nonzero block to browptr but in a row shifted by 1
+			for(int i = 0; i < nvars; i++) {
+				rowptr[m->gintfac(iface,0)*nvars+i + 1] += nvars;
+				rowptr[m->gintfac(iface,1)*nvars+i + 1] += nvars;
+			}
+		}
+		for(a_int i = 2; i < nrows+1; i++)
+			rowptr[i] += rowptr[i-1];
+		rowptr[0] = 0;
+
+		if(rowptr[nrows] != nnz)
+			std::cout << "! SteadyBackwardEulerSolver:Point: Row pointer computation is wrong!!\n";
+#ifdef DEBUG
+		std::cout << "  SteadyBackwardEulerSolver: nnz = " << rowptr[nrows] 
+			<< "; should be "<< nnz << std::endl;
+#endif
+
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			size_t bcsize = (rowptr[(iel+1)*nvars]-rowptr[iel*nvars])/(nvars*nvars);
+			std::vector<a_int> bcinds;
+			bcinds.reserve(bcsize);
+
+			bcinds.push_back(iel);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
+				a_int nbdelem = m->gesuel(iel,ifael);
+				if(nbdelem < m->gnelem())
+					bcinds.push_back(nbdelem);
+			}
+
+			if(bcinds.size() != bcsize)
+				std::cout << "! SteadyBackwardEulerSolver:Point: Row pointers are wrong!!\n";
+
+			std::sort(bcinds.begin(),bcinds.end());
+
+			// i th row in element iel's block-row
+			for(int i = 0; i < nvars; i++)
+				// j th block of the block-row: element iel and its neighbors
+				for(size_t j = 0; j < bcinds.size(); j++)
+					// k th column in the j th block
+					for(int k = 0; k < nvars; k++)
+						colinds[rowptr[iel*nvars+i] + j*nvars + k] = bcinds[j]*nvars+k;
+		}
+
+		// Setup the point matrix
+		M->setStructure(nrows, colinds,rowptr);
+
+		delete [] rowptr;
+		delete [] colinds;
+
+#if 0
+		// check
+		std::cout << " CSR: Checking..\n";
+		blasted::BSRMatrix<a_real,a_int,1>* B 
+			= reinterpret_cast<blasted::BSRMatrix<a_real,a_int,1>*>(A);
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			std::vector<int> nbd; nbd.reserve(5);
+			nbd.push_back(iel);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++)
+			{
+				int nbelem = m->gesuel(iel,ifael);
+				if(nbelem < m->gnelem())
+					nbd.push_back(nbelem);
+			}
+
+			for(short j = 0; j < nvars; j++)
+				if(nbd.size() != (B->browptr[(iel+1)*nvars]-B->browptr[iel*nvars])/(nvars*nvars))
+					std::cout << " CSR: browptr is wrong!!\n";
+
+			std::sort(nbd.begin(),nbd.end());
+			for(short j = 0; j < nvars; j++) 
+			{
+				for(a_int jj = B->browptr[iel*nvars+j]; jj < B->browptr[iel*nvars+j+1]; jj++)
+				{
+					a_int loccol = jj - B->browptr[iel*nvars+j];
+					if(B->bcolind[jj] != nbd[loccol/nvars]*nvars + loccol%nvars)
+						std::cout << " CSR: bcolind is wrong!!\n";
+				}
+			}
+		}
+#endif
+	}
+	else {
+		// construct non-zero structure for block sparse format
+
+		a_int* bcolinds, * browptr;
+		a_int nnzb = m->gnelem()+2*(m->gnaface()-m->gnbface());
+
+		browptr = new a_int[m->gnelem()+1];
+		bcolinds = new a_int[nnzb];
+		for(a_int i = 0; i < m->gnelem()+1; i++)
+			browptr[i] = 1;
+
+		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		{
+			// each face represents an interaction between the two cells on either side
+			// we add the nonzero block, shifted by 1 position, to browptr
+			browptr[m->gintfac(iface,0)+1] += 1;
+			browptr[m->gintfac(iface,1)+1] += 1;
+		}
+		for(a_int i = 2; i < m->gnelem()+1; i++)
+			browptr[i] += browptr[i-1];
+		browptr[0] = 0;
+
+		if(browptr[m->gnelem()] != nnzb)
+			std::cout << "! SteadyBackwardEulerSolver: Row pointer computation is wrong!!\n";
+#ifdef DEBUG
+		std::cout << "  nnz = " << browptr[m->gnelem()] << "; should be "<< nnzb << std::endl;
+#endif
+
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			size_t csize = browptr[iel+1]-browptr[iel];
+			std::vector<a_int> cinds;
+			cinds.reserve(csize);
+
+			cinds.push_back(iel);
+			for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
+				a_int nbdelem = m->gesuel(iel,ifael);
+				if(nbdelem < m->gnelem())
+					cinds.push_back(nbdelem);
+			}
+
+			if(cinds.size() != csize)
+				std::cout << "! SteadyBackwardEulerSolver: Block-column indices are wrong!!\n";
+
+			std::sort(cinds.begin(),cinds.end());
+
+			for(size_t i = 0; i < cinds.size(); i++)
+				bcolinds[browptr[iel]+i] = cinds[i];
+		}
+
+		// Create the matrix
+		M->setStructure(m->gnelem(), bcolinds, browptr);
+		delete [] browptr;
+		delete [] bcolinds;
+	}
+}
+
 template class RichardsonSolver<NVARS>;
 template class BiCGSTAB<NVARS>;
 template class GMRES<NVARS>;
@@ -877,5 +1056,10 @@ template class MFRichardsonSolver<NVARS>;
 template class RichardsonSolver<1>;
 template class BiCGSTAB<1>;
 template class GMRES<1>;
+
+template void setupMatrixStorage<NVARS>(const UMesh2dh *const m, const char mattype,
+		LinearOperator<a_real,a_int> *const A);
+template void setupMatrixStorage<1>(const UMesh2dh *const m, const char mattype,
+		LinearOperator<a_real,a_int> *const A);
 
 }

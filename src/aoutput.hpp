@@ -2,13 +2,11 @@
  * @brief A collection of subroutines to write mesh data to various kinds of output formats
  */
 
-#ifndef __AOUTPUT_H
+#ifndef AOUTPUT_H
 
-#ifndef __ASPATIAL_H
 #include "aspatial.hpp"
-#endif
 
-#define __AOUTPUT_H 1
+#define AOUTPUT_H 1
 
 namespace acfd {
 

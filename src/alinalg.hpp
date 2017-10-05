@@ -67,11 +67,16 @@ protected:
 	mutable MVector y;
 
 public:
+
+	/// Sets data; does not allocate any storage \sa setStructure
 	DLUMatrix(const acfd::UMesh2dh *const mesh, 
 			const short nbuildsweeps, const short napplysweeps);
 
 	/// De-allocates memory
 	virtual ~DLUMatrix();
+
+	/// Allocates storage using the mesh context; arguments can be 0, NULL and NULL
+	void setStructure(const a_int n, const a_int *const v1, const a_int *const v2);
 
 	/// Sets storage D, L and U to zero
 	void setAllZero();
@@ -531,6 +536,16 @@ public:
 		MVector& __restrict__ du) const;
 };
 
+/// Sets up storage preallocation for sparse matrix formats
+/** \param[in] m Mesh context
+ * \param[in] mat_type A character which selects the matrix storage scheme for the Jacobian.
+ *            Possible values: 'p' (point CSR storage), 'b' (block CSR storage) 
+ *            or 'd' ('DLU' storage)
+ * \param[in|out] A The matrix to pre-allocate for
+ */
+template <short nvars>
+void setupMatrixStorage(const UMesh2dh *const m, const char mattype,
+		LinearOperator<a_real,a_int> *const A);
 
 }
 #endif

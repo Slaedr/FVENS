@@ -1307,7 +1307,7 @@ void FlowFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
 void FlowFV::compute_jacobian(const MVector& u, 
-				LinearOperator<a_real,a_int> *const __restrict A)
+				LinearOperator<a_real,a_int> *const __restrict A) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1506,6 +1506,15 @@ template<short nvars>
 Diffusion<nvars>::~Diffusion()
 { }
 
+template<short nvars>
+void Diffusion<nvars>::initializeUnknowns(const bool fromfile, const std::string file, MVector& u)
+	const
+{
+	for(a_int i = 0; i < u.rows(); i++)
+		for(a_int j = 0; j < u.cols(); j++)
+			u(i,j) = 0;
+}
+
 // Currently, all boundaries are constant Dirichlet
 template<short nvars>
 inline void Diffusion<nvars>::compute_boundary_state(const int ied, 
@@ -1678,7 +1687,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
  */
 template<short nvars>
 void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
-		LinearOperator<a_real,a_int> *const A)
+		LinearOperator<a_real,a_int> *const A) const
 {
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{

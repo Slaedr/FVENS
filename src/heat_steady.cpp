@@ -1,17 +1,10 @@
+#include <blockmatrices.hpp>
 #include "aoutput.hpp"
 #include "aodesolver.hpp"
 
 using namespace amat;
 using namespace std;
 using namespace acfd;
-
-/*a_real source(const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
-{
-	return 8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]);
-}
-a_real exact(double x, double y) {
-	return sin(2*PI*x)*sin(2*PI*y);
-}*/
 
 int main(int argc, char* argv[])
 {
@@ -72,9 +65,13 @@ int main(int argc, char* argv[])
 		lognres = false;
 	
 	// rhs and exact soln
+	
 	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> rhs 
 		= [diffcoeff](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
-		{ sourceterm[0] = diffcoeff*8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]); };
+		{ 
+			sourceterm[0] = diffcoeff*8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]); 
+		};
+	
 	auto uexact = [](const a_real *const r)->a_real { return sin(2*PI*r[0])*sin(2*PI*r[1]); };
 
 	a_real err = 0;
@@ -91,8 +88,9 @@ int main(int argc, char* argv[])
 	// set up problem
 	
 	std::cout << "Setting up spatial scheme.\n";
-	Diffusion<1>* prob;
-	Diffusion<1>* startprob;
+	
+	Diffusion<1>* prob = nullptr;
+	Diffusion<1>* startprob = nullptr;
 	if(visflux == "MODIFIEDAVERAGE") {
 		prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
 		startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, "NONE");
@@ -104,55 +102,91 @@ int main(int argc, char* argv[])
 
 	Array2d<a_real> outputarr, dummy;
 	
-	if(timesteptype == "IMPLICIT") {
-		SteadyBackwardEulerSolver<1> time(&m, prob, startprob, usestarter, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				mattype, lintol, linmaxiterstart, linmaxiterend, linsolver, prec, nbuildsweeps, napplysweeps, firsttolerance, firstmaxiter, firstcfl, restart_vecs, lognres);
+	// solution vector	
+	MVector u(m.gnelem(),1);
 
-		// computation
-		time.solve(logfile);
+	blasted::LinearOperator<a_real,a_int> * M;
+	switch(mattype) {
+		case 'd':
+			M = new blasted::DLUMatrix<1>(&m,nbuildsweeps,napplysweeps);
+			break;
+		case 'c':
+			M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
+			break;
+		default:
+			M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
+	}
 
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& u = time.unknowns();
+	SteadySolver<1> *time;
+	SteadySolver<1> *starttime;
+	
+	if(timesteptype == "IMPLICIT") 
+	{
+		time = new SteadyBackwardEulerSolver<1>(&m, prob, u, M, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, lognres);
 
-		for(int iel = 0; iel < m.gnelem(); iel++)
+		//startprob->initializeUnknowns(false, " ", u);
+		setupMatrixStorage<1>(&m, mattype, M);
+
+		if(usestarter != 0)
 		{
-			a_real rc[2]; rc[0] = 0; rc[1] = 0;
-			for(int inode = 0; inode < m.gnnode(iel); inode++) {
-				rc[0] += m.gcoords(m.ginpoel(iel,inode),0);
-				rc[1] += m.gcoords(m.ginpoel(iel,inode),1);
-			}
-			rc[0] /= m.gnnode(iel); rc[1] /= m.gnnode(iel);
-			a_real trueval = uexact(rc);
-			err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
+			starttime = new SteadyBackwardEulerSolver<1>(&m, startprob, u, M, initcfl, endcfl, 
+					rampstart, rampend, tolerance, maxiter, 
+					lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, lognres);
+
+			// solve the starter problem to get the initial solution
+			starttime->solve(logfile);
+
+			delete starttime;
 		}
 
-		prob->postprocess_point(u, outputarr);
+		/* Solve the main problem using either the initial solution
+		 * set by initializeUnknowns or the one computed by the starter problem.
+		 */
+		time->solve(logfile);
 	}
 	else {
-		SteadyForwardEulerSolver<1> time(&m, prob, startprob, usestarter, tolerance, maxiter, initcfl,
-				firsttolerance, firstmaxiter, firstcfl, lognres);
+		time = new SteadyForwardEulerSolver<1>(&m, prob, u, tolerance, maxiter, initcfl, lognres);
+		
+		// TODO: Find out why the call below does not compile
+		//startprob->initializeUnknowns(false, " ", u);
 
-		// computation
-		time.solve(logfile);
-
-		Matrix<a_real,Dynamic,Dynamic,RowMajor>& u = time.unknowns();
-
-		for(int iel = 0; iel < m.gnelem(); iel++)
+		if(usestarter != 0)
 		{
-			a_real rc[2]; rc[0] = 0; rc[1] = 0;
-			for(int inode = 0; inode < m.gnnode(iel); inode++) {
-				rc[0] += m.gcoords(m.ginpoel(iel,inode),0);
-				rc[1] += m.gcoords(m.ginpoel(iel,inode),1);
-			}
-			rc[0] /= m.gnnode(iel); rc[1] /= m.gnnode(iel);
-			a_real trueval = uexact(rc);
-			err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
+			starttime = new SteadyForwardEulerSolver<1>(&m, startprob, u, tolerance, maxiter, initcfl, lognres);
+
+			// solve the starter problem to get the initial solution
+			starttime->solve(logfile);
+
+			delete starttime;
 		}
 
-		prob->postprocess_point(u, outputarr);
+		/* Solve the main problem using either the initial solution
+		 * set by initializeUnknowns or the one computed by the starter problem.
+		 */
+		time->solve(logfile);
 	}
+
+	// postprocess
+	
+	for(int iel = 0; iel < m.gnelem(); iel++)
+	{
+		a_real rc[2]; rc[0] = 0; rc[1] = 0;
+		for(int inode = 0; inode < m.gnnode(iel); inode++) {
+			rc[0] += m.gcoords(m.ginpoel(iel,inode),0);
+			rc[1] += m.gcoords(m.ginpoel(iel,inode),1);
+		}
+		rc[0] /= m.gnnode(iel); rc[1] /= m.gnnode(iel);
+		a_real trueval = uexact(rc);
+		err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
+	}
+
+	prob->postprocess_point(u, outputarr);
 
 	delete prob;
 	delete startprob;
+	delete time;
+	delete M;
 
 	err = sqrt(err);
 	double h = 1.0/sqrt(m.gnelem());

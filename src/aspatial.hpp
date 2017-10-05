@@ -3,32 +3,18 @@
  * @author Aditya Kashi
  * @date Feb 24, 2016; modified May 13 2017
  */
-#ifndef __ASPATIAL_H
-#define __ASPATIAL_H 1
+#ifndef ASPATIAL_H
+#define ASPATIAL_H 1
 
-#ifndef __ACONSTANTS_H
 #include "aconstants.hpp"
-#endif
 
-#ifndef __AARRAY2D_H
 #include "aarray2d.hpp"
-#endif
 
-#ifndef __AMESH2DH_H
 #include "amesh2dh.hpp"
-#endif
 
-#ifndef __ANUMERICALFLUX_H
 #include "anumericalflux.hpp"
-#endif
-
-#ifndef __ALIMITER_H
 #include "alimiter.hpp"
-#endif
-
-#ifndef __ARECONSTRUCTION_H
 #include "areconstruction.hpp"
-#endif
 
 #if HAVE_PETSC==1
 #include <petscmat.h>
@@ -59,7 +45,7 @@ public:
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
 	
 	/// Computes the Jacobian matrix of the residual
-	virtual void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) = 0;
+	virtual void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) const = 0;
 
 	/// Computes the Frechet derivative of the residual along a given direction 
 	/// using finite difference
@@ -181,7 +167,7 @@ public:
 	/// and lower and upper blocks for each face
 	/** A is not zeroed before use.
 	 */
-	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A);
+	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) const;
 #endif
 	
 	void getGradients(const MVector& u, MVector grad[NDIM]) const;
@@ -315,12 +301,19 @@ public:
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 			> source);
+
+	/// Sets initial conditions to zero
+	/** \param[in] fromfile True if initial data is to be read from a file
+	 * \param[in] file Name of initial conditions file
+	 * \param[in|out] u Vector to store the initial data in
+	 */
+	void initializeUnknowns(const bool fromfile, const std::string file, MVector& u) const;
 	
 	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
 	
 	virtual void compute_jacobian(const MVector& u, 
-			LinearOperator<a_real,a_int> *const A) = 0;
+			LinearOperator<a_real,a_int> *const A) const = 0;
 	
 	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
 
@@ -363,13 +356,15 @@ public:
 	void compute_residual(const MVector& u, MVector& __restrict residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const;
 	
-	void add_source(const MVector& u, 
-			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm);
+	/*void add_source(const MVector& u, 
+			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
 	void compute_jacobian(const MVector& u, 
-			LinearOperator<a_real,a_int> *const A);
+			LinearOperator<a_real,a_int> *const A) const;
 	
 	void getGradients(const MVector& u, MVector grad[NDIM]) const;
+	
+	using Diffusion<nvars>::initializeUnknowns;
 
 	~DiffusionMA();
 

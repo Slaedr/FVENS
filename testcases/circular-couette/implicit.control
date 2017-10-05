@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/circular-couette/grids/cylstruct2.msh
+../testcases/circular-couette/grids/cylquad1.msh
 ---Output-file
 ../data/ccouettestri.vtu
 ---Log-file-for-runtimes
@@ -55,10 +55,10 @@ YES
 ---Is-volume-output-of-cell-centred-variables-required?
 YES
 ---Prefix-for-volume-output-file
-../data/circ-couette
+../data/circ-couette0
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLL
+HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -69,27 +69,31 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-250.0
+50.0
 ---final-CFL
-500.0
+100.0
 ---ramp-start-step-and-end-step
-200 400
+400 700
 ---Tolerance
 1e-6
 ---Max-pseudotime-iterations
 40000
-#######################################################################
+##########INITIALIZATION###############################################
 ---use-first-order-initial-condition
 1
----CFL-for-initialization-run
-200.0
+---initial-CFL
+25.0
+---final-CFL
+250.0
+---ramp-start-step-and-end-step
+200 400
 ---tolerance-for-initialization
-1e-2
+1e-3
 ---max-time-steps-for-initialization
 500
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLL
+HLLC
 ---Use-matrix-free-(YES,NO)
 NO
 ---Matrix-type(c=CSR,b=BSR,d=DLU)
@@ -105,6 +109,6 @@ RICHARDSON
 ---Krylov-vectors
 30
 ---preconditioner(J=Jacobi,SGS,ILU0)
-ILU0
+SGS
 ---preconditioner-build-and-application-sweeps
-3 3
+1 1

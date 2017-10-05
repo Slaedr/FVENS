@@ -8,8 +8,8 @@
  * \date 2017 May 12
  */
 
-#ifndef __APHYSICS_H
-#define __APHYSICS_H
+#ifndef APHYSICS_H
+#define APHYSICS_H
 
 #include "aconstants.hpp"
 

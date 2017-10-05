@@ -12,15 +12,13 @@
 
 /**
  * \namespace amat
- * \brief Includes array storage classes.
+ * \brief Includes matrix and some linear algebra classes.
  */
 
-#ifndef __AARRAY2D_H
-#define __AARRAY2D_H
+#ifndef AARRAY2D_H
+#define AARRAY2D_H
 
-#ifndef __ACONSTANTS_H
-#include <aconstants.hpp>
-#endif
+#include "aconstants.hpp"
 
 #ifndef MATRIX_DOUBLE_PRECISION
 #define MATRIX_DOUBLE_PRECISION 14
@@ -63,11 +61,10 @@ private:
 	a_int ncols;
 	a_int size;
 	T* elems;
-	bool isalloc;
 
 public:
-	/// No-arg constructor. Note: no memory allocation! Make sure Array2d::resize is used.
-	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}, isalloc{false}
+	/// No-arg constructor. Note: no memory allocation!
+	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}
 	{ }
 
 	// Full-arg constructor
@@ -86,7 +83,6 @@ public:
 		nrows = nr; ncols = nc;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
-		isalloc = true;
 	}
 
 	Array2d(const Array2d<T>& other)
@@ -95,7 +91,6 @@ public:
 		ncols = other.ncols;
 		size = nrows*ncols;
 		elems = new T[nrows*ncols];
-		isalloc = true;
 		for(a_int i = 0; i < nrows*ncols; i++)
 		{
 			elems[i] = other.elems[i];
@@ -104,9 +99,7 @@ public:
 
 	~Array2d()
 	{
-		if(isalloc == true)	
-			delete [] elems;
-		isalloc = false;
+		delete [] elems;
 	}
 
 	Array2d<T>& operator=(const Array2d<T>& rhs)
@@ -117,10 +110,8 @@ public:
 		nrows = rhs.nrows;
 		ncols = rhs.ncols;
 		size = nrows*ncols;
-		if(isalloc == true)
-			delete [] elems;
+		delete [] elems;
 		elems = new T[nrows*ncols];
-		isalloc = true;
 		for(a_int i = 0; i < nrows*ncols; i++)
 		{
 			elems[i] = rhs.elems[i];
@@ -145,10 +136,8 @@ public:
 		}
 		nrows = nr; ncols = nc;
 		size = nrows*ncols;
-		if(isalloc == true)
-			delete [] elems;
+		delete [] elems;
 		elems = new T[nrows*ncols];
-		isalloc = true;
 	}
 	
 	/// Sets a new size for the array, deletes the contents and allocates new memory
@@ -166,10 +155,8 @@ public:
 		}
 		nrows = nr; ncols = nc;
 		size = nrows*ncols;
-		if(isalloc == true)
-			delete [] elems;
+		delete [] elems;
 		elems = new T[nrows*ncols];
-		isalloc = true;
 	}
 
 	/// Setup without deleting earlier allocation: use in case of Array2d<t>* (pointer to Array2d<t>)
@@ -188,8 +175,8 @@ public:
 		}
 		nrows = nr; ncols = nc;
 		size = nrows*ncols;
+		delete [] elems;
 		elems = new T[nrows*ncols];
-		isalloc = true;
 	}
 	
 	/// Fill the matrix with zeros.
@@ -299,7 +286,7 @@ public:
 		return elems[x*ncols + y];
 	}
 	
-	/// Const Getter/setter function for expressions like A(1,2) = 141 to set the element at 1st row and 2nd column to 141
+	/// Const Getter/setter function for expressions like x = A(1,2) to get the element at 1st row and 2nd column
 	const T& operator()(const a_int x, const a_int y=0) const
 	{
 #ifdef DEBUG
@@ -368,7 +355,7 @@ public:
 		return max;
 	}
 
-	T minincol(a_int j) const
+	T minincol(const a_int j) const
 	{
 		T min = get(0,j);
 		for(a_int i = 0; i < nrows; i++)
@@ -376,7 +363,7 @@ public:
 		return min;
 	}
 
-	T mininrow(a_int i) const
+	T mininrow(const a_int i) const
 	{
 		T max = get(i,0);
 		for(a_int j = 0; j < nrows; j++)
@@ -440,18 +427,8 @@ public:
 		return b;
 	}
 
-	/*//Function to return a reference to a given column of the matrix
-	Array2d<T>& colr(a_int j)
-	{
-		//Array2d<T>* b(nrows, 1);
-		Array2d<T>* b; b->elems.reserve(nrows);
-		for(a_int i = 0; i < nrows; i++)
-			b.elems[i] = &elems[i*ncols + j];
-		return *b;
-	} */
-
 	/// Function for replacing a column of the matrix with a vector. NOTE: No check for whether b is really a vector - which it must be.
-	void replacecol(a_int j, Array2d<T> b)
+	void replacecol(a_int j, const Array2d<T>& b)
 	{
 #ifdef DEBUG
 		if(b.cols() != 1 || b.rows() != nrows) { std::cout << "\nSize error in replacecol"; return; }
@@ -461,7 +438,7 @@ public:
 	}
 
 	/// Function for replacing a row
-	void replacerow(a_int i, Array2d<T> b)
+	void replacerow(a_int i, const Array2d<T>& b)
 	{
 #ifdef DEBUG
 		if(b.cols() != ncols || b.rows() != 1) { std::cout << "\nSize error in replacerow"; return; }
@@ -491,77 +468,14 @@ public:
 		return A;
 	}
 
-	/**	The matrix addition and subtraction operators are inefficient! Do not use in long loops. */
-	Array2d<T> operator+(Array2d<T> B) const
-	{
-#ifdef DEBUG
-		if(nrows != B.rows() || ncols != B.cols())
-		{
-			std::cout << "! Array2d: Addition cannot be performed due to incompatible sizes\n";
-			Array2d<T> C(1,1);
-			return C;
-		}
-#endif
-		Array2d<T> C(nrows, ncols);
-		a_int i;
-
-		for(i = 0; i < C.size; i++)
-			C.elems[i] = elems[i] + B.elems[i];
-		return C;
-	}
-
-	Array2d<T> operator-(Array2d<T> B) const
-	{
-#ifdef DEBUG
-		if(nrows != B.rows() || ncols != B.cols())
-		{
-			std::cout << "! Array2d: Subtraction cannot be performed due to incompatible sizes\n";
-			Array2d<T> C(1,1);
-			return C;
-		}
-#endif
-		Array2d<T> C(nrows, ncols);
-
-		for(a_int i = 0; i < C.size; i++)
-			C.elems[i] = elems[i] - B.elems[i];
-		return C;
-	}
-
-	Array2d<T> operator*(Array2d<T> B)
-	{
-		Array2d<a_real> C(nrows, B.cols());
-		C.zeros();
-#ifdef DEBUG
-		if(ncols != B.rows())
-		{
-			std::cout << "! Array2d: Multiplication cannot be performed - incompatible sizes!\n";
-			return C;
-		}
-#endif
-		for(a_int i = 0; i < nrows; i++)
-			for(a_int j = 0; j < B.cols(); j++)
-				for(a_int k = 0; k < ncols; k++)
-					C(i,j) += get(i,k) * B.get(k,j);
-					//C.set( C.get(i,j) + get(i,k)*B.get(k,j), i,j );
-
-		return C;
-	}
-
 	/// Returns sum of products of respective elements of flattened arrays containing matrix elements of this and A
 	T dot_product(const Array2d<T>& A)
 	{
-		T* elemsA = A.elems;
-		#ifdef _OPENMP
-		T* elems = this->elems;
-		a_int size = this->size;
-		#endif
-		a_int i;
+		const T* elemsA = A.elems;
 		T ans = 0;
-		//#pragma omp parallel for if(size >= 64) default(none) private(i) shared(elems,elemsA,size) reduction(+: ans) num_threads(nthreads_m)
-		for(i = 0; i < size; i++)
+		for(a_int i = 0; i < size; i++)
 		{
-			T temp = elems[i]*elemsA[i];
-			ans += temp;
+			ans += elems[i]*elemsA[i];
 		}
 		return ans;
 	}

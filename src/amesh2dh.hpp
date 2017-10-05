@@ -3,16 +3,11 @@
  * @author Aditya Kashi
  */
 
-#ifndef __AMESH2DH_H
-#define __AMESH2DH_H
+#ifndef AMESH2DH_H
+#define AMESH2DH_H
 
-#ifndef __ACONSTANTS_H
 #include "aconstants.hpp"
-#endif
-
-#ifndef __AARRAY2D_H
 #include "aarray2d.hpp"
-#endif
 
 namespace acfd {
 

@@ -77,7 +77,7 @@ b
 -linear-solver
 RICHARDSON
 -Linear-solver-tolerance
-1e-1
+1e-2
 -Linear-solver-max-iterations-initial
 50
 -Linear-solver-max-iterations-end

@@ -4,17 +4,12 @@
  * \date March 2015, September 2017
  */
 
-#ifndef __ANUMERICALFLUX_H
+#ifndef ANUMERICALFLUX_H
 
-#ifndef __ACONSTANTS_H
 #include "aconstants.hpp"
-#endif
-
-#ifndef __APHYSICS_H
 #include "aphysics.hpp"
-#endif
 
-#define __ANUMERICALFLUX_H 1
+#define ANUMERICALFLUX_H 1
 
 namespace acfd {
 
@@ -115,10 +110,6 @@ public:
 	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
-	
-	/// Computes both the flux and the 2 flux Jacobians
-	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux, a_real *const dfdl, a_real *const dfdr);
 };
 
 /// AUSM+ flux
@@ -132,6 +123,7 @@ public:
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux);
+	
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 };
@@ -227,15 +219,16 @@ public:
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
-	
-	void get_frozen_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
+	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const dfdl, a_real *const dfdr);
 
 	/// Computes both the flux and the 2 flux Jacobians
 	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux, a_real *const dfdl, a_real *const dfdr);
+	
+	void get_jacobian_2(const a_real *const ul, const a_real *const ur, 
+			const a_real* const n, 
+			a_real *const dfdl, a_real *const dfdr);
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
@@ -261,6 +254,51 @@ public:
 	/// Computes both the flux and the 2 flux Jacobians
 	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux, a_real *const dfdl, a_real *const dfdr);
+
+protected:
+	/// Computes the averaged state between the waves in the Riemann fan
+	/** \param[in] u The state outside the Riemann fan
+	 * \param[in] n Normal to the face
+	 * \param[in] vn Normal velocity corresponding to u and n
+	 * \param[in[ p Pressure corresponding to u
+	 * \param[in] ss Signal speed separating u from the averaged state
+	 * \param[in] sm Contact wave speed
+	 * \param[in|out] ustr The output average state
+	 */
+	void getStarState(const a_real u[NVARS], const a_real n[NDIM],
+		const a_real vn, const a_real p, 
+		const a_real ss, const a_real sm,
+		a_real *const __restrict ustr) const;
+
+	/// Computes the averaged state between the waves in the Riemann fan
+	/// and corresponding Jacobians
+	/** Jacobians of the average state w.r.t. both "this" and the "other" initial states
+	 * are computed.
+	 * \param[in] u "This" state outside the Riemann fan
+	 * \param[in] n Normal to the face
+	 * \param[in] vn Normal velocity corresponding to u and n
+	 * \param[in[ p Pressure corresponding to u
+	 * \param[in] ss Signal speed separating u from the averaged state
+	 * \param[in] sm Contact wave speed
+	 * \param[in] dvn Derivatives of normal velocity corresponding to this state (vn)
+	 * \param[in] dp Derivatives of pressure corresponding to this state (p)
+	 * \param[in] dssi Derivatives of signal speed ss w.r.t. this (u) state
+	 * \param[in] dsmi Derivatives of contact speed sm w.r.t. this (u) state
+	 * \param[in] dssj Derivatives of signal speed ss w.r.t. "other" state
+	 * \param[in] dsmj Derivatives of contact speed sm w.r.t. "other" state
+	 * \param[in|out] ustr The output average state
+	 * \param[in|out] dustri Jacobian of ustr w.r.t. this initial state
+	 * \param[in|out] dustrj Jacobian of ustr w.r.t. other initial state
+	 */
+	void getStarStateAndJacobian(const a_real u[NVARS], const a_real n[NDIM],
+		const a_real vn, const a_real p, 
+		const a_real ss, const a_real sm,
+		const a_real dvn[NVARS], const a_real dp[NVARS], 
+		const a_real dssi[NDIM], const a_real dsmi[NDIM],
+		const a_real dssj[NDIM], const a_real dsmj[NDIM],
+		a_real ustr[NVARS],
+		a_real dustri[NVARS][NVARS], 
+		a_real dustrj[NVARS][NVARS]) const __attribute((always_inline));
 };
 
 } // end namespace acfd

@@ -3,21 +3,13 @@
  * @author Aditya Kashi
  */
 
-#ifndef __ALIMITER_H
+#ifndef ALIMITER_H
 
-#ifndef __ACONSTANTS_H
 #include "aconstants.hpp"
-#endif
-
-#ifndef __AARRAY2D_H
 #include "aarray2d.hpp"
-#endif
-
-#ifndef __AMESH2DH_H
 #include "amesh2dh.hpp"
-#endif
 
-#define __ALIMITER_H
+#define ALIMITER_H
 
 namespace acfd {
 
