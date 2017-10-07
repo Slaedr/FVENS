@@ -436,7 +436,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		bs[3] = ins[3];
 	}
 
-	/* Ghost cell values are always free-stream values.
+	/** For the far-field BCs, ghost state values are always free-stream values.
 	 */
 	if(m->ggallfa(ied,3) == farfield_id)
 	{
@@ -479,20 +479,23 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		}
 	}
 
-	/* This BC is NOT TESTED
+	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
+	 * the free-stream state with certainty, so we can just impose free-stream conditions
+	 * for the ghost cells of inflow faces,
+	 * while the state at the outlet is not certain to be the free-stream state.
+	 *
+	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
+	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
+	 * isentropic.
+	 *
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
-	 * Commented below: Kind of according to FUN3D BCs paper
 	 */
 	if(m->ggallfa(ied,3) == inflowoutflow_id)
 	{
 		a_real ci = physics.getSoundSpeedFromConserved(ins);
 		a_real Mni = vni/ci;
 		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
-		/*a_real cinf = physics.getSoundSpeedFromConserved(&uinf(0,0));
-		a_real vninf = (uinf(0,1)*nx + uinf(0,2)*ny)/uinf(0,0);
-		a_real Mninf = vninf/cinf;
-		a_real pi = physics.getPressureFromConserved(ins);*/
 
 		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 		 * takes care of signal propagation at the boundary.

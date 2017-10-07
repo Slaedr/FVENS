@@ -60,7 +60,7 @@ NO
 NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-ROE
+LLF
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -83,12 +83,16 @@ IMPLICIT
 #######################################################################
 ---use-first-order-initial-condition
 1
----CFL-for-initialization-run
+---initial-CFL
 5.0
+---final-CFL
+100.0
+---ramp-start-step-and-end-step
+450 600
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-1000
+1200
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 LLF

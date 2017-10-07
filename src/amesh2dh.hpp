@@ -72,7 +72,7 @@ public:
 	a_int gnface() const { return nface; }
 	a_int gnbface() const { return nbface; }
 	int gnnode(int ielem) const { return nnode[ielem]; }
-	int gndim() const { return ndim; }
+	int gndim() const { return NDIM; }
 	a_int gnaface() const {return naface; }
 	int gnfael(int ielem) const { return nfael[ielem]; }
 	int gnnofa() const { return nnofa; }
@@ -94,17 +94,24 @@ public:
 	/** The file should be in either the Gmsh 2.0 format, the 2D structured Plot3D file
 	 * or the rDGFLO Domn format. The file extensions should be
 	 * - msh for Gmsh 2.0
+	 * - su2 for SU2 format
 	 * - p2d for 2D structured Plot3D
 	 * - domn for rDGFLO Domn file.
+	 *
+	 * \note For an SU2 mesh file, string marker names must be replaced with integers
+	 * before this function is called on it.
 	 */
-	//void readMesh(std::string mfile);
+	void readMesh(std::string mfile);
 
 	/// Reads a file in the 2D version of the Plot3D structured format
 	void readPlot2d(std::string mfile, const int bci0, const int bcimx, 
 			const int bcj0, const int bcjmx);
 
 	/// Reads mesh from Gmsh 2 format file
-	void readGmsh2(std::string mfile, int dimensions);
+	void readGmsh2(std::string mfile);
+
+	/// Reads hybrid grids in the SU2 format
+	void readSU2(std::string mfile);
 
 	/** \brief Reads 'domn' format
 	 * 
@@ -178,7 +185,6 @@ private:
 	a_int npoin;					///< Number of nodes
 	a_int nelem;					///< Number of elements
 	a_int nface;					///< Number of boundary faces
-	int ndim;						///< \deprecated Dimension of the mesh
 	std::vector<int> nnode;			///< number of nodes to an element, for each element
 	int maxnnode;					///< Maximum number of nodes per element for any element
 	std::vector<int> nfael;     ///< number of faces to an element 

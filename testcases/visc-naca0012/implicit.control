@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-naca0012/grids/naca0012nasa_iso2.msh
+../testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.su2
 ---Output-file
-../data/vnacai.vtu
+../data/vnacaisu2.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -29,9 +29,9 @@ NO
 ---Slip-wall-marker
 -1
 ---Farfield-marker
-4
----Inflow-outflow-marker
 -1
+---Inflow-outflow-marker
+4
 ---Extrapolation-marker
 -1
 ---Isothermal-wall-Marker
@@ -53,12 +53,12 @@ NO
 ---Number-of-'other'-boundaries-at-which-surface-output-is-needed
 0
 ---Prefix-for-name-of-surface-output-file
-../data/visc-naca
+../data/visc-naca-su2
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLL
+HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -69,7 +69,7 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-250.0
+100.0
 ---final-CFL
 250.0
 ---ramp-start-step-and-end-step
@@ -81,15 +81,19 @@ IMPLICIT
 #######################################################################
 ---use-first-order-initial-condition
 1
----CFL-for-initialization-run
-200.0
+---initial-CFL
+0.9
+---final-CFL
+20.0
+---ramp-start-step-and-end-step
+500 600
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-500
+1000
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLL
+HLLC
 ---Use-matrix-free-(YES,NO)
 NO
 ---Matrix-type(c=CSR,b=BSR,d=DLU)
@@ -99,12 +103,12 @@ RICHARDSON
 ---Linear-solver-tolerance
 1e-2
 ---Linear-solver-max-iterations-initial
-60
+50
 ---Linear-solver-max-iterations-end
-60
+80
 ---Krylov-vectors
 30
 ---preconditioner(J=Jacobi,SGS,ILU0)
-ILU0
+SGS
 ---preconditioner-build-and-application-sweeps
 1 1

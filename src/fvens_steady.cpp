@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
 	// Set up mesh
 
 	UMesh2dh m;
-	m.readGmsh2(meshfile,2);
+	m.readMesh(meshfile);
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_jacobians();
@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
 	{
 		if(usestarter != 0)
 			starttime = new SteadyForwardEulerSolver<4>(&m, &startprob, u,
-					tolerance, maxiter, initcfl, lognres);
+					firsttolerance, firstmaxiter, firstinitcfl, lognres);
 
 		time = new SteadyForwardEulerSolver<4>(&m, &prob, u,
 				tolerance, maxiter, initcfl, lognres);

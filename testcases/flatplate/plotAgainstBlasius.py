@@ -26,15 +26,15 @@ vinf = Minf*np.sqrt(g*R*Tinf)
 nu = vinf*l/Reinf
 print("Free velocity = " + str(vinf) + ", kin. visc. = " + str(nu))
 
-if(len(sys.argv) < 5):
+if(len(sys.argv) < 4):
 	print("Error. Please provide input file names.")
 	sys.exit(-1)
 
 symbs = ['bo', 'gs', 'r^', 'cv','b*']
 
 blvel = np.genfromtxt(sys.argv[1])
-vel = np.genfromtxt(sys.argv[3])
-cf = np.genfromtxt(sys.argv[4])
+vel = np.genfromtxt(sys.argv[2])
+cf = np.genfromtxt(sys.argv[3])
 
 # Velocities
 

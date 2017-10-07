@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
 	// Set up mesh
 
 	UMesh2dh m;
-	m.readGmsh2(meshfile,2);
+	m.readGmsh2(meshfile);
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_jacobians();
