@@ -20,11 +20,12 @@ class Physics
 {
 public:
 	/// Computes the flux vector along some direction
-	virtual void getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
+	virtual void getDirectionalFluxFromConserved(const a_real *const u, const a_real* const n, 
 			a_real *const flux) const = 0;
 
 	/// Computes the Jacobian of the flux along some direction, at the given state
-	virtual void getJacobianNormalFluxWrtConserved(const a_real *const u, const a_real* const n, 
+	virtual void getJacobianDirectionalFluxWrtConserved(const a_real *const u, 
+			const a_real* const n, 
 			a_real *const dfdu) const = 0;
 };
 	
@@ -42,26 +43,27 @@ public:
 	IdealGasPhysics(const a_real _g, const a_real M_inf, 
 			const a_real T_inf, const a_real Re_inf, const a_real _Pr);
 
-	/// Computes normal flux efficiently using specific data
-	/** \param[in] uc Vector of conserved variables
-	 * \param[in] n Normal vector
+	/// Computes flux in a given direction efficiently using specific data
+	/** Note that this function is independent of what kind of gas it is. 
+	 * \param[in] uc Vector of conserved variables
+	 * \param[in] n Vector along the direction in which the flux vector is needed
 	 * \param[in] vn Normal velocity (w.r.t. the the normal n above)
 	 * \param[in] p Pressure
 	 * \param[in|out] flux Output vector for the flux; note that any pre-existing contents
 	 *   will be replaced!
 	 */
-	void getNormalFluxEfficiently(const a_real *const uc, const a_real *const n,
+	void getDirectionalFlux(const a_real *const uc, const a_real *const n,
 			const a_real vn, const a_real p, a_real *const __restrict flux) const
 		__attribute__((always_inline));
 
 	/// Computes the analytical convective flux across a face oriented in some direction
-	void getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
+	void getDirectionalFluxFromConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict flux) const;
 	
 	/// Computes the Jacobian of the flux along some direction, at the given state
 	/** The flux Jacobian matrix dfdu is assumed stored in a row-major 1-dimensional array.
 	 */
-	void getJacobianNormalFluxWrtConserved(const a_real *const u, const a_real* const n, 
+	void getJacobianDirectionalFluxWrtConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict dfdu) const;
 
 	/// Outputs various quantities, especially needed by numerical fluxes
@@ -241,7 +243,7 @@ IdealGasPhysics::IdealGasPhysics(const a_real _g, const a_real M_inf,
 }
 
 inline
-void IdealGasPhysics::getNormalFluxEfficiently(const a_real *const uc, const a_real *const n,
+void IdealGasPhysics::getDirectionalFlux(const a_real *const uc, const a_real *const n,
 		const a_real vn, const a_real p, a_real *const __restrict flux) const
 {
 	flux[0] = vn*uc[0];

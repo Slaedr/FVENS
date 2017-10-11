@@ -1281,7 +1281,7 @@ void UMesh2dh::compute_face_data()
 	int i, j, p1, p2;
 
 	//Now compute normals and lengths (only linear meshes!)
-	gallfa.setup(naface, 3+nbtag);
+	gallfa.setup(naface, 3);
 	for(i = 0; i < naface; i++)
 	{
 		gallfa(i,0) = coords(intfac(i,3),1) - coords(intfac(i,2),1);
@@ -1292,10 +1292,11 @@ void UMesh2dh::compute_face_data()
 		gallfa(i,1) /= gallfa(i,2);
 	}
 
-	//Populate boundary flags in gallfa
+	//Populate boundary flags in intfacbtags
 #ifdef DEBUG
-	std::cout << "UTriMesh: compute_face_data(): Storing boundary flags in gallfa...\n";
+	std::cout << "UTriMesh: compute_face_data(): Storing boundary flags in intfacbtags...\n";
 #endif
+	intfacbtags.resize(nbface,nbtag);
 	for(int ied = 0; ied < nbface; ied++)
 	{
 		p1 = intfac(ied,2);
@@ -1313,8 +1314,8 @@ void UMesh2dh::compute_face_data()
 				{
 					for(j = 0; j < nbtag; j++)
 					{
-						gallfa(ied,3+j) = bface.get(i,nnofa+j);
-						gallfa(ied,3+j) = bface.get(i,nnofa+j);
+						intfacbtags(ied,j) = bface.get(i,nnofa+j);
+						intfacbtags(ied,j) = bface.get(i,nnofa+j);
 					}
 				}
 			}

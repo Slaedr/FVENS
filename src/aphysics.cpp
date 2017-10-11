@@ -8,15 +8,15 @@
 	
 namespace acfd {
 
-void IdealGasPhysics::getNormalFluxFromConserved(const a_real *const u, const a_real* const n, 
+void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, const a_real* const n, 
 		a_real *const __restrict flux) const
 {
 	const a_real vn = (u[1]*n[0] + u[2]*n[1])/u[0];
 	const a_real p = (g-1.0)*(u[3] - 0.5*(u[1]*u[1] + u[2]*u[2])/u[0]);
-	getNormalFluxEfficiently(u, n, vn, p, flux);
+	getDirectionalFlux(u, n, vn, p, flux);
 }
 
-void IdealGasPhysics::getJacobianNormalFluxWrtConserved(const a_real *const u, 
+void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const u, 
 		const a_real* const n, 
 		a_real *const __restrict dfdu) const
 {
@@ -53,14 +53,15 @@ void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const 
 	dvy[0] += -uc[2]/(uc[0]*uc[0]);
 	dvy[2] += 1.0/uc[0];
 
-	dvn[0] += -(uc[1]*n[0]+uc[2]*n[1])/(uc[0]*uc[0]);
+	//dvn[0] += -(uc[1]*n[0]+uc[2]*n[1])/(uc[0]*uc[0]); 
+	dvn[0] += dvx[0]*n[0]+dvy[0]*n[1];
 	dvn[1] += n[0]/uc[0];
 	dvn[2] += n[1]/uc[0];
 
-	const a_real rvm2 = uc[1]*uc[1]+uc[2]*uc[2];
-	const a_real p = (g-1.0)*(uc[3]-0.5*rvm2/uc[0]);
+	const a_real r2vm2 = uc[1]*uc[1]+uc[2]*uc[2];
+	const a_real p = (g-1.0)*(uc[3]-0.5*r2vm2/uc[0]);
 	
-	dp[0] += (g-1.0)*0.5*rvm2/(uc[0]*uc[0]);
+	dp[0] += (g-1.0)*0.5*r2vm2/(uc[0]*uc[0]);
 	dp[1] += -(g-1.0)*uc[1]/uc[0];
 	dp[2] += -(g-1.0)*uc[2]/uc[0];
 	dp[3] += (g-1.0);

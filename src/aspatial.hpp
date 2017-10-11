@@ -384,5 +384,11 @@ protected:
 	Reconstruction* rec;
 };
 
+/// Creates a first-order `thin-layer' Laplacian smoothing matrix
+/** \cite{jameson1986}
+ */
+template <short nvars>
+void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_real,a_int> *const M);
+
 }	// end namespace
 #endif

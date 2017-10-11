@@ -62,9 +62,15 @@ public:
 	/// Returns an entry from the face data structure [computed](\ref compute_topological) by us
 	a_int gintfac(a_int face, int i) const { return intfac.get(face,i); }
 
+	/// Returns the boundary marker of a face indexed by \ref intfac.
 	int gintfacbtags(a_int face, int i) const { return intfacbtags.get(face,i); }
+
+	/// Returns the measure of a cell
 	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
+
+	/// Returns the components of the unit normal or the length of a face \sa gallfa
 	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
+
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
 	a_int gnpoin() const { return npoin; }
@@ -151,7 +157,7 @@ public:
 	 */
 	void compute_topological();
 	
-	/// Computes unit normals and lengths, and sets boundary face tags for all faces in gallfa
+	/// Computes unit normals and lengths, and sets boundary face tags for all faces in intfacbtags
 	/** \note Uses intfac, so call only after compute_topological, only for linear mesh
 	 * \note The normal vector is the UNIT normal vector.
 	 * \warning Use only for linear meshes
@@ -196,21 +202,29 @@ private:
 	a_int nbpoin;					///< number of boundary points
 	int nbtag;						///< number of tags for each boundary face
 	int ndtag;						///< number of tags for each element
+	
 	/// Coordinates of nodes
 	amat::Array2d<double > coords;
+	
 	/// Interconnectivity matrix: lists node numbers of nodes in each element
 	amat::Array2d<a_int > inpoel; 
+	
 	/// Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
 	amat::Array2d<a_int > bface;	
+	
 	amat::Array2d<double > vol_regions;			///< to hold volume region markers, if any
+	
 	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
 	amat::Array2d<a_real > flag_bpoin;	
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int > esup_p;
+	
 	/// List of elements surrounding points. 
-	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p).*/
+	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p).
+	 */
 	amat::Array2d<a_int > esup;
+	
 	/// Lists of indices of psup corresponding to nodes (points)
 	amat::Array2d<a_int > psup_p;
 	
@@ -226,7 +240,8 @@ private:
 	amat::Array2d<a_int > intfac;
 	
 	/// Holds boundary tags (markers) corresponding to intfac
-	amat::Array2d<int > intfacbtags;
+	amat::Array2d<int> intfacbtags;
+	
 	/// Holds face numbers of faces making up an element
 	amat::Array2d<a_int> elemface;
 	

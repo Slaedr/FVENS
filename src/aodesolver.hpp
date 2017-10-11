@@ -80,9 +80,19 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	const int maxiter;
 	const double cfl;
 
+	/// Stores whether implicit Laplacian smoothing is to be used for the residual
+	const bool useImplicitSmoothing;
+
+	/// Sparse matrix for the Laplacian
+	const LinearOperator<a_real,a_int> *const M;
+
+	IterativeSolver<nvars> * linsolv;        ///< Linear solver context for Laplacian smoothing
+	Preconditioner<nvars>* prec;             ///< preconditioner context for Laplacian smoothing
+
 public:
 	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, MVector& sol,
 			const double toler, const int maxits, const double cfl,
+			const bool use_implicitSmoothing, const LinearOperator<a_real,a_int> *const A,
 			bool log_nonlinear_res);
 	
 	~SteadyForwardEulerSolver();

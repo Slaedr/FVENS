@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	string constvisc, surfnamepref, volnamepref, isVolOutReq;
+	string constvisc, surfnamepref, volnamepref, isVolOutReq, residualsmoothing;
 	
 	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
 		   firstinitcfl, firstendcfl, firsttolerance;
@@ -131,8 +131,14 @@ int main(int argc, char* argv[])
 		control >> dum; control >> prec;
 		control >> dum; control >> nbuildsweeps >> napplysweeps;
 	}
-	else
+	else {
+		control >> dum;
+		std::string residualsmoothingstr;
+		control >> dum; control >> residualsmoothingstr;
+		if(residualsmoothingstr == "YES")
+			residualsmoothing = true;
 		invfluxjac = invflux;
+	}
 	control.close();
 
 	if(usemf == "YES")
@@ -226,6 +232,9 @@ int main(int argc, char* argv[])
 	}
 	else 
 	{
+		if(residualsmoothing)
+			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
+
 		if(usestarter != 0)
 			starttime = new SteadyForwardEulerSolver<4>(&m, &startprob, u,
 					firsttolerance, firstmaxiter, firstinitcfl, lognres);

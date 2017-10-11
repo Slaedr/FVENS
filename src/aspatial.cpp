@@ -420,7 +420,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 	a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
 
-	if(m->ggallfa(ied,3) == slip_wall_id)
+	if(m->gintfacbtags(ied,0) == slip_wall_id)
 	{
 		bs[0] = ins[0];
 		bs[1] = ins[1] - 2*vni*nx*bs[0];
@@ -428,7 +428,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		bs[3] = ins[3];
 	}
 
-	if(m->ggallfa(ied,3) == extrap_id)
+	if(m->gintfacbtags(ied,0) == extrap_id)
 	{
 		bs[0] = ins[0];
 		bs[1] = ins[1];
@@ -438,7 +438,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 	/** For the far-field BCs, ghost state values are always free-stream values.
 	 */
-	if(m->ggallfa(ied,3) == farfield_id)
+	if(m->gintfacbtags(ied,0) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			bs[i] = uinf(0,i);
@@ -446,7 +446,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 	if(computeViscous) 
 	{
-		if(m->ggallfa(ied,3) == isothermal_wall_id)
+		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
 		{
 			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
 			bs[0] = ins[0];
@@ -456,7 +456,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 
-		if(m->ggallfa(ied,3) == adiabatic_wall_id)
+		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
 		{
 			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
 			bs[0] = ins[0];
@@ -467,7 +467,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 
-		if(m->ggallfa(ied,3) == isothermalbaric_wall_id)
+		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
 			bs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
@@ -491,7 +491,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 */
-	if(m->ggallfa(ied,3) == inflowoutflow_id)
+	if(m->gintfacbtags(ied,0) == inflowoutflow_id)
 	{
 		a_real ci = physics.getSoundSpeedFromConserved(ins);
 		a_real Mni = vni/ci;
@@ -1784,6 +1784,38 @@ void DiffusionMA<nvars>::getGradients(const MVector& u, MVector grad[NDIM]) cons
 	}
 }
 
+template <short nvars>
+void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_real,a_int> *const M)
+{
+	// For laplacian implicit residual smoothing, we just use the block format.
+	// Note that this function allocates more than necessary for Laplacian smoothing.
+	setupMatrixStorage<nvars>(&m, 'b', M);
+	
+	std::function <
+	void(const a_real *const, const a_real, const a_real *const, a_real *const)
+		> source;
+
+	DiffusionMA<nvars> laplacian(&m,1.0,0.0,source,"NONE");
+	laplacian.compute_jacobian(u,M);
+
+	// get the smoothing matrix from the Laplacian by first scaling
+	constexpr a_real eps = 0.5;
+	M->scaleAll(eps);
+
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		a_real eye[nvars*nvars];
+		for(int k = 0; k < nvars*nvars; k++)
+			eye[k] = 0;
+		for(int k = 0; k < nvars; k++)
+			eye[k*nvars+k] = 1.0;
+		M->updateDiagBlock(iel*nvars, eye, 0);
+	}
+}
+
+// template instantiations
+
 template class DiffusionMA<1>;
+template void setupLaplacianSmoothingMatrix<NVARS>;
 
 }	// end namespace

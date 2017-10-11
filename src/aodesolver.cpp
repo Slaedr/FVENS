@@ -22,18 +22,34 @@ template<short nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
 		Spatial<nvars> *const euler, MVector& soln,
 		const double toler, const int maxits, const double cfl_n, 
+		const bool use_implicitSmoothing, const LinearOperator<a_real,a_int> *const A,
 		bool lognlres)
 
 	: SteadySolver<nvars>(mesh, euler, soln, lognlres), 
-	tol{toler}, maxiter{maxits}, cfl{cfl_n}
+	tol{toler}, maxiter{maxits}, cfl{cfl_n}, useImplicitSmoothing{use_implicitSmoothing}, M{A},
+	linsolv{nullptr}, prec{nullptr}
 {
 	residual.resize(m->gnelem(),nvars);
 	dtm.setup(m->gnelem(), 1);
+	
+	if(useImplicitSmoothing) {
+		prec = new SGS<nvars>(M);
+		std::cout << " SteadyForwardEulerSolver: Selected ";
+		std::cout << "SGS preconditioner.\n";
+		linsolv = new RichardsonSolver<nvars>(mesh, M, prec);
+		std::cout << " SteadyForwardEulerSolver: Richardson iteration selected.\n";
+
+		double lintol = 1e-1; int linmaxiter = 1;
+		linsolv->setupPreconditioner();
+		linsolv->setParams(lintol, linmaxiter);
+	}
 }
 
 template<short nvars>
 SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 {
+	delete linsolv;
+	delete prec;
 }
 
 template<short nvars>

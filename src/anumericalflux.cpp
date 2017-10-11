@@ -72,8 +72,8 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	}
 
 	// get flux jacobians
-	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
-	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
+	physics->getJacobianDirectionalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianDirectionalFluxWrtConserved(ur, n, dfdr);
 
 	// add contributions to left derivative
 	for(int i = 0; i < NVARS; i++)
@@ -119,8 +119,8 @@ void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul,
 	}
 
 	// get flux jacobians
-	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
-	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
+	physics->getJacobianDirectionalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianDirectionalFluxWrtConserved(ur, n, dfdr);
 
 	// linearization of the dissipation term
 	
@@ -207,7 +207,7 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		for(int i = 0; i < NVARS; i++)
 			fiplus[i] = 0;
 	else if(Mni > 1.0)
-		physics->getNormalFluxEfficiently(ul,n,vni,pi,fiplus);
+		physics->getDirectionalFlux(ul,n,vni,pi,fiplus);
 	else
 	{
 		const a_real vmags = pow(ul[1]/ul[0], 2) + pow(ul[2]/ul[0], 2);
@@ -221,7 +221,7 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		for(int i = 0; i < NVARS; i++)
 			fjminus[i] = 0;
 	else if(Mnj < -1.0)
-		physics->getNormalFluxEfficiently(ur,n,vnj,pj,fjminus);
+		physics->getDirectionalFlux(ur,n,vnj,pj,fjminus);
 	else
 	{
 		const a_real vmags = pow(ur[1]/ur[0], 2) + pow(ur[2]/ur[0], 2);
@@ -707,8 +707,8 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 
 	// get one-sided flux vectors
 	a_real fi[4], fj[4];
-	physics->getNormalFluxEfficiently(ul,n,vni,pi,fi);
-	physics->getNormalFluxEfficiently(ur,n,vnj,pj,fj);
+	physics->getDirectionalFlux(ul,n,vni,pi,fi);
+	physics->getDirectionalFlux(ur,n,vnj,pj,fj);
 
 	// finally compute fluxes
 	for(int ivar = 0; ivar < NVARS; ivar++)
@@ -912,10 +912,10 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 
 	// get one-sided Jacobians
 	/*a_real fi[4], fj[4];
-	physics->getNormalFluxEfficiently(ul,n,vni,pi,fi);
-	physics->getNormalFluxEfficiently(ur,n,vnj,pj,fj);*/
-	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
-	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
+	physics->getDirectionalFlux(ul,n,vni,pi,fi);
+	physics->getDirectionalFlux(ur,n,vnj,pj,fj);*/
+	physics->getJacobianDirectionalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianDirectionalFluxWrtConserved(ur, n, dfdr);
 
 	// finally compute fluxes
 	for(int ivar = 0; ivar < NVARS; ivar++)
@@ -1364,8 +1364,8 @@ void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	const a_real t3 = 0.5*(sr*fabs(sl)-sl*fabs(sr))/(sr-sl);
 	
 	// get flux jacobians
-	physics->getJacobianNormalFluxWrtConserved(ul, n, dfdl);
-	physics->getJacobianNormalFluxWrtConserved(ur, n, dfdr);
+	physics->getJacobianDirectionalFluxWrtConserved(ul, n, dfdl);
+	physics->getJacobianDirectionalFluxWrtConserved(ur, n, dfdr);
 	for(int i = 0; i < NVARS; i++)
 		for(int j = 0; j < NVARS; j++)
 		{
@@ -1516,11 +1516,11 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 	// compute fluxes
 	
 	if(sl > 0)
-		physics->getNormalFluxEfficiently(ul,n,vni,pi,flux);
+		physics->getDirectionalFlux(ul,n,vni,pi,flux);
 
 	else if(sl <= 0 && sm > 0)
 	{
-		physics->getNormalFluxEfficiently(ul,n,vni,pi,flux);
+		physics->getDirectionalFlux(ul,n,vni,pi,flux);
 
 		a_real ulstr[NVARS];
 		getStarState(ul,n,vni,pi,sl,sm,ulstr);
@@ -1530,7 +1530,7 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 	}
 	else if(sm <= 0 && sr >= 0)
 	{
-		physics->getNormalFluxEfficiently(ur,n,vnj,pj,flux);
+		physics->getDirectionalFlux(ur,n,vnj,pj,flux);
 
 		a_real urstr[NVARS];
 		getStarState(ur,n,vnj,pj,sr,sm,urstr);
@@ -1539,7 +1539,7 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 			flux[ivar] += sr * ( urstr[ivar] - ur[ivar]);
 	}
 	else
-		physics->getNormalFluxEfficiently(ur,n,vnj,pj,flux);
+		physics->getDirectionalFlux(ur,n,vnj,pj,flux);
 }
 
 void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -1631,17 +1631,17 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	
 	if(sl > 0)
 	{
-		//physics->getNormalFluxEfficiently(ul,n,vni,pi,flux);
+		//physics->getDirectionalFlux(ul,n,vni,pi,flux);
 
-		physics->getJacobianNormalFluxWrtConserved(ul,n,dfdl);
+		physics->getJacobianDirectionalFluxWrtConserved(ul,n,dfdl);
 		for(int k = 0; k < NVARS*NVARS; k++)
 			dfdr[k] = 0;
 	}
 	else if(sl <= 0 && sm > 0)
 	{
-		//physics->getNormalFluxEfficiently(ul,n,vni,pi,flux);
+		//physics->getDirectionalFlux(ul,n,vni,pi,flux);
 
-		physics->getJacobianNormalFluxWrtConserved(ul,n,dfdl);
+		physics->getJacobianDirectionalFluxWrtConserved(ul,n,dfdl);
 		for(int k = 0; k < NVARS*NVARS; k++)
 			dfdr[k] = 0;
 
@@ -1662,9 +1662,9 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	}
 	else if(sm <= 0 && sr >= 0)
 	{
-		//physics->getNormalFluxEfficiently(ur,n,vnj,pj,flux);
+		//physics->getDirectionalFlux(ur,n,vnj,pj,flux);
 
-		physics->getJacobianNormalFluxWrtConserved(ur,n,dfdr);
+		physics->getJacobianDirectionalFluxWrtConserved(ur,n,dfdr);
 		for(int k = 0; k < NVARS*NVARS; k++)
 			dfdl[k] = 0;
 
@@ -1685,9 +1685,9 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	}
 	else
 	{
-		//physics->getNormalFluxEfficiently(ur,n,vnj,pj,flux);
+		//physics->getDirectionalFlux(ur,n,vnj,pj,flux);
 
-		physics->getJacobianNormalFluxWrtConserved(ur,n,dfdr);
+		physics->getJacobianDirectionalFluxWrtConserved(ur,n,dfdr);
 		for(int k = 0; k < NVARS*NVARS; k++)
 			dfdl[k] = 0;
 	}
