@@ -157,9 +157,12 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				tau[1][0] = tau[0][1];
 				tau[1][1] = lhat*divu + 2.0*muhat*gradu[1][1];
 
+				// compute (T.n).t where T is the stress tensor, n is the unit normal and
+				// t is the unit tangent
 				a_real tauw = -tau[0][0]*n[0]*n[1] - tau[0][1]*n[1]*n[1]
 					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];*/
 				
+				// compute (grad u).n . t
 				a_real tauw = muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
 						+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 

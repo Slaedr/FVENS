@@ -462,9 +462,10 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			bs[0] = ins[0];
 			bs[1] =  2.0*tangMomentum*ny - ins[1];
 			bs[2] = -2.0*tangMomentum*nx - ins[2];
-			a_real Tins = physics.getTemperatureFromConserved(ins);
+			/*a_real Tins = physics.getTemperatureFromConserved(ins);
 			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
-			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			bs[3] = physics.getEnergyFromPrimitive2(prim2state);*/
+			bs[3] = ins[3];
 		}
 
 		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
@@ -585,7 +586,7 @@ void FlowFV::computeViscousFlux(const a_int iface,
 			} 
 			else 
 			{
-				/* get one-sided primitive-2 gradients from one-sided conservative gradients
+				/* Get one-sided primitive-2 gradients from one-sided conservative gradients
 				 * "Primitive-2" variables are density, velocities and temperature.
 				 */
 				for(int j = 0; j < NDIM; j++) {

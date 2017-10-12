@@ -257,7 +257,7 @@ protected:
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const;
 
 	/// Computes viscous flux across a face
-	/** The output vflux needs to be integrated on the face.
+	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] u Cell-centred conserved variables
 	 * \param[in] ug Ghost cell-centred conserved variables
