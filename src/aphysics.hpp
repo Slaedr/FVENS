@@ -177,6 +177,8 @@ public:
 			const a_real *const gup) const;
 
 	/// Get primitive-2 gradients from conserved variables and their gradients
+	/** \warning Here, the output array gp is overwritten, rather than added to.
+	 */
 	void getGradPrimitive2FromConservedAndGradConserved(const a_real *const __restrict uc,
 			const a_real *const guc, a_real *const gp) const;
 
@@ -456,7 +458,7 @@ void IdealGasPhysics::getGradPrimitive2FromConservedAndGradConserved(
 
 	// velocity derivatives from momentum derivatives
 	for(int i = 1; i < NDIM+1; i++)
-		gp[i] = 1/guc[0] * (guc[i] - uc[i]/uc[0]*guc[0]);
+		gp[i] = 1.0/guc[0] * (guc[i] - uc[i]/uc[0]*guc[0]);
 	
 	const a_real p = getPressureFromConserved(uc);
 	
