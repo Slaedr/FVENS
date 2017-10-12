@@ -1,7 +1,7 @@
 // flow past cylinder
 
 // (1D) Refine factor
-ref = 6;
+ref = 2;
 
 // end of plate
 pend = 1.0;

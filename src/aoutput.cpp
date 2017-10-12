@@ -60,9 +60,9 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		for(int im = 0; im < static_cast<int>(wbcm.size()); im++)
-			if(m->ggallfa(iface,3) == wbcm[im]) nwbfaces[im]++;
+			if(m->gintfacbtags(iface,0) == wbcm[im]) nwbfaces[im]++;
 		for(int im = 0; im < static_cast<int>(obcm.size()); im++)
-			if(m->ggallfa(iface,3) == obcm[im]) nobfaces[im]++;
+			if(m->gintfacbtags(iface,0) == obcm[im]) nobfaces[im]++;
 	}
 	
 	a_real pinf = phy->getFreestreamPressure();
@@ -87,7 +87,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		// iterate over faces having this boundary marker
 		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			if(m->ggallfa(iface,3) == wbcm[im])
+			if(m->gintfacbtags(iface,0) == wbcm[im])
 			{
 				a_int lelem = m->gintfac(iface,0);
 				a_real n[NDIM];
@@ -214,7 +214,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 
 		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			if(m->ggallfa(iface,3) == obcm[im])
+			if(m->gintfacbtags(iface,0) == obcm[im])
 			{
 				a_int lelem = m->gintfac(iface,0);
 				/*a_real n[NDIM];

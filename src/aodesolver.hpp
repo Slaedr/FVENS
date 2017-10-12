@@ -84,7 +84,7 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	const bool useImplicitSmoothing;
 
 	/// Sparse matrix for the Laplacian
-	const LinearOperator<a_real,a_int> *const M;
+	LinearOperator<a_real,a_int> *const M;
 
 	IterativeSolver<nvars> * linsolv;        ///< Linear solver context for Laplacian smoothing
 	Preconditioner<nvars>* prec;             ///< preconditioner context for Laplacian smoothing
@@ -92,7 +92,7 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 public:
 	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, MVector& sol,
 			const double toler, const int maxits, const double cfl,
-			const bool use_implicitSmoothing, const LinearOperator<a_real,a_int> *const A,
+			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
 			bool log_nonlinear_res);
 	
 	~SteadyForwardEulerSolver();

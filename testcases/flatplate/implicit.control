@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/flatplate/grids/flatplatestruct3.msh
+../testcases/flatplate/grids/flatplatestruct2.msh
 ---Output-file
 ../data/flatplatestruct.vtu
 ---Log-file-for-runtimes
@@ -60,7 +60,7 @@ NO
 NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-LLF
+ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -73,29 +73,29 @@ IMPLICIT
 ---initial-CFL
 50.0
 ---final-CFL
-250.0
+350.0
 ---ramp-start-step-and-end-step
 600 900
 ---Tolerance
-1e-6
+1e-7
 ---Max-pseudotime-iterations
 7000
 #######################################################################
 ---use-first-order-initial-condition
 1
 ---initial-CFL
-5.0
+10.0
 ---final-CFL
-100.0
+300.0
 ---ramp-start-step-and-end-step
-450 600
+500 700
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
 1200
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-LLF
+ROE
 ---Use-matrix-free-(YES,NO)
 NO
 ---Matrix-type(c=CSR,b=BSR,d=DLU)

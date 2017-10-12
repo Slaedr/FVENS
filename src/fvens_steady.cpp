@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
 	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	string constvisc, surfnamepref, volnamepref, isVolOutReq, residualsmoothing;
+	string constvisc, surfnamepref, volnamepref, isVolOutReq;
 	
 	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
 		   firstinitcfl, firstendcfl, firsttolerance;
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 	unsigned short nbuildsweeps, napplysweeps;
 	
 	bool use_matrix_free, lognres, reconstPrim, useconstvisc=false, viscsim=false,
-		 order2 = true;
+		 order2 = true, residualsmoothing = false;
 	
 	char mattype, dumc;
 	
@@ -135,6 +135,8 @@ int main(int argc, char* argv[])
 		control >> dum;
 		std::string residualsmoothingstr;
 		control >> dum; control >> residualsmoothingstr;
+		control >> dum; control >> nbuildsweeps >> napplysweeps;
+		
 		if(residualsmoothingstr == "YES")
 			residualsmoothing = true;
 		invfluxjac = invflux;
@@ -219,7 +221,8 @@ int main(int argc, char* argv[])
 		
 		if(usestarter != 0)
 			starttime = new SteadyBackwardEulerSolver<4>(&m, &startprob, u, M,
-				firstinitcfl, firstendcfl, firstrampstart, firstrampend, firsttolerance, firstmaxiter, 
+				firstinitcfl, firstendcfl, firstrampstart, firstrampend, 
+				firsttolerance, firstmaxiter, 
 				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
 				restart_vecs, lognres);
 
@@ -237,10 +240,12 @@ int main(int argc, char* argv[])
 
 		if(usestarter != 0)
 			starttime = new SteadyForwardEulerSolver<4>(&m, &startprob, u,
-					firsttolerance, firstmaxiter, firstinitcfl, lognres);
+					firsttolerance, firstmaxiter, firstinitcfl, 
+					residualsmoothing, M, lognres);
 
 		time = new SteadyForwardEulerSolver<4>(&m, &prob, u,
-				tolerance, maxiter, initcfl, lognres);
+				tolerance, maxiter, initcfl,
+				residualsmoothing, M, lognres);
 
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}

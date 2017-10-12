@@ -1,0 +1,550 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+A	alinalg.hpp	/^	LinearOperator<a_real,a_int> *const A;        \/\/\/< The LHS matrix context$/;"	m	class:acfd::IterativeSolver
+A	alinalg.hpp	/^	LinearOperator<a_real,a_int>* A;$/;"	m	class:acfd::Preconditioner
+AARRAY2D_H	aarray2d.hpp	19;"	d
+ACONSTANTS_H	aconstants.hpp	3;"	d
+ALIMITER_H	alimiter.hpp	12;"	d
+AMESH2DH_H	amesh2dh.hpp	7;"	d
+ANUMERICALFLUX_H	anumericalflux.hpp	12;"	d
+AODESOLVER_H	aodesolver.hpp	7;"	d
+AOUTPUT_H	aoutput.hpp	9;"	d
+APHYSICS_H	aphysics.hpp	12;"	d
+ARECONSTRUCTION_H	areconstruction.hpp	8;"	d
+ASPATIAL_H	aspatial.hpp	7;"	d
+AUSMFlux	anumericalflux.cpp	/^AUSMFlux::AUSMFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::AUSMFlux
+AUSMFlux	anumericalflux.hpp	/^class AUSMFlux : public InviscidFlux$/;"	c	namespace:acfd
+AUSMPlusFlux	anumericalflux.cpp	/^AUSMPlusFlux::AUSMPlusFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::AUSMPlusFlux
+AUSMPlusFlux	anumericalflux.hpp	/^class AUSMPlusFlux : public InviscidFlux$/;"	c	namespace:acfd
+A_SMALL_NUMBER	aconstants.hpp	28;"	d
+Array2d	aarray2d.hpp	/^	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}$/;"	f	class:amat::Array2d
+Array2d	aarray2d.hpp	/^	Array2d(a_int nr, a_int nc)$/;"	f	class:amat::Array2d
+Array2d	aarray2d.hpp	/^	Array2d(const Array2d<T>& other)$/;"	f	class:amat::Array2d
+Array2d	aarray2d.hpp	/^class Array2d$/;"	c	namespace:amat
+BarthJespersenLimiter	alimiter.cpp	/^BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh* mesh, $/;"	f	class:acfd::BarthJespersenLimiter
+BarthJespersenLimiter	alimiter.hpp	/^class BarthJespersenLimiter : public FaceDataComputation$/;"	c	namespace:acfd
+BiCGSTAB	alinalg.cpp	/^BiCGSTAB<nvars>::BiCGSTAB(const UMesh2dh *const mesh, $/;"	f	class:acfd::BiCGSTAB
+BiCGSTAB	alinalg.hpp	/^class BiCGSTAB : public IterativeSolver<nvars>$/;"	c	namespace:acfd
+ConstantReconstruction	areconstruction.cpp	/^ConstantReconstruction<nvars>::ConstantReconstruction(const UMesh2dh *const mesh, $/;"	f	class:acfd::ConstantReconstruction
+ConstantReconstruction	areconstruction.hpp	/^class ConstantReconstruction : public Reconstruction$/;"	c	namespace:acfd
+D	alinalg.hpp	/^	Matrix<a_real,bs,bs,RowMajor>* D;$/;"	m	class:blasted::DLUMatrix
+D	alinalg.hpp	/^	const Matrix<a_real,nvars,nvars,RowMajor>* D;$/;"	m	class:acfd::MFIterativeSolver
+DLUMatrix	alinalg.cpp	/^DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh, $/;"	f	class:blasted::DLUMatrix
+DLUMatrix	alinalg.hpp	/^class DLUMatrix : public LinearOperator<a_real,a_int>$/;"	c	namespace:blasted
+DOUBLE_PRECISION	aconstants.hpp	50;"	d
+Diffusion	aspatial.cpp	/^Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,$/;"	f	class:acfd::Diffusion
+Diffusion	aspatial.hpp	/^class Diffusion : public Spatial<nvars>$/;"	c	namespace:acfd
+DiffusionMA	aspatial.cpp	/^DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, $/;"	f	class:acfd::DiffusionMA
+DiffusionMA	aspatial.hpp	/^class DiffusionMA : public Diffusion<nvars>$/;"	c	namespace:acfd
+EIGEN_DONT_PARALLELIZE	aconstants.hpp	42;"	d
+FaceDataComputation	alimiter.cpp	/^FaceDataComputation::FaceDataComputation (const UMesh2dh* mesh, $/;"	f	class:acfd::FaceDataComputation
+FaceDataComputation	alimiter.cpp	/^FaceDataComputation::FaceDataComputation()$/;"	f	class:acfd::FaceDataComputation
+FaceDataComputation	alimiter.hpp	/^class FaceDataComputation$/;"	c	namespace:acfd
+FlowFV	aspatial.cpp	/^FlowFV::FlowFV(const UMesh2dh *const mesh, $/;"	f	class:acfd::FlowFV
+FlowFV	aspatial.hpp	/^class FlowFV : public Spatial<NVARS>$/;"	c	namespace:acfd
+FlowOutput	aoutput.cpp	/^FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const fv,$/;"	f	class:acfd::FlowOutput
+FlowOutput	aoutput.hpp	/^class FlowOutput : public Output<NVARS>$/;"	c	namespace:acfd
+GMRES	alinalg.cpp	/^GMRES<nvars>::GMRES(const UMesh2dh *const mesh, $/;"	f	class:acfd::GMRES
+GMRES	alinalg.hpp	/^class GMRES : public IterativeSolver<nvars>$/;"	c	namespace:acfd
+GreenGaussReconstruction	areconstruction.cpp	/^GreenGaussReconstruction<nvars>::GreenGaussReconstruction(const UMesh2dh *const mesh, $/;"	f	class:acfd::GreenGaussReconstruction
+GreenGaussReconstruction	areconstruction.hpp	/^class GreenGaussReconstruction : public Reconstruction$/;"	c	namespace:acfd
+HLLCFlux	anumericalflux.cpp	/^HLLCFlux::HLLCFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::HLLCFlux
+HLLCFlux	anumericalflux.hpp	/^class HLLCFlux : public RoeAverageBasedFlux$/;"	c	namespace:acfd
+HLLFlux	anumericalflux.cpp	/^HLLFlux::HLLFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::HLLFlux
+HLLFlux	anumericalflux.hpp	/^class HLLFlux : public RoeAverageBasedFlux$/;"	c	namespace:acfd
+ILU0	alinalg.hpp	/^	ILU0(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }$/;"	f	class:acfd::ILU0
+ILU0	alinalg.hpp	/^class ILU0 : public Preconditioner<nvars>$/;"	c	namespace:acfd
+IdealGasPhysics	aphysics.hpp	/^IdealGasPhysics::IdealGasPhysics(const a_real _g, const a_real M_inf, $/;"	f	class:acfd::IdealGasPhysics
+IdealGasPhysics	aphysics.hpp	/^class IdealGasPhysics : public Physics$/;"	c	namespace:acfd
+InviscidFlux	anumericalflux.cpp	/^InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx) $/;"	f	class:acfd::InviscidFlux
+InviscidFlux	anumericalflux.hpp	/^class InviscidFlux$/;"	c	namespace:acfd
+IterativeSolver	alinalg.cpp	/^IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh, $/;"	f	class:acfd::IterativeSolver
+IterativeSolver	alinalg.hpp	/^class IterativeSolver : public IterativeSolverBase$/;"	c	namespace:acfd
+IterativeSolverBase	alinalg.cpp	/^IterativeSolverBase::IterativeSolverBase(const UMesh2dh *const mesh)$/;"	f	class:acfd::IterativeSolverBase
+IterativeSolverBase	alinalg.hpp	/^class IterativeSolverBase : public LinearSolver$/;"	c	namespace:acfd
+Jacobi	alinalg.hpp	/^	Jacobi(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }$/;"	f	class:acfd::Jacobi
+Jacobi	alinalg.hpp	/^class Jacobi : public Preconditioner<nvars>$/;"	c	namespace:acfd
+K	alimiter.hpp	/^	a_real K;$/;"	m	class:acfd::VenkatakrishnanLimiter
+L	alinalg.hpp	/^	Matrix<a_real,bs,bs,RowMajor>* L;$/;"	m	class:blasted::DLUMatrix
+L	alinalg.hpp	/^	const Matrix<a_real,nvars,nvars,RowMajor>* L;$/;"	m	class:acfd::MFIterativeSolver
+LinearSolver	alinalg.hpp	/^	LinearSolver(const UMesh2dh* const mesh) $/;"	f	class:acfd::LinearSolver
+LinearSolver	alinalg.hpp	/^class LinearSolver$/;"	c	namespace:acfd
+LocalLaxFriedrichsFlux	anumericalflux.cpp	/^LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const IdealGasPhysics *const analyticalflux)$/;"	f	class:acfd::LocalLaxFriedrichsFlux
+LocalLaxFriedrichsFlux	anumericalflux.hpp	/^class LocalLaxFriedrichsFlux : public InviscidFlux$/;"	c	namespace:acfd
+M	aodesolver.hpp	/^	LinearOperator<a_real,a_int> *const M;$/;"	m	class:acfd::SteadyForwardEulerSolver
+M	aodesolver.hpp	/^	LinearOperator<a_real,a_int>* M;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+MATRIX_DOUBLE_PRECISION	aarray2d.hpp	24;"	d
+MESHDATA_DOUBLE_PRECISION	aconstants.hpp	38;"	d
+MFIterativeSolver	alinalg.cpp	/^MFIterativeSolver<nvars>::MFIterativeSolver(const UMesh2dh* const mesh, $/;"	f	class:acfd::MFIterativeSolver
+MFIterativeSolver	alinalg.hpp	/^class MFIterativeSolver : public IterativeSolverBase$/;"	c	namespace:acfd
+MFRichardsonSolver	alinalg.cpp	/^MFRichardsonSolver<nvars>::MFRichardsonSolver(const UMesh2dh *const mesh, $/;"	f	class:acfd::MFRichardsonSolver
+MFRichardsonSolver	alinalg.hpp	/^class MFRichardsonSolver : public MFIterativeSolver<nvars>$/;"	c	namespace:acfd
+MVector	aconstants.hpp	/^	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;$/;"	t	namespace:acfd
+Minf	aphysics.hpp	/^	const a_real Minf;$/;"	m	class:acfd::IdealGasPhysics
+NDIM	aconstants.hpp	30;"	d
+NGAUSS	aconstants.hpp	35;"	d
+NVARS	aconstants.hpp	33;"	d
+NoLimiter	alimiter.cpp	/^NoLimiter::NoLimiter(const UMesh2dh* mesh,$/;"	f	class:acfd::NoLimiter
+NoLimiter	alimiter.hpp	/^class NoLimiter : public FaceDataComputation$/;"	c	namespace:acfd
+NoPrec	alinalg.hpp	/^	NoPrec(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op)$/;"	f	class:acfd::NoPrec
+NoPrec	alinalg.hpp	/^class NoPrec : public Preconditioner<nvars>$/;"	c	namespace:acfd
+Output	aoutput.cpp	/^Output<nvars>::Output(const UMesh2dh *const mesh, const Spatial<nvars> *const fv)$/;"	f	class:acfd::Output
+Output	aoutput.hpp	/^class Output$/;"	c	namespace:acfd
+PI	aconstants.hpp	21;"	d
+Physics	aphysics.hpp	/^class Physics$/;"	c	namespace:acfd
+Pr	aphysics.hpp	/^	const a_real Pr;$/;"	m	class:acfd::IdealGasPhysics
+Preconditioner	alinalg.hpp	/^	Preconditioner(LinearOperator<a_real,a_int> *const op)$/;"	f	class:acfd::Preconditioner
+Preconditioner	alinalg.hpp	/^class Preconditioner$/;"	c	namespace:acfd
+Reconstruction	areconstruction.cpp	/^Reconstruction::Reconstruction(const UMesh2dh *const mesh, $/;"	f	class:acfd::Reconstruction
+Reconstruction	areconstruction.hpp	/^class Reconstruction$/;"	c	namespace:acfd
+Reinf	aphysics.hpp	/^	const a_real Reinf;$/;"	m	class:acfd::IdealGasPhysics
+RichardsonSolver	alinalg.cpp	/^RichardsonSolver<nvars>::RichardsonSolver(const UMesh2dh *const mesh, $/;"	f	class:acfd::RichardsonSolver
+RichardsonSolver	alinalg.hpp	/^class RichardsonSolver : public IterativeSolver<nvars>$/;"	c	namespace:acfd
+RoeAverageBasedFlux	anumericalflux.cpp	/^RoeAverageBasedFlux::RoeAverageBasedFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::RoeAverageBasedFlux
+RoeAverageBasedFlux	anumericalflux.hpp	/^class RoeAverageBasedFlux : public InviscidFlux$/;"	c	namespace:acfd
+RoeFlux	anumericalflux.cpp	/^RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::RoeFlux
+RoeFlux	anumericalflux.hpp	/^class RoeFlux : public RoeAverageBasedFlux$/;"	c	namespace:acfd
+SGS	alinalg.hpp	/^	SGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) $/;"	f	class:acfd::SGS
+SGS	alinalg.hpp	/^class SGS : public Preconditioner<nvars>$/;"	c	namespace:acfd
+SQRT3	aconstants.hpp	22;"	d
+Spatial	aspatial.cpp	/^Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL)\/10.0}$/;"	f	class:acfd::Spatial
+Spatial	aspatial.hpp	/^class Spatial$/;"	c	namespace:acfd
+SteadyBackwardEulerSolver	aodesolver.cpp	/^SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, $/;"	f	class:acfd::SteadyBackwardEulerSolver
+SteadyBackwardEulerSolver	aodesolver.hpp	/^class SteadyBackwardEulerSolver : public SteadySolver<nvars>$/;"	c	namespace:acfd
+SteadyForwardEulerSolver	aodesolver.cpp	/^SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, $/;"	f	class:acfd::SteadyForwardEulerSolver
+SteadyForwardEulerSolver	aodesolver.hpp	/^class SteadyForwardEulerSolver : public SteadySolver<nvars>$/;"	c	namespace:acfd
+SteadySolver	aodesolver.hpp	/^	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,$/;"	f	class:acfd::SteadySolver
+SteadySolver	aodesolver.hpp	/^class SteadySolver$/;"	c	namespace:acfd
+THREAD_CHUNK_SIZE	alinalg.cpp	6;"	d	file:
+Tinf	aphysics.hpp	/^	const a_real Tinf;$/;"	m	class:acfd::IdealGasPhysics
+U	alinalg.hpp	/^	Matrix<a_real,bs,bs,RowMajor>* U;$/;"	m	class:blasted::DLUMatrix
+U	alinalg.hpp	/^	const Matrix<a_real,nvars,nvars,RowMajor>* U;$/;"	m	class:acfd::MFIterativeSolver
+UMesh2dh	amesh2dh.cpp	/^UMesh2dh::UMesh2dh() { $/;"	f	class:acfd::UMesh2dh
+UMesh2dh	amesh2dh.cpp	/^UMesh2dh::UMesh2dh(const UMesh2dh& other)$/;"	f	class:acfd::UMesh2dh
+UMesh2dh	amesh2dh.hpp	/^class UMesh2dh$/;"	c	namespace:acfd
+V	areconstruction.hpp	/^	std::vector<Matrix<a_real,2,2>> V;			\/\/\/< LHS of least-squares problems$/;"	m	class:acfd::WeightedLeastSquaresReconstruction
+VanAlbadaLimiter	alimiter.cpp	/^VanAlbadaLimiter::VanAlbadaLimiter(const UMesh2dh* mesh,$/;"	f	class:acfd::VanAlbadaLimiter
+VanAlbadaLimiter	alimiter.hpp	/^class VanAlbadaLimiter : public FaceDataComputation$/;"	c	namespace:acfd
+VanLeerFlux	anumericalflux.cpp	/^VanLeerFlux::VanLeerFlux(const IdealGasPhysics *const analyticalflux) $/;"	f	class:acfd::VanLeerFlux
+VanLeerFlux	anumericalflux.hpp	/^class VanLeerFlux : public InviscidFlux$/;"	c	namespace:acfd
+VenkatakrishnanLimiter	alimiter.cpp	/^VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh, $/;"	f	class:acfd::VenkatakrishnanLimiter
+VenkatakrishnanLimiter	alimiter.hpp	/^class VenkatakrishnanLimiter: public FaceDataComputation$/;"	c	namespace:acfd
+WENOLimiter	alimiter.cpp	/^WENOLimiter::WENOLimiter(const UMesh2dh* mesh,$/;"	f	class:acfd::WENOLimiter
+WENOLimiter	alimiter.hpp	/^class WENOLimiter : public FaceDataComputation$/;"	c	namespace:acfd
+WIDTH	aarray2d.hpp	/^const int WIDTH = 10;		\/\/ width of field for printing matrices$/;"	m	namespace:amat
+WeightedLeastSquaresReconstruction	areconstruction.cpp	/^WeightedLeastSquaresReconstruction<nvars>::WeightedLeastSquaresReconstruction($/;"	f	class:acfd::WeightedLeastSquaresReconstruction
+WeightedLeastSquaresReconstruction	areconstruction.hpp	/^class WeightedLeastSquaresReconstruction : public Reconstruction$/;"	c	namespace:acfd
+ZERO_TOL	aconstants.hpp	25;"	d
+__ALINALG_H	alinalg.hpp	20;"	d
+a_int	aconstants.hpp	/^	typedef int a_int;$/;"	t	namespace:acfd
+a_real	aconstants.hpp	/^	typedef double a_real;$/;"	t	namespace:acfd
+absmax	aarray2d.hpp	/^	T absmax() const$/;"	f	class:amat::Array2d
+acfd	aconstants.hpp	/^namespace acfd {$/;"	n
+acfd	aconstants.hpp	/^namespace acfd$/;"	n
+acfd	alimiter.cpp	/^namespace acfd {$/;"	n	file:
+acfd	alimiter.hpp	/^namespace acfd {$/;"	n
+acfd	alinalg.cpp	/^namespace acfd {$/;"	n	file:
+acfd	alinalg.hpp	/^namespace acfd {$/;"	n
+acfd	amesh2dh.cpp	/^namespace acfd {$/;"	n	file:
+acfd	amesh2dh.hpp	/^namespace acfd {$/;"	n
+acfd	anumericalflux.cpp	/^namespace acfd {$/;"	n	file:
+acfd	anumericalflux.hpp	/^namespace acfd {$/;"	n
+acfd	aodesolver.cpp	/^namespace acfd {$/;"	n	file:
+acfd	aodesolver.hpp	/^namespace acfd {$/;"	n
+acfd	aoutput.cpp	/^namespace acfd {$/;"	n	file:
+acfd	aoutput.hpp	/^namespace acfd {$/;"	n
+acfd	aphysics.cpp	/^namespace acfd {$/;"	n	file:
+acfd	aphysics.hpp	/^namespace acfd {$/;"	n
+acfd	areconstruction.cpp	/^namespace acfd$/;"	n	file:
+acfd	areconstruction.hpp	/^namespace acfd$/;"	n
+acfd	aspatial.cpp	/^namespace acfd {$/;"	n	file:
+acfd	aspatial.hpp	/^namespace acfd {$/;"	n
+adiabatic_wall_id	aspatial.hpp	/^	const int adiabatic_wall_id;				\/\/\/< Boundary marker for adiabatic wall$/;"	m	class:acfd::FlowFV
+adiabatic_wall_tangvel	aspatial.hpp	/^	const a_real adiabatic_wall_tangvel;           \/\/\/< Tangential velocity at adiabatic wall$/;"	m	class:acfd::FlowFV
+allocTempVector	alinalg.cpp	/^void DLUMatrix<bs>::allocTempVector()$/;"	f	class:blasted::DLUMatrix
+alloc_jacobians	amesh2dh.hpp	/^	bool alloc_jacobians;			$/;"	m	class:acfd::UMesh2dh
+allocflux	aspatial.hpp	/^	bool allocflux;$/;"	m	class:acfd::FlowFV
+amat	aarray2d.hpp	/^namespace amat {$/;"	n
+apply	alinalg.cpp	/^void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx, $/;"	f	class:blasted::DLUMatrix
+apply	alinalg.hpp	/^	void apply(const a_real *const r, $/;"	f	class:acfd::ILU0
+apply	alinalg.hpp	/^	void apply(const a_real *const r, $/;"	f	class:acfd::Jacobi
+apply	alinalg.hpp	/^	void apply(const a_real *const r, $/;"	f	class:acfd::NoPrec
+apply	alinalg.hpp	/^	void apply(const a_real *const r, $/;"	f	class:acfd::SGS
+area	amesh2dh.hpp	/^	amat::Array2d<a_real> area;			\/\/\/< Contains area of each element (either triangle or quad)$/;"	m	class:acfd::UMesh2dh
+av	aoutput.hpp	/^	const a_real av[NDIM];				\/\/\/< Unit vector in the direction of freestream flow$/;"	m	class:acfd::FlowOutput
+average	aarray2d.hpp	/^	T average() const$/;"	f	class:amat::Array2d
+axpby	alinalg.hpp	/^inline void axpby(const a_int N, const a_real p, a_real *const __restrict z, $/;"	f	namespace:acfd
+axpbypcz	alinalg.hpp	/^inline void axpbypcz(const a_int N, const a_real p, a_real *const z, $/;"	f	namespace:acfd
+bface	amesh2dh.hpp	/^	amat::Array2d<a_int > bface;	$/;"	m	class:acfd::UMesh2dh
+bfacebp	amesh2dh.hpp	/^	amat::Array2d<int > bfacebp;$/;"	m	class:acfd::UMesh2dh
+bifmap	amesh2dh.hpp	/^	amat::Array2d<int > bifmap;$/;"	m	class:acfd::UMesh2dh
+blasted	alinalg.cpp	/^namespace blasted {$/;"	n	file:
+blasted	alinalg.hpp	/^namespace blasted {$/;"	n
+bpoints	amesh2dh.hpp	/^	amat::Array2d<int > bpoints;$/;"	m	class:acfd::UMesh2dh
+bpointsb	amesh2dh.hpp	/^	amat::Array2d<int > bpointsb;$/;"	m	class:acfd::UMesh2dh
+bval	aspatial.hpp	/^	const a_real bval;				\/\/\/< Dirichlet boundary value$/;"	m	class:acfd::Diffusion
+cfl	aodesolver.hpp	/^	const double cfl;$/;"	m	class:acfd::SteadyForwardEulerSolver
+cflfin	aodesolver.hpp	/^	double cflfin;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+cflinit	aodesolver.hpp	/^	const double cflinit;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+clength	alimiter.hpp	/^	std::vector<a_real> clength;$/;"	m	class:acfd::VenkatakrishnanLimiter
+col	aarray2d.hpp	/^	Array2d<T> col(a_int j) const$/;"	f	class:amat::Array2d
+cols	aarray2d.hpp	/^	a_int cols() const { return ncols; }$/;"	f	class:amat::Array2d
+compute	alinalg.hpp	/^	void compute() {$/;"	f	class:acfd::ILU0
+compute	alinalg.hpp	/^	void compute() {$/;"	f	class:acfd::Jacobi
+compute	alinalg.hpp	/^	void compute() {$/;"	f	class:acfd::SGS
+compute	alinalg.hpp	/^	void compute()$/;"	f	class:acfd::NoPrec
+computeViscous	aspatial.hpp	/^	const bool computeViscous;$/;"	m	class:acfd::FlowFV
+computeViscousFlux	aspatial.cpp	/^void FlowFV::computeViscousFlux(const a_int iface, $/;"	f	class:acfd::FlowFV
+computeViscousFluxJacobian	aspatial.cpp	/^void FlowFV::computeViscousFluxJacobian(const a_int iface,$/;"	f	class:acfd::FlowFV
+compute_areas	amesh2dh.cpp	/^void UMesh2dh::compute_areas()$/;"	f	class:acfd::UMesh2dh
+compute_boundary_maps	amesh2dh.cpp	/^void UMesh2dh::compute_boundary_maps()$/;"	f	class:acfd::UMesh2dh
+compute_boundary_points	amesh2dh.cpp	/^void UMesh2dh::compute_boundary_points()$/;"	f	class:acfd::UMesh2dh
+compute_boundary_state	aspatial.cpp	/^inline void Diffusion<nvars>::compute_boundary_state(const int ied, $/;"	f	class:acfd::Diffusion
+compute_boundary_state	aspatial.cpp	/^void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const$/;"	f	class:acfd::FlowFV
+compute_boundary_states	aspatial.cpp	/^void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates, $/;"	f	class:acfd::Diffusion
+compute_boundary_states	aspatial.cpp	/^void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)$/;"	f	class:acfd::FlowFV
+compute_entropy_cell	aspatial.cpp	/^a_real FlowFV::compute_entropy_cell(const MVector& u)$/;"	f	class:acfd::FlowFV
+compute_face_data	amesh2dh.cpp	/^void UMesh2dh::compute_face_data()$/;"	f	class:acfd::UMesh2dh
+compute_face_values	alimiter.cpp	/^void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, $/;"	f	class:acfd::BarthJespersenLimiter
+compute_face_values	alimiter.cpp	/^void NoLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, $/;"	f	class:acfd::NoLimiter
+compute_face_values	alimiter.cpp	/^void VanAlbadaLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, $/;"	f	class:acfd::VanAlbadaLimiter
+compute_face_values	alimiter.cpp	/^void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, $/;"	f	class:acfd::VenkatakrishnanLimiter
+compute_face_values	alimiter.cpp	/^void WENOLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, $/;"	f	class:acfd::WENOLimiter
+compute_ghost_cell_coords_about_face	aspatial.cpp	/^void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg)$/;"	f	class:acfd::Spatial
+compute_ghost_cell_coords_about_midpoint	aspatial.cpp	/^void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg)$/;"	f	class:acfd::Spatial
+compute_gradients	areconstruction.cpp	/^void ConstantReconstruction<nvars>::compute_gradients($/;"	f	class:acfd::ConstantReconstruction
+compute_gradients	areconstruction.cpp	/^void GreenGaussReconstruction<nvars>::compute_gradients($/;"	f	class:acfd::GreenGaussReconstruction
+compute_gradients	areconstruction.cpp	/^void WeightedLeastSquaresReconstruction<nvars>::compute_gradients($/;"	f	class:acfd::WeightedLeastSquaresReconstruction
+compute_intfacbtags	amesh2dh.cpp	/^void UMesh2dh::compute_intfacbtags()$/;"	f	class:acfd::UMesh2dh
+compute_jac_gemv	aspatial.cpp	/^void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu, $/;"	f	class:acfd::Spatial
+compute_jac_vec	aspatial.cpp	/^void Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u, $/;"	f	class:acfd::Spatial
+compute_jacobian	aspatial.cpp	/^void DiffusionMA<nvars>::compute_jacobian(const MVector& u,$/;"	f	class:acfd::DiffusionMA
+compute_jacobian	aspatial.cpp	/^void FlowFV::compute_jacobian(const MVector& u, $/;"	f	class:acfd::FlowFV
+compute_jacobian	aspatial.cpp	/^void FlowFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)$/;"	f	class:acfd::FlowFV
+compute_jacobians	amesh2dh.cpp	/^void UMesh2dh::compute_jacobians()$/;"	f	class:acfd::UMesh2dh
+compute_residual	aspatial.cpp	/^void DiffusionMA<nvars>::compute_residual(const MVector& u, $/;"	f	class:acfd::DiffusionMA
+compute_residual	aspatial.cpp	/^void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, $/;"	f	class:acfd::FlowFV
+compute_topological	amesh2dh.cpp	/^void UMesh2dh::compute_topological()$/;"	f	class:acfd::UMesh2dh
+constVisc	aspatial.hpp	/^	const bool constVisc;$/;"	m	class:acfd::FlowFV
+const_row_pointer	aarray2d.hpp	/^	const T* const_row_pointer(const a_int r) const$/;"	f	class:amat::Array2d
+convertConservedToPrimitive	aphysics.hpp	/^void IdealGasPhysics::convertConservedToPrimitive(const a_real *const uc, a_real *const up) const$/;"	f	class:acfd::IdealGasPhysics
+convertConservedToPrimitive2	aphysics.hpp	/^void IdealGasPhysics::convertConservedToPrimitive2(const a_real *const uc, a_real *const up) const$/;"	f	class:acfd::IdealGasPhysics
+convertLinearToQuadratic	amesh2dh.cpp	/^UMesh2dh UMesh2dh::convertLinearToQuadratic()$/;"	f	class:acfd::UMesh2dh
+convertPrimitiveToConserved	aphysics.hpp	/^void IdealGasPhysics::convertPrimitiveToConserved(const a_real *const up, a_real *const uc) const$/;"	f	class:acfd::IdealGasPhysics
+convertPrimitiveToPrimitive2	aphysics.hpp	/^void IdealGasPhysics::convertPrimitiveToPrimitive2(const a_real *const up, a_real *const up2) const$/;"	f	class:acfd::IdealGasPhysics
+convertQuadToTri	amesh2dh.cpp	/^UMesh2dh UMesh2dh::convertQuadToTri() const$/;"	f	class:acfd::UMesh2dh
+coords	amesh2dh.hpp	/^	amat::Array2d<double > coords;$/;"	m	class:acfd::UMesh2dh
+cputime	alinalg.hpp	/^	mutable double cputime;                       \/\/\/< Stores CPU time measurement of the solver$/;"	m	class:acfd::IterativeSolverBase
+cputime	aodesolver.hpp	/^	double cputime;$/;"	m	class:acfd::SteadySolver
+dabs	aarray2d.hpp	/^inline a_real dabs(a_real x)$/;"	f	namespace:amat
+dabsmax	aarray2d.hpp	/^	a_real dabsmax() const$/;"	f	class:amat::Array2d
+detect_negative_jacobians	amesh2dh.cpp	/^void UMesh2dh::detect_negative_jacobians(std::ofstream& out)$/;"	f	class:acfd::UMesh2dh
+diffusivity	aspatial.hpp	/^	const a_real diffusivity;		\/\/\/< Diffusion coefficient (eg. kinematic viscosity)$/;"	m	class:acfd::Diffusion
+dim	alinalg.hpp	/^	a_int dim() const { return m->gnelem()*bs; }$/;"	f	class:blasted::DLUMatrix
+dot	alinalg.hpp	/^inline a_real dot(const a_int N, const a_real *const a, $/;"	f	namespace:acfd
+dot_product	aarray2d.hpp	/^	T dot_product(const Array2d<T>& A)$/;"	f	class:amat::Array2d
+elemface	amesh2dh.hpp	/^	amat::Array2d<a_int> elemface;$/;"	m	class:acfd::UMesh2dh
+elems	aarray2d.hpp	/^	T* elems;$/;"	m	class:amat::Array2d
+eps	alimiter.hpp	/^    a_real eps;							\/\/\/< Small number$/;"	m	class:acfd::VanAlbadaLimiter
+eps	aspatial.hpp	/^	const a_real eps;$/;"	m	class:acfd::Spatial
+epsilon	alimiter.hpp	/^	a_real epsilon;$/;"	m	class:acfd::WENOLimiter
+esuel	amesh2dh.hpp	/^	amat::Array2d<a_int > esuel;$/;"	m	class:acfd::UMesh2dh
+esup	amesh2dh.hpp	/^	amat::Array2d<a_int > esup;$/;"	m	class:acfd::UMesh2dh
+esup_p	amesh2dh.hpp	/^	amat::Array2d<a_int > esup_p;$/;"	m	class:acfd::UMesh2dh
+eul	aodesolver.hpp	/^	const Spatial<nvars> * eul;$/;"	m	class:acfd::SteadySolver
+exportSurfaceData	aoutput.cpp	/^void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm, $/;"	f	class:acfd::FlowOutput
+exportVolumeData	aoutput.cpp	/^void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const$/;"	f	class:acfd::FlowOutput
+extrap_id	aspatial.hpp	/^	const int extrap_id;						\/\/\/< Marker for extrapolation boundary$/;"	m	class:acfd::FlowFV
+f	areconstruction.hpp	/^	std::vector<Matrix<a_real,2,nvars>> f;		\/\/\/< RHS of least-squares problems$/;"	m	class:acfd::WeightedLeastSquaresReconstruction
+farfield_id	aspatial.hpp	/^	const int farfield_id;				\/\/\/< Boundary marker corresponding to farfield$/;"	m	class:acfd::FlowFV
+fixeps	anumericalflux.hpp	/^	const a_real fixeps;$/;"	m	class:acfd::RoeFlux
+flag_bpoin	amesh2dh.hpp	/^	amat::Array2d<a_real > flag_bpoin;	$/;"	m	class:acfd::UMesh2dh
+fprint	aarray2d.hpp	/^	void fprint(std::ofstream& outfile) const$/;"	f	class:amat::Array2d
+fread	aarray2d.hpp	/^	void fread(std::ifstream& infile)$/;"	f	class:amat::Array2d
+g	anumericalflux.hpp	/^	const a_real g;                              \/\/\/< Adiabatic index$/;"	m	class:acfd::InviscidFlux
+g	aphysics.hpp	/^	const a_real g;$/;"	m	class:acfd::IdealGasPhysics
+gallfa	amesh2dh.hpp	/^	amat::Array2d<a_real> gallfa;$/;"	m	class:acfd::UMesh2dh
+gamma	alimiter.hpp	/^	a_real gamma;$/;"	m	class:acfd::WENOLimiter
+garea	amesh2dh.hpp	/^	a_real garea(const a_int ielem) const { return area.get(ielem,0); }$/;"	f	class:acfd::UMesh2dh
+gbface	amesh2dh.hpp	/^	a_int gbface(a_int facenum, int locindex) const$/;"	f	class:acfd::UMesh2dh
+gcoords	amesh2dh.hpp	/^	double gcoords(a_int pointno, int dim) const$/;"	f	class:acfd::UMesh2dh
+gelemface	amesh2dh.hpp	/^	a_int gelemface(a_int ielem, int inode) const { return elemface.get(ielem,inode); }$/;"	f	class:acfd::UMesh2dh
+gemv3	alinalg.cpp	/^void DLUMatrix<bs>::gemv3(const a_real a, const a_real *const __restrict xx, const a_real b, $/;"	f	class:blasted::DLUMatrix
+gesuel	amesh2dh.hpp	/^	a_int gesuel(a_int ielem, int jface) const { return esuel.get(ielem, jface); }$/;"	f	class:acfd::UMesh2dh
+gesup	amesh2dh.hpp	/^	a_int gesup(a_int i) const { return esup.get(i); }$/;"	f	class:acfd::UMesh2dh
+gesup_p	amesh2dh.hpp	/^	a_int gesup_p(a_int i) const { return esup_p.get(i); }$/;"	f	class:acfd::UMesh2dh
+get	aarray2d.hpp	/^	T get(const a_int i, const a_int j=0) const$/;"	f	class:amat::Array2d
+getConstantViscosityCoeff	aphysics.hpp	/^a_real IdealGasPhysics::getConstantViscosityCoeff() const$/;"	f	class:acfd::IdealGasPhysics
+getDensityFromPressureTemperature	aphysics.hpp	/^a_real IdealGasPhysics::getDensityFromPressureTemperature(const a_real pressure, $/;"	f	class:acfd::IdealGasPhysics
+getDirectionalFlux	aphysics.hpp	/^void IdealGasPhysics::getDirectionalFlux(const a_real *const uc, const a_real *const n,$/;"	f	class:acfd::IdealGasPhysics
+getDirectionalFluxFromConserved	aphysics.cpp	/^void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, const a_real* const n, $/;"	f	class:acfd::IdealGasPhysics
+getEnergyFromPrimitive2	aphysics.hpp	/^a_real IdealGasPhysics::getEnergyFromPrimitive2(const a_real *const upt) const$/;"	f	class:acfd::IdealGasPhysics
+getEntropyFromConserved	aphysics.hpp	/^a_real IdealGasPhysics::getEntropyFromConserved(const a_real *const uc) const$/;"	f	class:acfd::IdealGasPhysics
+getFluxJac_left	anumericalflux.cpp	/^void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul, $/;"	f	class:acfd::HLLFlux
+getFluxJac_right	anumericalflux.cpp	/^void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::HLLFlux
+getFreestreamPressure	aphysics.hpp	/^a_real IdealGasPhysics::getFreestreamPressure() const$/;"	f	class:acfd::IdealGasPhysics
+getGradPrimitive2FromConservedAndGradConserved	aphysics.hpp	/^void IdealGasPhysics::getGradPrimitive2FromConservedAndGradConserved($/;"	f	class:acfd::IdealGasPhysics
+getGradTemperatureFromConservedAndGradConserved	aphysics.hpp	/^a_real IdealGasPhysics::getGradTemperatureFromConservedAndGradConserved(const a_real *const uc, $/;"	f	class:acfd::IdealGasPhysics
+getGradTemperatureFromConservedAndGradPrimitive	aphysics.hpp	/^a_real IdealGasPhysics::getGradTemperatureFromConservedAndGradPrimitive(const a_real *const uc,$/;"	f	class:acfd::IdealGasPhysics
+getGradTemperatureFromPrimitiveAndGradPrimitive	aphysics.hpp	/^a_real IdealGasPhysics::getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,$/;"	f	class:acfd::IdealGasPhysics
+getGradients	aspatial.cpp	/^void DiffusionMA<nvars>::getGradients(const MVector& u, MVector grad[NDIM]) const$/;"	f	class:acfd::DiffusionMA
+getGradients	aspatial.cpp	/^void FlowFV::getGradients(const MVector& u, MVector grad[NDIM]) const$/;"	f	class:acfd::FlowFV
+getJacobianDirectionalFluxWrtConserved	aphysics.cpp	/^void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const u, $/;"	f	class:acfd::IdealGasPhysics
+getJacobianPressureWrtConserved	aphysics.hpp	/^void IdealGasPhysics::getJacobianPressureWrtConserved(const a_real *const uc, $/;"	f	class:acfd::IdealGasPhysics
+getJacobianPrimitive2WrtConserved	aphysics.cpp	/^void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc, $/;"	f	class:acfd::IdealGasPhysics
+getJacobianSoundSpeedWrtConserved	aphysics.hpp	/^void IdealGasPhysics::getJacobianSoundSpeedWrtConserved(const a_real *const uc,$/;"	f	class:acfd::IdealGasPhysics
+getJacobianSoundSpeedWrtConservedEfficiently	aphysics.hpp	/^void IdealGasPhysics::getJacobianSoundSpeedWrtConservedEfficiently(const a_real *const uc,$/;"	f	class:acfd::IdealGasPhysics
+getJacobianSutherlandViscosityWrtConserved	aphysics.hpp	/^void IdealGasPhysics::getJacobianSutherlandViscosityWrtConserved(const a_real *const uc, $/;"	f	class:acfd::IdealGasPhysics
+getJacobianTemperatureWrtConserved	aphysics.hpp	/^void IdealGasPhysics::getJacobianTemperatureWrtConserved(const a_real *const uc, $/;"	f	class:acfd::IdealGasPhysics
+getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved	aphysics.hpp	/^void IdealGasPhysics::getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved($/;"	f	class:acfd::IdealGasPhysics
+getJacobianVarsWrtConserved	aphysics.cpp	/^void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,$/;"	f	class:acfd::IdealGasPhysics
+getJacobiansRoeAveragesWrtConserved	anumericalflux.cpp	/^void RoeAverageBasedFlux::getJacobiansRoeAveragesWrtConserved ($/;"	f	class:acfd::RoeAverageBasedFlux
+getPressureFromConserved	aphysics.hpp	/^a_real IdealGasPhysics::getPressureFromConserved(const a_real *const uc) const$/;"	f	class:acfd::IdealGasPhysics
+getRoeAverages	anumericalflux.hpp	/^	void getRoeAverages(const a_real ul[NVARS], const a_real ur[NVARS], const a_real n[NDIM],$/;"	f	class:acfd::RoeAverageBasedFlux
+getRunTimes	alinalg.hpp	/^	void getRunTimes(double& wall_time, double& cpu_time) const {$/;"	f	class:acfd::IterativeSolverBase
+getRunTimes	aodesolver.hpp	/^	void getRunTimes(double& wall_time, double& cpu_time) const {$/;"	f	class:acfd::SteadySolver
+getSoundSpeedFromConserved	aphysics.hpp	/^a_real IdealGasPhysics::getSoundSpeedFromConserved(const a_real *const uc) const$/;"	f	class:acfd::IdealGasPhysics
+getSoundSpeedFromConservedEfficiently	aphysics.hpp	/^a_real IdealGasPhysics::getSoundSpeedFromConservedEfficiently(const a_real *const uc, $/;"	f	class:acfd::IdealGasPhysics
+getStarState	anumericalflux.cpp	/^void HLLCFlux::getStarState(const a_real u[NVARS], const a_real n[NDIM],$/;"	f	class:acfd::HLLCFlux
+getStarStateAndJacobian	anumericalflux.cpp	/^void HLLCFlux::getStarStateAndJacobian(const a_real u[NVARS], const a_real n[NDIM],$/;"	f	class:acfd::HLLCFlux
+getTemperatureFromConserved	aphysics.hpp	/^a_real IdealGasPhysics::getTemperatureFromConserved(const a_real *const uc) const$/;"	f	class:acfd::IdealGasPhysics
+getTemperatureFromPrimitive	aphysics.hpp	/^a_real IdealGasPhysics::getTemperatureFromPrimitive(const a_real *const up) const$/;"	f	class:acfd::IdealGasPhysics
+getThermalConductivityFromViscosity	aphysics.hpp	/^a_real IdealGasPhysics::getThermalConductivityFromViscosity(const a_real muhat) const$/;"	f	class:acfd::IdealGasPhysics
+getVarsFromConserved	aphysics.hpp	/^void IdealGasPhysics::getVarsFromConserved(const a_real *const uc, const a_real *const n,$/;"	f	class:acfd::IdealGasPhysics
+getViscosityCoeffFromConserved	aphysics.hpp	/^a_real IdealGasPhysics::getViscosityCoeffFromConserved(const a_real *const uc) const$/;"	f	class:acfd::IdealGasPhysics
+getViscosityCoeffFromPrimitive2	aphysics.hpp	/^a_real IdealGasPhysics::getViscosityCoeffFromPrimitive2(const a_real *const up) const$/;"	f	class:acfd::IdealGasPhysics
+get_flux	anumericalflux.cpp	/^void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,$/;"	f	class:acfd::AUSMFlux
+get_flux	anumericalflux.cpp	/^void AUSMPlusFlux::get_flux(const a_real *const ul, const a_real *const ur,$/;"	f	class:acfd::AUSMPlusFlux
+get_flux	anumericalflux.cpp	/^void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, $/;"	f	class:acfd::HLLCFlux
+get_flux	anumericalflux.cpp	/^void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, $/;"	f	class:acfd::HLLFlux
+get_flux	anumericalflux.cpp	/^void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, $/;"	f	class:acfd::LocalLaxFriedrichsFlux
+get_flux	anumericalflux.cpp	/^void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,$/;"	f	class:acfd::RoeFlux
+get_flux	anumericalflux.cpp	/^void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,$/;"	f	class:acfd::VanLeerFlux
+get_flux_jacobian	anumericalflux.cpp	/^void HLLCFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::HLLCFlux
+get_flux_jacobian	anumericalflux.cpp	/^void HLLFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::HLLFlux
+get_jacobian	anumericalflux.cpp	/^void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::AUSMFlux
+get_jacobian	anumericalflux.cpp	/^void AUSMPlusFlux::get_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::AUSMPlusFlux
+get_jacobian	anumericalflux.cpp	/^void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, $/;"	f	class:acfd::HLLCFlux
+get_jacobian	anumericalflux.cpp	/^void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::HLLFlux
+get_jacobian	anumericalflux.cpp	/^void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, $/;"	f	class:acfd::InviscidFlux
+get_jacobian	anumericalflux.cpp	/^void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *const ur,$/;"	f	class:acfd::LocalLaxFriedrichsFlux
+get_jacobian	anumericalflux.cpp	/^void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::RoeFlux
+get_jacobian	anumericalflux.cpp	/^void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::VanLeerFlux
+get_jacobian_2	anumericalflux.cpp	/^void HLLFlux::get_jacobian_2(const a_real *const ul, const a_real *const ur, $/;"	f	class:acfd::HLLFlux
+get_jacobian_2	anumericalflux.cpp	/^void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul, $/;"	f	class:acfd::LocalLaxFriedrichsFlux
+gflag_bpoin	amesh2dh.hpp	/^	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }$/;"	f	class:acfd::UMesh2dh
+ggallfa	amesh2dh.hpp	/^	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }$/;"	f	class:acfd::UMesh2dh
+ginpoel	amesh2dh.hpp	/^	a_int ginpoel(a_int elemnum, int localnodenum) const$/;"	f	class:acfd::UMesh2dh
+gintfac	amesh2dh.hpp	/^	a_int gintfac(a_int face, int i) const { return intfac.get(face,i); }$/;"	f	class:acfd::UMesh2dh
+gintfacbtags	amesh2dh.hpp	/^	int gintfacbtags(a_int face, int i) const { return intfacbtags.get(face,i); }$/;"	f	class:acfd::UMesh2dh
+gnaface	amesh2dh.hpp	/^	a_int gnaface() const {return naface; }$/;"	f	class:acfd::UMesh2dh
+gnbface	amesh2dh.hpp	/^	a_int gnbface() const { return nbface; }$/;"	f	class:acfd::UMesh2dh
+gnbtag	amesh2dh.hpp	/^	int gnbtag() const{ return nbtag; }$/;"	f	class:acfd::UMesh2dh
+gndim	amesh2dh.hpp	/^	int gndim() const { return NDIM; }$/;"	f	class:acfd::UMesh2dh
+gndtag	amesh2dh.hpp	/^	int gndtag() const { return ndtag; }$/;"	f	class:acfd::UMesh2dh
+gnelem	amesh2dh.hpp	/^	a_int gnelem() const { return nelem; }$/;"	f	class:acfd::UMesh2dh
+gnface	amesh2dh.hpp	/^	a_int gnface() const { return nface; }$/;"	f	class:acfd::UMesh2dh
+gnfael	amesh2dh.hpp	/^	int gnfael(int ielem) const { return nfael[ielem]; }$/;"	f	class:acfd::UMesh2dh
+gnnode	amesh2dh.hpp	/^	int gnnode(int ielem) const { return nnode[ielem]; }$/;"	f	class:acfd::UMesh2dh
+gnnofa	amesh2dh.hpp	/^	int gnnofa() const { return nnofa; }$/;"	f	class:acfd::UMesh2dh
+gnpoin	amesh2dh.hpp	/^	a_int gnpoin() const { return npoin; }$/;"	f	class:acfd::UMesh2dh
+gpsup	amesh2dh.hpp	/^	a_int gpsup(a_int i) const { return psup.get(i); }$/;"	f	class:acfd::UMesh2dh
+gpsup_p	amesh2dh.hpp	/^	a_int gpsup_p(a_int i) const { return psup_p.get(i); }$/;"	f	class:acfd::UMesh2dh
+gr	alimiter.hpp	/^	const amat::Array2d<a_real>* gr;		\/\/\/< coords of gauss points of each face$/;"	m	class:acfd::FaceDataComputation
+gr	aspatial.hpp	/^	amat::Array2d<a_real>* gr;$/;"	m	class:acfd::Spatial
+h	aspatial.hpp	/^	std::vector<a_real> h;			\/\/\/< Size of cells$/;"	m	class:acfd::Diffusion
+identity	aarray2d.hpp	/^	void identity()$/;"	f	class:amat::Array2d
+ifbmap	amesh2dh.hpp	/^	amat::Array2d<int > ifbmap;$/;"	m	class:acfd::UMesh2dh
+inflowoutflow_id	aspatial.hpp	/^	const int inflowoutflow_id;			\/\/\/< Boundary marker corresponding to inflow\/outflow$/;"	m	class:acfd::FlowFV
+initializeUnknowns	aspatial.cpp	/^void Diffusion<nvars>::initializeUnknowns(const bool fromfile, const std::string file, MVector& u)$/;"	f	class:acfd::Diffusion
+initializeUnknowns	aspatial.cpp	/^void FlowFV::initializeUnknowns(const bool fromfile, const std::string file, MVector& u)$/;"	f	class:acfd::FlowFV
+inpoel	amesh2dh.hpp	/^	amat::Array2d<a_int > inpoel; $/;"	m	class:acfd::UMesh2dh
+intfac	amesh2dh.hpp	/^	amat::Array2d<a_int > intfac;$/;"	m	class:acfd::UMesh2dh
+intfacbtags	amesh2dh.hpp	/^	amat::Array2d<int> intfacbtags;$/;"	m	class:acfd::UMesh2dh
+inviflux	aspatial.hpp	/^	InviscidFlux* inviflux;$/;"	m	class:acfd::FlowFV
+isBoundaryMaps	amesh2dh.hpp	/^	bool isBoundaryMaps;			\/\/\/< Specifies whether bface-intfac maps have been created$/;"	m	class:acfd::UMesh2dh
+isothermal_wall_id	aspatial.hpp	/^	const int isothermal_wall_id;				\/\/\/< Boundary marker for isothermal wall$/;"	m	class:acfd::FlowFV
+isothermal_wall_tangvel	aspatial.hpp	/^	const a_real isothermal_wall_tangvel;          \/\/\/< Tangential velocity at isothermal wall$/;"	m	class:acfd::FlowFV
+isothermal_wall_temperature	aspatial.hpp	/^	const a_real isothermal_wall_temperature;      \/\/\/< Temperature imposed at isothermal wall$/;"	m	class:acfd::FlowFV
+isothermalbaric_wall_id	aspatial.hpp	/^	const int isothermalbaric_wall_id;			\/**< Marker for adiabatic wall with a pressure value $/;"	m	class:acfd::FlowFV
+isothermalbaric_wall_pressure	aspatial.hpp	/^	const a_real isothermalbaric_wall_pressure; \/\/\/< Pressure imposed at isothermal isobaric wall$/;"	m	class:acfd::FlowFV
+isothermalbaric_wall_tangvel	aspatial.hpp	/^	const a_real isothermalbaric_wall_tangvel;  \/\/\/< Tangential velocity at isothermal isobaric wall$/;"	m	class:acfd::FlowFV
+isothermalbaric_wall_temperature	aspatial.hpp	/^	const a_real isothermalbaric_wall_temperature;  \/\/\/< Temperature at isothermal isobaric wall$/;"	m	class:acfd::FlowFV
+jacobians	amesh2dh.hpp	/^	amat::Array2d<a_real> jacobians;	\/\/\/< Contains jacobians of each (linear triangular) element$/;"	m	class:acfd::UMesh2dh
+jflux	aspatial.hpp	/^	InviscidFlux* jflux;$/;"	m	class:acfd::FlowFV
+k	alimiter.hpp	/^    a_real k;               			\/\/\/< MUSCL order parameter$/;"	m	class:acfd::VanAlbadaLimiter
+l2norm	aarray2d.hpp	/^	T l2norm() const		$/;"	f	class:amat::Array2d
+lambda	alimiter.hpp	/^	a_real lambda;$/;"	m	class:acfd::WENOLimiter
+ldudx	alimiter.hpp	/^	amat::Array2d<a_real> ldudx;$/;"	m	class:acfd::WENOLimiter
+ldudy	alimiter.hpp	/^	amat::Array2d<a_real> ldudy;$/;"	m	class:acfd::WENOLimiter
+lim	aspatial.hpp	/^	FaceDataComputation* lim;$/;"	m	class:acfd::FlowFV
+linmaxiterend	aodesolver.hpp	/^	int linmaxiterend;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+linmaxiterstart	aodesolver.hpp	/^	int linmaxiterstart;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+linsolv	aodesolver.hpp	/^	IterativeSolver<nvars> * linsolv;        \/\/\/< Linear solver context for Laplacian smoothing$/;"	m	class:acfd::SteadyForwardEulerSolver
+linsolv	aodesolver.hpp	/^	IterativeSolver<nvars> * linsolv;        \/\/\/< Linear solver context$/;"	m	class:acfd::SteadyBackwardEulerSolver
+lintol	aodesolver.hpp	/^	double lintol;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+lognres	aodesolver.hpp	/^	bool lognres;$/;"	m	class:acfd::SteadySolver
+luD	alinalg.hpp	/^	Matrix<a_real,bs,bs,RowMajor>* luD;$/;"	m	class:blasted::DLUMatrix
+luL	alinalg.hpp	/^	Matrix<a_real,bs,bs,RowMajor>* luL;$/;"	m	class:blasted::DLUMatrix
+luU	alinalg.hpp	/^	Matrix<a_real,bs,bs,RowMajor>* luU;$/;"	m	class:blasted::DLUMatrix
+m	alimiter.hpp	/^	const UMesh2dh* m;$/;"	m	class:acfd::FaceDataComputation
+m	alinalg.hpp	/^	const UMesh2dh* const m;						\/\/\/< mesh$/;"	m	class:acfd::LinearSolver
+m	alinalg.hpp	/^	const acfd::UMesh2dh *const m;$/;"	m	class:blasted::DLUMatrix::acfd
+m	aodesolver.hpp	/^	const UMesh2dh *const m;$/;"	m	class:acfd::SteadySolver
+m	aoutput.hpp	/^	const UMesh2dh *const m;$/;"	m	class:acfd::Output
+m	areconstruction.hpp	/^	const UMesh2dh* m;$/;"	m	class:acfd::Reconstruction
+m	aspatial.hpp	/^	const UMesh2dh *const m;$/;"	m	class:acfd::Spatial
+main	fvens_steady.cpp	/^int main(int argc, char* argv[])$/;"	f
+main	heat_steady.cpp	/^int main(int argc, char* argv[])$/;"	f
+matrixNorm_1	aarray2d.hpp	/^	T matrixNorm_1() const$/;"	f	class:amat::Array2d
+max	aarray2d.hpp	/^	T max() const$/;"	f	class:amat::Array2d
+maxincol	aarray2d.hpp	/^	T maxincol(a_int j) const$/;"	f	class:amat::Array2d
+maxinrow	aarray2d.hpp	/^	T maxinrow(a_int i) const$/;"	f	class:amat::Array2d
+maxiter	alinalg.hpp	/^	int maxiter;                                  \/\/\/< Max number of iterations$/;"	m	class:acfd::IterativeSolverBase
+maxiter	aodesolver.hpp	/^	const int maxiter;$/;"	m	class:acfd::SteadyForwardEulerSolver
+maxiter	aodesolver.hpp	/^	int maxiter;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+maxnfael	amesh2dh.hpp	/^	int maxnfael;					\/\/\/< Maximum number of faces per element for any element$/;"	m	class:acfd::UMesh2dh
+maxnnode	amesh2dh.hpp	/^	int maxnnode;					\/\/\/< Maximum number of nodes per element for any element$/;"	m	class:acfd::UMesh2dh
+min	aarray2d.hpp	/^	T min() const$/;"	f	class:amat::Array2d
+minincol	aarray2d.hpp	/^	T minincol(const a_int j) const$/;"	f	class:amat::Array2d
+mininrow	aarray2d.hpp	/^	T mininrow(const a_int i) const$/;"	f	class:amat::Array2d
+minmod	aarray2d.hpp	/^inline a_real minmod(a_real a, a_real b)$/;"	f	namespace:amat
+modify_bface_marker	amesh2dh.hpp	/^	void modify_bface_marker(int iface, int pos, int number)$/;"	f	class:acfd::UMesh2dh
+mprint	aarray2d.hpp	/^	void mprint() const$/;"	f	class:amat::Array2d
+mrestart	alinalg.hpp	/^	int mrestart;$/;"	m	class:acfd::GMRES
+msize	aarray2d.hpp	/^	a_int msize() const { return size; }$/;"	f	class:amat::Array2d
+naface	amesh2dh.hpp	/^	a_int naface;					\/\/\/< total number of (internal and boundary) faces$/;"	m	class:acfd::UMesh2dh
+napplysweeps	alinalg.hpp	/^	const short napplysweeps;$/;"	m	class:blasted::DLUMatrix
+nbface	amesh2dh.hpp	/^	a_int nbface;                   \/\/\/< number of boundary faces as calculated$/;"	m	class:acfd::UMesh2dh
+nbpoin	amesh2dh.hpp	/^	a_int nbpoin;					\/\/\/< number of boundary points$/;"	m	class:acfd::UMesh2dh
+nbtag	amesh2dh.hpp	/^	int nbtag;						\/\/\/< number of tags for each boundary face$/;"	m	class:acfd::UMesh2dh
+nbuildsweeps	alinalg.hpp	/^	const short nbuildsweeps;$/;"	m	class:blasted::DLUMatrix
+ncols	aarray2d.hpp	/^	a_int ncols;$/;"	m	class:amat::Array2d
+ndtag	amesh2dh.hpp	/^	int ndtag;						\/\/\/< number of tags for each element$/;"	m	class:acfd::UMesh2dh
+nelem	amesh2dh.hpp	/^	a_int nelem;					\/\/\/< Number of elements$/;"	m	class:acfd::UMesh2dh
+nface	amesh2dh.hpp	/^	a_int nface;					\/\/\/< Number of boundary faces$/;"	m	class:acfd::UMesh2dh
+nfael	amesh2dh.hpp	/^	std::vector<int> nfael;     \/\/\/< number of faces to an element $/;"	m	class:acfd::UMesh2dh
+ng	alimiter.hpp	/^	int ng;									\/\/\/< Number of Gauss points$/;"	m	class:acfd::FaceDataComputation
+nnode	amesh2dh.hpp	/^	std::vector<int> nnode;			\/\/\/< number of nodes to an element, for each element$/;"	m	class:acfd::UMesh2dh
+nnofa	amesh2dh.hpp	/^	int nnofa;						\/\/\/< number of nodes in a face$/;"	m	class:acfd::UMesh2dh
+npoin	amesh2dh.hpp	/^	a_int npoin;					\/\/\/< Number of nodes$/;"	m	class:acfd::UMesh2dh
+nrows	aarray2d.hpp	/^	a_int nrows;$/;"	m	class:amat::Array2d
+ones	aarray2d.hpp	/^	void ones()$/;"	f	class:amat::Array2d
+operator ()	aarray2d.hpp	/^	T& operator()(const a_int x, const a_int y=0)$/;"	f	class:amat::Array2d
+operator ()	aarray2d.hpp	/^	const T& operator()(const a_int x, const a_int y=0) const$/;"	f	class:amat::Array2d
+operator *	aarray2d.hpp	/^	Array2d<T> operator*(T num)$/;"	f	class:amat::Array2d
+operator =	aarray2d.hpp	/^	Array2d<T>& operator=(const Array2d<T>& rhs)$/;"	f	class:amat::Array2d
+operator =	amesh2dh.cpp	/^UMesh2dh& UMesh2dh::operator=(const UMesh2dh& other)$/;"	f	class:acfd::UMesh2dh
+phi_l	alimiter.hpp	/^	amat::Array2d<a_real> phi_l;		\/\/\/< left-face limiter values$/;"	m	class:acfd::VanAlbadaLimiter
+phi_r	alimiter.hpp	/^	amat::Array2d<a_real> phi_r;		\/\/\/< right-face limiter values$/;"	m	class:acfd::VanAlbadaLimiter
+phy	aoutput.hpp	/^	const IdealGasPhysics *const phy;$/;"	m	class:acfd::FlowOutput
+physics	anumericalflux.hpp	/^	const IdealGasPhysics *const physics;        \/\/\/< Functionality replated to gas constitutive law$/;"	m	class:acfd::InviscidFlux
+physics	aspatial.hpp	/^	IdealGasPhysics physics;$/;"	m	class:acfd::FlowFV
+postprocess_cell	aspatial.cpp	/^void FlowFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, $/;"	f	class:acfd::FlowFV
+postprocess_point	aspatial.cpp	/^void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up)$/;"	f	class:acfd::Diffusion
+postprocess_point	aspatial.cpp	/^void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, $/;"	f	class:acfd::FlowFV
+prec	alinalg.hpp	/^	Preconditioner<nvars> *const prec;$/;"	m	class:acfd::IterativeSolver
+prec	alinalg.hpp	/^	Preconditioner<nvars> *const prec;$/;"	m	class:acfd::MFIterativeSolver
+prec	aodesolver.hpp	/^	Preconditioner<nvars>* prec;             \/\/\/< preconditioner context for Laplacian smoothing$/;"	m	class:acfd::SteadyForwardEulerSolver
+prec	aodesolver.hpp	/^	Preconditioner<nvars>* prec;             \/\/\/< preconditioner context$/;"	m	class:acfd::SteadyBackwardEulerSolver
+precILUApply	alinalg.cpp	/^void DLUMatrix<bs>::precILUApply(const a_real *const rr, a_real *const __restrict zz) const$/;"	f	class:blasted::DLUMatrix
+precILUSetup	alinalg.cpp	/^void DLUMatrix<bs>::precILUSetup()$/;"	f	class:blasted::DLUMatrix
+precJacobiApply	alinalg.cpp	/^void DLUMatrix<bs>::precJacobiApply(const a_real *const rr, a_real *const __restrict zz) const$/;"	f	class:blasted::DLUMatrix
+precJacobiSetup	alinalg.cpp	/^void DLUMatrix<bs>::precJacobiSetup()$/;"	f	class:blasted::DLUMatrix
+precSGSApply	alinalg.cpp	/^void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restrict zz) const$/;"	f	class:blasted::DLUMatrix
+printDiagnostic	alinalg.cpp	/^void DLUMatrix<bs>::printDiagnostic(const char choice) const$/;"	f	class:blasted::DLUMatrix
+printmeshstats	amesh2dh.cpp	/^void UMesh2dh::printmeshstats()$/;"	f	class:acfd::UMesh2dh
+psup	amesh2dh.hpp	/^	amat::Array2d<a_int > psup;$/;"	m	class:acfd::UMesh2dh
+psup_p	amesh2dh.hpp	/^	amat::Array2d<a_int > psup_p;$/;"	m	class:acfd::UMesh2dh
+rampend	aodesolver.hpp	/^	int rampend;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+rampstart	aodesolver.hpp	/^	int rampstart;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+rc	areconstruction.hpp	/^	const amat::Array2d<a_real>* rc;$/;"	m	class:acfd::Reconstruction
+rc	aspatial.hpp	/^	amat::Array2d<a_real> rc;$/;"	m	class:acfd::Spatial
+readBoundaryMapsFromFile	amesh2dh.cpp	/^void UMesh2dh::readBoundaryMapsFromFile(std::string mapfile)$/;"	f	class:acfd::UMesh2dh
+readDomn	amesh2dh.cpp	/^void UMesh2dh::readDomn(std::string mfile)$/;"	f	class:acfd::UMesh2dh
+readGmsh2	amesh2dh.cpp	/^void UMesh2dh::readGmsh2(std::string mfile)$/;"	f	class:acfd::UMesh2dh
+readMesh	amesh2dh.cpp	/^void UMesh2dh::readMesh(std::string mfile)$/;"	f	class:acfd::UMesh2dh
+readPlot2d	amesh2dh.cpp	/^void UMesh2dh::readPlot2d(std::string mfile, const int bci0, const int bcimx,$/;"	f	class:acfd::UMesh2dh
+readSU2	amesh2dh.cpp	/^void UMesh2dh::readSU2(std::string mfile)$/;"	f	class:acfd::UMesh2dh
+rec	aspatial.hpp	/^	Reconstruction* rec;$/;"	m	class:acfd::FlowFV
+reconstructPrimitive	aspatial.hpp	/^	const bool reconstructPrimitive;$/;"	m	class:acfd::FlowFV
+replacecol	aarray2d.hpp	/^	void replacecol(a_int j, const Array2d<T>& b)$/;"	f	class:amat::Array2d
+replacerow	aarray2d.hpp	/^	void replacerow(a_int i, const Array2d<T>& b)$/;"	f	class:amat::Array2d
+resetRunTimes	alinalg.hpp	/^	void resetRunTimes() {$/;"	f	class:acfd::IterativeSolverBase
+residual	aodesolver.hpp	/^	MVector residual;$/;"	m	class:acfd::SteadySolver
+residuals	aodesolver.hpp	/^	const MVector& residuals() const {$/;"	f	class:acfd::SteadySolver
+resize	aarray2d.hpp	/^	void resize(const a_int nr, const a_int nc)$/;"	f	class:amat::Array2d
+ri	alimiter.hpp	/^	const amat::Array2d<a_real>* ri;		\/\/\/< coords of cell centers of cells$/;"	m	class:acfd::FaceDataComputation
+row	aarray2d.hpp	/^	Array2d<T> row(a_int i) const$/;"	f	class:amat::Array2d
+row_pointer	aarray2d.hpp	/^	T* row_pointer(const a_int r)$/;"	f	class:amat::Array2d
+rows	aarray2d.hpp	/^	a_int rows() const { return nrows; }$/;"	f	class:amat::Array2d
+sC	aphysics.hpp	/^	const a_real sC;$/;"	m	class:acfd::IdealGasPhysics
+scaleAll	alinalg.cpp	/^void DLUMatrix<bs>::scaleAll(const a_real factor)$/;"	f	class:blasted::DLUMatrix
+scoords	amesh2dh.hpp	/^	void scoords(const a_int pointno, const int dim, const a_real value)$/;"	f	class:acfd::UMesh2dh
+secondOrderRequested	aspatial.hpp	/^	const bool secondOrderRequested;					\/\/\/< True if reconstruction is to be used$/;"	m	class:acfd::FlowFV
+set	aarray2d.hpp	/^	void set(a_int i, a_int j, T data)$/;"	f	class:amat::Array2d
+setAllZero	alinalg.cpp	/^void DLUMatrix<bs>::setAllZero()$/;"	f	class:blasted::DLUMatrix
+setDiagZero	alinalg.cpp	/^void DLUMatrix<bs>::setDiagZero()$/;"	f	class:blasted::DLUMatrix
+setParams	alinalg.hpp	/^	void setParams(const double toler, const int maxits) {$/;"	f	class:acfd::IterativeSolverBase
+setStructure	alinalg.cpp	/^void DLUMatrix<bs>::setStructure(const a_int n, const a_int *const v1, const a_int *const v2)$/;"	f	class:blasted::DLUMatrix
+setdata	aarray2d.hpp	/^	void setdata(const T* A, a_int sz)$/;"	f	class:amat::Array2d
+setup	aarray2d.hpp	/^	void setup(const a_int nr, const a_int nc)$/;"	f	class:amat::Array2d
+setup	alimiter.cpp	/^void FaceDataComputation::setup(const UMesh2dh* mesh,$/;"	f	class:acfd::FaceDataComputation
+setupLaplacianSmoothingMatrix	aspatial.cpp	/^void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_real,a_int> *const M)$/;"	f	namespace:acfd
+setupMatrixStorage	alinalg.cpp	/^void setupMatrixStorage(const UMesh2dh *const m, const char mattype,$/;"	f	namespace:acfd
+setupPreconditioner	alinalg.cpp	/^void IterativeSolver<nvars>::setupPreconditioner()$/;"	f	class:acfd::IterativeSolver
+setupPreconditioner	alinalg.cpp	/^void MFIterativeSolver<nvars>::setupPreconditioner()$/;"	f	class:acfd::MFIterativeSolver
+setupraw	aarray2d.hpp	/^	void setupraw(a_int nr, a_int nc)$/;"	f	class:amat::Array2d
+size	aarray2d.hpp	/^	a_int size;$/;"	m	class:amat::Array2d
+slip_wall_id	aspatial.hpp	/^	const int slip_wall_id;						\/\/\/< Boundary marker corresponding to solid wall$/;"	m	class:acfd::FlowFV
+solve	alinalg.cpp	/^int BiCGSTAB<nvars>::solve(const MVector& res, $/;"	f	class:acfd::BiCGSTAB
+solve	alinalg.cpp	/^int GMRES<nvars>::solve(const MVector& res, $/;"	f	class:acfd::GMRES
+solve	alinalg.cpp	/^int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,$/;"	f	class:acfd::MFRichardsonSolver
+solve	alinalg.cpp	/^int RichardsonSolver<nvars>::solve(const MVector& res, $/;"	f	class:acfd::RichardsonSolver
+solve	aodesolver.cpp	/^void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)$/;"	f	class:acfd::SteadyBackwardEulerSolver
+solve	aodesolver.cpp	/^void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)$/;"	f	class:acfd::SteadyForwardEulerSolver
+source	aspatial.cpp	/^	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)$/;"	f	namespace:acfd
+source	aspatial.hpp	/^					> source;$/;"	m	class:acfd::Diffusion
+space	alinalg.hpp	/^	Spatial<nvars>* const space;$/;"	m	class:acfd::MFIterativeSolver
+space	aoutput.hpp	/^	const Spatial<nvars> *const space;$/;"	m	class:acfd::Output
+sub	aarray2d.hpp	/^	Array2d<T> sub(a_int startr, a_int startc, a_int offr, a_int offc) const$/;"	f	class:amat::Array2d
+submitBlock	alinalg.cpp	/^void DLUMatrix<bs>::submitBlock(const a_int starti, const a_int startj,$/;"	f	class:blasted::DLUMatrix
+thread_chunk_size	alinalg.hpp	/^	const unsigned int thread_chunk_size;$/;"	m	class:blasted::DLUMatrix
+tol	alinalg.hpp	/^	double tol;                                   \/\/\/< Tolerance$/;"	m	class:acfd::IterativeSolverBase
+tol	aodesolver.hpp	/^	const double tol;$/;"	m	class:acfd::SteadyForwardEulerSolver
+tol	aodesolver.hpp	/^	double tol;$/;"	m	class:acfd::SteadyBackwardEulerSolver
+trans	aarray2d.hpp	/^	Array2d<T> trans() const$/;"	f	class:amat::Array2d
+u	aodesolver.hpp	/^	MVector& u;$/;"	m	class:acfd::SteadySolver
+uinf	aspatial.hpp	/^	amat::Array2d<a_real> uinf;				\/\/\/< Free-stream\/reference condition$/;"	m	class:acfd::FlowFV
+updateBlock	alinalg.cpp	/^void DLUMatrix<bs>::updateBlock(const a_int starti, const a_int startj,$/;"	f	class:blasted::DLUMatrix
+updateDiagBlock	alinalg.cpp	/^void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buffer, const a_int dum)$/;"	f	class:blasted::DLUMatrix
+useImplicitSmoothing	aodesolver.hpp	/^	const bool useImplicitSmoothing;$/;"	m	class:acfd::SteadyForwardEulerSolver
+vol_regions	amesh2dh.hpp	/^	amat::Array2d<double > vol_regions;			\/\/\/< to hold volume region markers, if any$/;"	m	class:acfd::UMesh2dh
+walltime	alinalg.hpp	/^	mutable double walltime;                      \/\/\/< Stores wall-clock time measurement of solver$/;"	m	class:acfd::IterativeSolverBase
+walltime	aodesolver.hpp	/^	double walltime;$/;"	m	class:acfd::SteadySolver
+writeBoundaryMapsToFile	amesh2dh.cpp	/^void UMesh2dh::writeBoundaryMapsToFile(std::string mapfile)$/;"	f	class:acfd::UMesh2dh
+writeGmsh2	amesh2dh.cpp	/^void UMesh2dh::writeGmsh2(std::string mfile)$/;"	f	class:acfd::UMesh2dh
+writeMeshToVtu	aoutput.cpp	/^void writeMeshToVtu(std::string fname, acfd::UMesh2dh& m)$/;"	f	namespace:acfd
+writeScalarsVectorToVtu_CellData	aoutput.cpp	/^void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, $/;"	f	namespace:acfd
+writeScalarsVectorToVtu_PointData	aoutput.cpp	/^void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& m, $/;"	f	namespace:acfd
+y	alinalg.hpp	/^	mutable MVector y;$/;"	m	class:blasted::DLUMatrix
+zeros	aarray2d.hpp	/^	void zeros()$/;"	f	class:amat::Array2d
+~Array2d	aarray2d.hpp	/^	~Array2d()$/;"	f	class:amat::Array2d
+~DLUMatrix	alinalg.cpp	/^DLUMatrix<bs>::~DLUMatrix()$/;"	f	class:blasted::DLUMatrix
+~Diffusion	aspatial.cpp	/^Diffusion<nvars>::~Diffusion()$/;"	f	class:acfd::Diffusion
+~DiffusionMA	aspatial.cpp	/^DiffusionMA<nvars>::~DiffusionMA()$/;"	f	class:acfd::DiffusionMA
+~FaceDataComputation	alimiter.cpp	/^FaceDataComputation::~FaceDataComputation()$/;"	f	class:acfd::FaceDataComputation
+~FlowFV	aspatial.cpp	/^FlowFV::~FlowFV()$/;"	f	class:acfd::FlowFV
+~InviscidFlux	anumericalflux.cpp	/^InviscidFlux::~InviscidFlux()$/;"	f	class:acfd::InviscidFlux
+~LinearSolver	alinalg.hpp	/^	virtual ~LinearSolver()$/;"	f	class:acfd::LinearSolver
+~Preconditioner	alinalg.hpp	/^	virtual ~Preconditioner()$/;"	f	class:acfd::Preconditioner
+~Reconstruction	areconstruction.cpp	/^Reconstruction::~Reconstruction()$/;"	f	class:acfd::Reconstruction
+~Spatial	aspatial.cpp	/^Spatial<nvars>::~Spatial()$/;"	f	class:acfd::Spatial
+~SteadyBackwardEulerSolver	aodesolver.cpp	/^SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()$/;"	f	class:acfd::SteadyBackwardEulerSolver
+~SteadyForwardEulerSolver	aodesolver.cpp	/^SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()$/;"	f	class:acfd::SteadyForwardEulerSolver
+~SteadySolver	aodesolver.hpp	/^	virtual ~SteadySolver() {}$/;"	f	class:acfd::SteadySolver
+~UMesh2dh	amesh2dh.cpp	/^UMesh2dh::~UMesh2dh()$/;"	f	class:acfd::UMesh2dh

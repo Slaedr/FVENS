@@ -22,7 +22,7 @@ template<short nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
 		Spatial<nvars> *const euler, MVector& soln,
 		const double toler, const int maxits, const double cfl_n, 
-		const bool use_implicitSmoothing, const LinearOperator<a_real,a_int> *const A,
+		const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
 		bool lognlres)
 
 	: SteadySolver<nvars>(mesh, euler, soln, lognlres), 
@@ -35,9 +35,9 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const 
 	if(useImplicitSmoothing) {
 		prec = new SGS<nvars>(M);
 		std::cout << " SteadyForwardEulerSolver: Selected ";
-		std::cout << "SGS preconditioner.\n";
+		std::cout << "SGS preconditioned ";
 		linsolv = new RichardsonSolver<nvars>(mesh, M, prec);
-		std::cout << " SteadyForwardEulerSolver: Richardson iteration selected.\n";
+		std::cout << "Richardson iteration\n   for implicit residual averaging.\n";
 
 		double lintol = 1e-1; int linmaxiter = 1;
 		linsolv->setupPreconditioner();
@@ -68,7 +68,6 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-	std::cout << "  SteadyForwardEulerSolver: solve(): Starting main solver.\n";
 	while(resi/initres > tol && step < maxiter)
 	{
 #pragma omp parallel for simd default(shared)
@@ -80,6 +79,17 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 		// update residual
 		eul->compute_residual(u, residual, true, dtm);
 
+		if(useImplicitSmoothing)
+		{
+			MVector resbar = MVector::Zero(m->gnelem(),nvars);
+
+			linsolv->solve(residual, resbar);
+
+#pragma omp parallel for simd default(shared)
+			for(a_int k = 0; k < m->gnelem()*nvars; k++)
+				residual.data()[k] = resbar.data()[k];
+		}
+
 		a_real errmass = 0;
 
 #pragma omp parallel default(shared)
@@ -89,7 +99,6 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 			{
 				for(short i = 0; i < nvars; i++)
 				{
-					//uold(iel,i) = u(iel,i);
 					u(iel,i) -= cfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
 				}
 			}
@@ -267,6 +276,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		}
 
 		// add pseudo-time terms to diagonal blocks
+
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
@@ -280,11 +290,12 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		}
 
 		// setup and solve linear system for the update du
+		
 		linsolv->setupPreconditioner();
 		linsolv->setParams(lintol, curlinmaxiter);
 		int linstepsneeded = linsolv->solve(residual, du);
-
 		avglinsteps += linstepsneeded;
+		
 		a_real errmass = 0;
 
 #pragma omp parallel default(shared)

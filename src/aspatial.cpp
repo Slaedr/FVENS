@@ -480,9 +480,10 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	}
 
 	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
-	 * the free-stream state with certainty, so we can just impose free-stream conditions
-	 * for the ghost cells of inflow faces,
+	 * the free-stream state with certainty,
 	 * while the state at the outlet is not certain to be the free-stream state.
+	 * 
+	 * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
 	 *
 	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
 	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
@@ -1789,18 +1790,16 @@ void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_rea
 {
 	// For laplacian implicit residual smoothing, we just use the block format.
 	// Note that this function allocates more than necessary for Laplacian smoothing.
-	setupMatrixStorage<nvars>(&m, 'b', M);
+	setupMatrixStorage<nvars>(m, 'b', M);
 	
 	std::function <
 	void(const a_real *const, const a_real, const a_real *const, a_real *const)
 		> source;
 
-	DiffusionMA<nvars> laplacian(&m,1.0,0.0,source,"NONE");
-	laplacian.compute_jacobian(u,M);
-
-	// get the smoothing matrix from the Laplacian by first scaling
 	constexpr a_real eps = 0.5;
-	M->scaleAll(eps);
+	DiffusionMA<nvars> laplacian(m,-eps,0.0,source,"NONE");
+	MVector u;
+	laplacian.compute_jacobian(u,M);
 
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -1816,6 +1815,7 @@ void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_rea
 // template instantiations
 
 template class DiffusionMA<1>;
-template void setupLaplacianSmoothingMatrix<NVARS>;
+template void setupLaplacianSmoothingMatrix<NVARS>(const UMesh2dh *const m, 
+		LinearOperator<a_real,a_int> *const M);
 
 }	// end namespace

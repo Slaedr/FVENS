@@ -124,6 +124,9 @@ public:
 	 */
 	void updateDiagBlock(const a_int starti, const a_real *const buffer, const a_int dummy);
 
+	/// Scales all values by a constact scalar
+	void scaleAll(const a_real factor);
+
 	/// Computes the matrix vector product of this matrix with one vector-- y := a Ax
 	void apply(const a_real a, const a_real *const x, a_real *const __restrict y) const;
 
@@ -388,7 +391,8 @@ public:
 	virtual void setupPreconditioner();
 
 	/// Solves the linear system A du = -r
-	/** \param[in] res The residual vector stored as a 2D array of size nelem x nvars 
+	/** Note that usually, the two arguments cannot alias each other.
+	 * \param[in] res The residual vector stored as a 2D array of size nelem x nvars 
 	 * (nelem x 4 for 2D Euler)
 	 * \param [in|out] du Contains the solution in the same format as res on exit.
 	 * \return Returns the number of solver iterations performed
@@ -414,8 +418,13 @@ public:
 			LinearOperator<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond);
 
+	/** \param[in] res The right hand side vector
+	 * \param[in] du The solution vector which is assumed to contain an initial solution
+	 *
+	 * \warning The two arguments must not alias each other.
+	 */
 	int solve(const MVector& res, 
-		MVector& du) const;
+		MVector& __restrict du) const;
 };
 
 /// H.A. Van der Vorst's stabilized biconjugate gradient solver

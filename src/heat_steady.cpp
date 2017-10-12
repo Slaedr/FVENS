@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 	short inittype, usestarter;
 	short nbuildsweeps, napplysweeps;
 	char mattype;
-	bool lognres;
+	bool lognres, residualsmoothing = false;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -56,6 +56,13 @@ int main(int argc, char* argv[])
 		control >> dum; control >> prec;
 		control >> dum; control >> nbuildsweeps;
 		control >> dum; control >> napplysweeps;
+	}
+	else {
+		control >> dum;
+		std::string residualsmoothingstr;
+		control >> dum; control >> residualsmoothingstr;
+		if(residualsmoothingstr == "YES")
+			residualsmoothing = true;
 	}
 	control.close();
 
@@ -146,14 +153,19 @@ int main(int argc, char* argv[])
 		time->solve(logfile);
 	}
 	else {
-		time = new SteadyForwardEulerSolver<1>(&m, prob, u, tolerance, maxiter, initcfl, lognres);
+		if(residualsmoothing)
+			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
+
+		time = new SteadyForwardEulerSolver<1>(&m, prob, u, tolerance, maxiter, initcfl, 
+				residualsmoothing, M, lognres);
 		
 		// TODO: Find out why the call below does not compile
 		//startprob->initializeUnknowns(false, " ", u);
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyForwardEulerSolver<1>(&m, startprob, u, tolerance, maxiter, initcfl, lognres);
+			starttime = new SteadyForwardEulerSolver<1>(&m, startprob, u, tolerance, 
+					maxiter, initcfl, residualsmoothing, M, lognres);
 
 			// solve the starter problem to get the initial solution
 			starttime->solve(logfile);

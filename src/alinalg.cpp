@@ -125,6 +125,26 @@ void DLUMatrix<bs>::updateDiagBlock(const a_int starti, const a_real *const buff
 #pragma omp atomic update
 		D[startr].data()[i] += buffer[i];
 }
+template <int bs>
+void DLUMatrix<bs>::scaleAll(const a_real factor)
+{
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+#pragma omp simd
+		for(int k = 0; k < bs*bs; k++)
+			D[iel].data()[k] *= factor;
+	}
+
+#pragma omp parallel for default(shared)
+	for(a_int ifa = 0; ifa < m->gnaface()-m->gnbface(); ifa++)
+#pragma omp simd
+		for(int k = 0; k < bs*bs; k++)
+		{
+			L[ifa].data()[k] *= factor;
+			U[ifa].data()[k] *= factor;
+		}
+}
 
 template <int bs>
 void DLUMatrix<bs>::apply(const a_real q, const a_real *const xx, 
