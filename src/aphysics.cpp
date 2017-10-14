@@ -58,13 +58,17 @@ void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const 
 	dvn[1] += n[0]/uc[0];
 	dvn[2] += n[1]/uc[0];
 
+	/* Removed to maximize code reuse
 	const a_real r2vm2 = uc[1]*uc[1]+uc[2]*uc[2];
 	const a_real p = (g-1.0)*(uc[3]-0.5*r2vm2/uc[0]);
 	
 	dp[0] += (g-1.0)*0.5*r2vm2/(uc[0]*uc[0]);
 	dp[1] += -(g-1.0)*uc[1]/uc[0];
 	dp[2] += -(g-1.0)*uc[2]/uc[0];
-	dp[3] += (g-1.0);
+	dp[3] += (g-1.0);*/
+
+	const a_real p = getPressureFromConserved(uc);
+	getJacobianPressureWrtConserved(uc, dp);
 
 	dH[0] += (dp[0]*uc[0] - (uc[3]+p))/(uc[0]*uc[0]);
 	dH[1] += dp[1]/uc[0];
@@ -75,7 +79,7 @@ void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const 
 void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc, 
 		a_real *const __restrict jac) const
 {
-	jac[0] += 1.0; jac[1] = 0; jac[2] = 0; jac[3] = 0;
+	jac[0] += 1.0; //jac[1] = 0; jac[2] = 0; jac[3] = 0;
 
 	a_real rhovmag2 = 0;
 	a_real stor[NVARS] = {0,0,0,0};

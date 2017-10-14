@@ -203,7 +203,8 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const a_real adiabatic_TangVel,
 		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
 		const a_real isothermalbaric_Pressure, 
-		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
+		const std::string invflux, const std::string jacflux, 
+		const std::string reconst, const std::string limiter,
 		const bool order2, const bool reconstructPrim)
 	: 
 	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), 
@@ -385,18 +386,12 @@ FlowFV::~FlowFV()
 	delete lim;
 }
 
-void FlowFV::initializeUnknowns(const bool fromfile, const std::string file, MVector& u)
+void FlowFV::initializeUnknowns(MVector& u)
 {
-
-	if(fromfile)
-	{
-		/// TODO: read initial conditions from file
-	}
-	else
-		//initial values are equal to boundary values
-		for(a_int i = 0; i < m->gnelem(); i++)
-			for(short j = 0; j < NVARS; j++)
-				u(i,j) = uinf(0,j);
+	//initial values are equal to boundary values
+	for(a_int i = 0; i < m->gnelem(); i++)
+		for(short j = 0; j < NVARS; j++)
+			u(i,j) = uinf(0,j);
 
 #ifdef DEBUG
 	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
@@ -537,7 +532,7 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	a_int lelem = m->gintfac(iface,0);
 	a_int relem = m->gintfac(iface,1);
 
-	/* Get proper state variables and grads at cell centres:
+	/* Get proper state variables and grads at cell centres
 	 * we start with all conserved variables and either conservative or primitive gradients
 	 */
 
@@ -548,7 +543,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	for(short i = 0; i < NVARS; i++) {
 		ucl[i] = u(lelem,i);
 		for(short j = 0; j < NDIM; j++) {
-			gradl[j][i] = 0; gradr[j][i] = 0;
+			gradl[j][i] = 0; 
+			gradr[j][i] = 0;
 		}
 	}
 	
@@ -563,7 +559,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 			}
 		
 			for(int i = 0; i < NVARS; i++) {
-				gradl[0][i] = dudx(lelem,i); gradl[1][i] = dudy(lelem,i);
+				gradl[0][i] = dudx(lelem,i); 
+				gradl[1][i] = dudy(lelem,i);
 			}
 
 			if(reconstructPrimitive) 
@@ -579,14 +576,15 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				 * and discard grad p in favor of grad T.
 				 */
 				for(int j = 0; j < NDIM; j++) {
-					const a_real gt =
-						physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucl,gradl[j]);
+					const a_real gt = physics.getGradTemperature(ucl[0], gradl[j][0],
+								ucl[NVARS-1], gradl[j][NVARS-1]);
 					gradl[j][NDIM+1] = gt;
 				}
 			} 
 			else 
 			{
-				/* Get one-sided primitive-2 gradients from one-sided conservative gradients
+				/* Get one-sided primitive-2 gradients from conserved variables and 
+				 * one-sided conservative gradients.
 				 * "Primitive-2" variables are density, velocities and temperature.
 				 */
 				for(int j = 0; j < NDIM; j++) {
@@ -594,7 +592,10 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				}
 			}
 
-			// use the same gradients on both sides of a boundary face:
+			/* Use the same gradients on both sides of a boundary face;
+			 * this will amount to just using the one-sided gradient for the modified average
+			 * gradient later.
+			 */
 			for(int i = 0; i < NVARS; i++) {
 				gradr[0][i] = gradl[0][i]; gradr[1][i] = gradl[1][i];
 			}
@@ -629,11 +630,10 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				 * and discard grad p in favor of grad T.
 				 */
 				for(int j = 0; j < NDIM; j++) {
-					a_real gt;
-					gt = physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucl,gradl[j]);
-					gradl[j][NDIM+1] = gt;
-					gt = physics.getGradTemperatureFromPrimitiveAndGradPrimitive(ucr,gradr[j]);
-					gradr[j][NDIM+1] = gt;
+					gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
+								ucl[NVARS-1], gradl[j][NVARS-1]);
+					gradr[j][NVARS-1] = physics.getGradTemperature(ucr[0], gradr[j][0],
+								ucr[NVARS-1], gradr[j][NVARS-1]);
 				}
 			}
 			else 
@@ -1512,7 +1512,7 @@ Diffusion<nvars>::~Diffusion()
 { }
 
 template<short nvars>
-void Diffusion<nvars>::initializeUnknowns(const bool fromfile, const std::string file, MVector& u)
+void Diffusion<nvars>::initializeUnknowns(MVector& u)
 	const
 {
 	for(a_int i = 0; i < u.rows(); i++)
@@ -1815,6 +1815,7 @@ void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_rea
 
 // template instantiations
 
+template class Diffusion<1>;
 template class DiffusionMA<1>;
 template void setupLaplacianSmoothingMatrix<NVARS>(const UMesh2dh *const m, 
 		LinearOperator<a_real,a_int> *const M);

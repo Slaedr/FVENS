@@ -74,7 +74,8 @@ int main(int argc, char* argv[])
 	// rhs and exact soln
 	
 	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> rhs 
-		= [diffcoeff](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
+		= [diffcoeff](const a_real *const r, const a_real t, const a_real *const u, 
+				a_real *const sourceterm)
 		{ 
 			sourceterm[0] = diffcoeff*8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]); 
 		};
@@ -129,10 +130,12 @@ int main(int argc, char* argv[])
 	
 	if(timesteptype == "IMPLICIT") 
 	{
-		time = new SteadyBackwardEulerSolver<1>(&m, prob, u, M, initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
+		time = new SteadyBackwardEulerSolver<1>(&m, prob, u, M, initcfl, endcfl, rampstart, rampend, 
+				tolerance, maxiter, 
 				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, lognres);
 
-		//startprob->initializeUnknowns(false, " ", u);
+		startprob->initializeUnknowns(u);
+		
 		setupMatrixStorage<1>(&m, mattype, M);
 
 		if(usestarter != 0)
@@ -159,8 +162,7 @@ int main(int argc, char* argv[])
 		time = new SteadyForwardEulerSolver<1>(&m, prob, u, tolerance, maxiter, initcfl, 
 				residualsmoothing, M, lognres);
 		
-		// TODO: Find out why the call below does not compile
-		//startprob->initializeUnknowns(false, " ", u);
+		startprob->initializeUnknowns(u);
 
 		if(usestarter != 0)
 		{

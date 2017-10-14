@@ -91,6 +91,10 @@ public:
 
 	/// Computes pressure from conserved variables
 	a_real getPressureFromConserved(const a_real *const uc) const;
+
+	/// Computes pressure gradient from conserved variables and their gradients
+	a_real getGradPressureFromConservedAndGradConserved(const a_real *const uc,
+		const a_real *const guc) const;
 	
 	/// Derivative of pressure w.r.t. conserved variables
 	/** Note that the derivative is added to the second argument - the latter is not zeroed
@@ -162,6 +166,10 @@ public:
 	/// Computes non-dimensional temperature from non-dimensional primitive variables
 	a_real getTemperatureFromPrimitive(const a_real *const up) const;
 
+	/// Computes non-dim temperature gradient from non-dim density, pressure and their gradients
+	a_real getGradTemperature(const a_real rho, const a_real gradrho, 
+		const a_real p, const a_real gradp) const;
+
 	/// Compute non-dim temperature spatial derivative 
 	/// from non-dim conserved variables and their spatial derivatives
 	a_real getGradTemperatureFromConservedAndGradConserved(const a_real *const uc, 
@@ -172,9 +180,9 @@ public:
 	a_real getGradTemperatureFromConservedAndGradPrimitive(const a_real *const uc,
 			const a_real *const gup) const;
 	
-	/// Computes temerature gradients from primitive and their gradients
-	a_real getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,
-			const a_real *const gup) const;
+	// Computes temerature gradients from primitive and their gradients
+	/*a_real getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,
+			const a_real *const gup) const;*/
 
 	/// Get primitive-2 gradients from conserved variables and their gradients
 	/** \warning Here, the output array gp is overwritten, rather than added to.
@@ -249,9 +257,9 @@ void IdealGasPhysics::getDirectionalFlux(const a_real *const uc, const a_real *c
 		const a_real vn, const a_real p, a_real *const __restrict flux) const
 {
 	flux[0] = vn*uc[0];
-	flux[1] = vn*uc[1] + p*n[0];
-	flux[2] = vn*uc[2] + p*n[1];
-	flux[3] = vn*(uc[3] + p);
+	for(int i = 1; i < NDIM+1; i++)
+		flux[i] = vn*uc[i] + p*n[i-1];
+	flux[NVARS-1] = vn*(uc[NVARS-1] + p);
 }
 
 inline
@@ -276,24 +284,32 @@ a_real IdealGasPhysics::getPressureFromConserved(const a_real *const uc) const
 	return (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
 }
 
+inline 
+a_real IdealGasPhysics::getGradPressureFromConservedAndGradConserved(const a_real *const uc,
+		const a_real *const guc) const
+{
+	a_real term1 = 0, term2 = 0;
+	for(int idim = 1; idim < NDIM+1; idim++)
+	{
+		term1 += uc[idim]*guc[idim];
+		term2 += uc[idim]*uc[idim];
+	}
+	return (g-1.0) * (guc[NDIM+1] - 0.5/(uc[0]*uc[0]) * (2.0*uc[0]*term1 - term2*guc[0]));
+}
+
 inline
 void IdealGasPhysics::getJacobianPressureWrtConserved(const a_real *const uc, 
 		a_real *const __restrict dp) const
 {
 	a_real rhovmag2 = 0;
-	a_real drvmg2[NVARS];
-	for(int i = 0; i < NVARS; i++)
-		drvmg2[i] = 0;
 
-	for(int idim = 1; idim < NDIM+1; idim++) {
+	for(int idim = 1; idim < NDIM+1; idim++)
 		rhovmag2 += uc[idim]*uc[idim];
-		drvmg2[idim] += 2.0*uc[idim];
-	}
 	
-	dp[0] += (g-1.0)*(-0.5)* (drvmg2[0]*uc[0] - rhovmag2)/(uc[0]*uc[0]);
-	dp[1] += (g-1.0)*(-0.5)* drvmg2[1]/uc[0];
-	dp[2] += (g-1.0)*(-0.5)* drvmg2[2]/uc[0];
-	dp[3] += (g-1.0);
+	dp[0] += (g-1.0)*0.5*rhovmag2/(uc[0]*uc[0]);
+	for(int i = 1; i < NDIM+1; i++)
+		dp[i] += -(g-1.0)*uc[i]/uc[0];
+	dp[NDIM+1] += (g-1.0);
 }
 
 inline
@@ -421,18 +437,19 @@ a_real IdealGasPhysics::getTemperatureFromPrimitive(const a_real *const up) cons
 }
 
 inline
+a_real IdealGasPhysics::getGradTemperature(const a_real rho, const a_real gradrho, 
+		const a_real p, const a_real gradp) const
+{
+	return (gradp*rho - p*gradrho) / (rho*rho) * g*Minf*Minf;
+}
+
+inline
 a_real IdealGasPhysics::getGradTemperatureFromConservedAndGradConserved(const a_real *const uc, 
 		const a_real *const guc) const
 {
 	const a_real p = getPressureFromConserved(uc);
-	a_real term1 = 0, term2 = 0;
-	for(int idim = 1; idim < NDIM+1; idim++)
-	{
-		term1 += uc[idim]*guc[idim];
-		term2 += uc[idim]*uc[idim];
-	}
-	a_real dpdx = (g-1.0) * (guc[NDIM+1] - 0.5/(uc[0]*uc[0])*(2*uc[0]*term1 - term2*guc[0]));
-	return (uc[0]*dpdx - p*guc[0])/(uc[0]*uc[0]) * g*Minf*Minf;
+	const a_real dpdx = getGradPressureFromConservedAndGradConserved(uc, guc);
+	return getGradTemperature(uc[0], guc[0], p, dpdx);
 }
 
 inline
@@ -440,15 +457,15 @@ a_real IdealGasPhysics::getGradTemperatureFromConservedAndGradPrimitive(const a_
 		const a_real *const gup) const
 {
 	const a_real p = getPressureFromConserved(uc);
-	return (uc[0]*gup[NDIM+1] - p*gup[0]) / (uc[0]*uc[0]) * g*Minf*Minf;
+	return getGradTemperature(uc[0], gup[0], p, gup[NVARS-1]);
 }
 
-inline
+/*inline
 a_real IdealGasPhysics::getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,
 		const a_real *const gup) const
 {
-	return (up[0]*gup[NDIM+1] - up[NDIM+1]*gup[0]) / (up[0]*up[0]) * g*Minf*Minf;
-}
+	return getGradTemperature(up[0], gup[0], up[NDIM+1], gup[NDIM+1]);
+}*/
 
 inline
 void IdealGasPhysics::getGradPrimitive2FromConservedAndGradConserved(
@@ -458,22 +475,30 @@ void IdealGasPhysics::getGradPrimitive2FromConservedAndGradConserved(
 
 	// velocity derivatives from momentum derivatives
 	for(int i = 1; i < NDIM+1; i++)
-		gp[i] = 1.0/guc[0] * (guc[i] - uc[i]/uc[0]*guc[0]);
+		//gp[i] = 1.0/guc[0] * (guc[i] - uc[i]/uc[0]*guc[0]);
+		gp[i] = (guc[i]*uc[0]-uc[i]*guc[0])/(uc[0]*uc[0]);
 	
 	const a_real p = getPressureFromConserved(uc);
 	
+	/* 
+	 * Note that beyond this point, we assume we don't have access to momentum grads anymore,
+	 * because we want to allow aliasing of guc and gp and we have modified gp above.
+	 * So we only use density grad (gp[0] or guc[0]), velocity grads (gp[1:NDIM+1]) and
+	 * energy grad (guc[NDIM+1]) going forward. We CANNOT use guc[1:NDIM+1].
+	 */
+
 	// pressure derivative
 	a_real term1 = 0, term2 = 0;
 	for(int i = 1; i < NDIM+1; i++)
 	{
-		term1 += uc[i]*uc[i];
-		term2 += uc[i]*gp[i];
+		term1 += uc[i]*gp[i];
+		term2 += uc[i]*uc[i];
 	}
-	term1 *= (0.5*gp[0]/uc[0]);
-	const a_real dp = (g-1.0)*(guc[NVARS-1] -term1 -term2);
+	term2 *= 0.5*gp[0]/(uc[0]*uc[0]);
+	const a_real dp = (g-1.0)*(guc[NVARS-1] -term2 -term1);
 
 	// temperature
-	gp[NVARS-1] = g*Minf*Minf * (uc[0]*dp - p*gp[0])/(uc[0]*uc[0]);
+	gp[NVARS-1] = getGradTemperature(uc[0],gp[0], p, dp);
 }
 
 inline

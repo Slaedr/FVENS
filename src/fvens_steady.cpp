@@ -73,7 +73,8 @@ int main(int argc, char* argv[])
 		std::getline(control,dum); std::getline(control,dum); control >> twalltemp >> twallvel;
 		std::getline(control,dum); std::getline(control,dum); control >> adiabaticwall_marker;
 		std::getline(control,dum); std::getline(control,dum); control >> adiawallvel;
-		std::getline(control,dum); std::getline(control,dum); control >> isothermalpressurewall_marker;
+		std::getline(control,dum); std::getline(control,dum); 
+		control >> isothermalpressurewall_marker;
 		std::getline(control,dum); std::getline(control,dum); control >> tpwalltemp >> tpwallvel 
 			>> tpwallpressure;
 	}
@@ -251,7 +252,7 @@ int main(int argc, char* argv[])
 	}
 	
 	// Ask the spatial discretization context to initialize flow variables
-	startprob.initializeUnknowns(false, initcondfile, u);
+	startprob.initializeUnknowns(u);
 
 	// computation
 	

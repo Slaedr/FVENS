@@ -141,7 +141,8 @@ public:
 		const a_real adiabisobaric_Temperature, const a_real adiabisobaric_TangVel, 
 		const a_real adiabisobaric_Pressure,
 		const a_real adiabatic_TangVel,
-		std::string invflux, std::string jacflux, std::string reconst, std::string limiter,
+		const std::string invflux, const std::string jacflux, 
+		const std::string reconst, const std::string limiter,
 		const bool order2, const bool reconst_prim);
 	
 	~FlowFV();
@@ -151,7 +152,7 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in|out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(const bool fromfile, const std::string file, MVector& u);
+	void initializeUnknowns(MVector& u);
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
@@ -303,11 +304,10 @@ public:
 			> source);
 
 	/// Sets initial conditions to zero
-	/** \param[in] fromfile True if initial data is to be read from a file
-	 * \param[in] file Name of initial conditions file
+	/** 
 	 * \param[in|out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(const bool fromfile, const std::string file, MVector& u) const;
+	void initializeUnknowns(MVector& u) const;
 	
 	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
@@ -363,8 +363,6 @@ public:
 			LinearOperator<a_real,a_int> *const A) const;
 	
 	void getGradients(const MVector& u, MVector grad[NDIM]) const;
-	
-	using Diffusion<nvars>::initializeUnknowns;
 
 	~DiffusionMA();
 
