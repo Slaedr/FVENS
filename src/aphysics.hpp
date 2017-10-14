@@ -15,6 +15,24 @@
 
 namespace acfd {
 
+/// Returns the square of the magnitude of the first NDIM components of a vector
+inline a_real dimVectorMagnitudeSquared(const a_real *const v)
+{
+	a_real vmag2 = 0;
+	for(int i = 0; i < NDIM; i++)
+		vmag2 += v[i]*v[i];
+	return vmag2;
+}
+
+/// Returns a dot product computed between the first NDIM components of the two vectors.
+inline a_real dimDotProduct(const a_real *const u, const a_real *const v)
+{
+	a_real dot = 0;
+	for(int i = 0; i < NDIM; i++)
+		dot += u[i]*v[i];
+	return dot;
+}
+
 /// Abstract class providing analytical fluxes and their Jacobians etc
 class Physics
 {

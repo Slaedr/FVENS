@@ -575,11 +575,9 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				/* get one-sided temperature gradients from one-sided primitive gradients
 				 * and discard grad p in favor of grad T.
 				 */
-				for(int j = 0; j < NDIM; j++) {
-					const a_real gt = physics.getGradTemperature(ucl[0], gradl[j][0],
+				for(int j = 0; j < NDIM; j++)
+					gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
 								ucl[NVARS-1], gradl[j][NVARS-1]);
-					gradl[j][NDIM+1] = gt;
-				}
 			} 
 			else 
 			{
