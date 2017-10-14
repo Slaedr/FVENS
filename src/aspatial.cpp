@@ -595,14 +595,15 @@ void FlowFV::computeViscousFlux(const a_int iface,
 			 * gradient later.
 			 */
 			for(int i = 0; i < NVARS; i++) {
-				gradr[0][i] = gradl[0][i]; gradr[1][i] = gradl[1][i];
+				gradr[0][i] = gradl[0][i]; 
+				gradr[1][i] = gradl[1][i];
 			}
 		}
 		else
 		{
-			// if second order was not requested, boundary values are stored in ul, not ug
+			// if second order was not requested, boundary values are stored in ur, not ug
 			for(int i = 0; i < NVARS; i++) {
-				ucr[i] = ul(iface,i);
+				ucr[i] = ur(iface,i);
 			}
 		}
 	}
@@ -615,8 +616,10 @@ void FlowFV::computeViscousFlux(const a_int iface,
 		if(secondOrderRequested)
 		{
 			for(int i = 0; i < NVARS; i++) {
-				gradl[0][i] = dudx(lelem,i); gradl[1][i] = dudy(lelem,i);
-				gradr[0][i] = dudx(relem,i); gradr[1][i] = dudy(relem,i);
+				gradl[0][i] = dudx(lelem,i); 
+				gradl[1][i] = dudy(lelem,i);
+				gradr[0][i] = dudx(relem,i); 
+				gradr[1][i] = dudy(relem,i);
 			}
 
 			if(reconstructPrimitive) 
@@ -650,8 +653,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	// convert cell-centred variables to primitive-2
 	if(secondOrderRequested && reconstructPrimitive)
 	{
-		physics.convertPrimitiveToPrimitive2(ucl, ucl);
-		physics.convertPrimitiveToPrimitive2(ucr, ucr);
+		ucl[NVARS-1] = physics.getTemperature(ucl[0], ucl[NVARS-1]);
+		ucr[NVARS-1] = physics.getTemperature(ucr[0], ucr[NVARS-1]);
 	}
 	else
 	{
@@ -665,18 +668,11 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	
 	a_real dr[NDIM], dist=0, n[NDIM];
 
-	if(iface < m->gnbface())
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-			n[i] = m->ggallfa(iface,i);
-		}
-	else
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-			n[i] = m->ggallfa(iface,i);
-		}
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+		n[i] = m->ggallfa(iface,i);
+	}
 	dist = sqrt(dist);
 	for(int i = 0; i < NDIM; i++) {
 		dr[i] /= dist;
@@ -685,16 +681,14 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	a_real grad[NDIM][NVARS];
 	for(short i = 0; i < NVARS; i++) 
 	{
-		a_real davg[NDIM], corr;
+		a_real davg[NDIM];
 		
 		for(short j = 0; j < NDIM; j++)
 			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
 
-		corr = (ucr[i]-ucl[i])/dist;
+		const a_real corr = (ucr[i]-ucl[i])/dist;
 		
-		a_real ddr = 0;
-		for(short j = 0; j < NDIM; j++)
-			ddr += davg[j]*dr[j];
+		const a_real ddr = dimDotProduct(davg,dr);
 
 		for(short j = 0; j < NDIM; j++)
 		{

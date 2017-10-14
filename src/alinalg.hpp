@@ -3,21 +3,14 @@
  * @author Aditya Kashi
  */
 
-#ifndef __ALINALG_H
+#ifndef ALINALG_H
+#define ALINALG_H
 
 #include <linearoperator.hpp>
 
 #include "aconstants.hpp"
-
-#ifndef __AMESH2DH_H
 #include "amesh2dh.hpp"
-#endif
-
-#ifndef __ASPATIAL_H
 #include "aspatial.hpp"
-#endif
-
-#define __ALINALG_H
 
 namespace blasted {
 

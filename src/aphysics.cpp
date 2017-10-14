@@ -20,7 +20,7 @@ void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const
 		const a_real* const n, 
 		a_real *const __restrict dfdu) const
 {
-	a_real rhovn = dimDotProduct(&u[1],n), u02 = u[0]*u[0];
+	const a_real rhovn = dimDotProduct(&u[1],n), u02 = u[0]*u[0];
 	// first row
 	dfdu[0] = 0; 
 	dfdu[1] = n[0]; 
@@ -53,7 +53,6 @@ void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const 
 	dvy[0] += -uc[2]/(uc[0]*uc[0]);
 	dvy[2] += 1.0/uc[0];
 
-	//dvn[0] += -(uc[1]*n[0]+uc[2]*n[1])/(uc[0]*uc[0]); 
 	dvn[0] += dvx[0]*n[0]+dvy[0]*n[1];
 	dvn[1] += n[0]/uc[0];
 	dvn[2] += n[1]/uc[0];
