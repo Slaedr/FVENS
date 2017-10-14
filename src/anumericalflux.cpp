@@ -37,8 +37,8 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	const a_real eig = 
 		std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
@@ -58,8 +58,8 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	// max eigenvalue
 	if( std::fabs(vni)+ci >= std::fabs(vnj)+cj )
@@ -102,8 +102,8 @@ void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	// max eigenvalue
 	bool leftismax;
@@ -195,8 +195,8 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	//Normal mach numbers
 	const a_real Mni = vni/ci;
@@ -253,8 +253,8 @@ void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	const a_real Mni = vni/ci, Mnj = vnj/cj;
 	
@@ -306,8 +306,8 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	const a_real Mni = vni/ci, Mnj = vnj/cj;
 
@@ -482,8 +482,8 @@ void AUSMPlusFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul,pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur,pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 	const a_real vmag2i = vxi*vxi+vyi*vyi;
 	const a_real vmag2j = vxj*vxj+vyj*vyj;
 
@@ -715,6 +715,7 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar]);
 }
 
+/// \todo TODO: Needs debugging!
 void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
 {
@@ -940,8 +941,8 @@ void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul, pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur, pj);
+	ci = physics->getSoundSpeed(ul[0], pi);
+	cj = physics->getSoundSpeed(ur[0], pj);
 
 	//> compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1342,8 +1343,8 @@ void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul, pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur, pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1495,8 +1496,8 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul, pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur, pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1548,8 +1549,8 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeedFromConservedEfficiently(ul, pi);
-	cj = physics->getSoundSpeedFromConservedEfficiently(ur, pj);
+	ci = physics->getSoundSpeed(ul[0],pi);
+	cj = physics->getSoundSpeed(ur[0],pj);
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	

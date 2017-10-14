@@ -12,7 +12,7 @@ void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, con
 		a_real *const __restrict flux) const
 {
 	const a_real vn = dimDotProduct(&u[1],n)/u[0];
-	const a_real p = (g-1.0)*(u[NVARS-1] - 0.5*dimVectorMagnitudeSquared(&u[1])/u[0]);
+	const a_real p = (g-1.0)*(u[NVARS-1] - 0.5*dimDotProduct(&u[1],&u[1])/u[0]);
 	getDirectionalFlux(u, n, vn, p, flux);
 }
 
@@ -27,17 +27,17 @@ void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const
 	dfdu[2] = n[1]; 
 	dfdu[3] = 0;
 	// second row
-	dfdu[4] = (-rhovn*u[1] + (g-1)*n[0]*(dimVectorMagnitudeSquared(&u[1]))/2.0) / u02;
+	dfdu[4] = (-rhovn*u[1] + (g-1)*n[0]*(dimDotProduct(&u[1],&u[1]))/2.0) / u02;
 	dfdu[5] = ((3.0-g)*u[1]*n[0] + u[2]*n[1]) / u[0];
 	dfdu[6] = (n[1]*u[1]-(g-1)*n[0]*u[2])/u[0];
 	dfdu[7] = (g-1)*n[0];
 	// third row
-	dfdu[8] = (-rhovn*u[2] + (g-1)*n[1]*(dimVectorMagnitudeSquared(&u[1]))/2.0) / u02;
+	dfdu[8] = (-rhovn*u[2] + (g-1)*n[1]*(dimDotProduct(&u[1],&u[1]))/2.0) / u02;
 	dfdu[9] = (n[0]*u[2]-(g-1)*n[1]*u[1])/u[0];
 	dfdu[10]= ((3.0-g)*u[2]*n[1]+u[1]*n[0])/u[0];
 	dfdu[11]= (g-1)*n[1];
 	// fourth row
-	dfdu[12]= rhovn*((g-1) * (dimVectorMagnitudeSquared(&u[1]))/(u02*u[0]) - g*u[3]/u02);
+	dfdu[12]= rhovn*((g-1) * (dimDotProduct(&u[1],&u[1]))/(u02*u[0]) - g*u[3]/u02);
 	dfdu[13]= g*u[3]*n[0]/u[0] - (g-1)*0.5/u02*(3*u[1]*u[1]*n[0]+u[2]*u[2]*n[0]+2*u[1]*u[2]*n[1]);
 	dfdu[14]= g*u[3]*n[1]/u[0] - (g-1)*0.5/u02*(2*u[1]*u[2]*n[0]+u[1]*u[1]*n[1]+3*u[2]*u[2]*n[1]);
 	dfdu[15]= g*rhovn/u[0];

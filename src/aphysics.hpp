@@ -15,15 +15,6 @@
 
 namespace acfd {
 
-/// Returns the square of the magnitude of the first NDIM components of a vector
-inline a_real dimVectorMagnitudeSquared(const a_real *const v)
-{
-	a_real vmag2 = 0;
-	for(int i = 0; i < NDIM; i++)
-		vmag2 += v[i]*v[i];
-	return vmag2;
-}
-
 /// Returns a dot product computed between the first NDIM components of the two vectors.
 inline a_real dimDotProduct(const a_real *const u, const a_real *const v)
 {
@@ -131,7 +122,7 @@ public:
 			a_real *const __restrict dc) const;
 
 	/// Computes speed of sound from conserved variables and pressure
-	a_real getSoundSpeedFromConservedEfficiently(const a_real *const uc, const a_real p) const;
+	a_real getSoundSpeed(const a_real rho, const a_real p) const;
 
 	/// Derivative of sound speed w.r.t. conserved variables
 	void getJacobianSoundSpeedWrtConservedEfficiently(const a_real *const uc,
@@ -299,10 +290,7 @@ void IdealGasPhysics::getVarsFromConserved(const a_real *const uc, const a_real 
 inline
 a_real IdealGasPhysics::getPressureFromConserved(const a_real *const uc) const
 {
-	a_real rhovmag2 = 0;
-	for(int idim = 1; idim < NDIM+1; idim++)
-		rhovmag2 += uc[idim]*uc[idim];
-	return (g-1.0)*(uc[NDIM+1] - 0.5*rhovmag2/uc[0]);
+	return (g-1.0)*(uc[NDIM+1] - 0.5*dimDotProduct(&uc[1],&uc[1])/uc[0]);
 }
 
 inline 
@@ -322,7 +310,7 @@ inline
 void IdealGasPhysics::getJacobianPressureWrtConserved(const a_real *const uc, 
 		a_real *const __restrict dp) const
 {
-	dp[0] += (g-1.0)*0.5*dimVectorMagnitudeSquared(&uc[1])/(uc[0]*uc[0]);
+	dp[0] += (g-1.0)*0.5*dimDotProduct(&uc[1],&uc[1])/(uc[0]*uc[0]);
 	for(int i = 1; i < NDIM+1; i++)
 		dp[i] += -(g-1.0)*uc[i]/uc[0];
 	dp[NDIM+1] += (g-1.0);
@@ -331,13 +319,13 @@ void IdealGasPhysics::getJacobianPressureWrtConserved(const a_real *const uc,
 inline
 a_real IdealGasPhysics::getTemperature(const a_real rho, const a_real p) const
 {
-	return p/rho * g*Minf*Minf;
+  return p/rho * g*Minf*Minf;
 }
 
 inline
 a_real IdealGasPhysics::getSoundSpeedFromConserved(const a_real *const uc) const
 {
-	return std::sqrt(g * getPressureFromConserved(uc)/uc[0]);
+  return getSoundSpeed(uc[0],getPressureFromConserved(uc));
 }
 
 inline
@@ -356,10 +344,9 @@ void IdealGasPhysics::getJacobianSoundSpeedWrtConserved(const a_real *const uc,
 }
 
 inline
-a_real IdealGasPhysics::getSoundSpeedFromConservedEfficiently(const a_real *const uc, 
-		const a_real p) const
+a_real IdealGasPhysics::getSoundSpeed(const a_real rho, const a_real p) const
 {
-	return std::sqrt(g * p/uc[0]);
+	return std::sqrt(g * p/rho);
 }
 
 inline
@@ -385,7 +372,7 @@ void IdealGasPhysics::convertConservedToPrimitive(const a_real *const uc, a_real
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		up[idim] = uc[idim]/uc[0];
 	}
-	up[NDIM+1] = (g-1.0)*(uc[NDIM+1] - 0.5*dimVectorMagnitudeSquared(&uc[1])/uc[0]);
+	up[NDIM+1] = (g-1.0)*(uc[NDIM+1] - 0.5*uc[0]*dimDotProduct(&up[1],&up[1]));
 }
 
 // independent of non-dimensionalization
@@ -393,7 +380,7 @@ inline
 void IdealGasPhysics::convertConservedToPrimitive2(const a_real *const uc, a_real *const up) const
 {
 	up[0] = uc[0];
-	const a_real rho2vmag2 = dimVectorMagnitudeSquared(&uc[1]);
+	const a_real rho2vmag2 = dimDotProduct(&uc[1],&uc[1]);
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		up[idim] = uc[idim]/uc[0];
 	}
@@ -406,7 +393,7 @@ inline
 void IdealGasPhysics::convertPrimitiveToConserved(const a_real *const up, a_real *const uc) const
 {
 	uc[0] = up[0];
-	const a_real vmag2 = dimVectorMagnitudeSquared(&up[1]);
+	const a_real vmag2 = dimDotProduct(&up[1],&up[1]);
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		uc[idim] = up[0]*up[idim];
 	}
@@ -518,10 +505,7 @@ inline
 a_real IdealGasPhysics::getEnergyFromPrimitive2(const a_real *const upt) const
 {
 	const a_real p = upt[0]*upt[NDIM+1]/(g*Minf*Minf);
-	a_real vmag2 = 0;
-	for(int idim = 1; idim < NDIM+1; idim++)
-		vmag2 += upt[idim]*upt[idim];
-	return p/(g-1.0) + 0.5*upt[0]*vmag2;
+	return p/(g-1.0) + 0.5*upt[0]*dimDotProduct(&upt[1],&upt[1]);
 }
 
 inline
