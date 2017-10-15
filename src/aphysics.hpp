@@ -114,6 +114,27 @@ public:
 	/// Computes temperature from density and pressure - depends on non-dimensionalization.
 	a_real getTemperature(const a_real rho, const a_real p) const;
 
+	/// Computes derivatives of temperature w.r.t. either conserved, primitive or primitive2
+	/** \note Derivatives can be computed w.r.t. any variable-set that 
+	 * has density as the first variable; the specific variables w.r.t. which derivatives are
+	 * computed depends on dp.
+	 */
+	void getJacobianTemperature(const a_real rho, 
+			const a_real p, const a_real *const dp,
+			a_real *const __restrict dT) const;
+	
+	/// Computes speed of sound from density and pressure
+	a_real getSoundSpeed(const a_real rho, const a_real p) const;
+
+	/// Derivative of sound speed
+	/** The variable-set w.r.t. which the differentiation happens is the same as that w.r.t.
+	 * which the pressure was differentiated for getting dp, similar to the case with
+	 * \ref getJacobianTemperature.
+	 */
+	void getJacobianSoundSpeed(const a_real rho,
+			const a_real p, const a_real dp[NVARS], const a_real c,
+			a_real *const __restrict dc) const;
+
 	/// Computes speed of sound from conserved variables
 	a_real getSoundSpeedFromConserved(const a_real *const uc) const;
 
@@ -121,25 +142,25 @@ public:
 	void getJacobianSoundSpeedWrtConserved(const a_real *const uc,
 			a_real *const __restrict dc) const;
 
-	/// Computes speed of sound from conserved variables and pressure
-	a_real getSoundSpeed(const a_real rho, const a_real p) const;
-
-	/// Derivative of sound speed w.r.t. conserved variables
-	void getJacobianSoundSpeedWrtConservedEfficiently(const a_real *const uc,
-			const a_real p, const a_real dp[NVARS], const a_real c,
-			a_real *const __restrict dc) const;
-
 	/// Computes an entropy \f$ p/ \rho^\gamma \f$ from conserved variables
 	a_real getEntropyFromConserved(const a_real *const uc) const;
+
+	/// Computes total energy from primitive variabes
+	a_real getEnergyFromPrimitive(const a_real *const up) const;
+
+	/// Computes total energy from a vector of density, velocities and temperature
+	/** All quantities are non-dimensional.
+	 */
+	a_real getEnergyFromPrimitive2(const a_real *const upt) const;
 
 	/// Convert conserved variables to primitive variables (density, velocities, pressure)
 	/** The input pointers are not assumed restricted, so the two parameters can point to
 	 * the same storage.
 	 */
-	void convertConservedToPrimitive(const a_real *const uc, a_real *const up) const;
+	void getPrimitiveFromConserved(const a_real *const uc, a_real *const up) const;
 	
 	/// Convert conserved variables to primitive-2 variables; depends on non-dimensionalization
-	void convertConservedToPrimitive2(const a_real *const uc, a_real *const up) const;
+	void getPrimitive2FromConserved(const a_real *const uc, a_real *const up) const;
 	
 	/// Computes the Jacobian matrix of the conserved-to-primitive-2 transformation
 	/** \f$ \partial \mathbf{u}_{prim2} / \partial \mathbf{u}_{cons} \f$. 
@@ -155,10 +176,7 @@ public:
 	/** The input pointers are not assumed restricted, so the two parameters can point to
 	 * the same storage.
 	 */
-	void convertPrimitiveToConserved(const a_real *const up, a_real *const uc) const;
-
-	/// Converts primitive variables to `primitive2', ie, replaces pressure with temperature
-	void convertPrimitiveToPrimitive2(const a_real *const up, a_real *const up2) const;
+	void getConservedFromPrimitive(const a_real *const up, a_real *const uc) const;
 
 	/// Computes density from pressure and temperature using ideal gas relation;
 	/// All quantities are non-dimensional
@@ -191,21 +209,18 @@ public:
 	/// spatial derivatives of non-dim *primitive* variables
 	a_real getGradTemperatureFromConservedAndGradPrimitive(const a_real *const uc,
 			const a_real *const gup) const;
-	
-	// Computes temerature gradients from primitive and their gradients
-	/*a_real getGradTemperatureFromPrimitiveAndGradPrimitive(const a_real *const up,
-			const a_real *const gup) const;*/
 
 	/// Get primitive-2 gradients from conserved variables and their gradients
 	/** \warning Here, the output array gp is overwritten, rather than added to.
 	 */
 	void getGradPrimitive2FromConservedAndGradConserved(const a_real *const __restrict uc,
 			const a_real *const guc, a_real *const gp) const;
-
-	/// Computes total energy from a vector of density, velocities and temperature
-	/** All quantities are non-dimensional.
+	
+	/// Computes non-dimensional viscosity coeff using Sutherland's law from temperature
+	/** By viscosity coefficient, we mean dynamic viscosity divided by 
+	 * the free-stream Reynolds number.
 	 */
-	a_real getEnergyFromPrimitive2(const a_real *const upt) const;
+	a_real getViscosityCoeffFromTemperature(const a_real T) const;
 
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from conserved variables
 	/** This is the dynamic viscosity divided by the Reynolds number
@@ -218,12 +233,6 @@ public:
 	/// Computes derivatives of Sutherland's dynamic viscosity coeff w.r.t. conserved variables
 	void getJacobianSutherlandViscosityWrtConserved(const a_real *const uc, 
 			a_real *const __restrict dmu) const;
-	
-	/// Computes non-dimensional viscosity coeff using Sutherland's law from primitive-2 variables
-	/** By viscosity coefficient, we mean dynamic viscosity divided by 
-	 * the free-stream Reynolds number.
-	 */
-	a_real getViscosityCoeffFromPrimitive2(const a_real *const up) const;
 
 	/// Returns non-dimensional free-stream viscosity coefficient
 	a_real getConstantViscosityCoeff() const;
@@ -297,12 +306,8 @@ inline
 a_real IdealGasPhysics::getGradPressureFromConservedAndGradConserved(const a_real *const uc,
 		const a_real *const guc) const
 {
-	a_real term1 = 0, term2 = 0;
-	for(int idim = 1; idim < NDIM+1; idim++)
-	{
-		term1 += uc[idim]*guc[idim];
-		term2 += uc[idim]*uc[idim];
-	}
+	const a_real term1 = dimDotProduct(&uc[1],&guc[1]);
+	const a_real term2 = dimDotProduct(&uc[1],&uc[1]);
 	return (g-1.0) * (guc[NDIM+1] - 0.5/(uc[0]*uc[0]) * (2.0*uc[0]*term1 - term2*guc[0]));
 }
 
@@ -323,24 +328,14 @@ a_real IdealGasPhysics::getTemperature(const a_real rho, const a_real p) const
 }
 
 inline
-a_real IdealGasPhysics::getSoundSpeedFromConserved(const a_real *const uc) const
+void IdealGasPhysics::getJacobianTemperature(const a_real rho, 
+		const a_real p, const a_real *const dp,
+		a_real *const __restrict dT) const
 {
-  return getSoundSpeed(uc[0],getPressureFromConserved(uc));
-}
-
-inline
-void IdealGasPhysics::getJacobianSoundSpeedWrtConserved(const a_real *const uc,
-		a_real *const __restrict dc) const
-{
-	a_real p =getPressureFromConserved(uc);
-	a_real dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
-	getJacobianPressureWrtConserved(uc, dp);
-
-	const a_real c = std::sqrt(g*p/uc[0]);
-	
-	dc[0] += 0.5/c * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
+	const a_real coef = g*Minf*Minf;
+	dT[0] += coef*(dp[0]*rho - p)/(rho*rho);
 	for(int i = 1; i < NVARS; i++)
-		dc[i] += 0.5/c * g*dp[i]/uc[0];
+		dT[i] += coef/rho * dp[i];
 }
 
 inline
@@ -350,13 +345,36 @@ a_real IdealGasPhysics::getSoundSpeed(const a_real rho, const a_real p) const
 }
 
 inline
-void IdealGasPhysics::getJacobianSoundSpeedWrtConservedEfficiently(const a_real *const uc,
+void IdealGasPhysics::getJacobianSoundSpeed(const a_real rho,
 		const a_real p, const a_real dp[NVARS], const a_real c,
 		a_real *const __restrict dc) const
 {
-	dc[0] += 0.5/c * g* (dp[0]*uc[0]-p)/(uc[0]*uc[0]);
+	dc[0] += 0.5/c * g* (dp[0]*rho-p)/(rho*rho);
 	for(int i = 1; i < NVARS; i++)
-		dc[i] += 0.5/c * g*dp[i]/uc[0];
+		dc[i] += 0.5/c * g*dp[i]/rho;
+}
+
+// independent of non-dimensionalization
+// not restricted to ideal gases
+inline
+a_real IdealGasPhysics::getSoundSpeedFromConserved(const a_real *const uc) const
+{
+  return getSoundSpeed(uc[0],getPressureFromConserved(uc));
+}
+
+// independent of non-dimensionalization
+// not restricted to ideal gases
+inline
+void IdealGasPhysics::getJacobianSoundSpeedWrtConserved(const a_real *const uc,
+		a_real *const __restrict dc) const
+{
+	a_real p =getPressureFromConserved(uc);
+	a_real dp[NVARS]; 
+	for(int i = 0; i < NVARS; i++) dp[i] = 0;
+	getJacobianPressureWrtConserved(uc, dp);
+
+	const a_real c = getSoundSpeed(uc[0],p);
+	getJacobianSoundSpeed(uc[0], p, dp, c, dc);
 }
 
 inline
@@ -365,48 +383,50 @@ a_real IdealGasPhysics::getEntropyFromConserved(const a_real *const uc) const
 	return getPressureFromConserved(uc)/std::pow(uc[0],g);
 }
 
+// independent of non-dimensionalization
 inline
-void IdealGasPhysics::convertConservedToPrimitive(const a_real *const uc, a_real *const up) const
+a_real IdealGasPhysics::getEnergyFromPrimitive(const a_real *const up) const
 {
-	up[0] = uc[0];
-	for(int idim = 1; idim < NDIM+1; idim++) {
-		up[idim] = uc[idim]/uc[0];
-	}
-	up[NDIM+1] = (g-1.0)*(uc[NDIM+1] - 0.5*uc[0]*dimDotProduct(&up[1],&up[1]));
+	return up[NVARS-1]/(g-1.0) + 0.5*up[0]*dimDotProduct(&up[1],&up[1]);
 }
 
 // independent of non-dimensionalization
+// not restricted to ideal gases
 inline
-void IdealGasPhysics::convertConservedToPrimitive2(const a_real *const uc, a_real *const up) const
+void IdealGasPhysics::getPrimitiveFromConserved(const a_real *const uc, a_real *const up) const
 {
 	up[0] = uc[0];
-	const a_real rho2vmag2 = dimDotProduct(&uc[1],&uc[1]);
+	const a_real p = getPressureFromConserved(uc);
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		up[idim] = uc[idim]/uc[0];
 	}
-	a_real p = (g-1.0)*(uc[NDIM+1] - 0.5*rho2vmag2/uc[0]);
+	up[NDIM+1] = p;
+}
+
+// independent of non-dimensionalization
+// not restricted to ideal gases
+inline
+void IdealGasPhysics::getPrimitive2FromConserved(const a_real *const uc, a_real *const up) const
+{
+	up[0] = uc[0];
+	const a_real p = getPressureFromConserved(uc);
+	for(int idim = 1; idim < NDIM+1; idim++) {
+		up[idim] = uc[idim]/uc[0];
+	}
 	up[NVARS-1] = getTemperature(uc[0],p);
 }
 
 // independent of non-dimensionalization
+// not restricted to ideal gases
 inline
-void IdealGasPhysics::convertPrimitiveToConserved(const a_real *const up, a_real *const uc) const
+void IdealGasPhysics::getConservedFromPrimitive(const a_real *const up, a_real *const uc) const
 {
 	uc[0] = up[0];
-	const a_real vmag2 = dimDotProduct(&up[1],&up[1]);
+	const a_real rhoE = getEnergyFromPrimitive(up);
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		uc[idim] = up[0]*up[idim];
 	}
-	uc[NDIM+1] = up[NDIM+1]/(g-1.0) + 0.5*up[0]*vmag2;
-}
-
-inline
-void IdealGasPhysics::convertPrimitiveToPrimitive2(const a_real *const up, a_real *const up2) const
-{
-	const a_real t = getTemperatureFromPrimitive(up);
-	for(int i = 1; i < NDIM+1; i++)
-		up2[i] = up[1];
-	up2[NVARS-1] = t;
+	uc[NDIM+1] = rhoE;
 }
 
 inline
@@ -416,12 +436,16 @@ a_real IdealGasPhysics::getDensityFromPressureTemperature(const a_real pressure,
 	return g*Minf*Minf*pressure/temperature;
 }
 
+// independent of non-dimensionalization
+// not restricted to ideal gases
 inline
 a_real IdealGasPhysics::getTemperatureFromConserved(const a_real *const uc) const
 {
 	return getTemperature(uc[0], getPressureFromConserved(uc));
 }
 
+// independent of non-dimensionalization
+// not restricted to ideal gases
 inline
 void IdealGasPhysics::getJacobianTemperatureWrtConserved(const a_real *const uc, 
 		a_real *const __restrict dT) const
@@ -429,11 +453,7 @@ void IdealGasPhysics::getJacobianTemperatureWrtConserved(const a_real *const uc,
 	const a_real p = getPressureFromConserved(uc);
 	a_real dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
 	getJacobianPressureWrtConserved(uc,dp);
-
-	a_real coef = g*Minf*Minf;
-	dT[0] += coef*(dp[0]*uc[0] - p)/(uc[0]*uc[0]);
-	for(int i = 1; i < NVARS; i++)
-		dT[i] += coef/uc[0] * dp[i];
+	getJacobianTemperature(uc[0],p,dp, dT);
 }
 
 // independent of non-dimensionalization
@@ -469,36 +489,35 @@ a_real IdealGasPhysics::getGradTemperatureFromConservedAndGradPrimitive(const a_
 
 inline
 void IdealGasPhysics::getGradPrimitive2FromConservedAndGradConserved(
-		const a_real *const __restrict uc, const a_real *const guc, a_real *const gp) const
+		const a_real *const __restrict uc, const a_real *const guc, a_real *const gup) const
 {
-	gp[0] = guc[0];
+	gup[0] = guc[0];
 
 	// velocity derivatives from momentum derivatives
 	for(int i = 1; i < NDIM+1; i++)
-		//gp[i] = 1.0/guc[0] * (guc[i] - uc[i]/uc[0]*guc[0]);
-		gp[i] = (guc[i]*uc[0]-uc[i]*guc[0])/(uc[0]*uc[0]);
+		gup[i] = (guc[i]*uc[0]-uc[i]*guc[0])/(uc[0]*uc[0]);
 	
 	const a_real p = getPressureFromConserved(uc);
 	
 	/* 
 	 * Note that beyond this point, we assume we don't have access to momentum grads anymore,
 	 * because we want to allow aliasing of guc and gp and we have modified gp above.
-	 * So we only use density grad (gp[0] or guc[0]), velocity grads (gp[1:NDIM+1]) and
-	 * energy grad (guc[NDIM+1]) going forward. We CANNOT use guc[1:NDIM+1].
+	 * So we only use density grad (gup[0] or guc[0]), velocity grads just computed (gup[1:NDIM+1]) 
+	 * and energy grad (guc[NDIM+1]) going forward. We CANNOT use guc[1:NDIM+1].
 	 */
 
 	// pressure derivative
 	a_real term1 = 0, term2 = 0;
 	for(int i = 1; i < NDIM+1; i++)
 	{
-		term1 += uc[i]*gp[i];
+		term1 += uc[i]*gup[i];
 		term2 += uc[i]*uc[i];
 	}
-	term2 *= 0.5*gp[0]/(uc[0]*uc[0]);
+	term2 *= 0.5*gup[0]/(uc[0]*uc[0]);
 	const a_real dp = (g-1.0)*(guc[NVARS-1] -term2 -term1);
 
 	// temperature
-	gp[NVARS-1] = getGradTemperature(uc[0],gp[0], p, dp);
+	gup[NVARS-1] = getGradTemperature(uc[0],gup[0], p, dp);
 }
 
 inline
@@ -509,17 +528,23 @@ a_real IdealGasPhysics::getEnergyFromPrimitive2(const a_real *const upt) const
 }
 
 inline
+a_real IdealGasPhysics::getViscosityCoeffFromTemperature(const a_real T) const
+{
+	return (1.0+sC/Tinf)/(T+sC/Tinf) * std::pow(T,1.5) / Reinf;
+}
+
+inline
 a_real IdealGasPhysics::getViscosityCoeffFromConserved(const a_real *const uc) const
 {
-	a_real T = getTemperatureFromConserved(uc);
-	return (1+sC/Tinf)/(T+sC/Tinf) * std::pow(T,1.5) / Reinf;
+	const a_real T = getTemperatureFromConserved(uc);
+	return getViscosityCoeffFromTemperature(T);
 }
 
 inline
 void IdealGasPhysics::getJacobianSutherlandViscosityWrtConserved(const a_real *const uc, 
 		a_real *const __restrict dmu) const
 {
-	a_real T = getTemperatureFromConserved(uc);
+	const a_real T = getTemperatureFromConserved(uc);
 	a_real dT[NVARS]; for(int i = 0; i < NVARS; i++) dT[i] = 0;
 	getJacobianTemperatureWrtConserved(uc, dT);
 
@@ -529,12 +554,6 @@ void IdealGasPhysics::getJacobianSutherlandViscosityWrtConserved(const a_real *c
 	// coef * pow(T,1.5) / (T + sC/Tinf)
 	for(int i = 0; i < NVARS; i++)
 		dmu[i] += coef* (1.5*Tm15*dT[i]*(T+sC/Tinf) - T15*dT[i])/denom;
-}
-
-inline
-a_real IdealGasPhysics::getViscosityCoeffFromPrimitive2(const a_real *const up) const
-{
-	return (1+sC/Tinf)/(up[NVARS-1]+sC/Tinf) * std::pow(up[NVARS-1],1.5) / Reinf;
 }
 
 inline

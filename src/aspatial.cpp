@@ -569,8 +569,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 				 * convert cell-centred variables to primitive; we need primitive variables
 				 * to compute temperature gradient from primitive gradients.
 				 */
-				physics.convertConservedToPrimitive(ucl, ucl);
-				physics.convertConservedToPrimitive(ucr, ucr);
+				physics.getPrimitiveFromConserved(ucl, ucl);
+				physics.getPrimitiveFromConserved(ucr, ucr);
 				
 				/* get one-sided temperature gradients from one-sided primitive gradients
 				 * and discard grad p in favor of grad T.
@@ -624,8 +624,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 
 			if(reconstructPrimitive) 
 			{
-				physics.convertConservedToPrimitive(ucl, ucl);
-				physics.convertConservedToPrimitive(ucr, ucr);
+				physics.getPrimitiveFromConserved(ucl, ucl);
+				physics.getPrimitiveFromConserved(ucr, ucr);
 				
 				/* get one-sided temperature gradients from one-sided primitive gradients
 				 * and discard grad p in favor of grad T.
@@ -658,8 +658,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	}
 	else
 	{
-		physics.convertConservedToPrimitive2(ucl, ucl);
-		physics.convertConservedToPrimitive2(ucr, ucr);
+		physics.getPrimitive2FromConserved(ucl, ucl);
+		physics.getPrimitive2FromConserved(ucr, ucr);
 	}
 
 	/* Compute modified averages of primitive-2 variables and their gradients.
@@ -750,8 +750,8 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		dupr[k] = 0; dupl[k] = 0;
 	}
 
-	physics.convertConservedToPrimitive2(ul, upl);
-	physics.convertConservedToPrimitive2(ur, upr);
+	physics.getPrimitive2FromConserved(ul, upl);
+	physics.getPrimitive2FromConserved(ur, upr);
 
 	physics.getJacobianPrimitive2WrtConserved(ul, dupl);
 	physics.getJacobianPrimitive2WrtConserved(ur, dupr);
@@ -1034,12 +1034,12 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 #pragma omp for
 				for(a_int iface = 0; iface < m->gnbface(); iface++)
 				{
-					physics.convertConservedToPrimitive(&ug(iface,0), &ug(iface,0));
+					physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
 				}
 
 #pragma omp for
 				for(a_int iel = 0; iel < m->gnelem(); iel++)
-					physics.convertConservedToPrimitive(&u(iel,0), &up(iel,0));
+					physics.getPrimitiveFromConserved(&u(iel,0), &up(iel,0));
 			}
 
 			// reconstruct
@@ -1052,12 +1052,12 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 #pragma omp for
 				for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 				{
-					physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
-					physics.convertPrimitiveToConserved(&uright(iface,0), &uright(iface,0));
+					physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+					physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
 				}
 #pragma omp for
 				for(a_int iface = 0; iface < m->gnbface(); iface++) {
-					physics.convertPrimitiveToConserved(&uleft(iface,0), &uleft(iface,0));
+					physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
 				}
 			}
 		}

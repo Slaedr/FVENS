@@ -319,8 +319,8 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	}
 	physics->getJacobianPressureWrtConserved(ul, dpi);
 	physics->getJacobianPressureWrtConserved(ur, dpj);
-	physics->getJacobianSoundSpeedWrtConserved(ul, dci);
-	physics->getJacobianSoundSpeedWrtConserved(ur, dcj);
+	physics->getJacobianSoundSpeed(ul[0], pi, dpi, ci, dci);
+	physics->getJacobianSoundSpeed(ur[0], pj, dpj, cj, dcj);
 
 	dmni[0] = (-1.0/(ul[0]*ul[0])*(ul[1]*n[0]+ul[2]*n[1])*ci - vni*dci[0])/(ci*ci);
 	dmni[1] = (n[0]/ul[0]*ci - vni*dci[1])/(ci*ci);
@@ -1571,8 +1571,8 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 
 	physics->getJacobianVarsWrtConserved(ul,n,dvxi,dvyi,dvni,dpi,dHi);
 	physics->getJacobianVarsWrtConserved(ur,n,dvxj,dvyj,dvnj,dpj,dHj);
-	physics->getJacobianSoundSpeedWrtConservedEfficiently(ul,pi,dpi,ci,dci);
-	physics->getJacobianSoundSpeedWrtConservedEfficiently(ur,pj,dpj,cj,dcj);
+	physics->getJacobianSoundSpeed(ul[0],pi,dpi,ci,dci);
+	physics->getJacobianSoundSpeed(ur[0],pj,dpj,cj,dcj);
 
 	getJacobiansRoeAveragesWrtConserved(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj,dvxi,dvyi,dHi,dvxj,dvyj,dHj,
 		dRiji, drhoiji, dvxiji, dvyiji, dvm2iji, dvniji, dHiji, dciji,
