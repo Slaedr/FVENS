@@ -333,7 +333,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		}
 		else {
 			rec = new ConstantReconstruction<NVARS>(m, &rc);
-			std::cout << " ! FlowFV: No reconstruction!" << std::endl;
+			std::cout << "  FlowFV: No reconstruction!" << std::endl;
 		}
 	}
 	else {
@@ -522,6 +522,146 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		}
 	}
 }
+
+void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins, 
+		a_real *const dgs) const
+{
+	a_real bs[NVARS];
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dgs[k] = 0;
+
+	const a_real n[NDIM] = {m->ggallfa(ied,0), m->ggallfa(ied,1)};
+	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
+	const a_real dvni[NVARS] = { 
+		-dimDotProduct(&ins[1],n)/(ins[0]*ins[0]),
+		n[0]/ins[0],
+		n[1]/ins[0],
+		0
+	};
+
+	if(m->gintfacbtags(ied,0) == slip_wall_id)
+	{
+		bs[0] = ins[0];
+		dgs[0] = 1.0;
+
+		bs[1] = ins[1] - 2.0*vni*n[0]*ins[0];
+		dgs[NVARS+0] = -2.0*n[0]*(dvni[0]*ins[0]+vni);
+		dgs[NVARS+1] = 1.0 - 2.0*n[0]*ins[0]*dvni[1];
+		dgs[NVARS+2] = -2.0*n[0]*ins[0]*dvni[2];
+
+		bs[2] = ins[2] - 2.0*vni*n[1]*ins[0];
+		dgs[2*NVARS+0] = -2.0*n[1]*(dvni[0]*ins[0]+vni);
+		dgs[2*NVARS+1] = -2.0*n[1]*ins[0]*dvni[1];
+		dgs[2*NVARS+2] = 1.0 - 2.0*n[1]*ins[0]*dvni[2];
+
+		bs[3] = ins[3];
+		dgs[3*NVARS+3] = 1.0;
+	}
+
+	if(m->gintfacbtags(ied,0) == extrap_id)
+	{
+		bs[0] = ins[0];
+		bs[1] = ins[1];
+		bs[2] = ins[2];
+		bs[3] = ins[3];
+		for(int k = 0; k < NVARS; k++)
+			dgs[k*NVARS+k] = 1.0;
+	}
+
+	/* For the far-field BCs, ghost state values are always free-stream values.
+	 * Therefore the Jacobian is zero.
+	 */
+
+	if(computeViscous) 
+	{
+		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
+		{
+			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			bs[0] = ins[0];
+			bs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			bs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
+			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+		}
+
+		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
+		{
+			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
+			bs[0] = ins[0];
+			dgs[0] = 1.0;
+
+			bs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			dgs[NVARS+0] = 2.0*adiabatic_wall_tangvel*n[1];
+			dgs[NVARS+1] = -1.0;
+
+			bs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			dgs[2*NVARS+0] = -2.0*adiabatic_wall_tangvel*n[0];
+			dgs[2*NVARS+2] = -1.0;
+
+			bs[3] = ins[3];
+			dgs[3*NVARS+3] = 1.0;
+		}
+
+		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
+		{
+			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
+			bs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
+					isothermalbaric_wall_temperature);
+			bs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			bs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			a_real prim2state[] = {bs[0],bs[1]/bs[0],bs[2]/bs[0],isothermalbaric_wall_temperature};
+			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+		}
+	}
+
+	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
+	 * the free-stream state with certainty,
+	 * while the state at the outlet is not certain to be the free-stream state.
+	 * 
+	 * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
+	 *
+	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
+	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
+	 * isentropic.
+	 *
+	 * Whether the flow is subsonic or supersonic at the boundary
+	 * is decided by interior value of the Mach number.
+	 */
+	if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	{
+		a_real ci = physics.getSoundSpeedFromConserved(ins);
+		a_real Mni = vni/ci;
+		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
+
+		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
+		 * takes care of signal propagation at the boundary.
+		 */
+		if(Mni <= 0)
+		{
+			for(short i = 0; i < NVARS; i++)
+				bs[i] = uinf(0,i);
+		}
+
+		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
+		 * are taken from the interior.
+		 */
+		else if(Mni <= 1)
+		{
+			bs[0] = ins[0];
+			bs[1] = ins[1];
+			bs[2] = ins[2];
+			bs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+		}
+		
+		// At supersonic outflow, everything is taken from the interior
+		else
+		{
+			for(int i = 0; i < NVARS; i++)
+				bs[i] = ins[i];
+		}
+	}
+}
+
 
 void FlowFV::computeViscousFlux(const a_int iface, 
 		const MVector& u, const amat::Array2d<a_real>& ug,
@@ -1314,11 +1454,13 @@ void FlowFV::compute_jacobian(const MVector& u,
 		n[0] = m->ggallfa(iface,0);
 		n[1] = m->ggallfa(iface,1);
 		a_real len = m->ggallfa(iface,2);
+		
 		a_real uface[NVARS];
+		compute_boundary_state(iface, &u(lelem,0), uface);
+		
 		Matrix<a_real,NVARS,NVARS,RowMajor> left;
 		Matrix<a_real,NVARS,NVARS,RowMajor> right;
 		
-		compute_boundary_state(iface, &u(lelem,0), uface);
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 
 		if(computeViscous) {

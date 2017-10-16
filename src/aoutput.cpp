@@ -132,6 +132,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				 * Note that finally the wall shear stress becomes
 				 * \f$ \tau_w = \mu (\nabla\mathbf{u}+\nabla\mathbf{u}^T) \hat{\mathbf{n}}
 				 *                                           .\hat{\mathbf{t}} \f$.
+				 *
+				 * Note that if n is (n1,n2), t is chosen as (n2,-n1).
 				 */
 
 				// non-dim viscosity / Re_inf
@@ -161,7 +163,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				// face normal dot "up" direction perpendicular to free stream
 				const a_real ndotnf = n[0]*flownormal[0]+n[1]*flownormal[1];
 				// face tangent dot free-stream direction
-				const a_real tdotf = -n[1]*av[0]+n[0]*av[1];
+				const a_real tdotf = n[1]*av[0]-n[0]*av[1];
 
 				Cdp += output(facecoun,NDIM)*ndotf*len;
 				Cdf += output(facecoun,NDIM+1)*tdotf*len;

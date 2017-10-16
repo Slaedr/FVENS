@@ -252,9 +252,18 @@ protected:
 	/// Computes ghost cell state across a face
 	/** \param[in] ied Face id in face data structure intfac
 	 * \param[in] ins Interior state of conserved variables
-	 * \param[in|out] Ghost state of conserved variables
+	 * \param[in|out] gs Ghost state of conserved variables
 	 */
-	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const;
+	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	/** The output array dgs is zeroed first, so any previous content will be lost. 
+	 * \param[in] ied Face id in face data structure intfac
+	 * \param[in] ins Interior state of conserved variables
+	 * \param[in|out] dgs Derivatives of ghost state of conserved variables w.r.t.
+	 *   the interior state ins, NVARS x NVARS stored in a row-major 1D array
+	 */
+	void compute_boundary_Jacobian(const int ied, const a_real *const ins, a_real *const dgs) const;
 
 	/// Computes viscous flux across a face
 	/** The output vflux still needs to be integrated on the face.
