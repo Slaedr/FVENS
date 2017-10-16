@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/flatplate/grids/flatplateluo.msh
+../testcases/flatplate/grids/flatplatestruct3.msh
 ---Output-file
-../data/flatplate.vtu
+../data/flatplate3.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -18,7 +18,7 @@ NAVIERSTOKES
 ---Free-stream-temperature(K)
 297.62
 ---Free-stream-Reynolds-number
-4269137.684
+1301233.166
 ---Prandtl-number
 0.712
 ---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
@@ -30,12 +30,14 @@ NO
 3
 ---Farfield-marker
 4
+---Inflow-outflow-marker
+5
 ---Extrapolation-marker
 -1
 ---Isothermal-wall-Marker
 		-1
 ---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
-		                     298.0                        0.0
+		                     0.0                        0.0
 ---Adiabatic-wall-Marker
 		2
 ---Adiabatic-wall:           Tang. velocity (normalized)
@@ -43,10 +45,22 @@ NO
 ---Isothermal-isobaric-wall-Marker
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
-							  298.0                       1.1                           1.0
+							  0.0                       1.1                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-other-boundaries-at-which-surface-output-is-needed
+5
+---Prefix-for-name-of-surface-output-file
+../data/flatplatestruct3-hllc
+---Is-volume-output-of-cell-centred-variables-required?
+NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLL
+HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -65,15 +79,22 @@ EXPLICIT
 ---Tolerance
 1e-5
 ---Max-pseudotime-iterations
-100000
+1750000
 #######################################################################
 ---use-first-order-initial-condition
 1
----CFL-for-initialization-run
-0.2
+---initial-CFL
+0.5
+---final-CFL
+0.5
+---ramp-start-step-and-end-step
+0 0
 ---tolerance-for-initialization
 1e-1
 ---max-time-steps-for-initialization
-2000
+20000
 ########################################################################
-
+---Use-laplacian-smoothing?
+NO
+---Preconditioner-async-sweeps-for-Laplacian-smoothing
+1 1

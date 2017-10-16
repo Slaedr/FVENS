@@ -113,23 +113,23 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 
 				/** Pressure coefficient: 
 				 * \f$ C_p = (p-p_\infty)/(\frac12 rho_\infty * v_\infty^2) \f$
-				 * = p* - p_inf* where *'s indicate non-dimensional values.
-				 * We note that p_inf* = 1/(gamma Minf^2).
+				 * = 2(p* - p_inf*) where *'s indicate non-dimensional values.
+				 * We note that p_inf* = 1/(gamma Minf^2) in our non-dimensionalization.
 				 */
-				output(facecoun, NDIM) = (phy->getPressureFromConserved(&u(lelem,0)) - pinf)/2.0;
+				output(facecoun, NDIM) = (phy->getPressureFromConserved(&u(lelem,0)) - pinf)*2.0;
 
 				/** Skin friction coefficient \f% C_f = \tau_w / (\frac12 \rho v_\infty^2) \f$.
 				 * 
 				 * We can define \f$ \tau_w \f$, the wall shear stress, as
-				 * \f$ \tau_w = (\mathbf{\Tau} \hat{\mathbf{n}}).\hat{\mathbf{t}} \f$
+				 * \f$ \tau_w = (\mathbf{T} \hat{\mathbf{n}}).\hat{\mathbf{t}} \f$
 				 * where \f$ \mathbf{\Tau} \f$ is the viscous stress tensor, 
 				 * \f$ \hat{\mathbf{n}} \f$ is the unit normal to the face and 
 				 * \f$ \hat{\mathbf{t}} \f$ is a consistent unit tangent to the face.
 				 * 
 				 * Note that because of our non-dimensionalization,
-				 * \f$ C_f = \hat{\mu} \tau_w / 2 \f$.
+				 * \f$ C_f = 2 \tau_w \f$.
 				 *
-				 * But we could maybe also use, by removing the normal stresses,
+				 * Note that finally the wall shear stress becomes
 				 * \f$ \tau_w = \mu (\nabla\mathbf{u}+\nabla\mathbf{u}^T) \hat{\mathbf{n}}
 				 *                                           .\hat{\mathbf{t}} \f$.
 				 */
@@ -147,24 +147,10 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				                / (u(lelem,0)*u(lelem,0));
 				gradu[1][1] = (grad[1](lelem,2)*u(lelem,0)-u(lelem,2)*grad[1](lelem,0))
 				                / (u(lelem,0)*u(lelem,0));
-
-				// stress tensor
-				/*a_real lhat = -2.0/3.0 * muhat;
-				a_real tau[NDIM][NDIM];
-				a_real divu = gradu[0][0] + gradu[1][1];
-				tau[0][0] = lhat*divu + 2.0*muhat*gradu[0][0];
-				tau[0][1] = muhat*(gradu[0][1]+gradu[1][0]);
-				tau[1][0] = tau[0][1];
-				tau[1][1] = lhat*divu + 2.0*muhat*gradu[1][1];
-
-				// compute (T.n).t where T is the stress tensor, n is the unit normal and
-				// t is the unit tangent
-				a_real tauw = -tau[0][0]*n[0]*n[1] - tau[0][1]*n[1]*n[1]
-					+ tau[1][0]*n[0]*n[0] + tau[1][1]*n[0]*n[1];*/
 				
-				// compute (grad u).n . t
-				a_real tauw = muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
-						+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
+				const a_real tauw = 
+					muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
+					+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 
 				output(facecoun, NDIM+1) = 2.0*tauw;
 

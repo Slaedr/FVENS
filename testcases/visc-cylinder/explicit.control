@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-cylinder/grids/sqcylquad3.msh
+../testcases/visc-cylinder/grids/sqcylquad2.msh
 ---Output-file
-../data/vsqcyl3.vtu
+../data/vsqcyl.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -14,11 +14,11 @@ NAVIERSTOKES
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.1
+0.3
 ---Free-stream-temperature(K)
 273.15
 ---Free-stream-Reynolds-number
-20.0
+40.0
 ---Prandtl-number
 0.72
 ---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
@@ -46,6 +46,16 @@ NO
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
 							  273.15                      1.0                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+0
+---Prefix-for-name-of-surface-output-file
+../data/visc-cyl
+---Is-volume-output-of-cell-centred-variables-required?
+NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLLC
@@ -71,11 +81,19 @@ EXPLICIT
 #######################################################################
 ---use-first-order-initial-condition
 1
----CFL-for-initialization-run
+---initial-CFL
 0.5
+---final-CFL
+0.5
+---ramp-start-step-and-end-step
+0 0
 ---tolerance-for-initialization
-1e-1
+1e-2
 ---max-time-steps-for-initialization
 7000
 ########################################################################
+---Smoothing?
+NO
+---Sweeps
+1 1
 
