@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project (fvens)
 
-set (CMAKE_CXX_FLAGS " ")
+set (CMAKE_CXX_FLAGS "-std=c++14")
 set (CMAKE_CXX_FLAGS_DEBUG " ")
 set (CMAKE_CXX_FLAGS_RELEASE " ")
 
@@ -29,9 +29,9 @@ endif()
 
 # set compile options
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fopt-info-loop-inline-vec-optimized-missed=optimizations.info")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-loop-inline-vec-optimized-missed=optimizations.info")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -qopt-report=2")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qopt-report=2")
 endif()
 
 if(MICKNC)
@@ -99,11 +99,25 @@ endif()
 
 # for the final executable(s)
 
-#add_subdirectory(utilities)
-
 add_executable(fvens_steady fvens_steady.cpp)
 target_link_libraries(fvens_steady fvens_base)
 
 add_executable(heat_steady heat_steady.cpp)
 target_link_libraries(heat_steady fvens_base)
+
+# Tags
+
+set_source_files_properties(tags PROPERTIES GENERATED true)
+add_custom_target ( tags
+    COMMAND ctags -R --c++-kinds=+pf --extra=+q . 
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} 
+  )
+
+find_program(CTAGS_PATH ctags)
+if(CTAGS_PATH)
+    message(STATUS "Found ctags: ${CTAGS_PATH}")
+    add_dependencies (fvens_steady tags)
+else()
+	message(STATUS "ctags not found! Tags will not be generated.")
+endif(CTAGS_PATH)
 

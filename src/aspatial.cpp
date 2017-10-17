@@ -408,27 +408,27 @@ void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Arr
 	}
 }
 
-void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const
+void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const
 {
-	a_real nx = m->ggallfa(ied,0);
-	a_real ny = m->ggallfa(ied,1);
+	const a_real nx = m->ggallfa(ied,0);
+	const a_real ny = m->ggallfa(ied,1);
 
-	a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
+	const a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
 
 	if(m->gintfacbtags(ied,0) == slip_wall_id)
 	{
-		bs[0] = ins[0];
-		bs[1] = ins[1] - 2*vni*nx*bs[0];
-		bs[2] = ins[2] - 2*vni*ny*bs[0];
-		bs[3] = ins[3];
+		gs[0] = ins[0];
+		gs[1] = ins[1] - 2.0*vni*nx*ins[0];
+		gs[2] = ins[2] - 2.0*vni*ny*ins[0];
+		gs[3] = ins[3];
 	}
 
 	if(m->gintfacbtags(ied,0) == extrap_id)
 	{
-		bs[0] = ins[0];
-		bs[1] = ins[1];
-		bs[2] = ins[2];
-		bs[3] = ins[3];
+		gs[0] = ins[0];
+		gs[1] = ins[1];
+		gs[2] = ins[2];
+		gs[3] = ins[3];
 	}
 
 	/** For the far-field BCs, ghost state values are always free-stream values.
@@ -436,7 +436,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	if(m->gintfacbtags(ied,0) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
-			bs[i] = uinf(0,i);
+			gs[i] = uinf(0,i);
 	}
 
 	if(computeViscous) 
@@ -444,34 +444,34 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
 		{
 			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
-			bs[0] = ins[0];
-			bs[1] =  2.0*tangMomentum*ny - ins[1];
-			bs[2] = -2.0*tangMomentum*nx - ins[2];
-			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
-			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			gs[0] = ins[0];
+			gs[1] =  2.0*tangMomentum*ny - ins[1];
+			gs[2] = -2.0*tangMomentum*nx - ins[2];
+			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 
 		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
 		{
 			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
-			bs[0] = ins[0];
-			bs[1] =  2.0*tangMomentum*ny - ins[1];
-			bs[2] = -2.0*tangMomentum*nx - ins[2];
+			gs[0] = ins[0];
+			gs[1] =  2.0*tangMomentum*ny - ins[1];
+			gs[2] = -2.0*tangMomentum*nx - ins[2];
 			/*a_real Tins = physics.getTemperatureFromConserved(ins);
-			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], Tins};
-			bs[3] = physics.getEnergyFromPrimitive2(prim2state);*/
-			bs[3] = ins[3];
+			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], Tins};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);*/
+			gs[3] = ins[3];
 		}
 
 		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
-			bs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
+			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
 					isothermalbaric_wall_temperature);
-			bs[1] =  2.0*tangMomentum*ny - ins[1];
-			bs[2] = -2.0*tangMomentum*nx - ins[2];
-			a_real prim2state[] = {bs[0],bs[1]/bs[0],bs[2]/bs[0],isothermalbaric_wall_temperature};
-			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			gs[1] =  2.0*tangMomentum*ny - ins[1];
+			gs[2] = -2.0*tangMomentum*nx - ins[2];
+			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],isothermalbaric_wall_temperature};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 	}
 
@@ -500,7 +500,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		if(Mni <= 0)
 		{
 			for(short i = 0; i < NVARS; i++)
-				bs[i] = uinf(0,i);
+				gs[i] = uinf(0,i);
 		}
 
 		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
@@ -508,32 +508,31 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		 */
 		else if(Mni <= 1)
 		{
-			bs[0] = ins[0];
-			bs[1] = ins[1];
-			bs[2] = ins[2];
-			bs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			gs[0] = ins[0];
+			gs[1] = ins[1];
+			gs[2] = ins[2];
+			gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
 		}
 		
 		// At supersonic outflow, everything is taken from the interior
 		else
 		{
 			for(int i = 0; i < NVARS; i++)
-				bs[i] = ins[i];
+				gs[i] = ins[i];
 		}
 	}
 }
 
 void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins, 
-		a_real *const dgs) const
+		a_real *const gs, a_real *const dgs) const
 {
-	a_real bs[NVARS];
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 
 	const a_real n[NDIM] = {m->ggallfa(ied,0), m->ggallfa(ied,1)};
 	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
 	const a_real dvni[NVARS] = { 
-		-dimDotProduct(&ins[1],n)/(ins[0]*ins[0]),
+		-vni/ins[0],
 		n[0]/ins[0],
 		n[1]/ins[0],
 		0
@@ -541,29 +540,33 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 
 	if(m->gintfacbtags(ied,0) == slip_wall_id)
 	{
-		bs[0] = ins[0];
+		gs[0] = ins[0];
+		
 		dgs[0] = 1.0;
 
-		bs[1] = ins[1] - 2.0*vni*n[0]*ins[0];
+		gs[1] = ins[1] - 2.0*vni*n[0]*ins[0];
+		
 		dgs[NVARS+0] = -2.0*n[0]*(dvni[0]*ins[0]+vni);
 		dgs[NVARS+1] = 1.0 - 2.0*n[0]*ins[0]*dvni[1];
 		dgs[NVARS+2] = -2.0*n[0]*ins[0]*dvni[2];
 
-		bs[2] = ins[2] - 2.0*vni*n[1]*ins[0];
+		gs[2] = ins[2] - 2.0*vni*n[1]*ins[0];
+		
 		dgs[2*NVARS+0] = -2.0*n[1]*(dvni[0]*ins[0]+vni);
 		dgs[2*NVARS+1] = -2.0*n[1]*ins[0]*dvni[1];
 		dgs[2*NVARS+2] = 1.0 - 2.0*n[1]*ins[0]*dvni[2];
 
-		bs[3] = ins[3];
+		gs[3] = ins[3];
+		
 		dgs[3*NVARS+3] = 1.0;
 	}
 
 	if(m->gintfacbtags(ied,0) == extrap_id)
 	{
-		bs[0] = ins[0];
-		bs[1] = ins[1];
-		bs[2] = ins[2];
-		bs[3] = ins[3];
+		gs[0] = ins[0];
+		gs[1] = ins[1];
+		gs[2] = ins[2];
+		gs[3] = ins[3];
 		for(int k = 0; k < NVARS; k++)
 			dgs[k*NVARS+k] = 1.0;
 	}
@@ -571,46 +574,59 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 	/* For the far-field BCs, ghost state values are always free-stream values.
 	 * Therefore the Jacobian is zero.
 	 */
+	if(m->gintfacbtags(ied,0) == farfield_id)
+	{
+		for(int i = 0; i < NVARS; i++)
+			gs[i] = uinf(0,i);
+	}
 
 	if(computeViscous) 
 	{
 		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
 		{
 			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
-			bs[0] = ins[0];
-			bs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			bs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			a_real prim2state[] = {bs[0], bs[1]/bs[0], bs[2]/bs[0], isothermal_wall_temperature};
-			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			gs[0] = ins[0];
+			dgs[0] = 1.0;
+
+			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			dgs[NVARS+0] = 2.0*isothermal_wall_tangvel*n[1];
+			dgs[NVARS+1] = -1.0;
+
+			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			dgs[2*NVARS+0] = -2.0*isothermal_wall_tangvel*n[0];
+			dgs[2*NVARS+2] = -1.0;
+
+			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 
 		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
 		{
 			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
-			bs[0] = ins[0];
+			gs[0] = ins[0];
 			dgs[0] = 1.0;
 
-			bs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
 			dgs[NVARS+0] = 2.0*adiabatic_wall_tangvel*n[1];
 			dgs[NVARS+1] = -1.0;
 
-			bs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
 			dgs[2*NVARS+0] = -2.0*adiabatic_wall_tangvel*n[0];
 			dgs[2*NVARS+2] = -1.0;
 
-			bs[3] = ins[3];
+			gs[3] = ins[3];
 			dgs[3*NVARS+3] = 1.0;
 		}
 
 		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
-			bs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
+			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
 					isothermalbaric_wall_temperature);
-			bs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			bs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			a_real prim2state[] = {bs[0],bs[1]/bs[0],bs[2]/bs[0],isothermalbaric_wall_temperature};
-			bs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],isothermalbaric_wall_temperature};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 	}
 
@@ -629,9 +645,10 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 	 */
 	if(m->gintfacbtags(ied,0) == inflowoutflow_id)
 	{
-		a_real ci = physics.getSoundSpeedFromConserved(ins);
-		a_real Mni = vni/ci;
-		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
+		const a_real ci = physics.getSoundSpeedFromConserved(ins);
+		const a_real Mni = vni/ci;
+		
+		const a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
 
 		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 		 * takes care of signal propagation at the boundary.
@@ -639,7 +656,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 		if(Mni <= 0)
 		{
 			for(short i = 0; i < NVARS; i++)
-				bs[i] = uinf(0,i);
+				gs[i] = uinf(0,i);
 		}
 
 		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
@@ -647,17 +664,26 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 		 */
 		else if(Mni <= 1)
 		{
-			bs[0] = ins[0];
-			bs[1] = ins[1];
-			bs[2] = ins[2];
-			bs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			gs[0] = ins[0];
+			gs[1] = ins[1];
+			gs[2] = ins[2];
+			for(int k = 0; k < NVARS-1; k++)
+				dgs[k*NVARS+k] = 1.0;
+
+			gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			dgs[3*NVARS+0] = -0.5*(ins[1]*ins[1]+ins[2]*ins[2])/(ins[0]*ins[0]);
+			dgs[3*NVARS+1] = ins[1]/ins[0];
+			dgs[3*NVARS+2] = ins[2]/ins[0];
+			dgs[3*NVARS+3] = 0;
 		}
 		
 		// At supersonic outflow, everything is taken from the interior
 		else
 		{
-			for(int i = 0; i < NVARS; i++)
-				bs[i] = ins[i];
+			for(int i = 0; i < NVARS; i++) {
+				gs[i] = ins[i];
+				dgs[i*NVARS+i] = 1.0;
+			}
 		}
 	}
 }
@@ -1456,10 +1482,11 @@ void FlowFV::compute_jacobian(const MVector& u,
 		a_real len = m->ggallfa(iface,2);
 		
 		a_real uface[NVARS];
-		compute_boundary_state(iface, &u(lelem,0), uface);
-		
+		Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
 		Matrix<a_real,NVARS,NVARS,RowMajor> left;
 		Matrix<a_real,NVARS,NVARS,RowMajor> right;
+		
+		compute_boundary_Jacobian(iface, &u(lelem,0), uface, &drdl(0,0));	
 		
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 
@@ -1467,8 +1494,11 @@ void FlowFV::compute_jacobian(const MVector& u,
 			computeViscousFluxJacobian(iface, &u(lelem,0), uface, &left(0,0), &right(0,0));
 		}
 		
-		// multiply by length of face and negate, as -ve of L is added to D
-		left = -len*left;
+		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
+		 * Integrate the results over the face and negate, as -ve of L is added to D
+		 */
+		left = -len*(left - right*drdl);
+	
 		A->updateDiagBlock(lelem*NVARS, left.data(), NVARS);
 	}
 

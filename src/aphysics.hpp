@@ -24,6 +24,18 @@ inline a_real dimDotProduct(const a_real *const u, const a_real *const v)
 	return dot;
 }
 
+/// Returns the derivatives of f/g given the derivatives of f and g (for NVARS components)
+/** \note The result is added to the output array dq; so prior contents will affect the outcome.
+ * \note It is possible for the output array dq to point to the same location as
+ * one of the input arrays. In that case, the entire array should overlap, NOT only a part of it.
+ */
+inline void getQuotientDerivatives(const a_real f, const a_real *const df, 
+		const a_real g, const a_real *const dg, a_real *const __restrict dq)
+{
+	for(int i = 0; i < NVARS; i++)
+		dq[i] += (df[i]*g-f*dg[i])/(g*g);
+}
+
 /// Abstract class providing analytical fluxes and their Jacobians etc
 class Physics
 {
@@ -142,8 +154,16 @@ public:
 	void getJacobianSoundSpeedWrtConserved(const a_real *const uc,
 			a_real *const __restrict dc) const;
 
+	/// Derivatives of normal Mach number w.r.t. conserved variables
+	void getJacobianMachNormalWrtConserved(const a_real *const uc,
+		const a_real *const n,
+		a_real *const __restrict dmn) const;
+
 	/// Computes an entropy \f$ p/ \rho^\gamma \f$ from conserved variables
 	a_real getEntropyFromConserved(const a_real *const uc) const;
+
+	/// Compute energy from pressure, density and magnitude of velocity
+	a_real getEnergyFromPressure(const a_real p, const a_real d, const a_real vmag2) const;
 
 	/// Computes total energy from primitive variabes
 	a_real getEnergyFromPrimitive(const a_real *const up) const;
@@ -378,16 +398,43 @@ void IdealGasPhysics::getJacobianSoundSpeedWrtConserved(const a_real *const uc,
 }
 
 inline
+void IdealGasPhysics::getJacobianMachNormalWrtConserved(const a_real *const uc,
+		const a_real *const n,
+		a_real *const __restrict dmn) const
+{
+	a_real dc[NVARS], dvn[NVARS];
+	zeros(dc,NVARS);
+	const a_real c = getSoundSpeedFromConserved(uc);
+	getJacobianSoundSpeedWrtConserved(uc, dc);
+
+	const a_real vn = dimDotProduct(&uc[1],n)/uc[0];
+	dvn[0] = -vn/uc[0];
+	dvn[1] = n[0]/uc[0];
+	dvn[2] = n[1]/uc[0];
+	dvn[3] = 0;
+
+	getQuotientDerivatives(vn, dvn, c, dc, dmn);
+}
+
+inline
 a_real IdealGasPhysics::getEntropyFromConserved(const a_real *const uc) const
 {
 	return getPressureFromConserved(uc)/std::pow(uc[0],g);
+}
+
+inline
+a_real IdealGasPhysics::getEnergyFromPressure(const a_real p, const a_real d, const a_real vmag2) 
+	const 
+{
+	return p/(g-1.0) + 0.5*d*vmag2;
 }
 
 // independent of non-dimensionalization
 inline
 a_real IdealGasPhysics::getEnergyFromPrimitive(const a_real *const up) const
 {
-	return up[NVARS-1]/(g-1.0) + 0.5*up[0]*dimDotProduct(&up[1],&up[1]);
+	//return up[NVARS-1]/(g-1.0) + 0.5*up[0]*dimDotProduct(&up[1],&up[1]);
+	return getEnergyFromPressure(up[NVARS-1], up[0], dimDotProduct(&up[1],&up[1]));
 }
 
 // independent of non-dimensionalization

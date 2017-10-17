@@ -44,6 +44,10 @@ Control files
 -------------
 Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called.
 
+Browsing the code
+-----------------
+A tags file is built when the code is built (if ctags is available), which makes navigation from Vim easier. This  Using tags in Vim is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags). Emacs users can modify the CMakeLists rule to use etags instead.
+
 ---
 
 Copyright (C) 2016, 2017 Aditya Kashi. See LICENSE.md for terms of redistribution with/without modification and those of linking.

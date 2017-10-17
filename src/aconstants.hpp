@@ -27,6 +27,7 @@
 /// A small number likely smaller than most convergence tolerances
 #define A_SMALL_NUMBER 1e-12
 
+/// Number of spatial dimensions in the problem
 #define NDIM 2
 
 /// Number of coupled variables for compressible flow computations
@@ -65,6 +66,12 @@ namespace acfd
 
 	/// Multi-vector type, used for storing mesh functions like the residual
 	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
+
+	/// Fill a raw array of reals with zeros
+	inline void zeros(a_real *const a, const a_int n) {
+		for(int i = 0; i < n; i++)
+			a[i] = 0;
+	}
 }
 
 // sparse matrix library

@@ -1,9 +1,9 @@
 -mesh_file
-../testcases/naca0012/grids/naca0012luo.msh
+../testcases/naca0012/grids/NACA0012_inv.su2
 -output_file
-../data/naca0012luo.vtu
+../data/naca0012SU2.vtu
 -Log-file
-naca0012luo.log
+naca0012.log
 -Log-nonlinear-convergence-history(YES,NO)
 NO
 ########PHYSICS######################################################
@@ -33,7 +33,7 @@ EULER
 ---Number-of-'other'-boundaries-at-which-surface-output-is-needed
 0
 ---Prefix-for-name-of-surface-output-file
-../data/naca-euler
+../data/naca-euler-su2-hll
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
@@ -49,20 +49,24 @@ YES
 -time-stepping-type
 IMPLICIT
 -initial-CFL
-200.0
+150.0
 -final-CFL
-200.0
+250.0
 -ramp-start-step
-0 0
+100 150
 -Tolerance
 1e-5
 -Max-pseudotime-iterations
-2000
+1500
 #################################################################
 -use-first-order-initial-condition
 1
 -CFL-for-initialization-run
-100.0
+50.0
+-final-CFL
+200.0
+-ramp-start-step
+20 30
 -tolerance-for-initialization
 1e-2
 -max-time-steps-for-initialization
@@ -79,9 +83,9 @@ RICHARDSON
 -Linear-solver-tolerance
 1e-2
 -Linear-solver-max-iterations-initial
-50
+30
 -Linear-solver-max-iterations-end
-50
+80
 -Number-of-Krylov-subspace-vectors
 20
 -preconditioner
