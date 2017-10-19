@@ -110,6 +110,9 @@ public:
 		a_real dvx[NVARS], a_real dvy[NVARS], a_real dvn[NVARS],
 		a_real dp[NVARS], a_real dH[NVARS]) const;
 
+	/// Computes pressure from internal energy - here it's the ideal gas relation	
+	a_real getPressure(const a_real internalenergy) const;
+
 	/// Computes pressure from conserved variables
 	a_real getPressureFromConserved(const a_real *const uc) const;
 
@@ -122,6 +125,10 @@ public:
 	 * or anything.
 	 */
 	void getJacobianPressureWrtConserved(const a_real *const uc, a_real *const __restrict dp) const;
+
+	/// Gives the pressure more efficiently using an additional input - the momemtum magnitude
+	void getJacobianPressureWrtConserved(const a_real *const uc, const a_real rho2vmag2,
+			a_real *const __restrict dp) const;
 
 	/// Computes temperature from density and pressure - depends on non-dimensionalization.
 	a_real getTemperature(const a_real rho, const a_real p) const;
@@ -317,9 +324,15 @@ void IdealGasPhysics::getVarsFromConserved(const a_real *const uc, const a_real 
 }
 
 inline
+a_real IdealGasPhysics::getPressure(const a_real internalenergy) const {
+	return (g-1.0)*internalenergy;
+}
+
+// not restricted to ideal gases
+inline
 a_real IdealGasPhysics::getPressureFromConserved(const a_real *const uc) const
 {
-	return (g-1.0)*(uc[NDIM+1] - 0.5*dimDotProduct(&uc[1],&uc[1])/uc[0]);
+	return getPressure(uc[NDIM+1] - 0.5*dimDotProduct(&uc[1],&uc[1])/uc[0]);
 }
 
 inline 
@@ -336,6 +349,17 @@ void IdealGasPhysics::getJacobianPressureWrtConserved(const a_real *const uc,
 		a_real *const __restrict dp) const
 {
 	dp[0] += (g-1.0)*0.5*dimDotProduct(&uc[1],&uc[1])/(uc[0]*uc[0]);
+	for(int i = 1; i < NDIM+1; i++)
+		dp[i] += -(g-1.0)*uc[i]/uc[0];
+	dp[NDIM+1] += (g-1.0);
+}
+
+inline
+void IdealGasPhysics::getJacobianPressureWrtConserved(const a_real *const uc, 
+		const a_real rho2vmag2,
+		a_real *const __restrict dp) const
+{
+	dp[0] += (g-1.0)*0.5*rho2vmag2/(uc[0]*uc[0]);
 	for(int i = 1; i < NDIM+1; i++)
 		dp[i] += -(g-1.0)*uc[i]/uc[0];
 	dp[NDIM+1] += (g-1.0);
@@ -595,9 +619,9 @@ void IdealGasPhysics::getJacobianSutherlandViscosityWrtConserved(const a_real *c
 	a_real dT[NVARS]; for(int i = 0; i < NVARS; i++) dT[i] = 0;
 	getJacobianTemperatureWrtConserved(uc, dT);
 
-	a_real coef = (1.0+sC/Tinf)/Reinf;
-	a_real T15 = std::pow(T,1.5), Tm15 = std::pow(T,-1.5);
-	a_real denom = (T + sC/Tinf)*(T+sC/Tinf);
+	const a_real coef = (1.0+sC/Tinf)/Reinf;
+	const a_real T15 = std::pow(T,1.5), Tm15 = std::pow(T,-1.5);
+	const a_real denom = (T + sC/Tinf)*(T+sC/Tinf);
 	// coef * pow(T,1.5) / (T + sC/Tinf)
 	for(int i = 0; i < NVARS; i++)
 		dmu[i] += coef* (1.5*Tm15*dT[i]*(T+sC/Tinf) - T15*dT[i])/denom;

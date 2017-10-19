@@ -12,7 +12,7 @@
 
 #include "amesh2dh.hpp"
 #include "anumericalflux.hpp"
-#include "alimiter.hpp"
+#include "agradientschemes.hpp"
 #include "areconstruction.hpp"
 
 #if HAVE_PETSC==1
@@ -209,13 +209,13 @@ protected:
 	/// Numerical inviscid flux context for the Jacobian
 	InviscidFlux* jflux;
 
-	/// Reconstruction context
-	Reconstruction* rec;
+	/// Gradient computation context
+	GradientComputation* gradcomp;
 
 	bool allocflux;
 
-	/// Limiter context
-	FaceDataComputation* lim;
+	/// Reconstruction context
+	SolutionReconstruction* lim;
 
 	const int isothermal_wall_id;				///< Boundary marker for isothermal wall
 	const int adiabatic_wall_id;				///< Boundary marker for adiabatic wall
@@ -389,7 +389,7 @@ protected:
 	using Diffusion<nvars>::compute_boundary_state;
 	using Diffusion<nvars>::compute_boundary_states;
 	
-	Reconstruction* rec;
+	GradientComputation* gradcomp;
 };
 
 /// Creates a first-order `thin-layer' Laplacian smoothing matrix

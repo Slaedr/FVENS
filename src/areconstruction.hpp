@@ -1,87 +1,154 @@
 /** @file areconstruction.hpp
- * @brief Classes for different gradient reconstruction schemes.
+ * @brief Slope limiters for variable-extrapolation reconstruction
  * @author Aditya Kashi
- * @date February 3, 2016
  */
 
 #ifndef ARECONSTRUCTION_H
-#define ARECONSTRUCTION_H 1
+#define ARECONSTRUCTION_H
 
+#include "aconstants.hpp"
+#include "aarray2d.hpp"
 #include "amesh2dh.hpp"
 
-namespace acfd
-{
+namespace acfd {
 
-/// Abstract class for variable gradient reconstruction schemes
-/** For this, we need ghost cell-centered values of flow variables.
+/// Abstract class for computing face values from cell-centered values and gradients
+/** \note Face values at boundary faces are only computed for the left (interior) side. 
+ * Right side values for boundary faces need to computed elsewhere using boundary conditions.
  */
-class Reconstruction
+class SolutionReconstruction
 {
 protected:
 	const UMesh2dh* m;
-	/// Cell centers' coords
-	const amat::Array2d<a_real>* rc;
+	const amat::Array2d<a_real>* ri;		///< coords of cell centers of cells
+	const amat::Array2d<a_real>* gr;		///< coords of gauss points of each face
+	int ng;									///< Number of Gauss points
 
 public:
-	/// Base constructor
-	Reconstruction(const UMesh2dh *const mesh,             ///< Mesh context
-			const amat::Array2d<a_real> *const _rc);       ///< Cell centers 
-	
-	virtual ~Reconstruction();
+	SolutionReconstruction();
 
-	virtual void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
-			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
+    SolutionReconstruction (const UMesh2dh* mesh,            ///< Mesh context
+			const amat::Array2d<a_real>* c_centres,       ///< Cell centres
+			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
+
+    void setup(const UMesh2dh* mesh,
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
+
+	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv,
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) = 0;
+
+	virtual ~SolutionReconstruction();
 };
 
-/// Simply sets the gradient to zero
-template<short nvars>
-class ConstantReconstruction : public Reconstruction
-{
-public:
-	ConstantReconstruction(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real> *const _rc);
-
-	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
-			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
-};
-
-/**
- * @brief Implements linear reconstruction using the Green-Gauss theorem over elements.
- * 
- * An inverse-distance weighted average is used to obtain the conserved variables at the faces.
+/// Calculate values of variables at left and right sides of each face 
+/// based on computed derivatives but without limiter.
+/** ug (cell centered flow variables at ghost cells) are not used for this
  */
-template<short nvars>
-class GreenGaussReconstruction : public Reconstruction
+class LinearUnlimitedReconstruction : public SolutionReconstruction
 {
 public:
-	GreenGaussReconstruction(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real> *const _rc);
+	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
+	LinearUnlimitedReconstruction(const UMesh2dh* mesh,
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
 
-	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
-			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
 };
 
-
-/// Class implementing linear weighted least-squares reconstruction
-template<short nvars>
-class WeightedLeastSquaresReconstruction : public Reconstruction
+/// Computes state at left and right sides of each face based on WENO-limited derivatives 
+/// at each cell
+/** References:
+ * - Y. Xia, X. Liu and H. Luo. "A finite volume method based on a WENO reconstruction 
+ *   for compressible flows on hybrid grids", 52nd AIAA Aerospace Sciences Meeting, AIAA-2014-0939.
+ * - M. Dumbser and M. Kaeser. "Arbitrary high order non-oscillatory finite volume schemes on 
+ *   unsttructured meshes for linear hyperbolic systems", J. Comput. Phys. 221 pp 693--723, 2007.
+ *
+ * Note that we do not take the 'oscillation indicator' as the square of the magnitude of 
+ * the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
+ */
+class WENOReconstruction : public SolutionReconstruction
 {
-	std::vector<Matrix<a_real,2,2>> V;			///< LHS of least-squares problems
-	std::vector<Matrix<a_real,2,nvars>> f;		///< RHS of least-squares problems
-	//Matrix<a_real,2,nvars> d;					///< unknown vector of least-squares problem
+	amat::Array2d<a_real> ldudx;
+	amat::Array2d<a_real> ldudy;
+	a_real gamma;
+	a_real lambda;
+	a_real epsilon;
+public:
+    WENOReconstruction(const UMesh2dh* mesh,
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
+
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+};
+
+/// Computes face values using MUSCL reconstruciton with Van-Albada limiter
+class MUSCLVanAlbada : public SolutionReconstruction
+{
+    a_real eps;							///< Small number
+    a_real k;               			///< MUSCL order parameter
+	amat::Array2d<a_real> phi_l;		///< left-face limiter values
+	amat::Array2d<a_real> phi_r;		///< right-face limiter values
 
 public:
-	WeightedLeastSquaresReconstruction(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real> *const _rc);
-
-	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
-			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+    MUSCLVanAlbada(const UMesh2dh* mesh,
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
+    
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
 };
 
+/// Non-differentiable multidimensional slope limiter for linear reconstruction
+class BarthJespersenLimiter : public SolutionReconstruction
+{
+public:
+    BarthJespersenLimiter(const UMesh2dh* mesh, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r);
+    
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+};
+
+/// Differentiable modification of Barth-Jespersen limiter
+class VenkatakrishnanLimiter: public SolutionReconstruction
+{
+	/// Parameter for adjusting limiting vs convergence
+	a_real K;
+
+	/// List of characteristic length of cells
+	std::vector<a_real> clength;
+
+public:
+	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
+	 *             higher values improve convergence at the expense of some oscillations
+	 *             in the solution.
+	 */
+    VenkatakrishnanLimiter(const UMesh2dh* mesh, 
+			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>* gauss_r, a_real k_param);
+    
+	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost, 
+			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+};
+
+/*template <int nvars>
+void modifiedAverageGradient(const a_real *const dr, const a_real *const n);*/
 
 } // end namespace
 #endif

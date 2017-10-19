@@ -323,38 +323,38 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	{
 		if(reconst == "LEASTSQUARES")
 		{
-			rec = new WeightedLeastSquaresReconstruction<NVARS>(m, &rc);
+			gradcomp = new WeightedLeastSquaresGradients<NVARS>(m, &rc);
 			std::cout << "  FlowFV: Weighted least-squares reconstruction will be used.\n";
 		}
 		else if(reconst == "GREENGAUSS")
 		{
-			rec = new GreenGaussReconstruction<NVARS>(m, &rc);
+			gradcomp = new GreenGaussGradients<NVARS>(m, &rc);
 			std::cout << "  FlowFV: Green-Gauss reconstruction will be used." << std::endl;
 		}
 		else {
-			rec = new ConstantReconstruction<NVARS>(m, &rc);
+			gradcomp = new ZeroGradients<NVARS>(m, &rc);
 			std::cout << "  FlowFV: No reconstruction!" << std::endl;
 		}
 	}
 	else {
 		std::cout << "  FlowFV: No reconstruction; first order solution." << std::endl;
-		rec = new ConstantReconstruction<NVARS>(m, &rc);
+		gradcomp = new ZeroGradients<NVARS>(m, &rc);
 	}
 
 	// set limiter
 	if(limiter == "NONE")
 	{
-		lim = new NoLimiter(m, &rc, gr);
+		lim = new LinearUnlimitedReconstruction(m, &rc, gr);
 		std::cout << "  FlowFV: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
-		lim = new WENOLimiter(m, &rc, gr);
+		lim = new WENOReconstruction(m, &rc, gr);
 		std::cout << "  FlowFV: WENO limiter selected.\n";
 	}
 	else if(limiter == "VANALBADA")
 	{
-		lim = new VanAlbadaLimiter(m, &rc, gr);
+		lim = new MUSCLVanAlbada(m, &rc, gr);
 		std::cout << "  FlowFV: Van Albada limiter selected.\n";
 	}
 	else if(limiter == "BARTHJESPERSEN")
@@ -379,7 +379,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 
 FlowFV::~FlowFV()
 {
-	delete rec;
+	delete gradcomp;
 	delete inviflux;
 	if(allocflux)
 		delete jflux;
@@ -598,6 +598,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 
 			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
 			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			// TODO: Put in the last row of the Jacobian
 		}
 
 		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
@@ -913,7 +914,8 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 
 	a_real dupr[NVARS*NVARS], dupl[NVARS*NVARS];
 	for(int k = 0; k < NVARS*NVARS; k++) {
-		dupr[k] = 0; dupl[k] = 0;
+		dupr[k] = 0; 
+		dupl[k] = 0;
 	}
 
 	physics.getPrimitive2FromConserved(ul, upl);
@@ -937,12 +939,22 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		dr[i] /= dist;
 	}
 
+	// gradient, in each direction, of each variable
 	a_real grad[NDIM][NVARS];
+
+	/* Jacobian of the gradient in each direction of each variable at the face w.r.t. 
+	 * every variable of the left state
+	 */
 	a_real dgradl[NDIM][NVARS][NVARS];
+
+	/* Jacobian of the gradient in each direction of each variable at the face w.r.t. 
+	 * every variable of the right state
+	 */
 	a_real dgradr[NDIM][NVARS][NVARS];
+
 	for(short i = 0; i < NVARS; i++) 
 	{
-		a_real corr = (upr[i]-upl[i])/dist;
+		const a_real corr = (upr[i]-upl[i])/dist;
 		
 		for(short j = 0; j < NDIM; j++)
 		{
@@ -1009,6 +1021,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	}
 
 	vflux[0] = 0.0;
+	
 	vflux[1] = -(n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]));
 
 	for(int k = 0; k < NVARS; k++)
@@ -1023,11 +1036,11 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 
 	for(int k = 0; k < NVARS; k++)
 	{
-		dvfi[2*NVARS+k] -= n[0]*(dmul[k]*(grad[1][1]+grad[0][2])
-				+muRe*(dgradl[1][1][k]+dgradl[0][2][k]))
-			+n[1]*(2.0*dmul[k]*grad[1][2]+2.0*muRe*dgradl[1][2][k] - dldivl[k]);
-		dvfj[2*NVARS+k] -= n[0]*(dmur[k]*(grad[1][1]+grad[0][2])
-				+muRe*(dgradr[1][1][k]+dgradr[0][2][k]))
+		dvfi[2*NVARS+k] -= n[0] * (dmul[k]*(grad[1][1]+grad[0][2])
+				+ muRe*(dgradl[1][1][k]+dgradl[0][2][k]))
+			+n[1] * (2.0*dmul[k]*grad[1][2]+2.0*muRe*dgradl[1][2][k] - dldivl[k]);
+		dvfj[2*NVARS+k] -= n[0] * (dmur[k]*(grad[1][1]+grad[0][2])
+				+ muRe*(dgradr[1][1][k]+dgradr[0][2][k]))
 			+n[1]*(2.0*dmur[k]*grad[1][2]+2.0*muRe*dgradr[1][2][k] - dldivr[k]);
 	}
 
@@ -1209,7 +1222,7 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 			}
 
 			// reconstruct
-			rec->compute_gradients(&up, &ug, &dudx, &dudy);
+			gradcomp->compute_gradients(&up, &ug, &dudx, &dudy);
 			lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
 
 			// convert face values back to conserved variables - gradients stay primitive
@@ -1230,7 +1243,7 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 		else
 		{
 			std::cout << " No primitive reconstruction! ";
-			rec->compute_gradients(&u, &ug, &dudx, &dudy);
+			gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
 			lim->compute_face_values(u, ug, dudx, dudy, uleft, uright);
 		}
 	}
@@ -1495,6 +1508,10 @@ void FlowFV::compute_jacobian(const MVector& u,
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
+		 * We actually need to subtract dF/dr from dF/dl because the inviscid numerical flux
+		 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
+		 * get correct signs for lower and upper off-diagonal blocks.
+		 *
 		 * Integrate the results over the face and negate, as -ve of L is added to D
 		 */
 		left = -len*(left - right*drdl);
@@ -1551,7 +1568,7 @@ void FlowFV::getGradients(const MVector& u, MVector grad[NDIM]) const
 	}
 
 	amat::Array2d<a_real> dudx(m->gnelem(), NVARS), dudy(m->gnelem(), NVARS);
-	rec->compute_gradients(&u, &ug, &dudx, &dudy);
+	gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -1736,16 +1753,16 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh,
 	std::cout << "  DiffusionMA: Selected reconstruction scheme is " << reconst << std::endl;
 	if(reconst == "LEASTSQUARES")
 	{
-		rec = new WeightedLeastSquaresReconstruction<nvars>(m, &rc);
+		gradcomp = new WeightedLeastSquaresGradients<nvars>(m, &rc);
 		std::cout << "  DiffusionMA: Weighted least-squares reconstruction will be used.\n";
 	}
 	else if(reconst == "GREENGAUSS")
 	{
-		rec = new GreenGaussReconstruction<nvars>(m, &rc);
+		gradcomp = new GreenGaussGradients<nvars>(m, &rc);
 		std::cout << "  DiffusionMA: Green-Gauss reconstruction will be used." << std::endl;
 	}
 	else /*if(reconst == "NONE")*/ {
-		rec = new ConstantReconstruction<nvars>(m, &rc);
+		gradcomp = new ZeroGradients<nvars>(m, &rc);
 		std::cout << "  DiffusionMA: No reconstruction; first order solution." << std::endl;
 	}
 }
@@ -1753,7 +1770,7 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh,
 template<short nvars>
 DiffusionMA<nvars>::~DiffusionMA()
 {
-	delete rec;
+	delete gradcomp;
 }
 
 template<short nvars>
@@ -1780,7 +1797,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 	}
 	
 	compute_boundary_states(uleft, ug);
-	rec->compute_gradients(&u, &ug, &dudx, &dudy);
+	gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
 	
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
@@ -1939,7 +1956,7 @@ void DiffusionMA<nvars>::getGradients(const MVector& u, MVector grad[NDIM]) cons
 	}
 
 	amat::Array2d<a_real> dudx(m->gnelem(), nvars), dudy(m->gnelem(), nvars);
-	rec->compute_gradients(&u, &ug, &dudx, &dudy);
+	gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
