@@ -5,11 +5,10 @@
  */
 
 #ifndef ANUMERICALFLUX_H
+#define ANUMERICALFLUX_H 1
 
 #include "aconstants.hpp"
 #include "aphysics.hpp"
-
-#define ANUMERICALFLUX_H 1
 
 namespace acfd {
 
