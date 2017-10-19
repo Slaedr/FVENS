@@ -1015,9 +1015,11 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	}
 
 	ldiv *= 2.0/3.0*muRe;
-	for(int k = 0; k < NVARS; k++) {
-		dldivl[k] *= 2.0/3.0 * muRe;
-		dldivr[k] *= 2.0/3.0 * muRe;
+	for(int k = 0; k < NVARS; k++) 
+	{
+		/// FIXME!!
+		dldivl[k] *= 2.0/3.0 * dmul[k];
+		dldivr[k] *= 2.0/3.0 * dmur[k];
 	}
 
 	vflux[0] = 0.0;

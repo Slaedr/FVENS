@@ -110,6 +110,9 @@ public:
 		a_real dvx[NVARS], a_real dvy[NVARS], a_real dvn[NVARS],
 		a_real dp[NVARS], a_real dH[NVARS]) const;
 
+	/// Returns the non-dimensionalized free-stream pressure
+	a_real getFreestreamPressure() const;
+	
 	/// Computes pressure from internal energy - here it's the ideal gas relation	
 	a_real getPressure(const a_real internalenergy) const;
 
@@ -273,8 +276,8 @@ public:
 	void getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(
 			const a_real *const dmuhat, a_real *const __restrict dkhat) const;
 
-	/// Returns the non-dimensionalized free-stream pressure
-	a_real getFreestreamPressure() const;
+	void getStressTensor(const a_real mu, const a_real grad[NDIM][NVARS], 
+			a_real *const __restrict stress) const;
 
 	/// Adiabatic constant
 	const a_real g;
@@ -652,6 +655,62 @@ a_real IdealGasPhysics::getFreestreamPressure() const
 {
 	return 1.0/(g*Minf*Minf);
 }
+
+inline
+void IdealGasPhysics::getStressTensor(const a_real mu, const a_real grad[NDIM][NVARS], 
+		a_real *const __restrict stress) const
+{
+	// divergence of velocity times second viscosity
+	a_real ldiv = 0;
+	for(int j = 0; j < NDIM; j++)
+		ldiv += grad[j][j+1];
+	ldiv *= 2.0/3.0*muRe;
+
+	for(int i = 0; i < NDIM; i++) 
+	{
+		for(int j = 0; j < NDIM; j++) {
+			stress[i*NDIM+j] = mu*(grad[i][j+1] + grad[j][i+1]);
+		}
+
+		stress[i*NDIM+i] -= ldiv;
+	}
+}
+
+inline
+void IdealGasPhysics::getJacobianStressWrtConserved(const a_real mu, const a_real *const dmu,
+		const a_real grad[NDIM][NVARS], const a_real dgrad[NDIM][NVARS][NVARS],
+		a_real dstress[NDIM][NDIM][NVARS]) const
+{
+	a_real div = 0;
+	a_real dldiv[NVARS];
+	for(int k = 0; k < NVARS; k++)
+		dldiv[k] = 0;
+
+	for(int j = 0; j < NDIM; j++) {
+		div += grad[j][j+1];
+		for(int k = 0; k < NVARS; k++)
+			dldiv[k] += dgrad[j][j+1][k];
+	}
+	
+	const a_real ldiv = 2.0/3.0*mu*div;
+	for(int k = 0; k < NVARS; k++)
+		dldiv[k] = 2.0/3.0 * (dmu[k]*div + mu*dldiv[k]);
+	
+	for(int i = 0; i < NDIM; i++) 
+	{
+		for(int j = 0; j < NDIM; j++) {
+			stress[i*NDIM+j] = mu*(grad[i][j+1] + grad[j][i+1]);
+
+			for(int k = 0; k < NVARS; k++)
+				dstress[i][j][k]= dmu[k]*(grad[i][j+1]+grad[j][i+1]) + mu*(dgrad[i][j+1][k]+dgrad[j][i+1][k]);
+		}
+
+		stress[i*NDIM+i] -= ldiv;
+		for(int k = 0; k < NVARS; k++)
+			dstress[i][i][k] -= dldiv[k];
+	}
+}
+	
 
 }
 #endif
