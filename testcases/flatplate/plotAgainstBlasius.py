@@ -10,11 +10,11 @@ from matplotlib import pyplot as plt
 
 # User input
 
-Reinf = 1301233.166
+Reinf = 10000.0
 Pr = 0.712
 rho = 1.2
 l = 1.0
-Minf = 0.2
+Minf = 0.4
 Tinf = 297.62
 
 g = 1.4

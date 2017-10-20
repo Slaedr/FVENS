@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/flatplate/grids/flatplatestruct2.msh
+../testcases/flatplate/grids/flatplatestruct3.msh
 ---Output-file
 ../data/flatplatestruct.vtu
 ---Log-file-for-runtimes
@@ -14,11 +14,11 @@ NAVIERSTOKES
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.2
+0.4
 ---Free-stream-temperature(K)
 297.62
 ---Free-stream-Reynolds-number(4269137.684)
-1301233.166
+10000.0
 ---Prandtl-number
 0.712
 ---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
@@ -60,7 +60,7 @@ NO
 NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLLC
+ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -71,31 +71,31 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-50.0
+2.0
 ---final-CFL
 500.0
 ---ramp-start-step-and-end-step
-600 900
+500 700
 ---Tolerance
-1e-7
+1e-6
 ---Max-pseudotime-iterations
-7000
+10000
 #######################################################################
 ---use-first-order-initial-condition
 1
 ---initial-CFL
 20.0
 ---final-CFL
-300.0
+1000.0
 ---ramp-start-step-and-end-step
-500 700
+500 800
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-1200
+2000
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLLC
+ROE
 ---Use-matrix-free-(YES,NO)
 NO
 ---Matrix-type(c=CSR,b=BSR,d=DLU)
@@ -105,7 +105,7 @@ RICHARDSON
 ---Linear-solver-tolerance
 1e-2
 ---Linear-solver-max-iterations-initial
-50
+30
 ---Linear-solver-max-iterations-end
 100
 ---Krylov-vectors

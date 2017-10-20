@@ -222,7 +222,6 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	secondOrderRequested{order2},
 	reconstructPrimitive{reconstructPrim}
 {
-#ifdef DEBUG
 	std::cout << " FlowFV: Boundary markers:\n";
 	std::cout << "  Farfield " << farfield_id << ", inflow/outflow " << inflowoutflow_id
 		<< ", slip wall " << slip_wall_id;
@@ -230,47 +229,46 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	std::cout << "  Isothermal " << isothermal_wall_id;
 	std::cout << "  Adiabatic " << adiabatic_wall_id;
 	std::cout << "  Isothermal isobaric " << isothermalbaric_wall_id << '\n';
-#endif
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
 
 	// set inviscid flux scheme
 	if(invflux == "VANLEER") {
 		inviflux = new VanLeerFlux(&physics);
-		std::cout << "  FlowFV: Using Van Leer fluxes." << std::endl;
+		std::cout << " FlowFV: Using Van Leer fluxes." << std::endl;
 	}
 	else if(invflux == "ROE")
 	{
 		inviflux = new RoeFlux(&physics);
-		std::cout << "  FlowFV: Using Roe fluxes." << std::endl;
+		std::cout << " FlowFV: Using Roe fluxes." << std::endl;
 	}
 	else if(invflux == "HLL")
 	{
 		inviflux = new HLLFlux(&physics);
-		std::cout << "  FlowFV: Using HLL fluxes." << std::endl;
+		std::cout << " FlowFV: Using HLL fluxes." << std::endl;
 	}
 	else if(invflux == "HLLC")
 	{
 		inviflux = new HLLCFlux(&physics);
-		std::cout << "  FlowFV: Using HLLC fluxes." << std::endl;
+		std::cout << " FlowFV: Using HLLC fluxes." << std::endl;
 	}
 	else if(invflux == "LLF")
 	{
 		inviflux = new LocalLaxFriedrichsFlux(&physics);
-		std::cout << "  FlowFV: Using LLF fluxes." << std::endl;
+		std::cout << " FlowFV: Using LLF fluxes." << std::endl;
 	}
 	else if(invflux == "AUSM")
 	{
 		inviflux = new AUSMFlux(&physics);
-		std::cout << "  FlowFV: Using AUSM fluxes." << std::endl;
+		std::cout << " FlowFV: Using AUSM fluxes." << std::endl;
 	}
 	else if(invflux == "AUSMPLUS")
 	{
 		inviflux = new AUSMPlusFlux(&physics);
-		std::cout << "  FlowFV: Using AUSM+ fluxes." << std::endl;
+		std::cout << " FlowFV: Using AUSM+ fluxes." << std::endl;
 	}
 	else
-		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
+		std::cout << " FlowFV: ! Flux scheme not available!" << std::endl;
 	
 	// set inviscid flux scheme for Jacobian
 	allocflux = false;
@@ -281,63 +279,62 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	else if(jacflux == "ROE")
 	{
 		jflux = new RoeFlux(&physics);
-		std::cout << "  FlowFV: Using Roe fluxes for Jacobian." << std::endl;
+		std::cout << " FlowFV: Using Roe fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "HLL")
 	{
 		jflux = new HLLFlux(&physics);
-		std::cout << "  FlowFV: Using HLL fluxes for Jacobian." << std::endl;
+		std::cout << " FlowFV: Using HLL fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "HLLC")
 	{
 		jflux = new HLLCFlux(&physics);
-		std::cout << "  FlowFV: Using HLLC fluxes for Jacobian." << std::endl;
+		std::cout << " FlowFV: Using HLLC fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "LLF")
 	{
 		jflux = new LocalLaxFriedrichsFlux(&physics);
-		std::cout << "  FlowFV: Using LLF fluxes for Jacobian." << std::endl;
+		std::cout << " FlowFV: Using LLF fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "AUSM")
 	{
 		jflux = new AUSMFlux(&physics);
-		std::cout << "  FlowFV: Using AUSM fluxes for Jacobian." << std::endl;
+		std::cout << " FlowFV: Using AUSM fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else if(jacflux == "AUSMPLUS")
 	{
 		jflux = new AUSMPlusFlux(&physics);
-		std::cout << "  FlowFV: Using AUSM+ fluxes for Jacobian." << std::endl;
+		std::cout << " FlowFV: Using AUSM+ fluxes for Jacobian." << std::endl;
 		allocflux = true;
 	}
 	else
-		std::cout << "  FlowFV: ! Flux scheme not available!" << std::endl;
+		std::cout << " FlowFV: ! Flux scheme not available!" << std::endl;
 
 	// set reconstruction scheme
-	std::cout << "  FlowFV: Selected reconstruction scheme is " << reconst << std::endl;
 	if(secondOrderRequested)
 	{
 		if(reconst == "LEASTSQUARES")
 		{
 			gradcomp = new WeightedLeastSquaresGradients<NVARS>(m, &rc);
-			std::cout << "  FlowFV: Weighted least-squares reconstruction will be used.\n";
+			std::cout << " FlowFV: Weighted least-squares reconstruction will be used.\n";
 		}
 		else if(reconst == "GREENGAUSS")
 		{
 			gradcomp = new GreenGaussGradients<NVARS>(m, &rc);
-			std::cout << "  FlowFV: Green-Gauss reconstruction will be used." << std::endl;
+			std::cout << " FlowFV: Green-Gauss reconstruction will be used." << std::endl;
 		}
 		else {
 			gradcomp = new ZeroGradients<NVARS>(m, &rc);
-			std::cout << "  FlowFV: No reconstruction!" << std::endl;
+			std::cout << " FlowFV: No reconstruction!" << std::endl;
 		}
 	}
 	else {
-		std::cout << "  FlowFV: No reconstruction; first order solution." << std::endl;
+		std::cout << " FlowFV: No reconstruction; first order solution." << std::endl;
 		gradcomp = new ZeroGradients<NVARS>(m, &rc);
 	}
 
@@ -345,27 +342,27 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	if(limiter == "NONE")
 	{
 		lim = new LinearUnlimitedReconstruction(m, &rc, gr);
-		std::cout << "  FlowFV: No limiter will be used." << std::endl;
+		std::cout << " FlowFV: No limiter will be used." << std::endl;
 	}
 	else if(limiter == "WENO")
 	{
 		lim = new WENOReconstruction(m, &rc, gr);
-		std::cout << "  FlowFV: WENO limiter selected.\n";
+		std::cout << " FlowFV: WENO limiter selected.\n";
 	}
 	else if(limiter == "VANALBADA")
 	{
 		lim = new MUSCLVanAlbada(m, &rc, gr);
-		std::cout << "  FlowFV: Van Albada limiter selected.\n";
+		std::cout << " FlowFV: Van Albada limiter selected.\n";
 	}
 	else if(limiter == "BARTHJESPERSEN")
 	{
 		lim = new BarthJespersenLimiter(m, &rc, gr);
-		std::cout << "  FlowFV: Barth-Jespersen limiter selected.\n";
+		std::cout << " FlowFV: Barth-Jespersen limiter selected.\n";
 	}
 	else if(limiter == "VENKATAKRISHNAN")
 	{
 		lim = new VenkatakrishnanLimiter(m, &rc, gr, 6.0);
-		std::cout << "  FlowFV: Venkatakrishnan limiter selected.\n";
+		std::cout << " FlowFV: Venkatakrishnan limiter selected.\n";
 	}
 	
 	// Set farfield: note that reference density and reference velocity are the values at infinity
@@ -877,28 +874,6 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	// Non-dimensional thermal conductivity
 	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
 
-	/*a_real ldiv = 0;
-	for(int j = 0; j < NDIM; j++)
-		ldiv += grad[j][j+1];
-	ldiv *= 2.0/3.0*muRe;
-
-	vflux[0] = 0.0;
-	vflux[1] = -(n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]));
-	vflux[2] = -(n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv));
-
-	// energy dissipation terms in the 2 directions
-	a_real sp[NDIM] = {0.0, 0.0};
-	sp[0] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * (2.0*muRe*grad[0][1]-ldiv)
-		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
-		+ kdiff*grad[0][3];
-	sp[1] = 0.5*(ul(iface,1)/ul(iface,0)+ur(iface,1)/ur(iface,0)) * muRe*(grad[1][1]+grad[0][2])
-		+ 0.5*(ul(iface,2)/ul(iface,0)+ur(iface,2)/ur(iface,0)) * (2.0*muRe*grad[1][2]-ldiv)
-		+ kdiff*grad[1][3];
-
-	vflux[3] = 0;
-	for(int i = 0; i < NDIM; i++)
-		vflux[3] -= n[i]*sp[i];*/
-
 	a_real stress[NDIM][NDIM];
 	for(int i = 0; i < NDIM; i++)
 		for(int j = 0; j < NDIM; j++)
@@ -942,7 +917,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
-	a_real vflux[NVARS]; // output variable to be differentiated
+	a_real vflux[NVARS];             // output variable to be differentiated
 	a_real upr[NVARS], upl[NVARS];
 
 	a_real dupr[NVARS*NVARS], dupl[NVARS*NVARS];
@@ -987,7 +962,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 
 	for(short i = 0; i < NVARS; i++) 
 	{
-		const a_real corr = (upr[i]-upl[i])/dist;
+		const a_real corr = (upr[i]-upl[i])/dist;        //< The thin layer gradient magnitude
 		
 		for(short j = 0; j < NDIM; j++)
 		{
@@ -1019,7 +994,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		dmul[k] = 0; dmur[k] = 0; dkdl[k] = 0; dkdr[k] = 0;
 	}
 
-	/*if(!constVisc) {
+	if(!constVisc) {
 		physics.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
 		physics.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
 		for(int k = 0; k < NVARS; k++) {
@@ -1028,7 +1003,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		}
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
-	}*/
+	}
 	
 	a_real stress[NDIM][NDIM], dstressl[NDIM][NDIM][NVARS], dstressr[NDIM][NDIM][NVARS];
 	for(int i = 0; i < NDIM; i++)
@@ -1054,7 +1029,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 			vflux[i+1] -= stress[i][j]*n[j];
 
 			for(int k = 0; k < NVARS; k++) {
-				dvfi[(i+1)*NVARS+k] -= dstressl[i][j][k]*n[j];
+				dvfi[(i+1)*NVARS+k] += dstressl[i][j][k]*n[j];
 				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k]*n[j];
 			}
 		}
@@ -1108,183 +1083,44 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		vflux[NVARS-1] -= comp*n[i];
 
 		for(int k = 0; k < NVARS; k++) {
-			dvfi[(NVARS-1)*NVARS+k] -= dcompl[k]*n[i];
+			dvfi[(NVARS-1)*NVARS+k] += dcompl[k]*n[i];
 			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k]*n[i];
 		}
 	}
+}
 
-
-	// divergence of velocity times second viscosity
+void FlowFV::computeViscousFluxApproximateJacobian(const a_int iface,
+		const a_real *const ul, const a_real *const ur,
+		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
+{
+	// compute non-dimensional viscosity and thermal conductivity
+	const a_real muRe = constVisc ? 
+			physics.getConstantViscosityCoeff() 
+		:
+			0.5*( physics.getViscosityCoeffFromConserved(ul)
+			+ physics.getViscosityCoeffFromConserved(ur) );
 	
-	/*a_real div = 0;
-	a_real dldivl[NVARS]; a_real dldivr[NVARS]; 
-	for(int k = 0; k < NVARS; k++) { 
-		dldivl[k] = 0;
-		dldivr[k] = 0;
-	}
+	const a_real rho = 0.5*(ul[0]+ur[0]);
 
-	for(int j = 0; j < NDIM; j++) {
-		div += grad[j][j+1];
-		for(int k = 0; k < NVARS; k++) {
-			dldivl[k] += dgradl[j][j+1][k];
-			dldivr[k] += dgradr[j][j+1][k];
-		}
-	}
+	a_real dr[NDIM], dist=0;
 
-	const a_real ldiv = 2.0/3.0*muRe*div;
-	for(int k = 0; k < NVARS; k++) 
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+	}
+	
+	dist = sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] /= dist;
+	}
+	
+	for(int i = 0; i < NVARS; i++)
 	{
-		dldivl[k] = 2.0/3.0 * (dmul[k]*div + muRe*dldivl[k]);
-		dldivr[k] = 2.0/3.0 * (dmur[k]*div + muRe*dldivr[k]);
+		dvfi[i*NVARS+i] -= muRe/(rho*dist);
+		dvfj[i*NVARS+i] -= muRe/(rho*dist);
 	}
-
-	vflux[0] = 0.0;
-	
-	vflux[1] = -(n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]));
-
-	for(int k = 0; k < NVARS; k++)
-	{
-		dvfi[NVARS+k] -= n[0]*(2.0*dmul[k]*grad[0][1]+2.0*muRe*dgradl[0][1][k] - dldivl[k])
-			+ n[1]*(dmul[k]*(grad[1][1]+grad[0][2])+muRe*(dgradl[1][1][k]+dgradl[0][2][k]));
-		dvfj[NVARS+k] -= n[0]*(2.0*dmur[k]*grad[0][1]+2.0*muRe*dgradr[0][1][k] - dldivr[k])
-			+ n[1]*(dmur[k]*(grad[1][1]+grad[0][2])+muRe*(dgradr[1][1][k]+dgradr[0][2][k]));
-	}
-
-	vflux[2] = -(n[0]*muRe*(grad[1][1]+grad[0][2]) + n[1]*(2.0*muRe*grad[1][2] - ldiv));
-
-	for(int k = 0; k < NVARS; k++)
-	{
-		dvfi[2*NVARS+k] -= n[0] * (dmul[k]*(grad[1][1]+grad[0][2])
-				+ muRe*(dgradl[1][1][k]+dgradl[0][2][k]))
-			+n[1] * (2.0*dmul[k]*grad[1][2]+2.0*muRe*dgradl[1][2][k] - dldivl[k]);
-		dvfj[2*NVARS+k] -= n[0] * (dmur[k]*(grad[1][1]+grad[0][2])
-				+ muRe*(dgradr[1][1][k]+dgradr[0][2][k]))
-			+n[1]*(2.0*dmur[k]*grad[1][2]+2.0*muRe*dgradr[1][2][k] - dldivr[k]);
-	}
-
-	// energy dissipation terms in the 2 directions	
-	a_real sp[NDIM] = {0.0, 0.0};
-
-	sp[0] = 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*muRe*grad[0][1]-ldiv)
-		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * muRe*(grad[1][1]+grad[0][2])
-		+ kdiff*grad[0][3];
-
-	// reuse dupl and dupr for derivatives of sp[0] and sp[1]
-	
-	// first, left and right derivatives of sp[0]
-	
-	dupl[0*NVARS+0] = 0.5/(ul[0]*ul[0])*(-ul[1])*(2.0*muRe*grad[0][1]-ldiv)
-	    +0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmul[0]*grad[0][1]+2.0*muRe*dgradl[0][1][0] -dldivl[0])
-	  + 0.5/(ul[0]*ul[0])*(-ul[2]) *(muRe*(grad[1][1]+grad[0][2])) 
-	    + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmul[0]*(grad[1][1]+grad[0][2]) +
-		muRe*(dgradl[1][1][0]+dgradl[0][2][0])) 
-	  + dkdl[0]*grad[0][3] + kdiff*dgradl[0][3][0];
-	
-	dupl[0*NVARS+1] = 0.5/ul[0]*(2.0*muRe*grad[0][1]-ldiv)
-	  + 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmul[1]*grad[0][1]+2.0*muRe*dgradl[0][1][1] - dldivl[1])
-	  + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*( dmul[1]*(grad[1][1]+grad[0][2])
-			  +muRe*(dgradl[1][1][1]+dgradl[0][2][1]) ) 
-	  + dkdl[1]*grad[0][3] + kdiff*dgradl[0][3][1];
-
-	dupl[0*NVARS+2] = 
-		0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*dmul[2]*grad[0][1]+2.0*muRe*dgradl[0][1][2]-dldivl[2])
-		+0.5/ul[0]*muRe*(grad[1][1]+grad[0][2])
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmul[2]*(grad[1][1]+grad[0][2])
-				+muRe*(dgradl[1][1][2]+dgradl[0][2][2]))
-		+ dkdl[2]*grad[0][3] + kdiff*dgradl[0][3][2];
-
-	dupl[0*NVARS+3] = 
-		0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmul[3]*grad[0][1]+2.0*muRe*dgradl[0][1][3] -dldivl[3])
-		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmul[3]*(grad[1][1]+grad[0][2])
-				+muRe*(dgradl[1][1][3]+dgradl[0][2][3]))
-		+ dkdl[3]*grad[0][3] + kdiff*dgradl[0][3][3];
-
-	dupr[0*NVARS+0] = 0.5/(ur[0]*ur[0])*(-ur[1])*(2.0*muRe*grad[0][1]-ldiv)
-	    +0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmur[0]*grad[0][1]+2.0*muRe*dgradr[0][1][0] -dldivr[0])
-	  + 0.5/(ur[0]*ur[0])*(-ur[2]) *(muRe*(grad[1][1]+grad[0][2])) 
-	    + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmur[0]*(grad[1][1]+grad[0][2]) +
-		muRe*(dgradr[1][1][0]+dgradr[0][2][0])) 
-	  + dkdr[0]*grad[0][3] + kdiff*dgradr[0][3][0];
-	
-	dupr[0*NVARS+1] = 0.5/ur[0]*(2.0*muRe*grad[0][1]-ldiv)
-	  + 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmur[1]*grad[0][1]+2.0*muRe*dgradr[0][1][1] - dldivr[1])
-	  + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*( dmur[1]*(grad[1][1]+grad[0][2])
-			  +muRe*(dgradr[1][1][1]+dgradr[0][2][1]) ) 
-	  + dkdr[1]*grad[0][3] + kdiff*dgradr[0][3][1];
-
-	dupr[0*NVARS+2] = 
-		0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (2.0*dmur[2]*grad[0][1]+2.0*muRe*dgradr[0][1][2]-dldivr[2])
-		+0.5/ur[0]*muRe*(grad[1][1]+grad[0][2])
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmur[2]*(grad[1][1]+grad[0][2])
-				+muRe*(dgradr[1][1][2]+dgradr[0][2][2]))
-		+ dkdr[2]*grad[0][3] + kdiff*dgradr[0][3][2];
-
-	dupr[0*NVARS+3] = 
-		0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(2.0*dmur[3]*grad[0][1]+2.0*muRe*dgradr[0][1][3] -dldivr[3])
-		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(dmur[3]*(grad[1][1]+grad[0][2])
-				+muRe*(dgradr[1][1][3]+dgradr[0][2][3]))
-		+ dkdr[3]*grad[0][3] + kdiff*dgradr[0][3][3];
-
-	// next, left and right derivatives of sp[1]
-	sp[1] = 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * muRe*(grad[1][1]+grad[0][2])
-		+ 0.5*(ul[2]/ul[0]+ur[2]/ur[0]) * (2.0*muRe*grad[1][2]-ldiv)
-		+ kdiff*grad[1][3];
-
-	dupl[NVARS+0] = 0.5/(ul[0]*ul[0])*(-ul[1])*muRe*(grad[1][1]+grad[0][2]) 
-		+ 0.5*(ul[1]/ul[0]+ur[1]/ur[0])
-		*(dmul[0]*(grad[1][1]+grad[0][2])+muRe*(dgradl[1][1][0]+dgradl[0][2][0])) + 
-		0.5/(ul[0]*ul[0])*(-ul[2])*(2*muRe*grad[1][2]-ldiv) + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*
-		(2.0*dmul[0]*grad[1][2]+2.0*muRe*dgradl[1][2][0]-dldivl[0])
-		+ dkdl[0]*grad[1][3] + kdiff*dgradl[1][3][0];
-
-	dupl[NVARS+1]= 0.5/ul[0]*muRe*(grad[1][1]+grad[0][2])+0.5*(ul[1]/ul[0]+ur[1]/ur[0])
-		*(dmul[1]*(grad[1][1]+grad[0][2])+muRe*(dgradl[1][1][1]+dgradl[0][2][1]))
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmul[1]*grad[1][2]+2.0*muRe*dgradl[1][2][1]-dldivl[1])
-		+ dkdl[1]*grad[1][3] + kdiff*dgradl[1][3][1];
-
-	dupl[NVARS+2]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(dmul[2]*(grad[1][1]+grad[0][2])+
-			muRe*(dgradl[1][1][2]+dgradl[0][2][2])) + 0.5/ul[0]*(2.0*muRe*grad[1][2]-ldiv)
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmul[2]*grad[1][2]+2.0*muRe*dgradl[1][2][2]-dldivl[2])
-		+ dkdl[2]*grad[1][3] + kdiff*dgradl[1][3][2];
-
-	dupl[NVARS+3]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (dmul[3]*(grad[1][1]+grad[0][2])
-			+muRe*(dgradl[1][1][3]+dgradl[0][2][3])) 
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmul[3]*grad[1][2]+2.0*muRe*dgradl[1][2][3]-dldivl[3])
-		+ dkdl[3]*grad[1][3] + kdiff*dgradl[1][3][3];
-
-	dupr[NVARS+0] = 0.5/(ur[0]*ur[0])*(-ur[1])*muRe*(grad[1][1]+grad[0][2]) 
-		+ 0.5*(ul[1]/ul[0]+ur[1]/ur[0])
-		*(dmur[0]*(grad[1][1]+grad[0][2])+muRe*(dgradr[1][1][0]+dgradr[0][2][0])) + 
-		0.5/(ur[0]*ur[0])*(-ur[2])*(2*muRe*grad[1][2]-ldiv) + 0.5*(ul[2]/ul[0]+ur[2]/ur[0])*
-		(2.0*dmur[0]*grad[1][2]+2.0*muRe*dgradr[1][2][0]-dldivr[0])
-		+ dkdr[0]*grad[1][3] + kdiff*dgradr[1][3][0];
-
-	dupr[NVARS+1]= 0.5/ur[0]*muRe*(grad[1][1]+grad[0][2])+0.5*(ul[1]/ul[0]+ur[1]/ur[0])
-		*(dmur[1]*(grad[1][1]+grad[0][2])+muRe*(dgradr[1][1][1]+dgradr[0][2][1]))
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmur[1]*grad[1][2]+2.0*muRe*dgradr[1][2][1]-dldivr[1])
-		+ dkdr[1]*grad[1][3] + kdiff*dgradr[1][3][1];
-
-	dupr[NVARS+2]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0])*(dmur[2]*(grad[1][1]+grad[0][2])+
-			muRe*(dgradr[1][1][2]+dgradr[0][2][2])) + 0.5/ur[0]*(2.0*muRe*grad[1][2]-ldiv)
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmur[2]*grad[1][2]+2.0*muRe*dgradr[1][2][2]-dldivr[2])
-		+ dkdr[2]*grad[1][3] + kdiff*dgradr[1][3][2];
-
-	dupr[NVARS+3]= 0.5*(ul[1]/ul[0]+ur[1]/ur[0]) * (dmur[3]*(grad[1][1]+grad[0][2])
-			+muRe*(dgradr[1][1][3]+dgradr[0][2][3])) 
-		+0.5*(ul[2]/ul[0]+ur[2]/ur[0])*(2.0*dmur[3]*grad[1][2]+2.0*muRe*dgradr[1][2][3]-dldivr[3])
-		+ dkdr[3]*grad[1][3] + kdiff*dgradr[1][3][3];
-
-	vflux[3] = 0;
-	for(int i = 0; i < NDIM; i++) 
-	{
-		vflux[3] -= n[i]*sp[i];
-
-		for(int k = 0; k < NVARS; k++) {
-			dvfi[3*NVARS+k] -= n[i]*dupl[i*NVARS+k];
-			dvfj[3*NVARS+k] -= n[i]*dupr[i*NVARS+k];
-		}
-	}*/
-
 }
 
 void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 
@@ -1623,7 +1459,7 @@ void FlowFV::compute_jacobian(const MVector& u,
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 
 		if(computeViscous) {
-			computeViscousFluxJacobian(iface, &u(lelem,0), uface, &left(0,0), &right(0,0));
+			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), uface, &left(0,0), &right(0,0));
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
@@ -1655,7 +1491,7 @@ void FlowFV::compute_jacobian(const MVector& u,
 		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
 
 		if(computeViscous) {
-			computeViscousFluxJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
+			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
 		}
 
 		L *= len; U *= len;

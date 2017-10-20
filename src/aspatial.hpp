@@ -301,6 +301,13 @@ protected:
 	void computeViscousFluxJacobian(const a_int iface,
 			const a_real *const ul, const a_real *const ur,
 			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
+
+	/// Computes the spectral radius of the thin-layer Jacobian and multiplies it with the identity matrix
+	/** The inputs are same as \ref computeViscousFluxJacobian.
+	 */
+	void computeViscousFluxApproximateJacobian(const a_int iface,
+			const a_real *const ul, const a_real *const ur,
+			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity

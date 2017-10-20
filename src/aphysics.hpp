@@ -278,6 +278,7 @@ public:
 
 	/// Computes the stress tensor using gradients of primitive variables
 	/** Can also use gradients of primitive-2 variables - it only uses velocity gradients.
+	 * The result is assigned to the output array stress, so prior contents are lost.
 	 * \param[in] mu Non-dimensional viscosity divided by free-stream Reynolds number
 	 * \param[in] grad Gradients of primitve variables
 	 * \param[in,out] stress Components of the stress tensor on output

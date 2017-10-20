@@ -71,7 +71,7 @@ void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc,
 {
 	jac[0] += 1.0;
 
-	const a_real rhovmag2 = dimDotProduct(&uc[1],&uc[1]);
+	const a_real rho2vmag2 = dimDotProduct(&uc[1],&uc[1]);
 	
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		// d(up[idim])
@@ -79,9 +79,9 @@ void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc,
 		jac[idim*NVARS+idim] += 1.0/uc[0];
 	}
 	
-	const a_real p = getPressure(uc[3] - 0.5*rhovmag2/uc[0]);
+	const a_real p = getPressure(uc[NVARS-1] - 0.5*rho2vmag2/uc[0]);
 	a_real dp[NVARS];
-	getJacobianPressureWrtConserved(uc, rhovmag2, dp);
+	getJacobianPressureWrtConserved(uc, rho2vmag2, dp);
 
 	getJacobianTemperature(uc[0], p, dp, &jac[3*NVARS]);
 }
@@ -96,7 +96,8 @@ void IdealGasPhysics::getJacobianStress(const a_real mu, const a_real *const dmu
 	for(int k = 0; k < NVARS; k++)
 		dldiv[k] = 0;
 
-	for(int j = 0; j < NDIM; j++) {
+	for(int j = 0; j < NDIM; j++) 
+	{
 		div += grad[j][j+1];
 		for(int k = 0; k < NVARS; k++)
 			dldiv[k] += dgrad[j][j+1][k];
