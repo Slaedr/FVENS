@@ -86,4 +86,41 @@ void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc,
 	getJacobianTemperature(uc[0], p, dp, &jac[3*NVARS]);
 }
 
+void IdealGasPhysics::getJacobianStress(const a_real mu, const a_real *const dmu,
+		const a_real grad[NDIM][NVARS], const a_real dgrad[NDIM][NVARS][NVARS],
+		a_real stress[NDIM][NDIM], 
+		a_real dstress[NDIM][NDIM][NVARS]) const
+{
+	a_real div = 0;
+	a_real dldiv[NVARS];
+	for(int k = 0; k < NVARS; k++)
+		dldiv[k] = 0;
+
+	for(int j = 0; j < NDIM; j++) {
+		div += grad[j][j+1];
+		for(int k = 0; k < NVARS; k++)
+			dldiv[k] += dgrad[j][j+1][k];
+	}
+	
+	const a_real ldiv = 2.0/3.0*mu*div;
+	for(int k = 0; k < NVARS; k++)
+		dldiv[k] = 2.0/3.0 * (dmu[k]*div + mu*dldiv[k]);
+	
+	for(int i = 0; i < NDIM; i++) 
+	{
+		for(int j = 0; j < NDIM; j++) 
+		{
+			stress[i][j] = mu*(grad[i][j+1] + grad[j][i+1]);
+
+			for(int k = 0; k < NVARS; k++)
+				dstress[i][j][k]= dmu[k]*(grad[i][j+1] + grad[j][i+1]) 
+				                  + mu*(dgrad[i][j+1][k] + dgrad[j][i+1][k]);
+		}
+
+		stress[i][i] -= ldiv;
+		for(int k = 0; k < NVARS; k++)
+			dstress[i][i][k] -= dldiv[k];
+	}
+}
+
 }

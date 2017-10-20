@@ -177,7 +177,7 @@ public:
 	/// Populate [intfacbtags](@ref intfacbtags) with boundary markers of corresponding bfaces
 	void compute_intfacbtags();
 
-	/**	\brief Adds high-order nodes to convert a linear mesh to a straight-faced quadratic mesh.
+	/** \brief Adds high-order nodes to convert a linear mesh to a straight-faced quadratic mesh.
 	 * 
 	 * \note Make sure to execute [compute_topological()](@ref compute_topological) 
 	 * before calling this function.
@@ -188,20 +188,19 @@ public:
 	UMesh2dh convertQuadToTri() const;
 
 private:
-	a_int npoin;					///< Number of nodes
-	a_int nelem;					///< Number of elements
-	a_int nface;					///< Number of boundary faces
-	std::vector<int> nnode;			///< number of nodes to an element, for each element
-	int maxnnode;					///< Maximum number of nodes per element for any element
-	std::vector<int> nfael;     ///< number of faces to an element 
-	                            ///< (equal to number of edges to an element in 2D) for each element
-	int maxnfael;					///< Maximum number of faces per element for any element
-	int nnofa;						///< number of nodes in a face
-	a_int naface;					///< total number of (internal and boundary) faces
+	a_int npoin;                    ///< Number of nodes
+	a_int nelem;                    ///< Number of elements
+	a_int nface;                    ///< Number of boundary faces
+	std::vector<int> nnode;         ///< number of nodes to an element, for each element
+	int maxnnode;                   ///< Maximum number of nodes per element for any element
+	std::vector<int> nfael;         ///< number of faces to an element for each element
+	int maxnfael;                   ///< Maximum number of faces per element for any element
+	int nnofa;                      ///< number of nodes in a face
+	a_int naface;                   ///< total number of (internal and boundary) faces
 	a_int nbface;                   ///< number of boundary faces as calculated
-	a_int nbpoin;					///< number of boundary points
-	int nbtag;						///< number of tags for each boundary face
-	int ndtag;						///< number of tags for each element
+	a_int nbpoin;                   ///< number of boundary points
+	int nbtag;                      ///< number of tags for each boundary face
+	int ndtag;                      ///< number of tags for each element
 	
 	/// Coordinates of nodes
 	amat::Array2d<double > coords;
@@ -264,8 +263,9 @@ private:
 	/// Flag indicating whether space has been allocated for jacobians
 	bool alloc_jacobians;			
 	amat::Array2d<a_real> jacobians;	///< Contains jacobians of each (linear triangular) element
-	
-	amat::Array2d<a_real> area;			///< Contains area of each element (either triangle or quad)
+
+	/// Contains area of each element (either triangle or quad)
+	amat::Array2d<a_real> area;	
 
 	/// Stores lengths and unit normals for linear mesh faces
 	/** For each face, the first two entries are x- and y-components of the unit normal,

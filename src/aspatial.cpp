@@ -877,15 +877,10 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	// Non-dimensional thermal conductivity
 	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
 
-	// divergence of velocity times second viscosity
-	a_real ldiv = 0;
+	/*a_real ldiv = 0;
 	for(int j = 0; j < NDIM; j++)
 		ldiv += grad[j][j+1];
 	ldiv *= 2.0/3.0*muRe;
-
-	/* vflux is assigned all negative quantities, as should be the case when the residual is
-	 * assumed to be on the left of the equals sign: du/dt + r(u) = 0.
-	 */
 
 	vflux[0] = 0.0;
 	vflux[1] = -(n[0]*(2.0*muRe*grad[0][1] - ldiv) + n[1]*muRe*(grad[1][1]+grad[0][2]));
@@ -902,7 +897,45 @@ void FlowFV::computeViscousFlux(const a_int iface,
 
 	vflux[3] = 0;
 	for(int i = 0; i < NDIM; i++)
-		vflux[3] -= n[i]*sp[i];
+		vflux[3] -= n[i]*sp[i];*/
+
+	a_real stress[NDIM][NDIM];
+	for(int i = 0; i < NDIM; i++)
+		for(int j = 0; j < NDIM; j++)
+			stress[i][j] = 0;
+	
+	physics.getStressTensor(muRe, grad, stress);
+
+	vflux[0] = 0;
+	
+	for(int i = 0; i < NDIM; i++)
+	{
+		vflux[i+1] = 0;
+		for(int j = 0; j < NDIM; j++)
+			vflux[i+1] -= stress[i][j]*n[j];
+	}
+
+	// for the energy dissipation, compute avg velocities first
+	a_real vavg[NDIM];
+	for(int j = 0; j < NDIM; j++)
+		vavg[j] = 0.5*( ul(iface,j+1)/ul(iface,0) + ur(iface,j+1)/ur(iface,0) );
+
+	vflux[NVARS-1] = 0;
+	for(int i = 0; i < NDIM; i++)
+	{
+		a_real comp = 0;
+		
+		for(int j = 0; j < NDIM; j++)
+			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction etc)
+		
+		comp += kdiff*grad[i][NVARS-1];         // dissipation by heat flux
+
+		vflux[NVARS-1] -= comp*n[i];
+	}
+
+	/* vflux is assigned all negative quantities, as should be the case when the residual is
+	 * assumed to be on the left of the equals sign: du/dt + r(u) = 0.
+	 */
 }
 
 void FlowFV::computeViscousFluxJacobian(const a_int iface,
@@ -996,10 +1029,94 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
 	}
+	
+	a_real stress[NDIM][NDIM], dstressl[NDIM][NDIM][NVARS], dstressr[NDIM][NDIM][NVARS];
+	for(int i = 0; i < NDIM; i++)
+		for(int j = 0; j < NDIM; j++) 
+		{
+			stress[i][j] = 0;
+			for(int k = 0; k < NVARS; k++) {
+				dstressl[i][j][k] = 0;
+				dstressr[i][j][k] = 0;
+			}
+		}
+	
+	physics.getJacobianStress(muRe, dmul, grad, dgradl, stress, dstressl);
+	physics.getJacobianStress(muRe, dmur, grad, dgradr, stress, dstressr);
+
+	vflux[0] = 0;
+	
+	for(int i = 0; i < NDIM; i++)
+	{
+		vflux[i+1] = 0;
+		for(int j = 0; j < NDIM; j++)
+		{
+			vflux[i+1] -= stress[i][j]*n[j];
+
+			for(int k = 0; k < NVARS; k++) {
+				dvfi[(i+1)*NVARS+k] -= dstressl[i][j][k]*n[j];
+				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k]*n[j];
+			}
+		}
+	}
+
+	// for the energy dissipation, compute avg velocities first
+	a_real vavg[NDIM], dvavgl[NDIM][NVARS], dvavgr[NDIM][NVARS];
+	for(int j = 0; j < NDIM; j++)
+	{
+		vavg[j] = 0.5*( ul[j+1]/ul[0] + ur[j+1]/ur[0] );
+
+		for(int k = 0; k < NVARS; k++) {
+			dvavgl[j][k] = 0;
+			dvavgr[j][k] = 0;
+		}
+		
+		dvavgl[j][0] = -0.5*ul[j+1]/(ul[0]*ul[0]);
+		dvavgr[j][0] = -0.5*ur[j+1]/(ur[0]*ur[0]);
+		
+		dvavgl[j][j+1] = 0.5/ul[0];
+		dvavgr[j][j+1] = 0.5/ur[0];
+	}
+
+	vflux[NVARS-1] = 0;
+	for(int i = 0; i < NDIM; i++)
+	{
+		a_real comp = 0;
+		a_real dcompl[NVARS], dcompr[NVARS];
+		for(int k = 0; k < NVARS; k++) {
+			dcompl[k] = 0;
+			dcompr[k] = 0;
+		}
+		
+		for(int j = 0; j < NDIM; j++) 
+		{
+			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction etc)
+			
+			for(int k = 0; k < NVARS; k++) {
+				dcompl[k] += dstressl[i][j][k]*vavg[j] + stress[i][j]*dvavgl[j][k];
+				dcompr[k] += dstressr[i][j][k]*vavg[j] + stress[i][j]*dvavgr[j][k];
+			}
+		}
+		
+		comp += kdiff*grad[i][NVARS-1];         // dissipation by heat flux
+
+		for(int k = 0; k < NVARS; k++) {
+			dcompl[k] += dkdl[k]*grad[i][NVARS-1] + kdiff*dgradl[i][NVARS-1][k];
+			dcompr[k] += dkdr[k]*grad[i][NVARS-1] + kdiff*dgradr[i][NVARS-1][k];
+		}
+
+		vflux[NVARS-1] -= comp*n[i];
+
+		for(int k = 0; k < NVARS; k++) {
+			dvfi[(NVARS-1)*NVARS+k] -= dcompl[k]*n[i];
+			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k]*n[i];
+		}
+	}
+
 
 	// divergence of velocity times second viscosity
 	
-	a_real ldiv = 0;
+	/*a_real ldiv = 0;
 	a_real dldivl[NVARS]; a_real dldivr[NVARS]; 
 	for(int k = 0; k < NVARS; k++) { 
 		dldivl[k] = 0;
@@ -1167,7 +1284,8 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 			dvfi[3*NVARS+k] -= n[i]*dupl[i*NVARS+k];
 			dvfj[3*NVARS+k] -= n[i]*dupr[i*NVARS+k];
 		}
-	}
+	}*/
+
 }
 
 void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 

@@ -276,8 +276,17 @@ public:
 	void getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(
 			const a_real *const dmuhat, a_real *const __restrict dkhat) const;
 
+	/// Computes the stress tensor using gradients of primitive variables
+	/** Can also use gradients of primitive-2 variables - it only uses velocity gradients.
+	 */
+	__attribute((always_inline))
 	void getStressTensor(const a_real mu, const a_real grad[NDIM][NVARS], 
-			a_real *const __restrict stress) const;
+			a_real stress[NDIM][NDIM]) const;
+
+	/// Computes Jacobian of stress tensor using Jacobian of gradients of primitive variables
+	void getJacobianStress(const a_real mu, const a_real *const dmu,
+		const a_real grad[NDIM][NVARS], const a_real dgrad[NDIM][NVARS][NVARS],
+		a_real stress[NDIM][NDIM], a_real dstress[NDIM][NDIM][NVARS]) const;
 
 	/// Adiabatic constant
 	const a_real g;
@@ -631,86 +640,46 @@ void IdealGasPhysics::getJacobianSutherlandViscosityWrtConserved(const a_real *c
 }
 
 inline
-a_real IdealGasPhysics::getConstantViscosityCoeff() const
-{
+a_real IdealGasPhysics::getConstantViscosityCoeff() const {
 	return 1.0/Reinf;
 }
 
 inline
-a_real IdealGasPhysics::getThermalConductivityFromViscosity(const a_real muhat) const
-{
+a_real IdealGasPhysics::getThermalConductivityFromViscosity(const a_real muhat) const {
 	return muhat / (Minf*Minf*(g-1.0)*Pr);
 }
 
 inline
 void IdealGasPhysics::getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(
-		const a_real *const dmuhat, a_real *const __restrict dkhat) const
+		const a_real *const dmuhat, a_real *const __restrict dkhat) const 
 {
 	for(int k = 0; k < NVARS; k++)
 		dkhat[k] = dmuhat[k]/(Minf*Minf*(g-1.0)*Pr);
 }
 
 inline
-a_real IdealGasPhysics::getFreestreamPressure() const
-{
+a_real IdealGasPhysics::getFreestreamPressure() const {
 	return 1.0/(g*Minf*Minf);
 }
 
 inline
 void IdealGasPhysics::getStressTensor(const a_real mu, const a_real grad[NDIM][NVARS], 
-		a_real *const __restrict stress) const
+		a_real stress[NDIM][NDIM]) const
 {
 	// divergence of velocity times second viscosity
 	a_real ldiv = 0;
 	for(int j = 0; j < NDIM; j++)
 		ldiv += grad[j][j+1];
-	ldiv *= 2.0/3.0*muRe;
+	ldiv *= 2.0/3.0*mu;
 
 	for(int i = 0; i < NDIM; i++) 
 	{
-		for(int j = 0; j < NDIM; j++) {
-			stress[i*NDIM+j] = mu*(grad[i][j+1] + grad[j][i+1]);
-		}
+		for(int j = 0; j < NDIM; j++)
+			stress[i][j] = mu*(grad[i][j+1] + grad[j][i+1]);
 
-		stress[i*NDIM+i] -= ldiv;
+		stress[i][i] -= ldiv;
 	}
 }
-
-inline
-void IdealGasPhysics::getJacobianStressWrtConserved(const a_real mu, const a_real *const dmu,
-		const a_real grad[NDIM][NVARS], const a_real dgrad[NDIM][NVARS][NVARS],
-		a_real dstress[NDIM][NDIM][NVARS]) const
-{
-	a_real div = 0;
-	a_real dldiv[NVARS];
-	for(int k = 0; k < NVARS; k++)
-		dldiv[k] = 0;
-
-	for(int j = 0; j < NDIM; j++) {
-		div += grad[j][j+1];
-		for(int k = 0; k < NVARS; k++)
-			dldiv[k] += dgrad[j][j+1][k];
-	}
-	
-	const a_real ldiv = 2.0/3.0*mu*div;
-	for(int k = 0; k < NVARS; k++)
-		dldiv[k] = 2.0/3.0 * (dmu[k]*div + mu*dldiv[k]);
-	
-	for(int i = 0; i < NDIM; i++) 
-	{
-		for(int j = 0; j < NDIM; j++) {
-			stress[i*NDIM+j] = mu*(grad[i][j+1] + grad[j][i+1]);
-
-			for(int k = 0; k < NVARS; k++)
-				dstress[i][j][k]= dmu[k]*(grad[i][j+1]+grad[j][i+1]) + mu*(dgrad[i][j+1][k]+dgrad[j][i+1][k]);
-		}
-
-		stress[i*NDIM+i] -= ldiv;
-		for(int k = 0; k < NVARS; k++)
-			dstress[i][i][k] -= dldiv[k];
-	}
-}
-	
 
 }
 #endif
