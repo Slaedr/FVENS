@@ -278,12 +278,17 @@ public:
 
 	/// Computes the stress tensor using gradients of primitive variables
 	/** Can also use gradients of primitive-2 variables - it only uses velocity gradients.
+	 * \param[in] mu Non-dimensional viscosity divided by free-stream Reynolds number
+	 * \param[in] grad Gradients of primitve variables
+	 * \param[in,out] stress Components of the stress tensor on output
 	 */
 	__attribute((always_inline))
 	void getStressTensor(const a_real mu, const a_real grad[NDIM][NVARS], 
 			a_real stress[NDIM][NDIM]) const;
 
 	/// Computes Jacobian of stress tensor using Jacobian of gradients of primitive variables
+	/** Assigns the computed Jacobian to the output array components so prior contents are lost.
+	 */
 	void getJacobianStress(const a_real mu, const a_real *const dmu,
 		const a_real grad[NDIM][NVARS], const a_real dgrad[NDIM][NVARS][NVARS],
 		a_real stress[NDIM][NDIM], a_real dstress[NDIM][NDIM][NVARS]) const;

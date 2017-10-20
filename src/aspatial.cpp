@@ -1019,7 +1019,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		dmul[k] = 0; dmur[k] = 0; dkdl[k] = 0; dkdr[k] = 0;
 	}
 
-	if(!constVisc) {
+	/*if(!constVisc) {
 		physics.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
 		physics.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
 		for(int k = 0; k < NVARS; k++) {
@@ -1028,7 +1028,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		}
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
 		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
-	}
+	}*/
 	
 	a_real stress[NDIM][NDIM], dstressl[NDIM][NDIM][NVARS], dstressr[NDIM][NDIM][NVARS];
 	for(int i = 0; i < NDIM; i++)
@@ -1090,7 +1090,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 		
 		for(int j = 0; j < NDIM; j++) 
 		{
-			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction etc)
+			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction)
 			
 			for(int k = 0; k < NVARS; k++) {
 				dcompl[k] += dstressl[i][j][k]*vavg[j] + stress[i][j]*dvavgl[j][k];
@@ -1116,7 +1116,7 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 
 	// divergence of velocity times second viscosity
 	
-	/*a_real ldiv = 0;
+	/*a_real div = 0;
 	a_real dldivl[NVARS]; a_real dldivr[NVARS]; 
 	for(int k = 0; k < NVARS; k++) { 
 		dldivl[k] = 0;
@@ -1124,19 +1124,18 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	}
 
 	for(int j = 0; j < NDIM; j++) {
-		ldiv += grad[j][j+1];
+		div += grad[j][j+1];
 		for(int k = 0; k < NVARS; k++) {
 			dldivl[k] += dgradl[j][j+1][k];
 			dldivr[k] += dgradr[j][j+1][k];
 		}
 	}
 
-	ldiv *= 2.0/3.0*muRe;
+	const a_real ldiv = 2.0/3.0*muRe*div;
 	for(int k = 0; k < NVARS; k++) 
 	{
-		/// FIXME!!
-		dldivl[k] *= 2.0/3.0 * dmul[k];
-		dldivr[k] *= 2.0/3.0 * dmur[k];
+		dldivl[k] = 2.0/3.0 * (dmul[k]*div + muRe*dldivl[k]);
+		dldivr[k] = 2.0/3.0 * (dmur[k]*div + muRe*dldivr[k]);
 	}
 
 	vflux[0] = 0.0;

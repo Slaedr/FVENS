@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/flatplate/grids/flatplatestruct3.msh
+../testcases/flatplate/grids/flatplatestruct2.msh
 ---Output-file
-../data/flatplate3.vtu
+../data/flatplate2.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -55,7 +55,7 @@ NO
 ---List-of-other-boundaries-at-which-surface-output-is-needed
 5
 ---Prefix-for-name-of-surface-output-file
-../data/flatplatestruct3-hllc
+../data/flatplatestruct2-hllc
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################

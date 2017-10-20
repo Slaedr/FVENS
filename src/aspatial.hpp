@@ -217,23 +217,23 @@ protected:
 	/// Reconstruction context
 	SolutionReconstruction* lim;
 
-	const int isothermal_wall_id;				///< Boundary marker for isothermal wall
-	const int adiabatic_wall_id;				///< Boundary marker for adiabatic wall
-	const int isothermalbaric_wall_id;			/**< Marker for adiabatic wall with a pressure value 
+	const int isothermal_wall_id;               ///< Boundary marker for isothermal wall
+	const int adiabatic_wall_id;                ///< Boundary marker for adiabatic wall
+	const int isothermalbaric_wall_id;          /**< Marker for adiabatic wall with a pressure value 
 													additionally imposed */
-	const int slip_wall_id;						///< Boundary marker corresponding to solid wall
-	const int farfield_id;				///< Boundary marker corresponding to farfield
-	const int inflowoutflow_id;			///< Boundary marker corresponding to inflow/outflow
-	const int extrap_id;						///< Marker for extrapolation boundary
+	const int slip_wall_id;						///< Boundary marker for solid wall
+	const int farfield_id;                      ///< Boundary marker for farfield
+	const int inflowoutflow_id;			        ///< Boundary marker for inflow/outflow
+	const int extrap_id;                        ///< Marker for extrapolation boundary
 
-	const a_real isothermal_wall_temperature;      ///< Temperature imposed at isothermal wall
-	const a_real isothermal_wall_tangvel;          ///< Tangential velocity at isothermal wall
-	const a_real adiabatic_wall_tangvel;           ///< Tangential velocity at adiabatic wall
+	const a_real isothermal_wall_temperature;       ///< Temperature imposed at isothermal wall
+	const a_real isothermal_wall_tangvel;           ///< Tangential velocity at isothermal wall
+	const a_real adiabatic_wall_tangvel;            ///< Tangential velocity at adiabatic wall
 	const a_real isothermalbaric_wall_temperature;  ///< Temperature at isothermal isobaric wall
-	const a_real isothermalbaric_wall_tangvel;  ///< Tangential velocity at isothermal isobaric wall
-	const a_real isothermalbaric_wall_pressure; ///< Pressure imposed at isothermal isobaric wall
+	const a_real isothermalbaric_wall_tangvel;      ///< Tangent velocity at isothermal isobaric wall
+	const a_real isothermalbaric_wall_pressure;     ///< Pressure at isothermal isobaric wall
 	
-	const bool secondOrderRequested;					///< True if reconstruction is to be used
+	const bool secondOrderRequested;                ///< True if reconstruction is to be used
 
 	/// True if primitive variables should be reconstructed rather than conserved variables
 	const bool reconstructPrimitive;
