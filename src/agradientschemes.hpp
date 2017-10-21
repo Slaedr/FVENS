@@ -31,7 +31,7 @@ public:
 
 	virtual void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
 			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) = 0;
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) const = 0;
 };
 
 /// Simply sets the gradient to zero
@@ -44,7 +44,7 @@ public:
 
 	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const unk, 
 			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) const;
 };
 
 /**
@@ -61,7 +61,7 @@ public:
 
 	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
 			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) const;
 };
 
 /// Class implementing linear weighted least-squares reconstruction
@@ -69,7 +69,6 @@ template<short nvars>
 class WeightedLeastSquaresGradients : public GradientComputation
 {
 	std::vector<Matrix<a_real,2,2>> V;			///< LHS of least-squares problems
-	std::vector<Matrix<a_real,2,nvars>> f;		///< RHS of least-squares problems
 	//Matrix<a_real,2,nvars> d;					///< unknown vector of least-squares problem
 
 public:
@@ -78,7 +77,7 @@ public:
 
 	void compute_gradients(const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const unk, 
 			const amat::Array2d<a_real>*const unkg, 
-			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady);
+			amat::Array2d<a_real>*const gradx, amat::Array2d<a_real>*const grady) const;
 };
 
 

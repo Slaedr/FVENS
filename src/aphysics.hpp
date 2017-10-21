@@ -57,6 +57,8 @@ public:
  *
  * "Primitive-2" variables are density, velocities and temperature, as opposed to
  * "primitive" variables which are density, velocities and pressure.
+ *
+ * There are also come calculation related to the stress-velocity properties of a Newtonian fluid.
  */
 class IdealGasPhysics : public Physics
 {

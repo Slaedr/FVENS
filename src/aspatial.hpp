@@ -193,7 +193,7 @@ protected:
 	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
 
 	/// Analytical flux vector computation
-	IdealGasPhysics physics;
+	const IdealGasPhysics physics;
 
 	/// If true, compute Navier Stokes fluxes, else only Euler
 	const bool computeViscous;
@@ -204,15 +204,13 @@ protected:
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
 	 */
-	InviscidFlux* inviflux;
+	const InviscidFlux *const inviflux;
 
 	/// Numerical inviscid flux context for the Jacobian
-	InviscidFlux* jflux;
+	const InviscidFlux *const jflux;
 
 	/// Gradient computation context
-	GradientComputation* gradcomp;
-
-	bool allocflux;
+	const GradientComputation* gradcomp;
 
 	/// Reconstruction context
 	SolutionReconstruction* lim;

@@ -30,7 +30,7 @@ public:
 	 */
 	virtual void get_flux(const a_real *const uleft, const a_real *const uright, 
 			const a_real* const n, 
-			a_real *const flux) = 0;
+			a_real *const flux) const = 0;
 
 	/// Computes the Jacobian of inviscid flux across a face w.r.t. both left and right states
 	/** dfdl is the `lower' block formed by the coupling between elements adjoining the face,
@@ -41,7 +41,7 @@ public:
 	 */
 	virtual void get_jacobian(const a_real *const uleft, const a_real *const uright, 
 			const a_real* const n,
-			a_real *const dfdl, a_real *const dfdr) = 0;
+			a_real *const dfdl, a_real *const dfdr) const = 0;
 
 	virtual ~InviscidFlux();
 
@@ -58,7 +58,7 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	
 	/** Currently computes an approximate Jacobian with frozen spectral radius.
 	 * This has been found to perform no worse than the exact Jacobian for inviscid flows.
@@ -66,13 +66,13 @@ public:
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const uleft, const a_real *const uright, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 
 	/** Computes the exact Jacobian.
 	 * This has been done to make the frozen Jacobian default.
 	 */
 	void get_jacobian_2(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 };
 
 /// Van-Leer flux-vector-splitting
@@ -83,9 +83,9 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 };
 
 /// Liou-Steffen AUSM flux-vector-splitting
@@ -102,13 +102,13 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 };
 
 /// AUSM+ flux
@@ -121,10 +121,10 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 };
 
 /// Abstract class for fluxes which depend on Roe-averages
@@ -133,9 +133,9 @@ class RoeAverageBasedFlux : public InviscidFlux
 public:
 	RoeAverageBasedFlux(const IdealGasPhysics *const analyticalflux);
 	virtual void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux) = 0;
+			a_real *const flux) const = 0;
 	virtual void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr) = 0;
+			a_real *const dfdl, a_real *const dfdr) const = 0;
 
 protected:
 
@@ -144,7 +144,7 @@ protected:
 		const a_real vxi, const a_real vyi, const a_real Hi,
 		const a_real vxj, const a_real vyj, const a_real Hj,
 		a_real& Rij, a_real& rhoij, a_real& vxij, a_real& vyij, a_real &vm2ij, a_real& vnij,
-		a_real& Hij, a_real& cij)
+		a_real& Hij, a_real& cij) const
 	{
 		Rij = std::sqrt(ur[0]/ul[0]);
 		rhoij = Rij*ul[0];
@@ -168,7 +168,7 @@ protected:
 		a_real dRiji[NVARS], a_real drhoiji[NVARS], a_real dvxiji[NVARS], a_real dvyiji[NVARS],
 		a_real dvm2iji[NVARS], a_real dvniji[NVARS], a_real dHiji[NVARS], a_real dciji[NVARS],
 		a_real dRijj[NVARS], a_real drhoijj[NVARS], a_real dvxijj[NVARS], a_real dvyijj[NVARS],
-		a_real dvm2ijj[NVARS], a_real dvnijj[NVARS], a_real dHijj[NVARS], a_real dcijj[NVARS] );
+		a_real dvm2ijj[NVARS], a_real dvnijj[NVARS], a_real dHijj[NVARS], a_real dcijj[NVARS] ) const;
 };
 
 /// Roe-Pike flux-difference splitting
@@ -182,13 +182,13 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 protected:
 	/// Entropy fix parameter
 	const a_real fixeps;
@@ -202,10 +202,10 @@ class HLLFlux : public RoeAverageBasedFlux
 {
 	/// Computes the Jacobian of the numerical flux w.r.t. left state
 	void getFluxJac_left(const a_real *const ul, const a_real *const ur, const a_real *const n, 
-			a_real *const flux, a_real *const fluxd);
+			a_real *const flux, a_real *const fluxd) const;
 	/// Computes the Jacobian of the numerical flux w.r.t. right state
 	void getFluxJac_right(const a_real *const ul, const a_real *const ur, const a_real *const n, 
-			a_real *const flux, a_real *const fluxd);
+			a_real *const flux, a_real *const fluxd) const;
 
 public:
 	HLLFlux(const IdealGasPhysics *const analyticalflux);
@@ -213,21 +213,21 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 
 	/// Computes both the flux and the 2 flux Jacobians
 	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux, a_real *const dfdl, a_real *const dfdr);
+			a_real *const flux, a_real *const dfdl, a_real *const dfdr) const;
 	
 	void get_jacobian_2(const a_real *const ul, const a_real *const ur, 
 			const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
@@ -242,17 +242,17 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux);
+			a_real *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
 	void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const dfdl, a_real *const dfdr);
+			a_real *const dfdl, a_real *const dfdr) const;
 	
 	/// Computes both the flux and the 2 flux Jacobians
 	void get_flux_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-			a_real *const flux, a_real *const dfdl, a_real *const dfdr);
+			a_real *const flux, a_real *const dfdl, a_real *const dfdr) const;
 
 protected:
 	/// Computes the averaged state between the waves in the Riemann fan

@@ -17,10 +17,10 @@ InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx)
 	: physics(phyctx), g{phyctx->g}
 { }
 
-void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, 
+/*void InviscidFlux::get_jacobian(const a_real *const uleft, const a_real *const uright, 
 		const a_real* const n, 
 		a_real *const dfdl, a_real *const dfdr)
-{ }
+{ }*/
 
 InviscidFlux::~InviscidFlux()
 { }
@@ -32,7 +32,7 @@ LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const IdealGasPhysics *const anal
 void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul, 
 		const a_real *const ur, 
 		const a_real *const n, 
-		a_real *const __restrict flux)
+		a_real *const __restrict flux) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -53,7 +53,7 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul,
  */
 void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		const a_real* const n, 
-		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -97,7 +97,7 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul, 
 		const a_real *const ur,
 		const a_real* const n, 
-		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -185,7 +185,7 @@ VanLeerFlux::VanLeerFlux(const IdealGasPhysics *const analyticalflux)
 }
 
 void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
-		const a_real* const n, a_real *const __restrict flux)
+		const a_real* const n, a_real *const __restrict flux) const
 {
 	a_real fiplus[NVARS], fjminus[NVARS];
 
@@ -237,7 +237,7 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 }
 
 void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
-		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr) const
 {
 	std::cout << " ! VanLeerFlux: Not implemented!\n";
 }
@@ -247,7 +247,7 @@ AUSMFlux::AUSMFlux(const IdealGasPhysics *const analyticalflux)
 { }
 
 void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,
-		const a_real* const n, a_real *const __restrict flux)
+		const a_real* const n, a_real *const __restrict flux) const
 {
 	a_real ML, MR, pL, pR;
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
@@ -299,7 +299,7 @@ void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,
 }
 
 void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
-		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr) const
 {
 	using std::fabs;
 	a_real ML, MR;
@@ -476,7 +476,7 @@ AUSMPlusFlux::AUSMPlusFlux(const IdealGasPhysics *const analyticalflux)
 { }
 
 void AUSMPlusFlux::get_flux(const a_real *const ul, const a_real *const ur,
-		const a_real* const n, a_real *const __restrict flux)
+		const a_real* const n, a_real *const __restrict flux) const
 {
 	a_real ML, MR, pL, pR;
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
@@ -551,7 +551,7 @@ void AUSMPlusFlux::get_flux(const a_real *const ul, const a_real *const ur,
 }
 
 void AUSMPlusFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
-		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr) const
 {
 	std::cout << " ! AUSMPlusFlux: Not implemented!\n";
 }
@@ -570,7 +570,7 @@ void RoeAverageBasedFlux::getJacobiansRoeAveragesWrtConserved (
 	a_real dRiji[NVARS], a_real drhoiji[NVARS], a_real dvxiji[NVARS], a_real dvyiji[NVARS],
 	a_real dvm2iji[NVARS], a_real dvniji[NVARS], a_real dHiji[NVARS], a_real dciji[NVARS],
 	a_real dRijj[NVARS], a_real drhoijj[NVARS], a_real dvxijj[NVARS], a_real dvyijj[NVARS],
-	a_real dvm2ijj[NVARS], a_real dvnijj[NVARS], a_real dHijj[NVARS], a_real dcijj[NVARS] )
+	a_real dvm2ijj[NVARS], a_real dvnijj[NVARS], a_real dHijj[NVARS], a_real dcijj[NVARS] ) const
 {
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
 	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
@@ -653,7 +653,7 @@ RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux)
 { }
 
 void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
-		const a_real* const n, a_real *const __restrict flux)
+		const a_real* const n, a_real *const __restrict flux) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -716,7 +716,7 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 }
 
 void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
-		const a_real* const n, a_real *const dfdl, a_real *const dfdr)
+		const a_real* const n, a_real *const dfdl, a_real *const dfdr) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -935,7 +935,7 @@ HLLFlux::HLLFlux(const IdealGasPhysics *const analyticalflux)
 }
 
 void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
-		const a_real* const __restrict__ n, a_real *const __restrict__ flux)
+		const a_real* const __restrict__ n, a_real *const __restrict__ flux) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -971,10 +971,10 @@ void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const 
  * Modified to remove the runtime parameter nbdirs and the change in ul. 
  * Also changed the array shape of Jacobian.
  */
-void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul, 
-		                      const a_real *const __restrict__ ur, 
-		                      const a_real *const __restrict__ n, 
-		a_real *const __restrict__ flux, a_real *const __restrict__ fluxd)
+void HLLFlux::getFluxJac_left(const a_real *const ul, 
+		                      const a_real *const ur, 
+		                      const a_real *const n, 
+		a_real *const __restrict flux, a_real *const __restrict fluxd) const
 {
     a_real uld[NVARS][NVARS];
 	for(int i = 0; i < NVARS; i++) {
@@ -1146,7 +1146,7 @@ void HLLFlux::getFluxJac_left(const a_real *const __restrict__ ul,
  */
 void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur, 
 		const a_real *const n, 
-		a_real *const __restrict flux, a_real *const __restrict fluxd)
+		a_real *const __restrict flux, a_real *const __restrict fluxd) const
 {
     a_real urd[NVARS][NVARS];
 	for(int i = 0; i < NVARS; i++) {
@@ -1313,7 +1313,7 @@ void HLLFlux::getFluxJac_right(const a_real *const ul, const a_real *const ur,
 
 void HLLFlux::get_jacobian_2(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, 
-		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	a_real flux[NVARS];
 	getFluxJac_left(ul, ur, n, flux, dfdl);
@@ -1324,7 +1324,8 @@ void HLLFlux::get_jacobian_2(const a_real *const ul, const a_real *const ur,
 
 void HLLFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, 
-		a_real *const __restrict flux, a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict flux, 
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	getFluxJac_left(ul, ur, n, flux, dfdl);
 	getFluxJac_right(ul, ur, n, flux, dfdr);
@@ -1337,7 +1338,7 @@ void HLLFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur,
  */
 void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, 
-		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -1490,7 +1491,7 @@ void HLLCFlux::getStarStateAndJacobian(const a_real u[NVARS], const a_real n[NDI
 }
 
 void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-		a_real *const __restrict flux)
+		a_real *const __restrict flux) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -1543,7 +1544,7 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 }
 
 void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
-		a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
 	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
@@ -1698,7 +1699,7 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 
 void HLLCFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, 
-		a_real *const __restrict flux, a_real *const __restrict dfdl, a_real *const __restrict dfdr)
+		a_real *const __restrict flux, a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
 	std::cout << " !!!! Not available!!\n";
 }

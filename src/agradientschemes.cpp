@@ -28,7 +28,7 @@ template<short nvars>
 void ZeroGradients<nvars>::compute_gradients(
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
 		const amat::Array2d<a_real>*const ug, 
-		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
+		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy) const
 {
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -53,7 +53,7 @@ template<short nvars>
 void GreenGaussGradients<nvars>::compute_gradients(
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
 		const amat::Array2d<a_real>*const ug, 
-		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
+		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy) const
 {
 #pragma omp parallel default(shared)
 	{
@@ -146,7 +146,6 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 	: GradientComputation(mesh, _rc)
 { 
 	V.resize(m->gnelem());
-	f.resize(m->gnelem());
 #pragma omp parallel for default(shared)
 	for(a_int i = 0; i < m->gnelem(); i++)
 	{
@@ -217,7 +216,6 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 		//if(det < ZERO_TOL*100) std::cout << "  !!!! ERROR!\n";
 		
 		V[ielem] = V[ielem].inverse().eval();
-		f[ielem] = Matrix<a_real,2,nvars>::Zero();
 	}
 }
 
@@ -225,8 +223,15 @@ template<short nvars>
 void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, 
 		const amat::Array2d<a_real> *const ug, 
-		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy)
+		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy) const
 {
+	std::vector<Matrix<a_real,2,nvars>> f;		//< RHS of least-squares problems
+	f.resize(m->gnelem());
+
+#pragma omp parallel for default(shared)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+		f[ielem] = Matrix<a_real,2,nvars>::Zero();
+	
 	// compute least-squares RHS
 
 #pragma omp parallel for default(shared)
@@ -292,7 +297,7 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 			(*dudx)(ielem,ivar) = d(0,ivar);
 			(*dudy)(ielem,ivar) = d(1,ivar);
 		}
-		f[ielem] = Matrix<a_real,2,nvars>::Zero();
+		//f[ielem] = Matrix<a_real,2,nvars>::Zero();
 	}
 }
 

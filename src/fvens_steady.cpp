@@ -190,6 +190,8 @@ int main(int argc, char* argv[])
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",false,true);
 	
+	std::cout << "***\n";
+	
 	// solution vector
 	MVector u(m.gnelem(),NVARS);
 
@@ -253,6 +255,8 @@ int main(int argc, char* argv[])
 	
 	// Ask the spatial discretization context to initialize flow variables
 	startprob.initializeUnknowns(u);
+	
+	std::cout << "***\n";
 
 	// computation
 	
@@ -264,6 +268,8 @@ int main(int argc, char* argv[])
 	 * set by initializeUnknowns or the one computed by the starter problem.
 	 */
 	time->solve(logfile);
+	
+	std::cout << "***\n";
 
 	// export output to VTU
 

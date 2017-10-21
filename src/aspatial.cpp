@@ -5,6 +5,7 @@
  */
 
 #include "aspatial.hpp"
+#include "afactory.hpp"
 #include "alinalg.hpp"
 
 namespace acfd {
@@ -204,11 +205,17 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
 		const a_real isothermalbaric_Pressure, 
 		const std::string invflux, const std::string jacflux, 
-		const std::string reconst, const std::string limiter,
+		const std::string grad_scheme, const std::string limiter,
 		const bool order2, const bool reconstructPrim)
 	: 
 	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), 
 	computeViscous{compute_viscous}, constVisc(useConstVisc),
+
+	inviflux {create_const_inviscidflux(invflux, &physics)}, 
+	jflux {create_const_inviscidflux(jacflux, &physics)},
+
+	gradcomp {create_const_gradientscheme(grad_scheme, m, &rc)},
+
 	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
 	isothermalbaric_wall_id{isothermalbaric_marker},
 	slip_wall_id{slip_marker}, farfield_id{farfield_marker}, inflowoutflow_id{inoutflow_marker},
@@ -231,112 +238,6 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	std::cout << "  Isothermal isobaric " << isothermalbaric_wall_id << '\n';
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
-
-	// set inviscid flux scheme
-	if(invflux == "VANLEER") {
-		inviflux = new VanLeerFlux(&physics);
-		std::cout << " FlowFV: Using Van Leer fluxes." << std::endl;
-	}
-	else if(invflux == "ROE")
-	{
-		inviflux = new RoeFlux(&physics);
-		std::cout << " FlowFV: Using Roe fluxes." << std::endl;
-	}
-	else if(invflux == "HLL")
-	{
-		inviflux = new HLLFlux(&physics);
-		std::cout << " FlowFV: Using HLL fluxes." << std::endl;
-	}
-	else if(invflux == "HLLC")
-	{
-		inviflux = new HLLCFlux(&physics);
-		std::cout << " FlowFV: Using HLLC fluxes." << std::endl;
-	}
-	else if(invflux == "LLF")
-	{
-		inviflux = new LocalLaxFriedrichsFlux(&physics);
-		std::cout << " FlowFV: Using LLF fluxes." << std::endl;
-	}
-	else if(invflux == "AUSM")
-	{
-		inviflux = new AUSMFlux(&physics);
-		std::cout << " FlowFV: Using AUSM fluxes." << std::endl;
-	}
-	else if(invflux == "AUSMPLUS")
-	{
-		inviflux = new AUSMPlusFlux(&physics);
-		std::cout << " FlowFV: Using AUSM+ fluxes." << std::endl;
-	}
-	else
-		std::cout << " FlowFV: ! Flux scheme not available!" << std::endl;
-	
-	// set inviscid flux scheme for Jacobian
-	allocflux = false;
-	if(jacflux == "VANLEER") {
-		jflux = new VanLeerFlux(&physics);
-		allocflux = true;
-	}
-	else if(jacflux == "ROE")
-	{
-		jflux = new RoeFlux(&physics);
-		std::cout << " FlowFV: Using Roe fluxes for Jacobian." << std::endl;
-		allocflux = true;
-	}
-	else if(jacflux == "HLL")
-	{
-		jflux = new HLLFlux(&physics);
-		std::cout << " FlowFV: Using HLL fluxes for Jacobian." << std::endl;
-		allocflux = true;
-	}
-	else if(jacflux == "HLLC")
-	{
-		jflux = new HLLCFlux(&physics);
-		std::cout << " FlowFV: Using HLLC fluxes for Jacobian." << std::endl;
-		allocflux = true;
-	}
-	else if(jacflux == "LLF")
-	{
-		jflux = new LocalLaxFriedrichsFlux(&physics);
-		std::cout << " FlowFV: Using LLF fluxes for Jacobian." << std::endl;
-		allocflux = true;
-	}
-	else if(jacflux == "AUSM")
-	{
-		jflux = new AUSMFlux(&physics);
-		std::cout << " FlowFV: Using AUSM fluxes for Jacobian." << std::endl;
-		allocflux = true;
-	}
-	else if(jacflux == "AUSMPLUS")
-	{
-		jflux = new AUSMPlusFlux(&physics);
-		std::cout << " FlowFV: Using AUSM+ fluxes for Jacobian." << std::endl;
-		allocflux = true;
-	}
-	else
-		std::cout << " FlowFV: ! Flux scheme not available!" << std::endl;
-
-	// set reconstruction scheme
-	if(secondOrderRequested)
-	{
-		if(reconst == "LEASTSQUARES")
-		{
-			gradcomp = new WeightedLeastSquaresGradients<NVARS>(m, &rc);
-			std::cout << " FlowFV: Weighted least-squares reconstruction will be used.\n";
-		}
-		else if(reconst == "GREENGAUSS")
-		{
-			gradcomp = new GreenGaussGradients<NVARS>(m, &rc);
-			std::cout << " FlowFV: Green-Gauss reconstruction will be used." << std::endl;
-		}
-		else {
-			gradcomp = new ZeroGradients<NVARS>(m, &rc);
-			std::cout << " FlowFV: No reconstruction!" << std::endl;
-		}
-	}
-	else {
-		std::cout << " FlowFV: No reconstruction; first order solution." << std::endl;
-		gradcomp = new ZeroGradients<NVARS>(m, &rc);
-	}
 
 	// set limiter
 	if(limiter == "NONE")
@@ -378,8 +279,7 @@ FlowFV::~FlowFV()
 {
 	delete gradcomp;
 	delete inviflux;
-	if(allocflux)
-		delete jflux;
+	delete jflux;
 	delete lim;
 }
 
@@ -1102,6 +1002,7 @@ void FlowFV::computeViscousFluxApproximateJacobian(const a_int iface,
 	
 	const a_real rho = 0.5*(ul[0]+ur[0]);
 
+	// the vector from the left cell-centre to the right, and its magnitude
 	a_real dr[NDIM], dist=0;
 
 	const a_int lelem = m->gintfac(iface,0);
