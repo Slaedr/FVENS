@@ -179,9 +179,39 @@ void WENOReconstruction::compute_face_values(const Matrix<a_real,Dynamic,Dynamic
 	} // end parallel region
 }
 
-MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh* mesh,
+MUSCLReconstruction::MUSCLReconstruction(const UMesh2dh* mesh,
 		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
+{ }
+
+inline
+a_real MUSCLReconstruction::computeBiasedDifference(const a_real *const ri, const a_real *const rj,
+		const a_real ui, const a_real uj, const a_real *const grads) const
+{
+	a_real del = 0;
+	for(int idim = 0; idim < NDIM; idim++)
+		del += grads[idim]*(rj[idim]-ri[idim]);
+
+	return 2.0*del - (uj-ui);
+}
+
+inline
+a_real MUSCLReconstruction::musclReconstructLeft(const a_real ui, const a_real uj, 
+			const a_real deltam, const a_real phi) const
+{
+	return ui + phi/4.0*( (1.0-k*phi)*deltam + (1.0+k*phi)*(uj - ui) );
+}
+
+inline
+a_real MUSCLReconstruction::musclReconstructRight(const a_real ui, const a_real uj, 
+			const a_real deltap, const a_real phi) const
+{
+	return uj - phi/4.0*( (1.0-k*phi)*deltap + (1.0+k*phi)*(uj - ui) );
+}
+
+MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh* mesh,
+		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+	: MUSCLReconstruction(mesh, r_centres, gauss_r)
 { }
 
 void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
@@ -189,8 +219,6 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
 {
-	// apply the limiters
-	
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
@@ -199,16 +227,16 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 
 		for(int i = 0; i < NVARS; i++)
 		{
-			const a_real deltam = 2.0 * ( dudx(ielem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) 
-				+ dudy(ielem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) 
-				- (ug(ied,i) - u(ielem,i));
+			const a_real grads[NDIM] = {dudx(ielem,i), dudy(ielem,i)};
+			
+			const a_real deltam = computeBiasedDifference(&(*ri)(ielem,0), &(*ri)(jelem,0),
+					u(ielem,i), ug(ied,i), grads);
 			
 			a_real phi_l = (2*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (ug(ied,i) - u(ielem,i))*(ug(ied,i) - u(ielem,i)) + eps);
 			if( phi_l < 0.0) phi_l = 0.0;
 
-			ufl(ied,i) = u(ielem,i) + phi_l/4.0
-				*( (1-k*phi_l)*deltam + (1+k*phi_l)*(ug(ied,i) - u(ielem,i)) );
+			ufl(ied,i) = musclReconstructLeft(u(ielem,i), ug(ied,i), deltam, phi_l);
 		}
 	}
 	
@@ -220,12 +248,13 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 
 		for(int i = 0; i < NVARS; i++)
 		{
-			const a_real deltam = 2 * ( dudx(ielem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) 
-				+ dudy(ielem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) 
-				- (u(jelem,i) - u(ielem,i));
-			const a_real deltap = 2 * ( dudx(jelem,i)*(ri->get(jelem,0)-ri->get(ielem,0)) 
-				+ dudy(jelem,i)*(ri->get(jelem,1)-ri->get(ielem,1)) ) 
-				- (u(jelem,i) - u(ielem,i));
+			const a_real gradsl[NDIM] = {dudx(ielem,i), dudy(ielem,i)};
+			const a_real gradsr[NDIM] = {dudx(jelem,i), dudy(jelem,i)};
+
+			const a_real deltam = computeBiasedDifference(&(*ri)(ielem,0), &(*ri)(jelem,0),
+					u(ielem,i), u(jelem,i), gradsl);
+			const a_real deltap = computeBiasedDifference(&(*ri)(ielem,0), &(*ri)(jelem,0),
+					u(ielem,i), u(jelem,i), gradsr);
 			
 			a_real phi_l = (2*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
@@ -235,10 +264,8 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 				/ (deltap*deltap + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
 			if( phi_r < 0.0) phi_r = 0.0;
 
-			ufl(ied,i) = u(ielem,i) + phi_l/4.0
-				*( (1-k*phi_l)*deltam + (1+k*phi_l)*(u(jelem,i) - u(ielem,i)) );
-			ufr(ied,i) = u(jelem,i) - phi_r/4.0
-				*( (1-k*phi_r)*deltap + (1+k*phi_r)*(u(jelem,i) - u(ielem,i)) );
+			ufl(ied,i) = musclReconstructLeft(u(ielem,i), u(jelem,i), deltam, phi_l);
+			ufr(ied,i) = musclReconstructRight(u(ielem,i), u(jelem,i), deltap, phi_r);
 		}
 	}
 }

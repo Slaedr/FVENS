@@ -210,10 +210,10 @@ protected:
 	const InviscidFlux *const jflux;
 
 	/// Gradient computation context
-	const GradientComputation* gradcomp;
+	const GradientComputation *const gradcomp;
 
 	/// Reconstruction context
-	SolutionReconstruction* lim;
+	SolutionReconstruction *const lim;
 
 	const int isothermal_wall_id;               ///< Boundary marker for isothermal wall
 	const int adiabatic_wall_id;                ///< Boundary marker for adiabatic wall
