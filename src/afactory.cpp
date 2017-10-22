@@ -107,4 +107,49 @@ const GradientComputation* create_const_gradientscheme(
 	return create_mutable_gradientscheme(type, m, rc);
 }
 
+SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
+		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const amat::Array2d<a_real> *const gr, const a_real param)
+{
+	SolutionReconstruction * reconst = nullptr;
+
+	if(type == "NONE")
+	{
+		reconst = new LinearUnlimitedReconstruction(m, rc, gr);
+		std::cout << " ReconstructionFactory: Unlimited linear reconstruction selected.\n";
+	}
+	else if(type == "WENO")
+	{
+		reconst = new WENOReconstruction(m, rc, gr);
+		std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
+	}
+	else if(type == "VANALBADA")
+	{
+		reconst = new MUSCLVanAlbada(m, rc, gr);
+		std::cout << " ReconstructionFactory: Van Albada MUSCL reconstruction selected.\n";
+	}
+	else if(type == "BARTHJESPERSEN")
+	{
+		reconst = new BarthJespersenLimiter(m, rc, gr);
+		std::cout << " ReconstructionFactory: Barth-Jespersen linear reconstruction selected.\n";
+	}
+	else if(type == "VENKATAKRISHNAN")
+	{
+		reconst = new VenkatakrishnanLimiter(m, rc, gr, param);
+		std::cout << " ReconstructionFactory: Venkatakrishnan linear reconstruction selected.\n";
+	}
+	else {
+		std::cout << " !ReconstructionFactory: Invalid reconstruction!!\n";
+	}
+
+	return reconst;
+}
+
+const SolutionReconstruction* create_const_reconstruction(const std::string& type,
+		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const amat::Array2d<a_real> *const gr, const a_real param)
+{
+	return create_mutable_reconstruction(type, m, rc, gr, param);
+}
+
 }

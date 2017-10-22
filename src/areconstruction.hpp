@@ -93,10 +93,8 @@ public:
 /// Computes face values using MUSCL reconstruciton with Van-Albada limiter
 class MUSCLVanAlbada : public SolutionReconstruction
 {
-    a_real eps;							///< Small number
-    a_real k;               			///< MUSCL order parameter
-	amat::Array2d<a_real> phi_l;		///< left-face limiter values
-	amat::Array2d<a_real> phi_r;		///< right-face limiter values
+	const a_real eps;                       ///< Small number
+	const a_real k;                         ///< MUSCL order parameter
 
 public:
     MUSCLVanAlbada(const UMesh2dh* mesh,

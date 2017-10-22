@@ -215,6 +215,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	jflux {create_const_inviscidflux(jacflux, &physics)},
 
 	gradcomp {create_const_gradientscheme(grad_scheme, m, &rc)},
+	lim {create_mutable_reconstruction(limiter, m, &rc, gr, 6.0)},
 
 	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
 	isothermalbaric_wall_id{isothermalbaric_marker},
@@ -240,32 +241,6 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		std::cout << " FLowFV: Using constant viscosity.\n";
 
 	// set limiter
-	if(limiter == "NONE")
-	{
-		lim = new LinearUnlimitedReconstruction(m, &rc, gr);
-		std::cout << " FlowFV: No limiter will be used." << std::endl;
-	}
-	else if(limiter == "WENO")
-	{
-		lim = new WENOReconstruction(m, &rc, gr);
-		std::cout << " FlowFV: WENO limiter selected.\n";
-	}
-	else if(limiter == "VANALBADA")
-	{
-		lim = new MUSCLVanAlbada(m, &rc, gr);
-		std::cout << " FlowFV: Van Albada limiter selected.\n";
-	}
-	else if(limiter == "BARTHJESPERSEN")
-	{
-		lim = new BarthJespersenLimiter(m, &rc, gr);
-		std::cout << " FlowFV: Barth-Jespersen limiter selected.\n";
-	}
-	else if(limiter == "VENKATAKRISHNAN")
-	{
-		lim = new VenkatakrishnanLimiter(m, &rc, gr, 6.0);
-		std::cout << " FlowFV: Venkatakrishnan limiter selected.\n";
-	}
-	
 	// Set farfield: note that reference density and reference velocity are the values at infinity
 
 	uinf.resize(1, NVARS);

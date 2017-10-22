@@ -47,6 +47,13 @@ GradientComputation* create_mutable_gradientscheme(const std::string& type,
 const GradientComputation* create_const_gradientscheme(const std::string& type, 
 		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) ;
 
+SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
+		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const amat::Array2d<a_real> *const gr, const a_real param);
+
+const SolutionReconstruction* create_const_reconstruction(const std::string& type,
+		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const amat::Array2d<a_real> *const gr, const a_real param);
 }
 
 #endif
