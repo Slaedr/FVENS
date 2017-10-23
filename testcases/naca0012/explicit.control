@@ -12,9 +12,9 @@ EULER
 ---Adiabatic-index
 1.4
 ---Angle_of_attack
-1.0
+1.25
 -M_infinity
-0.85
+0.8
 -initial-values-type(0=from_infinity_values,1=supersonic_vortex)
 0
 ###########BOUNDARY-CONDITIONS########################################

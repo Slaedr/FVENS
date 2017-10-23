@@ -213,7 +213,7 @@ protected:
 	const GradientComputation *const gradcomp;
 
 	/// Reconstruction context
-	SolutionReconstruction *const lim;
+	const SolutionReconstruction *const lim;
 
 	const int isothermal_wall_id;               ///< Boundary marker for isothermal wall
 	const int adiabatic_wall_id;                ///< Boundary marker for adiabatic wall

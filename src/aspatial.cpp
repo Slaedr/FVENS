@@ -215,7 +215,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	jflux {create_const_inviscidflux(jacflux, &physics)},
 
 	gradcomp {create_const_gradientscheme(grad_scheme, m, &rc)},
-	lim {create_mutable_reconstruction(limiter, m, &rc, gr, 6.0)},
+	lim {create_const_reconstruction(limiter, m, &rc, gr, 6.0)},
 
 	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
 	isothermalbaric_wall_id{isothermalbaric_marker},
@@ -240,7 +240,6 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
 
-	// set limiter
 	// Set farfield: note that reference density and reference velocity are the values at infinity
 
 	uinf.resize(1, NVARS);

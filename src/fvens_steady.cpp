@@ -175,6 +175,8 @@ int main(int argc, char* argv[])
 	m.compute_jacobians();
 	m.compute_face_data();
 
+	std::cout << "\n***\n";
+
 	// set up problem
 	
 	std::cout << "Setting up main spatial scheme.\n";
@@ -183,14 +185,14 @@ int main(int argc, char* argv[])
 			slipwall_marker, farfield_marker, inout_marker, extrap_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
-	std::cout << "Setting up spatial scheme for the initial guess.\n";
+	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
 	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
 			slipwall_marker, farfield_marker, inout_marker, extrap_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",false,true);
 	
-	std::cout << "***\n";
+	std::cout << "\n***\n";
 	
 	// solution vector
 	MVector u(m.gnelem(),NVARS);
@@ -256,7 +258,7 @@ int main(int argc, char* argv[])
 	// Ask the spatial discretization context to initialize flow variables
 	startprob.initializeUnknowns(u);
 	
-	std::cout << "***\n";
+	std::cout << "\n***\n";
 
 	// computation
 	

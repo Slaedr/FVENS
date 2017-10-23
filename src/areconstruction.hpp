@@ -19,26 +19,20 @@ namespace acfd {
 class SolutionReconstruction
 {
 protected:
-	const UMesh2dh* m;
-	const amat::Array2d<a_real>* ri;		///< coords of cell centers of cells
-	const amat::Array2d<a_real>* gr;		///< coords of gauss points of each face
-	int ng;									///< Number of Gauss points
+	const UMesh2dh *const m;
+	const amat::Array2d<a_real> *const ri;      ///< coords of cell centers of cells
+	const amat::Array2d<a_real> *const gr;      ///< coords of gauss points of each face
+	const int ng;                               ///< Number of Gauss points
 
 public:
-	SolutionReconstruction();
-
-    SolutionReconstruction (const UMesh2dh* mesh,            ///< Mesh context
+    SolutionReconstruction (const UMesh2dh* mesh,         ///< Mesh context
 			const amat::Array2d<a_real>* c_centres,       ///< Cell centres
 			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
-
-    void setup(const UMesh2dh* mesh,
-			const amat::Array2d<a_real>* c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
 
 	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) = 0;
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
 
 	virtual ~SolutionReconstruction();
 };
@@ -58,27 +52,21 @@ public:
 	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Computes state at left and right sides of each face based on WENO-limited derivatives 
 /// at each cell
-/** References:
- * - Y. Xia, X. Liu and H. Luo. "A finite volume method based on a WENO reconstruction 
- *   for compressible flows on hybrid grids", 52nd AIAA Aerospace Sciences Meeting, AIAA-2014-0939.
- * - M. Dumbser and M. Kaeser. "Arbitrary high order non-oscillatory finite volume schemes on 
- *   unsttructured meshes for linear hyperbolic systems", J. Comput. Phys. 221 pp 693--723, 2007.
+/** References: \cite xia2014, \cite dumbser2007.
  *
  * Note that we do not take the 'oscillation indicator' as the square of the magnitude of 
  * the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
  */
 class WENOReconstruction : public SolutionReconstruction
 {
-	amat::Array2d<a_real> ldudx;
-	amat::Array2d<a_real> ldudy;
-	a_real gamma;
-	a_real lambda;
-	a_real epsilon;
+	const a_real gamma;
+	const a_real lambda;
+	const a_real epsilon;
 public:
     WENOReconstruction(const UMesh2dh* mesh,
 			const amat::Array2d<a_real>* c_centres, 
@@ -87,7 +75,7 @@ public:
 	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Provides common functionality for computing face values using MUSCL reconstruciton
@@ -103,7 +91,7 @@ public:
 	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) = 0;
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
 
 protected:
 	const a_real eps;                       ///< Small number
@@ -149,7 +137,7 @@ public:
 	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Non-differentiable multidimensional slope limiter for linear reconstruction
@@ -163,14 +151,14 @@ public:
 	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Differentiable modification of Barth-Jespersen limiter
 class VenkatakrishnanLimiter: public SolutionReconstruction
 {
 	/// Parameter for adjusting limiting vs convergence
-	a_real K;
+	const a_real K;
 
 	/// List of characteristic length of cells
 	std::vector<a_real> clength;
@@ -187,7 +175,7 @@ public:
 	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
 			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right);
+			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
 /*template <int nvars>

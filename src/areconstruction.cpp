@@ -2,31 +2,14 @@
 
 namespace acfd {
 
-SolutionReconstruction::SolutionReconstruction()
-{ }
-
 SolutionReconstruction::SolutionReconstruction (const UMesh2dh* mesh, 
 		const amat::Array2d<a_real>* c_centres, 
 		const amat::Array2d<a_real>* gauss_r)
-	:
-	m(mesh),
-	ri (c_centres),
-	gr (gauss_r),
-	ng (gauss_r[0].rows())
+	: m{mesh}, ri{c_centres}, gr{gauss_r}, ng{gr[0].rows()}
 { }
 
 SolutionReconstruction::~SolutionReconstruction()
 { }
-
-void SolutionReconstruction::setup(const UMesh2dh* mesh,
-		const amat::Array2d<a_real>* c_centres,
-		const amat::Array2d<a_real>* gauss_r)
-{
-	m = mesh;
-	ri = c_centres;
-	gr = gauss_r;
-	ng = gr[0].rows();
-}
 
 LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh* mesh,
 		const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
@@ -37,7 +20,7 @@ void LinearUnlimitedReconstruction::compute_face_values(
 		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		const amat::Array2d<a_real>& ug,
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// (a) internal faces
 #pragma omp parallel default(shared)
@@ -82,101 +65,71 @@ void LinearUnlimitedReconstruction::compute_face_values(
 
 WENOReconstruction::WENOReconstruction(const UMesh2dh* mesh,
 		const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
-	: SolutionReconstruction(mesh, c_centres, gauss_r)
+	: SolutionReconstruction(mesh, c_centres, gauss_r),
+	  gamma{4.0}, lambda{1.0e3}, epsilon{1.0e-5}
 {
-	ldudx.resize(m->gnelem(),NVARS);
-	ldudy.resize(m->gnelem(),NVARS);
-	// values below chosen from second reference (Dumbser and Kaeser)
-	gamma = 4.0;
-	lambda = 1e3;
-	epsilon = 1e-5;
 }
 
 void WENOReconstruction::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		const amat::Array2d<a_real>& ug,
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// first compute limited derivatives at each cell
 
-#pragma omp parallel default(shared)
+#pragma omp parallel for default(shared)
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-#pragma omp for
-		for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
-			for(int ivar = 0; ivar < NVARS; ivar++)
-			{
-				a_real wsum = 0;
-				ldudx(ielem,ivar) = 0;
-				ldudy(ielem,ivar) = 0;
+			a_real wsum = 0;
+			a_real ldudx = 0;
+			a_real ldudy = 0;
 
-				// Central stencil
-				a_real denom = pow( dudx(ielem,ivar)*dudx(ielem,ivar) 
-						+ dudy(ielem,ivar)*dudy(ielem,ivar) + epsilon, gamma);
-				a_real w = lambda / denom;
+			// Central stencil
+			a_real denom = pow( dudx(ielem,ivar)*dudx(ielem,ivar) 
+					+ dudy(ielem,ivar)*dudy(ielem,ivar) + epsilon, gamma);
+			a_real w = lambda / denom;
+			wsum += w;
+			ldudx += w*dudx(ielem,ivar);
+			ldudy += w*dudy(ielem,ivar);
+
+			// Biased stencils
+			for(int jel = 0; jel < m->gnfael(ielem); jel++)
+			{
+				const a_int jelem = m->gesuel(ielem,jel);
+
+				// ignore ghost cells
+				if(jelem >= m->gnelem())
+					continue;
+
+				denom = pow( dudx(jelem,ivar)*dudx(jelem,ivar) 
+						+ dudy(jelem,ivar)*dudy(jelem,ivar) + epsilon, gamma);
+				w = 1.0 / denom;
 				wsum += w;
-				ldudx(ielem,ivar) += w*dudx(ielem,ivar);
-				ldudy(ielem,ivar) += w*dudy(ielem,ivar);
-
-				// Biased stencils
-				for(int jel = 0; jel < m->gnfael(ielem); jel++)
-				{
-					a_int jelem = m->gesuel(ielem,jel);
-
-					// ignore ghost cells
-					if(jelem >= m->gnelem())
-						continue;
-
-					denom = pow( dudx(jelem,ivar)*dudx(jelem,ivar) 
-							+ dudy(jelem,ivar)*dudy(jelem,ivar) + epsilon, gamma);
-					w = 1.0 / denom;
-					wsum += w;
-					ldudx(ielem,ivar) += w*dudx(jelem,ivar);
-					ldudy(ielem,ivar) += w*dudy(jelem,ivar);
-				}
-
-				ldudx(ielem,ivar) /= wsum;
-				ldudy(ielem,ivar) /= wsum;
+				ldudx += w*dudx(jelem,ivar);
+				ldudy += w*dudy(jelem,ivar);
 			}
-		}
-		
-		// internal faces
-#pragma omp for
-		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
-		{
-			a_int ielem = m->gintfac(ied,0);
-			a_int jelem = m->gintfac(ied,1);
 
-			for(int ig = 0; ig < NGAUSS; ig++)      // iterate over gauss points
+			ldudx /= wsum;
+			ldudy /= wsum;
+			
+			for(int j = 0; j < m->gnfael(ielem); j++)
 			{
-				for(int i = 0; i < NVARS; i++)
-				{
-
-					ufl(ied,i) = u(ielem,i) 
-						+ ldudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
-						+ ldudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
-					ufr(ied,i) = u(jelem,i) 
-						+ ldudx(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) 
-						+ ldudy(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
-				}
+				const a_int face = m->gelemface(ielem,j);
+				const a_int jelem = m->gesuel(ielem,j);
+				
+				if(ielem < jelem)
+					ufl(face,ivar) = u(ielem,ivar) 
+						+ ldudx*(gr[face](0,0)-(*ri)(ielem,0))
+						+ ldudy*(gr[face](0,1)-(*ri)(ielem,1));
+				else
+					ufr(face,ivar) = u(ielem,ivar) 
+						+ ldudx*(gr[face](0,0)-(*ri)(ielem,0))
+						+ ldudy*(gr[face](0,1)-(*ri)(ielem,1));
 			}
 		}
-		
-		// boundary faces
-#pragma omp for
-		for(a_int ied = 0; ied < m->gnbface(); ied++)
-		{
-			a_int ielem = m->gintfac(ied,0);
-
-			for(int ig = 0; ig < NGAUSS; ig++)
-			{
-				for(int i = 0; i < NVARS; i++)
-					ufl(ied,i) = u(ielem,i) 
-						+ ldudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
-						+ ldudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
-			}
-		}
-	} // end parallel region
+	}
 }
 
 MUSCLReconstruction::MUSCLReconstruction(const UMesh2dh* mesh,
@@ -217,7 +170,7 @@ MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh* mesh,
 void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		const amat::Array2d<a_real>& ug,
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -279,7 +232,7 @@ BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh* mesh,
 void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		const amat::Array2d<a_real>& ug, 
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -337,8 +290,9 @@ void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyna
 VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh, 
 		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r,
 		a_real k_param=2.0)
-	: SolutionReconstruction(mesh, r_centres, gauss_r), K(k_param)
+	: SolutionReconstruction(mesh, r_centres, gauss_r), K{k_param}
 {
+	std::cout << "  Venkatakrishnan Limiter: Constant K = " << K << std::endl;
 	// compute characteristic length, currently the maximum edge length, of all cells
 	clength.resize(m->gnelem());
 #pragma omp parallel for default(shared)
@@ -361,7 +315,7 @@ VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh,
 void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
 		const amat::Array2d<a_real>& ug, 
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr)
+		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
