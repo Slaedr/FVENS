@@ -123,7 +123,7 @@ public:
 	 * \param[in] isothermal_Temperature Wall temperature boundary value in Kelvin; this is
 	 *   divided by free-stream temperature in this routine and the non-dimensional value is stored
 	 * \param[in] isothermal_TangVel Tangential non-dimensional velocity at isothermal boundaries
-	 * \param[in] invflux The inviscid flux to use - VANLEER, HLL, HLLC
+	 * \param[in] invflux The inviscid flux to use in the residual
 	 * \param[in] jacflux The inviscid flux to use for computing the first-order Jacobian
 	 * \param[in] reconst The method used for gradient reconstruction 
 	 *   - NONE, GREENGAUSS, LEASTSQUARES
@@ -135,7 +135,7 @@ public:
 		const bool compute_viscous, const bool useConstVisc,
 		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker, 
 		const int slip_marker, const int farfield_marker, const int inflowoutflow_marker,
-		const int extrap_marker,
+		const int extrap_marker, const int periodic_marker,
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel, 
 		const a_real adiabisobaric_Temperature, const a_real adiabisobaric_TangVel, 
 		const a_real adiabisobaric_Pressure,
@@ -165,7 +165,9 @@ public:
 #else
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, 
 	/// and lower and upper blocks for each face
-	/** A is not zeroed before use.
+	/** Periodic boundary conditions are not linearized, and as such,
+	 * implicit solution of problems with periodic boundaries should not be attempted.
+	 * Also, A is not zeroed before use.
 	 */
 	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) const;
 #endif
@@ -210,7 +212,7 @@ protected:
 	const InviscidFlux *const jflux;
 
 	/// Gradient computation context
-	const GradientComputation *const gradcomp;
+	const GradientScheme *const gradcomp;
 
 	/// Reconstruction context
 	const SolutionReconstruction *const lim;
@@ -223,6 +225,7 @@ protected:
 	const int farfield_id;                      ///< Boundary marker for farfield
 	const int inflowoutflow_id;			        ///< Boundary marker for inflow/outflow
 	const int extrap_id;                        ///< Marker for extrapolation boundary
+	const int periodic_id;                      ///< Marker for a set of periodic boundaries
 
 	const a_real isothermal_wall_temperature;       ///< Temperature imposed at isothermal wall
 	const a_real isothermal_wall_tangvel;           ///< Tangential velocity at isothermal wall
@@ -362,11 +365,15 @@ template <short nvars>
 class DiffusionMA : public Diffusion<nvars>
 {
 public:
-	DiffusionMA(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+	DiffusionMA(const UMesh2dh *const mesh,            ///< Mesh context
+			const a_real diffcoeff,                    ///< Diffusion coefficient 
+			const a_real bvalue,                       ///< Constant boundary value
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
-				> source, 
-			std::string reconst);
+				> source,                              ///< Function defining the source term
+			std::string grad_scheme                    ///< A string identifying the gradient
+			                                           ///< scheme to use
+			);
 	
 	void compute_residual(const MVector& u, MVector& __restrict residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const;
@@ -394,7 +401,7 @@ protected:
 	using Diffusion<nvars>::compute_boundary_state;
 	using Diffusion<nvars>::compute_boundary_states;
 	
-	GradientComputation* gradcomp;
+	const GradientScheme *const gradcomp;
 };
 
 /// Creates a first-order `thin-layer' Laplacian smoothing matrix

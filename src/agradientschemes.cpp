@@ -10,18 +10,18 @@
 namespace acfd
 {
 
-GradientComputation::GradientComputation(const UMesh2dh *const mesh, 
+GradientScheme::GradientScheme(const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real> *const _rc)
 	: m(mesh), rc(_rc)
 { }
 
-GradientComputation::~GradientComputation()
+GradientScheme::~GradientScheme()
 { }
 
 template<short nvars>
 ZeroGradients<nvars>::ZeroGradients(const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real> *const _rc)
-	: GradientComputation(mesh, _rc)
+	: GradientScheme(mesh, _rc)
 { }
 
 template<short nvars>
@@ -44,7 +44,7 @@ void ZeroGradients<nvars>::compute_gradients(
 template<short nvars>
 GreenGaussGradients<nvars>::GreenGaussGradients(const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real> *const _rc)
-	: GradientComputation(mesh, _rc)
+	: GradientScheme(mesh, _rc)
 { }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
@@ -143,7 +143,7 @@ template<short nvars>
 WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 		const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real> *const _rc)
-	: GradientComputation(mesh, _rc)
+	: GradientScheme(mesh, _rc)
 { 
 	V.resize(m->gnelem());
 #pragma omp parallel for default(shared)

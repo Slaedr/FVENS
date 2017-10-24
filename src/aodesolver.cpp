@@ -3,9 +3,6 @@
  * Euler/Navier-Stokes equations.
  * @author Aditya Kashi
  * @date Feb 24, 2016
- *
- * Observation: Increasing the number of B-SGS sweeps part way into the simulation 
- * does not help convergence.
  */
 
 #include "aodesolver.hpp"
@@ -363,6 +360,120 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "
 		<< std::setw(10) << step
 		<< "\n";
+	outf.close();
+}
+
+TVDRKSolver::TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
+		const int temporal_order, const double cfl_num)
+	: UnsteadySolver(mesh, spatial, soln, temporal_order), cfl{cfl_num},
+	tvdcoeffs(initializeTVDRKCoeffs(temporal_order))
+{
+	dtm.setup(m->gnelem(), 1);
+}
+
+Matrix<a_real,Dynamic,Dynamic> TVDRKSolver::initializeTVDRKCoeffs(const int _order) 
+{
+	Matrix<a_real,Dynamic,Dynamic> tvdrk(_order,3);
+	if(_order == 1) {
+		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
+	}
+	else if(_order == 2) {
+		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
+		tvdrk(1,0) = 0.5;	tvdrk(1,1) = 0.5;	tvdrk(1,2) = 0.5;
+	}
+	else if(_order == 3)
+	{
+		tvdrk(0,0) = 1.0;      tvdrk(0,1) = 0.0;  tvdrk(0,2) = 1.0;
+		tvdrk(1,0) = 0.75;	    tvdrk(1,1) = 0.25; tvdrk(1,2) = 0.25;
+		tvdrk(2,0) = 0.3333333333333333; 
+		tvdrk(2,1) = 0.6666666666666667; 
+		tvdrk(2,2) = 0.6666666666666667;
+	}
+	else {
+		std::cout << "! TVDRKSolver: Temporal order " << _order  << " not available!\n";
+	}
+	return tvdrk;
+}
+
+template<short nvars>
+void TVDRKSolver<nvars>::solve(const a_real finaltime, const std::string logfile)
+{
+	int step = 0;
+	a_real time = 0;   //< Physical time elapsed
+	a_real dtmin;      //< Time step
+
+	// Stage solution vector
+	MVector ustage(m->gnelem(),nvars);
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(int ivar = 0; ivar < nvars; ivar++)
+			ustage(iel,ivar) = u(iel,ivar);
+	
+	struct timeval time1, time2;
+	gettimeofday(&time1, NULL);
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
+	while(time <= finaltime - A_SMALL_NUMBER)
+	{
+		for(int istage = 0; istage < order; istage++)
+		{
+#pragma omp parallel for simd default(shared)
+			for(a_int iel = 0; iel < m->gnelem(); iel++) {
+				for(short i = 0; i < nvars; i++)
+					residual(iel,i) = 0;
+			}
+
+			// update residual
+			eul->compute_residual(u, residual, true, dtm);
+
+			// update time step for the first stage of each time step
+			if(istage == 0)
+				dtmin = dtm.min();
+
+#pragma omp parallel for simd default(shared)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			{
+				for(short i = 0; i < nvars; i++)
+				{
+					//u(iel,i) -= cfl*dtmin * 1.0/m->garea(iel)*residual(iel,i);
+					ustage(iel,i) = tvdcoeffs(istage,0)*u(iel,i)
+						          + tvdcoeffs(istage,1)*ustage(iel,i)
+								  - tvdcoeffs(istage,2) * dtmin*cfl/m->garea(iel)*residual(iel,i);
+				}
+			}
+		}
+
+#pragma omp parallel for simd default(shared)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(int ivar = 0; ivar < nvars; ivar++)
+				u(iel,ivar) = ustage(iel,ivar);
+
+
+		if(step % 50 == 0)
+			std::cout << "  TVDRKSolver: solve(): Step " << step 
+				<< ", time " << time << std::endl;
+
+		step++;
+		time += dtmin;
+	}
+	
+	gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+
+	std::cout << " TVDRKSolver: solve(): Done, steps = " << step << "\n\n";
+	std::cout << " TVDRKSolver: solve(): Time taken by ODE solver:\n";
+	std::cout << "                                   CPU time = " << cputime 
+		<< ", wall time = " << walltime << std::endl << std::endl;
+
+	// append data to log file
+	int numthreads = 0;
+#ifdef _OPENMP
+	numthreads = omp_get_max_threads();
+#endif
+	std::ofstream outf; outf.open(logfile, std::ofstream::app);
+	outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
 	outf.close();
 }
 

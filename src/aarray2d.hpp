@@ -373,10 +373,10 @@ public:
 
 	T min() const
 	{
-		T max = elems[0];
+		T min = elems[0];
 		for(a_int i = 0; i < size; i++)
-			if(elems[i] < max) max = elems[i];
-		return max;
+			if(elems[i] < min) min = elems[i];
+		return min;
 	}
 
 	T average() const

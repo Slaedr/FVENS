@@ -1326,6 +1326,50 @@ void UMesh2dh::compute_face_data()
 #endif
 }
 
+// This function is only valid in 2D
+void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
+{
+	if(bcm < 0) {
+		std::cout << " UMesh2dh: No periodic boundary specified.\n";
+		return;
+	}
+
+	periodicmap.resize(nbface,-1);
+	
+	const int ax = 1-axis;  //< The axis along which we'll compare the faces' locations
+
+	/* Whenever we come across a face that's not been processed, we'll set mapped faces
+	 * for that face and for the face that it maps to at the same time.
+	 */
+	for(a_int iface = 0; iface < nbface; iface++)
+	{
+		if(intfacbtags(iface,0) == bcm) 
+		{
+			if(periodicmap[iface] > -1)
+				continue;
+
+			// get relevant coordinate of face centre
+			const a_real ci = (coords(intfac(iface,2),ax)+coords(intfac(iface,3),ax))/2.0;
+
+			// Faces before iface have already been paired
+			for(a_int jface = iface+1; jface < nbface; jface++)
+			{
+				if(intfacbtags(jface,0) == bcm) 
+				{
+					const a_real cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
+					
+					if(std::fabs(ci-cj) <= ZERO_TOL)
+					{
+						periodicmap[iface] = jface;
+						periodicmap[jface] = iface;
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
 void UMesh2dh::compute_boundary_maps()
 {
 	// iterate over bfaces and find corresponding intfac face for each bface

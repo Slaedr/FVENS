@@ -40,11 +40,11 @@ const InviscidFlux* create_const_inviscidflux(const std::string& type,
 		const IdealGasPhysics *const p) ;
 
 /// Returns a newly-created gradient computation context
-GradientComputation* create_mutable_gradientscheme(const std::string& type, 
+GradientScheme* create_mutable_gradientscheme(const std::string& type, 
 		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) ;
 
 /// Returns a newly-created immutable gradient computation context
-const GradientComputation* create_const_gradientscheme(const std::string& type, 
+const GradientScheme* create_const_gradientscheme(const std::string& type, 
 		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) ;
 
 SolutionReconstruction* create_mutable_reconstruction(const std::string& type,

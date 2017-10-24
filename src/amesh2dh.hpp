@@ -60,7 +60,15 @@ public:
 	a_int gelemface(a_int ielem, int inode) const { return elemface.get(ielem,inode); }
 
 	/// Returns an entry from the face data structure [computed](\ref compute_topological) by us
-	a_int gintfac(a_int face, int i) const { return intfac.get(face,i); }
+	/** \param face Index of the face of which data is needed 
+	 *   (NOT the same as the index in \ref bface, this is the index in \ref intfac)
+	 * \param i A number which specifies what information is returned:
+	 *  - 0: Left cell index
+	 *  - 1: Right cell index (or for a boundary face, \ref nelem + face index)
+	 *  - 2: Global index of `first' or `starting' node of the face
+	 *  - 3: Global index of the `second' or `ending' node of the face
+	 */
+	a_int gintfac(const a_int face, const int i) const { return intfac.get(face,i); }
 
 	/// Returns the boundary marker of a face indexed by \ref intfac.
 	int gintfacbtags(a_int face, int i) const { return intfacbtags.get(face,i); }
@@ -70,6 +78,9 @@ public:
 
 	/// Returns the components of the unit normal or the length of a face \sa gallfa
 	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
+
+	/// Returns paired faces in case of periodic boundaries \sa periodicmap
+	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
 
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
@@ -164,6 +175,16 @@ public:
 	 */
 	void compute_face_data();
 
+	/// Generates the correspondance between the faces of two periodic boundaries
+	/** \sa periodicmap
+	 * \note We assume that there exists precisely one matching face for each face on the
+	 *  periodic boundaries, such that their face-centres are aligned.
+	 * \param[in] bcm Marker of one set of periodic boundaries
+	 * \param[in] axis The index of the coordinate which is different for the two boundaries
+	 *   0 for x, 1 for y.
+	 */
+	void compute_periodic_map(const int bcm, const int axis);
+
 	/// Iterates over bfaces and finds the corresponding intfac face for each bface
 	/** Stores this data in the boundary label maps [ifbmap](@ref ifbmap) and [bifmap](@ref bifmap).
 	 */
@@ -236,13 +257,21 @@ private:
 	amat::Array2d<a_int > esuel;
 	
 	/// Face data structure - contains info about elements and nodes associated with a face
+	/** For details, see \ref gintfac, the accessor function for intfac.
+	 */
 	amat::Array2d<a_int > intfac;
 	
-	/// Holds boundary tags (markers) corresponding to intfac
+	/// Holds boundary tags (markers) corresponding to intfac \sa gintfac
 	amat::Array2d<int> intfacbtags;
 	
 	/// Holds face numbers of faces making up an element
 	amat::Array2d<a_int> elemface;
+
+	/// Maps each face of periodic boundaries to the face that it is identified with
+	/** Stores -1 for faces that are not on a periodic bounary.
+	 * Stored according to \ref intfac indices.
+	 */
+	std::vector<a_real> periodicmap;
 	
 	/** \brief Boundary points list
 	 * 

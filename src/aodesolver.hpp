@@ -179,5 +179,79 @@ public:
 	void solve(std::string logfile);
 };
 
+/// Base class for unsteady simulations
+/** Note that the unknowns u and residuals R correspond to the following ODE:
+ * \f$ \frac{du}{dt} + R(u) = 0 \f$. Note that the residual is on the LHS.
+ */
+template <short nvars>
+class UnsteadySolver
+{
+protected:
+	const UMesh2dh *const m;
+	const Spatial<nvars> * eul;
+	MVector& u;
+	MVector residual;
+	const int order;               ///< Deisgn order of accuracy in time
+	double cputime;
+	double walltime;
+
+public:
+	/** 
+	 * \param[in] mesh Mesh context
+	 * \param[in] spatial Spatial discretization context
+	 * \param[in] soln The solution vector to use and update
+	 * \param[in] temporal_order Design order of accuracy in time
+	 */
+	UnsteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
+			const int temporal_order)
+		: m(mesh), eul(spatial), u(soln), order{temporal_order}, cputime{0.0}, walltime{0.0}
+	{ }
+
+	const MVector& residuals() const {
+		return residual;
+	}
+
+	/// Get timing data
+	void getRunTimes(double& wall_time, double& cpu_time) const {
+		wall_time = walltime; cpu_time = cputime;
+	}
+
+	/// Solve the ODE
+	/**
+	 */
+	virtual void solve(const a_real time, const std::string logfile) = 0;
+
+	virtual ~UnsteadySolver() {}
+};
+
+/// Total variation diminishing Runge-Kutta solvers upto order 3
+template<short nvars>
+class TVDRKSolver
+{
+public:
+	TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
+			const int temporal_order, const double cfl_num);
+	
+	void solve(const a_real finaltime, const std::string logfile);
+
+protected:
+	using UnsteadySolver<nvars>::m;
+	using UnsteadySolver<nvars>::eul;
+	using UnsteadySolver<nvars>::residual;
+	using UnsteadySolver<nvars>::u;
+	using UnsteadySolver<nvars>::order;
+	using UnsteadySolver<nvars>::cputime;
+	using UnsteadySolver<nvars>::walltime;
+
+	const double cfl;
+
+	/// Coefficients of TVD schemes
+	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
+
+private:
+	amat::Array2d<a_real> dtm;
+};
+	
+
 }	// end namespace
 #endif

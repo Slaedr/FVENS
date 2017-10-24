@@ -76,21 +76,21 @@ const InviscidFlux* create_const_inviscidflux(
 	return const_cast<const InviscidFlux*>(create_mutable_inviscidflux(type, p));
 }
 
-GradientComputation* create_mutable_gradientscheme(
+GradientScheme* create_mutable_gradientscheme(
 		const std::string& type, 
 		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) 
 {
-	GradientComputation * gradcomp = nullptr;
+	GradientScheme * gradcomp = nullptr;
 
 	if(type == "LEASTSQUARES")
 	{
 		gradcomp = new WeightedLeastSquaresGradients<NVARS>(m, rc);
-		std::cout << " GradientSchemeFactory: Weighted least-squares typeruction will be used.\n";
+		std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
 	}
 	else if(type == "GREENGAUSS")
 	{
 		gradcomp = new GreenGaussGradients<NVARS>(m, rc);
-		std::cout << " GradientSchemeFactory: Green-Gauss typeruction will be used." << std::endl;
+		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used." << std::endl;
 	}
 	else {
 		gradcomp = new ZeroGradients<NVARS>(m, rc);
@@ -100,7 +100,7 @@ GradientComputation* create_mutable_gradientscheme(
 	return gradcomp;
 }
 
-const GradientComputation* create_const_gradientscheme(
+const GradientScheme* create_const_gradientscheme(
 		const std::string& type, 
 		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) 
 {

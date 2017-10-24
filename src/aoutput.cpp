@@ -82,7 +82,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		a_real totallen = 0;		// total area of the surface with this boundary marker
 		a_real Cdf=0, Cdp=0, Cl=0;
 
-		fout << "x \t y \t Cp  \t Cf \n";
+		fout << "#  x \t y \t Cp  \t Cf \n";
 
 		// iterate over faces having this boundary marker
 		for(a_int iface = 0; iface < m->gnbface(); iface++)

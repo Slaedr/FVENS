@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
 	control >> dum; control >> farfield_marker;
 	control >> dum; control >> inout_marker;
 	control >> dum; control >> extrap_marker;
+	control >> dum; control >> periodic_marker;
 	if(viscsim) {
 		std::getline(control,dum); std::getline(control,dum); control >> isothermalwall_marker;
 		std::getline(control,dum); std::getline(control,dum); control >> twalltemp >> twallvel;
@@ -174,6 +175,7 @@ int main(int argc, char* argv[])
 	m.compute_areas();
 	m.compute_jacobians();
 	m.compute_face_data();
+	m.compute_periodic_map();
 
 	std::cout << "\n***\n";
 
@@ -182,13 +184,13 @@ int main(int argc, char* argv[])
 	std::cout << "Setting up main spatial scheme.\n";
 	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-			slipwall_marker, farfield_marker, inout_marker, extrap_marker,
+			slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
 	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-			slipwall_marker, farfield_marker, inout_marker, extrap_marker,
+			slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, "NONE", "NONE",false,true);
 	

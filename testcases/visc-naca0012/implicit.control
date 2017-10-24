@@ -34,6 +34,8 @@ NO
 4
 ---Extrapolation-marker
 -1
+---Periodic-marker
+-1
 ---Isothermal-wall-Marker
 		-1
 ---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)

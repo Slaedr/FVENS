@@ -25,7 +25,9 @@ EULER
 ---Inflow-outflow-marker
 -1
 ---Extrapolation-marker
-0
+-1
+---Periodic-marker
+-1
 ---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
 1
 ---List-of-wall-boundaries-at-which-surface-output-is-needed

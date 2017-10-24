@@ -22,11 +22,11 @@ public:
 	/// Sets the physics context for the inviscid flux scheme
 	InviscidFlux(const IdealGasPhysics *const physcs);
 
-	/** Computes flux across a face with
+	/** Computes flux across a face
 	 * \param[in] uleft is the vector of left states for the face
 	 * \param[in] uright is the vector of right states for the face
 	 * \param[in] n is the normal vector to the face
-	 * \param[in|out] flux contains the computed flux
+	 * \param[in,out] flux contains the computed flux
 	 */
 	virtual void get_flux(const a_real *const uleft, const a_real *const uright, 
 			const a_real* const n, 

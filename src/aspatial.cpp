@@ -199,7 +199,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const a_real a, const bool compute_viscous, const bool useConstVisc,
 		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker,
 		const int slip_marker, const int farfield_marker, const int inoutflow_marker, 
-		const int extrap_marker,
+		const int extrap_marker, const int periodic_marker,
 		const a_real isothermal_Temperature, const a_real isothermal_TangVel,
 		const a_real adiabatic_TangVel,
 		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
@@ -220,7 +220,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
 	isothermalbaric_wall_id{isothermalbaric_marker},
 	slip_wall_id{slip_marker}, farfield_id{farfield_marker}, inflowoutflow_id{inoutflow_marker},
-	extrap_id{extrap_marker},
+	extrap_id{extrap_marker}, periodic_id{periodic_marker},
 	isothermal_wall_temperature{isothermal_Temperature/Tinf},
 	isothermal_wall_tangvel{isothermal_TangVel}, 
 	adiabatic_wall_tangvel{adiabatic_TangVel},
@@ -233,10 +233,11 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	std::cout << " FlowFV: Boundary markers:\n";
 	std::cout << "  Farfield " << farfield_id << ", inflow/outflow " << inflowoutflow_id
 		<< ", slip wall " << slip_wall_id;
-	std::cout << "  Extrapolation " << extrap_id << '\n';
+	std::cout << "  Extrapolation " << extrap_id << ", Periodic " << periodic_id '\n';
 	std::cout << "  Isothermal " << isothermal_wall_id;
 	std::cout << "  Adiabatic " << adiabatic_wall_id;
 	std::cout << "  Isothermal isobaric " << isothermalbaric_wall_id << '\n';
+	std::cout << " FlowFV: Adiabatic wall tangential velocity = " << adiabatic_wall_tangvel << '\n';
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
 
@@ -276,6 +277,12 @@ void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Arr
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
+	
+		if(m->gintfacbtags(ied,0) == periodic_id)
+		{
+			for(int i = 0; i < NVARS; i++)
+				bs(ied,i) = ins(m->gperiodicmap(ied), i);
+		}
 	}
 }
 
@@ -283,34 +290,35 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 {
 	const a_real nx = m->ggallfa(ied,0);
 	const a_real ny = m->ggallfa(ied,1);
+	const a_real n[NDIM] = {m->ggallfa(ied,0), m->ggallfa(ied,1)};
 
-	const a_real vni = (ins[1]*nx + ins[2]*ny)/ins[0];
+	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
 
 	if(m->gintfacbtags(ied,0) == slip_wall_id)
 	{
 		gs[0] = ins[0];
-		gs[1] = ins[1] - 2.0*vni*nx*ins[0];
-		gs[2] = ins[2] - 2.0*vni*ny*ins[0];
+		for(int i = 1; i < NDIM+1; i++)
+			gs[i] = ins[i] - 2.0*vni*n[i-1]*ins[0];
 		gs[3] = ins[3];
 	}
 
-	if(m->gintfacbtags(ied,0) == extrap_id)
+	else if(m->gintfacbtags(ied,0) == extrap_id)
 	{
 		gs[0] = ins[0];
-		gs[1] = ins[1];
-		gs[2] = ins[2];
+		for(int i = 1; i < NDIM+1; i++)
+			gs[i] = ins[i];
 		gs[3] = ins[3];
 	}
 
 	/** For the far-field BCs, ghost state values are always free-stream values.
 	 */
-	if(m->gintfacbtags(ied,0) == farfield_id)
+	else if(m->gintfacbtags(ied,0) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf(0,i);
 	}
 
-	if(computeViscous) 
+	else if(computeViscous) 
 	{
 		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
 		{
@@ -322,19 +330,16 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 
-		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
+		else if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
 		{
 			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
 			gs[0] = ins[0];
 			gs[1] =  2.0*tangMomentum*ny - ins[1];
 			gs[2] = -2.0*tangMomentum*nx - ins[2];
-			/*a_real Tins = physics.getTemperatureFromConserved(ins);
-			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], Tins};
-			gs[3] = physics.getEnergyFromPrimitive2(prim2state);*/
 			gs[3] = ins[3];
 		}
 
-		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
+		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
 			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
@@ -359,11 +364,11 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 */
-	if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
 	{
-		a_real ci = physics.getSoundSpeedFromConserved(ins);
-		a_real Mni = vni/ci;
-		a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
+		const a_real ci = physics.getSoundSpeedFromConserved(ins);
+		const a_real Mni = vni/ci;
+		const a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
 
 		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 		 * takes care of signal propagation at the boundary.
@@ -377,12 +382,14 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
 		 * are taken from the interior.
 		 */
-		else if(Mni <= 1)
+		else if(Mni < 1)
 		{
 			gs[0] = ins[0];
-			gs[1] = ins[1];
-			gs[2] = ins[2];
-			gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			for(int i = 1; i < NDIM+1; i++)
+				gs[i] = ins[i];
+			//gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			gs[NDIM+1] = physics.getEnergyFromPressure( pinf, ins[0],
+					dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
 		}
 		
 		// At supersonic outflow, everything is taken from the interior
@@ -432,7 +439,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 		dgs[3*NVARS+3] = 1.0;
 	}
 
-	if(m->gintfacbtags(ied,0) == extrap_id)
+	else if(m->gintfacbtags(ied,0) == extrap_id)
 	{
 		gs[0] = ins[0];
 		gs[1] = ins[1];
@@ -445,33 +452,14 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 	/* For the far-field BCs, ghost state values are always free-stream values.
 	 * Therefore the Jacobian is zero.
 	 */
-	if(m->gintfacbtags(ied,0) == farfield_id)
+	else if(m->gintfacbtags(ied,0) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf(0,i);
 	}
 
-	if(computeViscous) 
+	else if(computeViscous) 
 	{
-		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
-		{
-			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
-			gs[0] = ins[0];
-			dgs[0] = 1.0;
-
-			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			dgs[NVARS+0] = 2.0*isothermal_wall_tangvel*n[1];
-			dgs[NVARS+1] = -1.0;
-
-			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			dgs[2*NVARS+0] = -2.0*isothermal_wall_tangvel*n[0];
-			dgs[2*NVARS+2] = -1.0;
-
-			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
-			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
-			// TODO: Put in the last row of the Jacobian
-		}
-
 		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
 		{
 			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
@@ -490,7 +478,26 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 			dgs[3*NVARS+3] = 1.0;
 		}
 
-		if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
+		else if(m->gintfacbtags(ied,0) == isothermal_wall_id)
+		{
+			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			gs[0] = ins[0];
+			dgs[0] = 1.0;
+
+			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			dgs[NVARS+0] = 2.0*isothermal_wall_tangvel*n[1];
+			dgs[NVARS+1] = -1.0;
+
+			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
+			dgs[2*NVARS+0] = -2.0*isothermal_wall_tangvel*n[0];
+			dgs[2*NVARS+2] = -1.0;
+
+			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			// TODO: Put in the last row of the Jacobian
+		}
+
+		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
 			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
@@ -515,7 +522,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 */
-	if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
 	{
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
@@ -1334,7 +1341,7 @@ void FlowFV::compute_jacobian(const MVector& u,
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 
 		if(computeViscous) {
-			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), uface, &left(0,0), &right(0,0));
+			computeViscousFluxApproximateJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
@@ -1577,25 +1584,10 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, 
 		const a_real diffcoeff, const a_real bvalue,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
-		std::string reconst)
-	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf)
-{
-	std::cout << "  DiffusionMA: Selected reconstruction scheme is " << reconst << std::endl;
-	if(reconst == "LEASTSQUARES")
-	{
-		gradcomp = new WeightedLeastSquaresGradients<nvars>(m, &rc);
-		std::cout << "  DiffusionMA: Weighted least-squares reconstruction will be used.\n";
-	}
-	else if(reconst == "GREENGAUSS")
-	{
-		gradcomp = new GreenGaussGradients<nvars>(m, &rc);
-		std::cout << "  DiffusionMA: Green-Gauss reconstruction will be used." << std::endl;
-	}
-	else /*if(reconst == "NONE")*/ {
-		gradcomp = new ZeroGradients<nvars>(m, &rc);
-		std::cout << "  DiffusionMA: No reconstruction; first order solution." << std::endl;
-	}
-}
+		std::string grad_scheme)
+	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
+	  gradcomp {create_const_gradientscheme(grad_scheme, m, &rc)}
+{ }
 
 template<short nvars>
 DiffusionMA<nvars>::~DiffusionMA()

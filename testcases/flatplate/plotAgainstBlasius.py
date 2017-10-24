@@ -10,12 +10,12 @@ from matplotlib import pyplot as plt
 
 # User input
 
-Reinf = 10000.0
-Pr = 0.712
+Reinf = 8.7e5
+#Pr = 0.708
 rho = 1.2
 l = 1.0
-Minf = 0.4
-Tinf = 297.62
+Minf = 0.2
+Tinf = 290.19
 
 g = 1.4
 R = 287.06
@@ -63,8 +63,10 @@ plt.show()
 # Blasius solution. NOTE: we assume the plate starts at x = 0
 blcf = 0.664/np.sqrt(vinf*cf[:,0]/nu)
 
-plt.plot(np.log10(cf[:,0]),np.log10(cf[:,3]), symbs[0], label="Computed")
-plt.plot(np.log10(cf[:,0]),np.log10(blcf), symbs[1], label="Blasius")
+#plt.plot(np.log10(cf[:,0]),np.log10(cf[:,3]), symbs[0], label="Computed")
+#plt.plot(np.log10(cf[:,0]),np.log10(blcf), symbs[1], label="Blasius")
+plt.plot(cf[:,0],cf[:,3], symbs[0], label="Computed")
+plt.plot(cf[:,0],blcf, symbs[1], label="Blasius")
 plt.title("Skin friction coefficient")
 plt.xlabel("log x")
 plt.ylabel("log $C_f$")

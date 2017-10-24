@@ -21,7 +21,7 @@
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353
 
-/// tolerance to check if something is zero, ie, macine epsilon
+/// tolerance to check if something is zero, ie, machine epsilon
 #define ZERO_TOL 2.2e-16
 
 /// A small number likely smaller than most convergence tolerances
@@ -33,6 +33,7 @@
 /// Number of coupled variables for compressible flow computations
 #define NVARS 4
 
+/// Number of quadrature points in each face
 #define NGAUSS 1
 
 #ifndef MESHDATA_DOUBLE_PRECISION
