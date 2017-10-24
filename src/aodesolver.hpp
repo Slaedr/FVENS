@@ -226,7 +226,7 @@ public:
 
 /// Total variation diminishing Runge-Kutta solvers upto order 3
 template<short nvars>
-class TVDRKSolver
+class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
 	TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
@@ -247,6 +247,9 @@ protected:
 
 	/// Coefficients of TVD schemes
 	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
+
+	/// Sets coefficients of TVD RK schemes upto order 3
+	Matrix<a_real,Dynamic,Dynamic> initializeTVDRKCoeffs(const int _order);
 
 private:
 	amat::Array2d<a_real> dtm;

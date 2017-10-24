@@ -233,7 +233,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	std::cout << " FlowFV: Boundary markers:\n";
 	std::cout << "  Farfield " << farfield_id << ", inflow/outflow " << inflowoutflow_id
 		<< ", slip wall " << slip_wall_id;
-	std::cout << "  Extrapolation " << extrap_id << ", Periodic " << periodic_id '\n';
+	std::cout << "  Extrapolation " << extrap_id << ", Periodic " << periodic_id << '\n';
 	std::cout << "  Isothermal " << isothermal_wall_id;
 	std::cout << "  Adiabatic " << adiabatic_wall_id;
 	std::cout << "  Isothermal isobaric " << isothermalbaric_wall_id << '\n';

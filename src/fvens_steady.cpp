@@ -29,7 +29,8 @@ int main(int argc, char* argv[])
 	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, 
 		firstmaxiter, firstrampstart, firstrampend,
 		restart_vecs, farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker=-1,
-		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, extrap_marker=-1;
+		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, 
+		extrap_marker, periodic_marker, periodic_axis;
 	int out_nwalls, out_nothers;
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
@@ -69,6 +70,9 @@ int main(int argc, char* argv[])
 	control >> dum; control >> inout_marker;
 	control >> dum; control >> extrap_marker;
 	control >> dum; control >> periodic_marker;
+	if(periodic_marker >= 0) {
+		control >> dum; control >> periodic_axis;
+	}
 	if(viscsim) {
 		std::getline(control,dum); std::getline(control,dum); control >> isothermalwall_marker;
 		std::getline(control,dum); std::getline(control,dum); control >> twalltemp >> twallvel;
@@ -93,10 +97,14 @@ int main(int argc, char* argv[])
 		for(int i = 0; i < out_nothers; i++)
 			control >> lothers[i];
 	}
-	control >> dum; control >> surfnamepref;
+	if(out_nothers > 0 || out_nwalls > 0) {
+		control >> dum; 
+		control >> surfnamepref;
+	}
 	control >> dum; control >> isVolOutReq;
 	if(isVolOutReq == "YES") {
-		control >> dum; control >> volnamepref;
+		control >> dum; 
+		control >> volnamepref;
 	}
 
 	control >> dum;
@@ -175,7 +183,7 @@ int main(int argc, char* argv[])
 	m.compute_areas();
 	m.compute_jacobians();
 	m.compute_face_data();
-	m.compute_periodic_map();
+	m.compute_periodic_map(periodic_marker, periodic_axis);
 
 	std::cout << "\n***\n";
 

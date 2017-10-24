@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project (fvens)
 
-set (CMAKE_CXX_FLAGS "-std=c++14")
+set (CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 set (CMAKE_CXX_FLAGS_DEBUG " ")
 set (CMAKE_CXX_FLAGS_RELEASE " ")
 
@@ -78,8 +78,8 @@ endif()
 
 # flags and stuff
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -ggdb -DDEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -UDEBUG -DNDEBUG -Wall")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb -DDEBUG=1")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -UDEBUG -DNDEBUG")
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS "Debug mode")
@@ -122,3 +122,5 @@ else()
 	message(STATUS "ctags not found! Tags will not be generated.")
 endif(CTAGS_PATH)
 
+# Tests
+add_subdirectory(tests)

@@ -82,6 +82,13 @@ public:
 	/// Returns paired faces in case of periodic boundaries \sa periodicmap
 	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
 
+	/// Get \ref bface index of a face from its \ref intfac index
+	a_int gbifmap(const a_int iface) const { return bifmap(iface); }
+	
+	/// Get \ref intfac index of a face from its \ref bface index
+	a_int gifbmap(const a_int iface) const { return ifbmap(iface); }
+
+	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
 	a_int gnpoin() const { return npoin; }
@@ -179,14 +186,18 @@ public:
 	/** \sa periodicmap
 	 * \note We assume that there exists precisely one matching face for each face on the
 	 *  periodic boundaries, such that their face-centres are aligned.
+	 *
+	 * \warning Requires \ref compute_topological and \ref compute_face_data to have been called
+	 * beforehand, because \ref intfacbtags is needed.
+	 *
 	 * \param[in] bcm Marker of one set of periodic boundaries
 	 * \param[in] axis The index of the coordinate which is different for the two boundaries
-	 *   0 for x, 1 for y.
+	 *   0 for x, 1 for y. It's the axis along which the geometry is periodic.
 	 */
 	void compute_periodic_map(const int bcm, const int axis);
 
 	/// Iterates over bfaces and finds the corresponding intfac face for each bface
-	/** Stores this data in the boundary label maps [ifbmap](@ref ifbmap) and [bifmap](@ref bifmap).
+	/** Stores this data in the boundary label maps \ref ifbmap and \ref bifmap.
 	 */
 	void compute_boundary_maps();
 	
@@ -273,6 +284,18 @@ private:
 	 */
 	std::vector<a_real> periodicmap;
 	
+	/// Relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
+	/** Computed in \ref compute_boundary_maps.
+	 */
+	amat::Array2d<int> bifmap;
+	
+	/// Relates boundary faces in bface with intfac, ie, ifbmap(bface no.) = intfac no.
+	/** Computed in \ref compute_boundary_maps.
+	 */
+	amat::Array2d<int> ifbmap;
+	
+	bool isBoundaryMaps;			///< Specifies whether bface-intfac maps have been created
+	
 	/** \brief Boundary points list
 	 * 
 	 * bpoints contains: bpoints(0) = global point number, 
@@ -284,11 +307,6 @@ private:
 	amat::Array2d<int > bpointsb;
 	/// Stores boundary-points numbers (defined by bpointsb) of the two points making up a bface
 	amat::Array2d<int > bfacebp;
-	/// Relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
-	amat::Array2d<int > bifmap;
-	/// Relates boundary faces in bface with intfac, ie, ifbmap(bface no.) = intfac no.
-	amat::Array2d<int > ifbmap;
-	bool isBoundaryMaps;			///< Specifies whether bface-intfac maps have been created
 	/// Flag indicating whether space has been allocated for jacobians
 	bool alloc_jacobians;			
 	amat::Array2d<a_real> jacobians;	///< Contains jacobians of each (linear triangular) element

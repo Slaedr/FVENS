@@ -1333,6 +1333,10 @@ void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
 		std::cout << " UMesh2dh: No periodic boundary specified.\n";
 		return;
 	}
+	if(axis < 0) {
+		std::cout << " UMesh2dh: No periodic axis specified.\n";
+		return;
+	}
 
 	periodicmap.resize(nbface,-1);
 	
@@ -1358,7 +1362,8 @@ void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
 				{
 					const a_real cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
 					
-					if(std::fabs(ci-cj) <= ZERO_TOL)
+					// 1e-11 is seemingly the best tolerance Gmsh can offer
+					if(std::fabs(ci-cj) <= 1e-11)
 					{
 						periodicmap[iface] = jface;
 						periodicmap[jface] = iface;

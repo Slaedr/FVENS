@@ -1,8 +1,0 @@
--input-file
-../data/feflo.domn.bump.processed
--input-format
-domn
--output-file
-../data/bumpchannel.msh
--output-format
-msh

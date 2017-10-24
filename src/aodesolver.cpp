@@ -363,15 +363,17 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 	outf.close();
 }
 
-TVDRKSolver::TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
-		const int temporal_order, const double cfl_num)
-	: UnsteadySolver(mesh, spatial, soln, temporal_order), cfl{cfl_num},
+template <short nvars>
+TVDRKSolver<nvars>::TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, 
+		MVector& soln, const int temporal_order, const double cfl_num)
+	: UnsteadySolver<nvars>(mesh, spatial, soln, temporal_order), cfl{cfl_num},
 	tvdcoeffs(initializeTVDRKCoeffs(temporal_order))
 {
 	dtm.setup(m->gnelem(), 1);
 }
 
-Matrix<a_real,Dynamic,Dynamic> TVDRKSolver::initializeTVDRKCoeffs(const int _order) 
+template <short nvars>
+Matrix<a_real,Dynamic,Dynamic> TVDRKSolver<nvars>::initializeTVDRKCoeffs(const int _order) 
 {
 	Matrix<a_real,Dynamic,Dynamic> tvdrk(_order,3);
 	if(_order == 1) {
