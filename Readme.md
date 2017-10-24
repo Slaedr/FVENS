@@ -46,7 +46,7 @@ Examples are present in the various test cases' directories. Note that the locat
 
 Browsing the code
 -----------------
-A tags file is built when the code is built (if ctags is available), which makes navigation from Vim easier. This  Using tags in Vim is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags). Emacs users can modify the CMakeLists rule to use etags instead.
+A tags file is built when the code is built (if ctags is available), which makes navigation in Vim convenient. Using tags in Vim is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags).
 
 ---
 
