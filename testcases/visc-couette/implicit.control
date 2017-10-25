@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-couette/grids/struct1.msh
+../testcases/visc-couette/grids/struct0.msh
 ---Output-file
 ../data/couetteq.vtu
 ---Log-file-for-runtimes

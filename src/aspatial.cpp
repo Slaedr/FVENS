@@ -211,7 +211,9 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const std::string grad_scheme, const std::string limiter,
 		const bool order2, const bool reconstructPrim)
 	: 
-	Spatial<NVARS>(mesh), physics(g, Minf, Tinf, Reinf, Pr), 
+	Spatial<NVARS>(mesh), 
+	physics(g, Minf, Tinf, Reinf, Pr), 
+	uinf{physics.compute_freestream_state(a)},
 	computeViscous{compute_viscous}, constVisc(useConstVisc),
 
 	inviflux {create_const_inviscidflux(invflux, &physics)}, 
@@ -243,14 +245,6 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	std::cout << " FlowFV: Adiabatic wall tangential velocity = " << adiabatic_wall_tangvel << '\n';
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
-
-	// Set farfield: note that reference density and reference velocity are the values at infinity
-
-	uinf.resize(1, NVARS);
-	uinf(0,0) = 1.0;
-	uinf(0,1) = cos(a);
-	uinf(0,2) = sin(a);
-	uinf(0,3) = physics.getEnergyFromPressure(physics.getFreestreamPressure(),1.0,1.0);
 }
 
 FlowFV::~FlowFV()
@@ -266,7 +260,7 @@ void FlowFV::initializeUnknowns(MVector& u)
 	//initial values are equal to boundary values
 	for(a_int i = 0; i < m->gnelem(); i++)
 		for(short j = 0; j < NVARS; j++)
-			u(i,j) = uinf(0,j);
+			u(i,j) = uinf[j];
 
 #ifdef DEBUG
 	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
@@ -318,7 +312,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	else if(m->gintfacbtags(ied,0) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
-			gs[i] = uinf(0,i);
+			gs[i] = uinf[i];
 	}
 
 	else if(computeViscous) 
@@ -338,8 +332,6 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			gs[0] = ins[0];
 			gs[1] =  2.0*tangMomentum*ny - ins[1];
 			gs[2] = -2.0*tangMomentum*nx - ins[2];
-			/*a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
-			gs[3] = physics.getEnergyFromPrimitive2(prim2state);*/
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
 			gs[3] = physics.getEnergyFromTemperature(isothermal_wall_temperature, ins[0], vmag2);
 		}
@@ -375,7 +367,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	{
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
-		const a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
+		const a_real pinf = physics.getPressureFromConserved(&uinf[0]);
 
 		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 		 * takes care of signal propagation at the boundary.
@@ -383,7 +375,7 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		if(Mni <= 0)
 		{
 			for(short i = 0; i < NVARS; i++)
-				gs[i] = uinf(0,i);
+				gs[i] = uinf[i];
 		}
 
 		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
@@ -462,7 +454,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 	else if(m->gintfacbtags(ied,0) == farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
-			gs[i] = uinf(0,i);
+			gs[i] = uinf[i];
 	}
 
 	else if(computeViscous) 
@@ -546,7 +538,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
 		
-		const a_real pinf = physics.getPressureFromConserved(&uinf(0,0));
+		const a_real pinf = physics.getPressureFromConserved(&uinf[0]);
 
 		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 		 * takes care of signal propagation at the boundary.
@@ -554,7 +546,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 		if(Mni <= 0)
 		{
 			for(short i = 0; i < NVARS; i++)
-				gs[i] = uinf(0,i);
+				gs[i] = uinf[i];
 		}
 
 		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
@@ -1506,7 +1498,7 @@ void FlowFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars,
 
 a_real FlowFV::compute_entropy_cell(const MVector& u)
 {
-	a_real sinf = physics.getEntropyFromConserved(&uinf(0,0));
+	a_real sinf = physics.getEntropyFromConserved(&uinf[0]);
 
 	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;

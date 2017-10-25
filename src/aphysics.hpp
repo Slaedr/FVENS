@@ -66,6 +66,11 @@ public:
 	IdealGasPhysics(const a_real _g, const a_real M_inf, 
 			const a_real T_inf, const a_real Re_inf, const a_real _Pr);
 
+	/// Returns an array containing the non-dimensional free-stream state
+	/** \param aoa The angle of attack in radians
+	 */
+	const std::array<a_real,NVARS> compute_freestream_state(const a_real aoa) const;
+
 	/// Computes flux in a given direction efficiently using specific data
 	/** Note that this function is independent of what kind of gas it is. 
 	 * \param[in] uc Vector of conserved variables

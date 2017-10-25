@@ -6,6 +6,8 @@
 #ifndef ASPATIAL_H
 #define ASPATIAL_H 1
 
+#include <array>
+
 #include "aconstants.hpp"
 
 #include "aarray2d.hpp"
@@ -192,10 +194,10 @@ public:
 	a_real compute_entropy_cell(const MVector& u);
 
 protected:
-	amat::Array2d<a_real> uinf;				///< Free-stream/reference condition
-
 	/// Analytical flux vector computation
 	const IdealGasPhysics physics;
+	
+	const std::array<a_real,NVARS> uinf;                    ///< Free-stream/reference condition
 
 	/// If true, compute Navier Stokes fluxes, else only Euler
 	const bool computeViscous;

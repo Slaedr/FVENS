@@ -16,6 +16,17 @@ void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, con
 	getDirectionalFlux(u, n, vn, p, flux);
 }
 
+const std::array<a_real,NVARS> IdealGasPhysics::compute_freestream_state(const a_real aoa) const
+{
+	std::array<a_real,NVARS> uinf;
+	// note that reference density and reference velocity are the values at infinity
+	uinf[0] = 1.0;
+	uinf[1] = cos(aoa);
+	uinf[2] = sin(aoa);
+	uinf[3] = getEnergyFromPressure(getFreestreamPressure(),1.0,1.0);
+	return uinf;
+}
+
 void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const u, 
 		const a_real* const n, 
 		a_real *const __restrict dfdu) const
