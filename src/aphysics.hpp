@@ -89,6 +89,12 @@ public:
 	void getJacobianDirectionalFluxWrtConserved(const a_real *const u, const a_real* const n, 
 			a_real *const __restrict dfdu) const;
 
+	/// Computes derivatives of the squared velocity magnitude w.r.t. conserved variables
+	/** \warning uc and dvmag2 must not point to the same memory locations.
+	 */
+	void getJacobianVmag2WrtConserved(const a_real *const uc, 
+		a_real *const __restrict dvmag2) const;
+
 	/// Outputs various quantities, especially needed by numerical fluxes
 	/** \param[in] uc Conserved variables
 	 * \param[in] n Normal vector
@@ -174,8 +180,22 @@ public:
 	/// Computes an entropy \f$ p/ \rho^\gamma \f$ from conserved variables
 	a_real getEntropyFromConserved(const a_real *const uc) const;
 
-	/// Compute energy from pressure, density and magnitude of velocity
+	/// Compute energy from pressure, density and square of magnitude of velocity
 	a_real getEnergyFromPressure(const a_real p, const a_real d, const a_real vmag2) const;
+	
+	/// Compute energy from temperature, density and square of magnitude of velocity
+	a_real getEnergyFromTemperature(const a_real T, const a_real d, const a_real vmag2) const;
+	
+	/// Computes derivatives of total energy from derivatives of temperature and |v|^2
+	/** Can compute the derivatives w.r.t. any variable-set as long as
+	 * the first variable is density. That variable set is decided by what variables the
+	 * T and |v|^2 were differentiated with respect to.
+	 * \param[in,out] drhoE The derivative of the total energy per unit volume is *added to* this
+	 */
+	void getJacobianEnergyFromJacobiansTemperatureVmag2(
+		const a_real T, const a_real d, const a_real vmag2,
+		const a_real *const dT, const a_real *const dvmag2,
+		a_real *const drhoE) const;
 
 	/// Computes total energy from primitive variabes
 	a_real getEnergyFromPrimitive(const a_real *const up) const;
@@ -343,6 +363,16 @@ void IdealGasPhysics::getVarsFromConserved(const a_real *const uc, const a_real 
 	H = (uc[3]+p)/uc[0];
 }
 
+// not restricted to anything
+inline
+void IdealGasPhysics::getJacobianVmag2WrtConserved(const a_real *const uc, 
+		a_real *const __restrict dvmag2) const
+{
+	dvmag2[0] += -2.0/(uc[0]*uc[0]*uc[0])*dimDotProduct(&uc[1],&uc[1]);
+	for(int i = 1; i < NDIM+1; i++)
+		dvmag2[i] += 2.0*uc[i]/(uc[0]*uc[0]);
+}
+
 inline
 a_real IdealGasPhysics::getPressure(const a_real internalenergy) const {
 	return (g-1.0)*internalenergy;
@@ -473,12 +503,38 @@ a_real IdealGasPhysics::getEnergyFromPressure(const a_real p, const a_real d, co
 	return p/(g-1.0) + 0.5*d*vmag2;
 }
 
+inline
+a_real IdealGasPhysics::getEnergyFromTemperature(const a_real T, const a_real d, 
+		const a_real vmag2) const
+{
+	return d * (T/(g*(g-1.0)*Minf*Minf) + 0.5*vmag2);
+}
+
+inline
+void IdealGasPhysics::getJacobianEnergyFromJacobiansTemperatureVmag2(
+		const a_real T, const a_real d, const a_real vmag2,
+		const a_real *const dT, const a_real *const dvmag2,
+		a_real *const de) const
+{
+	const a_real coeff = 1.0/(g*(g-1.0)*Minf*Minf);
+	de[0] += coeff * (T+d*dT[0]) + 0.5 * (vmag2+d*dvmag2[0]);
+	for(int i = 1; i < NVARS; i++)
+		de[i] += d * (coeff*dT[i] + 0.5*dvmag2[i]);
+}
+
 // independent of non-dimensionalization
 inline
 a_real IdealGasPhysics::getEnergyFromPrimitive(const a_real *const up) const
 {
-	//return up[NVARS-1]/(g-1.0) + 0.5*up[0]*dimDotProduct(&up[1],&up[1]);
 	return getEnergyFromPressure(up[NVARS-1], up[0], dimDotProduct(&up[1],&up[1]));
+}
+
+inline
+a_real IdealGasPhysics::getEnergyFromPrimitive2(const a_real *const upt) const
+{
+	/*const a_real p = upt[0]*upt[NDIM+1]/(g*Minf*Minf);
+	return p/(g-1.0) + 0.5*upt[0]*dimDotProduct(&upt[1],&upt[1]);*/
+	return getEnergyFromTemperature(upt[NVARS-1], upt[0], dimDotProduct(&upt[1],&upt[1]));
 }
 
 // independent of non-dimensionalization
@@ -609,13 +665,6 @@ void IdealGasPhysics::getGradPrimitive2FromConservedAndGradConserved(
 
 	// temperature
 	gup[NVARS-1] = getGradTemperature(uc[0],gup[0], p, dp);
-}
-
-inline
-a_real IdealGasPhysics::getEnergyFromPrimitive2(const a_real *const upt) const
-{
-	const a_real p = upt[0]*upt[NDIM+1]/(g*Minf*Minf);
-	return p/(g-1.0) + 0.5*upt[0]*dimDotProduct(&upt[1],&upt[1]);
 }
 
 inline

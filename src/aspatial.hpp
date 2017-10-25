@@ -227,7 +227,7 @@ protected:
 	const int extrap_id;                        ///< Marker for extrapolation boundary
 	const int periodic_id;                      ///< Marker for a set of periodic boundaries
 
-	const a_real isothermal_wall_temperature;       ///< Temperature imposed at isothermal wall
+	const a_real isothermal_wall_temperature;    ///< Non-dim temperature imposed at isothermal wall
 	const a_real isothermal_wall_tangvel;           ///< Tangential velocity at isothermal wall
 	const a_real adiabatic_wall_tangvel;            ///< Tangential velocity at adiabatic wall
 	const a_real isothermalbaric_wall_temperature;  ///< Temperature at isothermal isobaric wall
@@ -303,7 +303,7 @@ protected:
 			const a_real *const ul, const a_real *const ur,
 			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
 
-	/// Computes the spectral radius of the thin-layer Jacobian and multiplies it with the identity matrix
+	/// Computes the spectral radius of the thin-layer Jacobian times the identity matrix
 	/** The inputs are same as \ref computeViscousFluxJacobian.
 	 */
 	void computeViscousFluxApproximateJacobian(const a_int iface,

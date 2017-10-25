@@ -323,23 +323,25 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 	else if(computeViscous) 
 	{
-		if(m->gintfacbtags(ied,0) == isothermal_wall_id)
-		{
-			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
-			gs[0] = ins[0];
-			gs[1] =  2.0*tangMomentum*ny - ins[1];
-			gs[2] = -2.0*tangMomentum*nx - ins[2];
-			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
-			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
-		}
-
-		else if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
+		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
 		{
 			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
 			gs[0] = ins[0];
 			gs[1] =  2.0*tangMomentum*ny - ins[1];
 			gs[2] = -2.0*tangMomentum*nx - ins[2];
 			gs[3] = ins[3];
+		}
+
+		else if(m->gintfacbtags(ied,0) == isothermal_wall_id)
+		{
+			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			gs[0] = ins[0];
+			gs[1] =  2.0*tangMomentum*ny - ins[1];
+			gs[2] = -2.0*tangMomentum*nx - ins[2];
+			/*a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
+			gs[3] = physics.getEnergyFromPrimitive2(prim2state);*/
+			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
+			gs[3] = physics.getEnergyFromTemperature(isothermal_wall_temperature, ins[0], vmag2);
 		}
 
 		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
@@ -497,9 +499,21 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 			dgs[2*NVARS+0] = -2.0*isothermal_wall_tangvel*n[0];
 			dgs[2*NVARS+2] = -1.0;
 
-			a_real prim2state[] = {gs[0], gs[1]/gs[0], gs[2]/gs[0], isothermal_wall_temperature};
-			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
-			// TODO: Put in the last row of the Jacobian
+			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
+			gs[3] = physics.getEnergyFromTemperature(isothermal_wall_temperature, ins[0], vmag2);
+			
+			a_real dvmag2[NVARS]; // derivative of vmag2 w.r.t. ins
+			dvmag2[0] = -2.0*dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]*ins[0]);
+			for(int i = 1; i < NDIM+1; i++)
+				dvmag2[i] = 1.0/(ins[0]*ins[0]) * gs[i] * (-1.0);
+			dvmag2[NDIM+1] = 0;
+
+			// dummy dT for the next function call
+			a_real dT[NVARS];
+			for(int i = 0; i < NVARS; i++) dT[i] = 0;
+
+			physics.getJacobianEnergyFromJacobiansTemperatureVmag2(isothermal_wall_temperature,
+				ins[0], vmag2, dT, dvmag2, &dgs[3*NVARS]);
 		}
 
 		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
