@@ -1,4 +1,4 @@
-refine = 1;
+refine = 2;
 
 //+
 h = DefineNumber[ 0.2/refine, Name "Parameters/h" ];
@@ -9,7 +9,7 @@ length = DefineNumber[ 1.5, Name "Parameters/length" ];
 //+
 nx = DefineNumber[ 4*refine, Name "Parameters/nx" ];
 //+
-ny = DefineNumber[ 16*refine, Name "Parameters/ny" ];
+ny = DefineNumber[ 10*refine, Name "Parameters/ny" ];
 //+
 Point(1) = {0, 0, 0, h};
 //+
@@ -45,4 +45,4 @@ Transfinite Line {1, 3} = nx Using Progression 1;
 //+
 Transfinite Line {2, 4} = ny Using Progression 1;
 //+
-Transfinite Surface {1}; Recombine Surface{1};
+Transfinite Surface {1};

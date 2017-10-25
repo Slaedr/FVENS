@@ -92,27 +92,30 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_re
 template<short nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg)
 {
-	a_real x1, y1, x2, y2, xs, ys, xi, yi;
-
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
-		a_int ielem = m->gintfac(ied,0);
-		a_real nx = m->ggallfa(ied,0);
-		a_real ny = m->ggallfa(ied,1);
+		const a_int ielem = m->gintfac(ied,0);
+		const a_real nx = m->ggallfa(ied,0);
+		const a_real ny = m->ggallfa(ied,1);
 
-		xi = rc(ielem,0);
-		yi = rc(ielem,1);
+		const a_real xi = rc(ielem,0);
+		const a_real yi = rc(ielem,1);
 
-		x1 = m->gcoords(m->gintfac(ied,2),0);
-		x2 = m->gcoords(m->gintfac(ied,3),0);
-		y1 = m->gcoords(m->gintfac(ied,2),1);
-		y2 = m->gcoords(m->gintfac(ied,3),1);
+		const a_real x1 = m->gcoords(m->gintfac(ied,2),0);
+		const a_real x2 = m->gcoords(m->gintfac(ied,3),0);
+		const a_real y1 = m->gcoords(m->gintfac(ied,2),1);
+		const a_real y2 = m->gcoords(m->gintfac(ied,3),1);
+
+		// find coordinates of the point on the face that is the midpoint of the line joining
+		// the real cell centre and the ghost cell centre
+		a_real xs,ys;
 
 		// check if nx != 0 and ny != 0
 		if(fabs(nx)>A_SMALL_NUMBER && fabs(ny)>A_SMALL_NUMBER)		
 		{
 			xs = ( yi-y1 - ny/nx*xi + (y2-y1)/(x2-x1)*x1 ) / ((y2-y1)/(x2-x1)-ny/nx);
-			ys = ny/nx*xs + yi - ny/nx*xi;
+			//ys = yi + ny/nx*(xs-xi);
+			ys = y1 + (y2-y1)/(x2-x1) * (xs-x1);
 		}
 		else if(fabs(nx)<=A_SMALL_NUMBER)
 		{
@@ -124,8 +127,8 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 			xs = x1;
 			ys = yi;
 		}
-		rchg(ied,0) = 2*xs-xi;
-		rchg(ied,1) = 2*ys-yi;
+		rchg(ied,0) = 2.0*xs-xi;
+		rchg(ied,1) = 2.0*ys-yi;
 	}
 }
 
@@ -247,7 +250,7 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	uinf(0,0) = 1.0;
 	uinf(0,1) = cos(a);
 	uinf(0,2) = sin(a);
-	uinf(0,3) = 1.0/((physics.g-1)*physics.g*physics.Minf*physics.Minf) + 0.5;
+	uinf(0,3) = physics.getEnergyFromPressure(physics.getFreestreamPressure(),1.0,1.0);
 }
 
 FlowFV::~FlowFV()
@@ -342,7 +345,9 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
-			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
+			/*gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
+					isothermalbaric_wall_temperature);*/
+			gs[0] = physics.getDensityFromPressureTemperature(physics.getFreestreamPressure(),
 					isothermalbaric_wall_temperature);
 			gs[1] =  2.0*tangMomentum*ny - ins[1];
 			gs[2] = -2.0*tangMomentum*nx - ins[2];

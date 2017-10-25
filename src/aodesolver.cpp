@@ -293,7 +293,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		int linstepsneeded = linsolv->solve(residual, du);
 		avglinsteps += linstepsneeded;
 		
-		a_real errmass = 0;
+		a_real resnorm2 = 0;
 
 #pragma omp parallel default(shared)
 		{
@@ -301,17 +301,17 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 			for(a_int iel = 0; iel < m->gnelem(); iel++) {
 				u.row(iel) += du.row(iel);
 			}
-#pragma omp for simd reduction(+:errmass)
+#pragma omp for simd reduction(+:resnorm2)
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
+				resnorm2 += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
 			}
 		}
 
-		resi = sqrt(errmass);
+		resi = sqrt(resnorm2);
 
 		if(step == 0)
-			initres = resi;
+			initres = (resi+10*ZERO_TOL);
 
 		if(step % 10 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 

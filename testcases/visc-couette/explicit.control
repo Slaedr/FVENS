@@ -1,0 +1,100 @@
+---Mesh-file(file-name-or-"READFROMCMD")
+../testcases/visc-couette/grids/struct0.msh
+---Output-file
+../data/couetteq.vtu
+---Log-file-for-runtimes
+log.txt
+---Log-nonlinear-convergence-history(YES,NO)
+NO
+########PHYSICS######################################################
+---Flow-type(EULER,NAVIERSTOKES)
+NAVIERSTOKES
+---Adiabatic-index
+1.4
+---Angle_of_attack
+0.0
+---Free-stream-Mach-number
+0.2193778
+---Free-stream-temperature(K)
+294.0
+---Free-stream-Reynolds-number
+4000.0
+---Prandtl-number
+0.708
+---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
+YES
+---Initialization-type(0=from-free-stream,1=from-file)
+0
+###########BOUNDARY-CONDITIONS########################################
+---Slip-wall-marker
+-1
+---Farfield-marker
+-1
+---Inflow-outflow-marker
+-1
+---Extrapolation-marker
+-1
+---Periodic-marker
+4
+---Periodic-axis
+0
+---Isothermal-wall-Marker
+		-1
+---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
+		                     294.0                          1.0
+---Adiabatic-wall-Marker
+		2
+---Adiabatic-wall:           Tang. velocity (normalized)
+					          0.0
+---Isothermal-isobaric-wall-Marker
+		3
+---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
+							  294.0                      1.0                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+0
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+0
+---Is-volume-output-of-cell-centred-variables-required?
+YES
+---Filename-for-volume-output
+../data/coutte
+######################################################################
+---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
+LLF
+---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
+LEASTSQUARES
+---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
+NONE
+---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
+YES
+######################################################################
+---time-stepping-type(EXPLICIT,IMPLICIT)
+EXPLICIT
+---initial-CFL
+0.2
+---final-CFL
+0.3
+---ramp-start-step-and-end-step
+400 500
+---Tolerance
+1e-5
+---Max-pseudotime-iterations
+1000000
+#######################################################################
+---use-first-order-initial-condition
+1
+---CFL-for-initialization-run
+0.5
+---final-CFL
+0.7
+---ramp-start-step-and-end-step
+200 300
+---tolerance-for-initialization
+1e-2
+---max-time-steps-for-initialization
+50000
+########################################################################
+---Implicit-residual-smoothing?
+NO
+---preconditioner-build-and-application-sweeps
+1 1
