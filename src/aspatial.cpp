@@ -328,25 +328,33 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 
 		else if(m->gintfacbtags(ied,0) == isothermal_wall_id)
 		{
-			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
-			gs[0] = ins[0];
-			gs[1] =  2.0*tangMomentum*ny - ins[1];
-			gs[2] = -2.0*tangMomentum*nx - ins[2];
-			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
-			gs[3] = physics.getEnergyFromTemperature(isothermal_wall_temperature, ins[0], vmag2);
+			// pressure in the interior cell as well as ghost cell
+			const a_real p = physics.getPressureFromConserved(ins);
+			
+			// temperature in the ghost cell
+			const a_real gtemp = 2.0*isothermal_wall_temperature - physics.getTemperature(ins[0],p);
+
+			gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
+			gs[1] = gs[0]*( 2.0*isothermal_wall_tangvel*ny - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*isothermal_wall_tangvel*nx - ins[2]/ins[0]);
+			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
+			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
 
 		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
-			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
-			/*gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
-					isothermalbaric_wall_temperature);*/
-			gs[0] = physics.getDensityFromPressureTemperature(physics.getFreestreamPressure(),
-					isothermalbaric_wall_temperature);
-			gs[1] =  2.0*tangMomentum*ny - ins[1];
-			gs[2] = -2.0*tangMomentum*nx - ins[2];
-			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],isothermalbaric_wall_temperature};
-			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
+			// pressure in the ghost cell
+			const a_real gp = physics.getFreestreamPressure();
+			
+			// temperature in the ghost cell
+			const a_real gtemp= 2.0*isothermalbaric_wall_temperature 
+				- physics.getTemperature(ins[0],gp);
+
+			gs[0] = physics.getDensityFromPressureTemperature(gp, gtemp);
+			gs[1] = gs[0]*( 2.0*isothermalbaric_wall_tangvel*ny - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*isothermalbaric_wall_tangvel*nx - ins[2]/ins[0]);
+			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
+			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
 	}
 
@@ -397,6 +405,11 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 			for(int i = 0; i < NVARS; i++)
 				gs[i] = ins[i];
 		}
+	}
+	
+	else {
+		std::cout << " ! FlowFV: Unknown boundary tag!!\n";
+		std::abort();
 	}
 }
 
@@ -479,6 +492,8 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 
 		else if(m->gintfacbtags(ied,0) == isothermal_wall_id)
 		{
+			/// \todo Fix isothermal BC Jacobian
+			// FIXME: Wrong Jacobian
 			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
 			gs[0] = ins[0];
 			dgs[0] = 1.0;
@@ -510,6 +525,7 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 
 		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
 		{
+			// FIXME: Wrong Jacobian
 			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
 			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
 					isothermalbaric_wall_temperature);

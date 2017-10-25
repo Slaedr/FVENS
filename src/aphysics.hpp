@@ -51,9 +51,11 @@ public:
 };
 	
 /// Flow-physics-related computation for single-phase ideal gas
-/** The non-dimensionalization assumed is from free-stream velocities and temperatues,
+/** The non-dimensionalization assumed is from free-stream velocities and temperatures,
  * as given in section 4.14.2 of \cite matatsuka.
  * Note that several computations here depend on the exact non-dimensionalization scheme used.
+ * Unless otherwise specified, all methods are assumed to accept non-dimensional quantities and
+ * give non-dimensional output variables.
  *
  * "Primitive-2" variables are density, velocities and temperature, as opposed to
  * "primitive" variables which are density, velocities and pressure.
@@ -238,6 +240,11 @@ public:
 	/// Computes density from pressure and temperature using ideal gas relation;
 	/// All quantities are non-dimensional
 	a_real getDensityFromPressureTemperature(const a_real pressure, const a_real temperature) const;
+
+	/// Computes derivatives of density from derivatives of pressure and temperature
+	void getJacobianDensityFromJacobiansPressureTemperature(
+			const a_real pressure, const a_real temperature,
+			const a_real *const dp, const a_real *const dT, a_real *const drho) const;
 
 	/// Computes non-dimensional temperature from non-dimensional conserved variables
 	/** \sa IdealGasPhysics
@@ -586,6 +593,15 @@ a_real IdealGasPhysics::getDensityFromPressureTemperature(const a_real pressure,
 		const a_real temperature) const
 {
 	return g*Minf*Minf*pressure/temperature;
+}
+	
+inline
+void IdealGasPhysics::getJacobianDensityFromJacobiansPressureTemperature(
+		const a_real pressure, const a_real temperature,
+		const a_real *const dp, const a_real *const dT, a_real *const drho) const
+{
+	for(int i = 0; i < NVARS; i++)
+		drho[i] += g*Minf*Minf*(dp[i]*temperature-pressure*dT[i])/(temperature*temperature);
 }
 
 // independent of non-dimensionalization

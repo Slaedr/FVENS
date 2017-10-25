@@ -65,7 +65,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 			if(m->gintfacbtags(iface,0) == obcm[im]) nobfaces[im]++;
 	}
 	
-	a_real pinf = phy->getFreestreamPressure();
+	const a_real pinf = phy->getFreestreamPressure();
 
 	// unit vector normal to the free-stream flow direction
 	a_real flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];

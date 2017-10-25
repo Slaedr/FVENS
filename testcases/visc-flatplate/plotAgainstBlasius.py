@@ -11,7 +11,6 @@ from matplotlib import pyplot as plt
 # User input
 
 Reinf = 8.7e5
-#Pr = 0.708
 rho = 1.2
 l = 1.0
 Minf = 0.2
