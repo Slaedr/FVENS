@@ -195,7 +195,8 @@ int main(int argc, char* argv[])
 		err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
 	}
 
-	prob->postprocess_point(u, outputarr);
+	amat::Array2d<a_real> dumv;
+	prob->postprocess_point(u, outputarr, dumv);
 
 	delete prob;
 	delete startprob;

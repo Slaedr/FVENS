@@ -75,6 +75,17 @@ public:
 	/// Computes gradients of field variables and stores them in the argument
 	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
 
+	/// Sets initial conditions
+	/** \param[in] fromfile True if initial data is to be read from a file
+	 * \param[in] file Name of initial conditions file
+	 * \param[in|out] u Vector to store the initial data in
+	 */
+	virtual void initializeUnknowns(MVector& u) const = 0;
+	
+	/// Compute nodal quantities to export
+	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+			amat::Array2d<a_real>& vector) const = 0;
+
 protected:
 	/// Mesh context
 	const UMesh2dh *const m;
@@ -101,6 +112,10 @@ protected:
  * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
  * have been called on the mesh object prior to initialzing an object of this class.
  */
+template <
+	bool secondOrderRequested,             ///< Whether to computes gradients to get a 2nd order solution
+	bool constVisc                         ///< Whether to use constant viscosity (true) or Sutherland
+>
 class FlowFV : public Spatial<NVARS>
 {
 public:
@@ -113,7 +128,6 @@ public:
 	 * \param[in] Pr Prandtl number
 	 * \param[in] aoa Angle of attack in radians
 	 * \param[in] compute_viscous Set to true if viscous fluxes are required
-	 * \param[in] useConstVisc Set true to use constant free-stream viscosity throughout
 	 * \param[in] isothermal_marker The boundary marker in the mesh file corresponding to
 	 *   isothermal wall boundaries
 	 * \param[in] farfield_marker ID for boundaries where farfield conditions are imposed in ghost
@@ -130,11 +144,10 @@ public:
 	 * \param[in] reconst The method used for gradient reconstruction 
 	 *   - NONE, GREENGAUSS, LEASTSQUARES
 	 * \param[in] limiter The kind of slope limiter to use
-	 * \param[in] order2 True if second-order solution is desired.
 	 */
 	FlowFV(const UMesh2dh *const mesh, const a_real g, const a_real Minf, const a_real Tinf, 
 		const a_real Reinf, const a_real Pr, const a_real aoa, 
-		const bool compute_viscous, const bool useConstVisc,
+		const bool compute_viscous,
 		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker, 
 		const int slip_marker, const int farfield_marker, const int inflowoutflow_marker,
 		const int extrap_marker, const int periodic_marker,
@@ -144,7 +157,7 @@ public:
 		const a_real adiabatic_TangVel,
 		const std::string invflux, const std::string jacflux, 
 		const std::string reconst, const std::string limiter,
-		const bool order2, const bool reconst_prim);
+		const bool reconst_prim);
 	
 	~FlowFV();
 
@@ -153,7 +166,7 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in|out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(MVector& u);
+	void initializeUnknowns(MVector& u) const;
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
@@ -163,7 +176,7 @@ public:
 
 #if HAVE_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
-	void compute_jacobian(const MVector& u, const bool blocked, Mat A);
+	void compute_jacobian(const MVector& u, const bool blocked, Mat A) const;
 #else
 	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, 
 	/// and lower and upper blocks for each face
@@ -178,7 +191,7 @@ public:
 
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
-			amat::Array2d<a_real>& velocities);
+			amat::Array2d<a_real>& velocities) const;
 	
 	/// Compute nodal quantities to export
 	/** Based on area-weighted averaging which takes into account ghost cells as well.
@@ -186,12 +199,12 @@ public:
 	 * and velocity is exported as well.
 	 */
 	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
-			amat::Array2d<a_real>& velocities);
+			amat::Array2d<a_real>& velocities) const;
 
 	/// Compute norm of cell-centered entropy production
 	/** Call aftr computing pressure etc \sa postprocess_cell
 	 */
-	a_real compute_entropy_cell(const MVector& u);
+	a_real compute_entropy_cell(const MVector& u) const;
 
 protected:
 	/// Analytical flux vector computation
@@ -201,9 +214,6 @@ protected:
 
 	/// If true, compute Navier Stokes fluxes, else only Euler
 	const bool computeViscous;
-	
-	/// If true, use constant viscosity rather than that given by gas physics context
-	const bool constVisc;
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
@@ -235,8 +245,6 @@ protected:
 	const a_real isothermalbaric_wall_temperature;  ///< Temperature at isothermal isobaric wall
 	const a_real isothermalbaric_wall_tangvel;      ///< Tangent velocity at isothermal isobaric wall
 	const a_real isothermalbaric_wall_pressure;     ///< Pressure at isothermal isobaric wall
-	
-	const bool secondOrderRequested;                ///< True if reconstruction is to be used
 
 	/// True if primitive variables should be reconstructed rather than conserved variables
 	const bool reconstructPrimitive;
@@ -325,9 +333,15 @@ public:
 
 	/// Sets initial conditions to zero
 	/** 
-	 * \param[in|out] u Vector to store the initial data in
+	 * \param[in,out] u Vector to store the initial data in
 	 */
 	void initializeUnknowns(MVector& u) const;
+	
+	/// Compute nodal quantities to export
+	/** \param vec Dummy argument, not used
+	 */
+	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+			amat::Array2d<a_real>& vec) const;
 	
 	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
@@ -336,9 +350,7 @@ public:
 			LinearOperator<a_real,a_int> *const A) const = 0;
 	
 	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
-
-	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& up);
-
+	
 	virtual ~Diffusion();
 
 protected:

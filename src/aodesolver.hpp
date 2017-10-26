@@ -36,7 +36,7 @@ public:
 	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
 	 * \param[in] log_nonlinear_residual Set to true if output of convergence history is needed
 	 */
-	SteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
+	SteadySolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, MVector& soln,
 			bool log_nonlinear_residual)
 		: m(mesh), eul(spatial), u(soln), cputime{0.0}, walltime{0.0}, 
 		  lognres{log_nonlinear_residual}
@@ -90,7 +90,7 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 	Preconditioner<nvars>* prec;             ///< preconditioner context for Laplacian smoothing
 
 public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, Spatial<nvars> *const euler, MVector& sol,
+	SteadyForwardEulerSolver(const UMesh2dh *const mesh, const Spatial<nvars> *const euler, MVector& sol,
 			const double toler, const int maxits, const double cfl,
 			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
 			bool log_nonlinear_res);
@@ -160,7 +160,7 @@ public:
 	 * \param[in] restart_vecs Number of Krylov subspace vectors to store per restart iteration
 	 * \param[in] log_nonlinear_res True if you want nonlinear convergence history
 	 */
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, Spatial<nvars> *const spatial,
+	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, const Spatial<nvars> *const spatial,
 		MVector& soln, LinearOperator<a_real,a_int> *const pmat,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
@@ -202,7 +202,7 @@ public:
 	 * \param[in] soln The solution vector to use and update
 	 * \param[in] temporal_order Design order of accuracy in time
 	 */
-	UnsteadySolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
+	UnsteadySolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, MVector& soln,
 			const int temporal_order)
 		: m(mesh), eul(spatial), u(soln), order{temporal_order}, cputime{0.0}, walltime{0.0}
 	{ }
@@ -229,7 +229,7 @@ template<short nvars>
 class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
-	TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, MVector& soln,
+	TVDRKSolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, MVector& soln,
 			const int temporal_order, const double cfl_num);
 	
 	void solve(const a_real finaltime, const std::string logfile);
@@ -247,9 +247,6 @@ protected:
 
 	/// Coefficients of TVD schemes
 	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
-
-	/// Sets coefficients of TVD RK schemes upto order 3
-	Matrix<a_real,Dynamic,Dynamic> initializeTVDRKCoeffs(const int _order);
 
 private:
 	amat::Array2d<a_real> dtm;

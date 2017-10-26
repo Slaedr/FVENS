@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-naca0012/grids/naca0012nasa_iso1.msh
+../testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.su2
 ---Output-file
 ../data/vnaca.vtu
 ---Log-file-for-runtimes
@@ -14,11 +14,11 @@ NAVIERSTOKES
 ---Angle_of_attack
 0.0
 ---Free-stream-Mach-number
-0.4
+0.5
 ---Free-stream-temperature(K)
-293.15
+288.15
 ---Free-stream-Reynolds-number
-2000.0
+5000.0
 ---Prandtl-number
 0.72
 ---Use-constant-viscosity?(YES=constant-viscosity,NO=Sutherland-viscosity)
@@ -48,6 +48,16 @@ NO
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
 							  223.15                      1.0                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+0
+---Prefix-for-name-of-surface-output-file
+../data/visc-naca-su2
+---Is-volume-output-of-cell-centred-variables-required?
+NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLLC
@@ -75,9 +85,16 @@ EXPLICIT
 1
 ---CFL-for-initialization-run
 0.5
+---final-CFL
+0.5
+---ramp-start-step-and-end-step
+0 0
 ---tolerance-for-initialization
 1e-1
 ---max-time-steps-for-initialization
 7000
 ########################################################################
-
+---Implicit-laplacian-smoothing?
+NO
+---Async-sweeps
+1 1

@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/2dcylinder/grids/2dcylquad0.msh
+../testcases/2dcylinder/grids/2dcylquad3.msh
 ---Output-file
 ../data/2dcyl.vtu
 ---Log-file-for-runtimes
@@ -40,7 +40,7 @@ EULER
 NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC,ROE)
-HLL
+HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -53,9 +53,9 @@ IMPLICIT
 ---initial-CFL
 250.0
 ---final-CFL
-250.0
+500.0
 ---ramp-start-step-and-end-step
-0 0
+50 100
 ---Tolerance
 1e-5
 ---Max-pseudotime-iterations
@@ -64,18 +64,18 @@ IMPLICIT
 ---use-first-order-initial-condition
 1
 ---initial-CFL
-250.0
+25.0
 ---final-CFL
 250.0
 ---ramp-start-step-and-end-step
-0 0
+20 50
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
 500
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLL
+HLLC
 ---Use-matrix-free-(YES,NO)
 NO
 ---Matrix-type(c=CSR,b=BSR,d=DLU)
@@ -85,12 +85,12 @@ RICHARDSON
 ---Linear-solver-tolerance
 1e-2
 ---Linear-solver-max-iterations-initial
-50
+30
 ---Linear-solver-max-iterations-end
-50
+60
 ---Krylov-vectors
 30
 ---preconditioner(J=Jacobi,SGS,ILU0)
-ILU0
+SGS
 ---preconditioner-build-and-application-sweeps
 1 1

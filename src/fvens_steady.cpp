@@ -1,6 +1,7 @@
 #include <blockmatrices.hpp>
 #include "aoutput.hpp"
 #include "aodesolver.hpp"
+#include "afactory.hpp"
 
 using namespace amat;
 using namespace std;
@@ -188,15 +189,18 @@ int main(int argc, char* argv[])
 	std::cout << "\n***\n";
 
 	// set up problem
+	const Spatial<NVARS> *prob, *startprob;
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	FlowFV prob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
+	prob = create_const_flowSpatialDiscretization(
+			&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
 			slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
 			invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	FlowFV startprob(&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
+	startprob = create_const_flowSpatialDiscretization(
+			&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
 			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
 			slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
 			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
@@ -235,13 +239,13 @@ int main(int argc, char* argv[])
 		setupMatrixStorage<NVARS>(&m, mattype, M);
 		
 		if(usestarter != 0)
-			starttime = new SteadyBackwardEulerSolver<4>(&m, &startprob, u, M,
+			starttime = new SteadyBackwardEulerSolver<4>(&m, startprob, u, M,
 				firstinitcfl, firstendcfl, firstrampstart, firstrampend, 
 				firsttolerance, firstmaxiter, 
 				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
 				restart_vecs, lognres);
 
-		time = new SteadyBackwardEulerSolver<4>(&m, &prob, u, M,
+		time = new SteadyBackwardEulerSolver<4>(&m, prob, u, M,
 				initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
 				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
 				restart_vecs, lognres);
@@ -254,11 +258,11 @@ int main(int argc, char* argv[])
 			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
 
 		if(usestarter != 0)
-			starttime = new SteadyForwardEulerSolver<4>(&m, &startprob, u,
+			starttime = new SteadyForwardEulerSolver<4>(&m, startprob, u,
 					firsttolerance, firstmaxiter, firstinitcfl, 
 					residualsmoothing, M, lognres);
 
-		time = new SteadyForwardEulerSolver<4>(&m, &prob, u,
+		time = new SteadyForwardEulerSolver<4>(&m, prob, u,
 				tolerance, maxiter, initcfl,
 				residualsmoothing, M, lognres);
 
@@ -266,7 +270,7 @@ int main(int argc, char* argv[])
 	}
 	
 	// Ask the spatial discretization context to initialize flow variables
-	startprob.initializeUnknowns(u);
+	startprob->initializeUnknowns(u);
 	
 	std::cout << "\n***\n";
 
@@ -287,7 +291,7 @@ int main(int argc, char* argv[])
 
 	Array2d<a_real> scalars;
 	Array2d<a_real> velocities;
-	prob.postprocess_point(u, scalars, velocities);
+	prob->postprocess_point(u, scalars, velocities);
 
 	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
@@ -295,7 +299,7 @@ int main(int argc, char* argv[])
 	// export surface data like pressure coeff etc and volume data as plain text files
 	
 	IdealGasPhysics phy(gamma, Minf, Tinf, Reinf, Pr);
-	FlowOutput out(&m, &prob, &phy, alpha);
+	FlowOutput out(&m, prob, &phy, alpha);
 	
 	out.exportSurfaceData(u, lwalls, lothers, surfnamepref);
 	
@@ -305,6 +309,9 @@ int main(int argc, char* argv[])
 	if(usestarter != 0)
 		delete starttime;
 	delete time;
+
+	delete prob;
+	delete startprob;
 
 	cout << "\n--------------- End --------------------- \n\n";
 	return 0;

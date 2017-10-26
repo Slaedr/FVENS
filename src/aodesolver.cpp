@@ -1,6 +1,5 @@
 /** @file aodesolver.cpp
- * @brief Implements driver class(es) for solution of ODEs arising from 
- * Euler/Navier-Stokes equations.
+ * @brief Implements driver class(es) for solution of ODEs arising from PDE discretizations
  * @author Aditya Kashi
  * @date Feb 24, 2016
  */
@@ -15,9 +14,34 @@
 
 namespace acfd {
 
+/// Returns an array containing TVD Runge-Kutta coefficients for high-order accuracy
+static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order) 
+{
+	Matrix<a_real,Dynamic,Dynamic> tvdrk(_order,3);
+	if(_order == 1) {
+		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
+	}
+	else if(_order == 2) {
+		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
+		tvdrk(1,0) = 0.5;	tvdrk(1,1) = 0.5;	tvdrk(1,2) = 0.5;
+	}
+	else if(_order == 3)
+	{
+		tvdrk(0,0) = 1.0;      tvdrk(0,1) = 0.0;  tvdrk(0,2) = 1.0;
+		tvdrk(1,0) = 0.75;	    tvdrk(1,1) = 0.25; tvdrk(1,2) = 0.25;
+		tvdrk(2,0) = 0.3333333333333333; 
+		tvdrk(2,1) = 0.6666666666666667; 
+		tvdrk(2,2) = 0.6666666666666667;
+	}
+	else {
+		std::cout << "! Temporal order " << _order  << " not available!\n";
+	}
+	return tvdrk;
+}
+
 template<short nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
-		Spatial<nvars> *const euler, MVector& soln,
+		const Spatial<nvars> *const euler, MVector& soln,
 		const double toler, const int maxits, const double cfl_n, 
 		const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
 		bool lognlres)
@@ -103,7 +127,7 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 #pragma omp for simd reduction(+:errmass)
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				errmass += residual(iel,0)*residual(iel,0)*m->garea(iel);
+				errmass += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
 			}
 		} // end parallel region
 
@@ -150,7 +174,7 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
  */
 template <short nvars>
 SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, 
-		Spatial<nvars> *const spatial, MVector& soln, LinearOperator<a_real,a_int> *const pmat,
+		const Spatial<nvars> *const spatial, MVector& soln, LinearOperator<a_real,a_int> *const pmat,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
 		const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
@@ -311,7 +335,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		resi = sqrt(resnorm2);
 
 		if(step == 0)
-			initres = (resi+10*ZERO_TOL);
+			initres = resi;
 
 		if(step % 10 == 0) {
 			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
@@ -364,37 +388,12 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 }
 
 template <short nvars>
-TVDRKSolver<nvars>::TVDRKSolver(const UMesh2dh *const mesh, Spatial<nvars> *const spatial, 
+TVDRKSolver<nvars>::TVDRKSolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, 
 		MVector& soln, const int temporal_order, const double cfl_num)
 	: UnsteadySolver<nvars>(mesh, spatial, soln, temporal_order), cfl{cfl_num},
-	tvdcoeffs(initializeTVDRKCoeffs(temporal_order))
+	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
 {
 	dtm.setup(m->gnelem(), 1);
-}
-
-template <short nvars>
-Matrix<a_real,Dynamic,Dynamic> TVDRKSolver<nvars>::initializeTVDRKCoeffs(const int _order) 
-{
-	Matrix<a_real,Dynamic,Dynamic> tvdrk(_order,3);
-	if(_order == 1) {
-		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
-	}
-	else if(_order == 2) {
-		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
-		tvdrk(1,0) = 0.5;	tvdrk(1,1) = 0.5;	tvdrk(1,2) = 0.5;
-	}
-	else if(_order == 3)
-	{
-		tvdrk(0,0) = 1.0;      tvdrk(0,1) = 0.0;  tvdrk(0,2) = 1.0;
-		tvdrk(1,0) = 0.75;	    tvdrk(1,1) = 0.25; tvdrk(1,2) = 0.25;
-		tvdrk(2,0) = 0.3333333333333333; 
-		tvdrk(2,1) = 0.6666666666666667; 
-		tvdrk(2,2) = 0.6666666666666667;
-	}
-	else {
-		std::cout << "! TVDRKSolver: Temporal order " << _order  << " not available!\n";
-	}
-	return tvdrk;
 }
 
 template<short nvars>

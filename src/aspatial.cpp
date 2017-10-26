@@ -197,9 +197,10 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 	}
 }
 
-FlowFV::FlowFV(const UMesh2dh *const mesh, 
+template<bool secondOrderRequested, bool constVisc>
+FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh, 
 		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
-		const a_real a, const bool compute_viscous, const bool useConstVisc,
+		const a_real a, const bool compute_viscous, 
 		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker,
 		const int slip_marker, const int farfield_marker, const int inoutflow_marker, 
 		const int extrap_marker, const int periodic_marker,
@@ -209,12 +210,12 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		const a_real isothermalbaric_Pressure, 
 		const std::string invflux, const std::string jacflux, 
 		const std::string grad_scheme, const std::string limiter,
-		const bool order2, const bool reconstructPrim)
+		const bool reconstructPrim)
 	: 
 	Spatial<NVARS>(mesh), 
 	physics(g, Minf, Tinf, Reinf, Pr), 
 	uinf{physics.compute_freestream_state(a)},
-	computeViscous{compute_viscous}, constVisc(useConstVisc),
+	computeViscous{compute_viscous},
 
 	inviflux {create_const_inviscidflux(invflux, &physics)}, 
 	jflux {create_const_inviscidflux(jacflux, &physics)},
@@ -232,7 +233,6 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 	isothermalbaric_wall_temperature{isothermalbaric_Temperature}, 
 	isothermalbaric_wall_tangvel{isothermalbaric_TangVel}, 
 	isothermalbaric_wall_pressure{isothermalbaric_Pressure},
-	secondOrderRequested{order2},
 	reconstructPrimitive{reconstructPrim}
 {
 	std::cout << " FlowFV: Boundary markers:\n";
@@ -247,7 +247,8 @@ FlowFV::FlowFV(const UMesh2dh *const mesh,
 		std::cout << " FLowFV: Using constant viscosity.\n";
 }
 
-FlowFV::~FlowFV()
+template<bool secondOrderRequested, bool constVisc>
+FlowFV<secondOrderRequested,constVisc>::~FlowFV()
 {
 	delete gradcomp;
 	delete inviflux;
@@ -255,7 +256,8 @@ FlowFV::~FlowFV()
 	delete lim;
 }
 
-void FlowFV::initializeUnknowns(MVector& u)
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(MVector& u) const
 {
 	//initial values are equal to boundary values
 	for(a_int i = 0; i < m->gnelem(); i++)
@@ -267,8 +269,9 @@ void FlowFV::initializeUnknowns(MVector& u)
 #endif
 }
 
-void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Array2d<a_real>& bs)
-	const
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(const amat::Array2d<a_real>& ins, 
+		amat::Array2d<a_real>& bs) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -283,7 +286,9 @@ void FlowFV::compute_boundary_states(const amat::Array2d<a_real>& ins, amat::Arr
 	}
 }
 
-void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ied, const a_real *const ins, 
+		a_real *const gs) const
 {
 	const a_real nx = m->ggallfa(ied,0);
 	const a_real ny = m->ggallfa(ied,1);
@@ -413,7 +418,9 @@ void FlowFV::compute_boundary_state(const int ied, const a_real *const ins, a_re
 	}
 }
 
-void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins, 
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int ied, 
+		const a_real *const ins, 
 		a_real *const gs, a_real *const dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
@@ -594,8 +601,8 @@ void FlowFV::compute_boundary_Jacobian(const int ied, const a_real *const ins,
 	}
 }
 
-
-void FlowFV::computeViscousFlux(const a_int iface, 
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int iface, 
 		const MVector& u, const amat::Array2d<a_real>& ug,
 		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
 		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
@@ -821,7 +828,8 @@ void FlowFV::computeViscousFlux(const a_int iface,
 	 */
 }
 
-void FlowFV::computeViscousFluxJacobian(const a_int iface,
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::computeViscousFluxJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
@@ -997,7 +1005,8 @@ void FlowFV::computeViscousFluxJacobian(const a_int iface,
 	}
 }
 
-void FlowFV::computeViscousFluxApproximateJacobian(const a_int iface,
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::computeViscousFluxApproximateJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
@@ -1032,7 +1041,8 @@ void FlowFV::computeViscousFluxApproximateJacobian(const a_int iface,
 	}
 }
 
-void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual, 
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, MVector& __restrict residual, 
 		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const
 {
 	amat::Array2d<a_real> integ, dudx, dudy, ug, uleft, uright;	
@@ -1233,7 +1243,9 @@ void FlowFV::compute_residual(const MVector& u, MVector& __restrict residual,
 
 #if HAVE_PETSC==1
 
-void FlowFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u, const bool blocked, Mat A) 
+	const
 {
 	if(blocked)
 	{
@@ -1346,7 +1358,8 @@ void FlowFV::compute_jacobian(const MVector& u, const bool blocked, Mat A)
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
-void FlowFV::compute_jacobian(const MVector& u, 
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u, 
 				LinearOperator<a_real,a_int> *const __restrict A) const
 {
 #pragma omp parallel for default(shared)
@@ -1422,7 +1435,8 @@ void FlowFV::compute_jacobian(const MVector& u,
 
 #endif
 
-void FlowFV::getGradients(const MVector& u, MVector grad[NDIM]) const
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u, MVector grad[NDIM]) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1443,8 +1457,10 @@ void FlowFV::getGradients(const MVector& u, MVector grad[NDIM]) const
 	}
 }
 
-void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
-		amat::Array2d<a_real>& velocities)
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::postprocess_point(const MVector& u, 
+		amat::Array2d<a_real>& scalars, 
+		amat::Array2d<a_real>& velocities) const
 {
 	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
 	scalars.resize(m->gnpoin(),4);
@@ -1488,8 +1504,10 @@ void FlowFV::postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars,
 	std::cout << "FlowFV: postprocess_point(): Done.\n";
 }
 
-void FlowFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
-		amat::Array2d<a_real>& velocities)
+template<bool secondOrderRequested, bool constVisc>
+void FlowFV<secondOrderRequested,constVisc>::postprocess_cell(const MVector& u, 
+		amat::Array2d<a_real>& scalars, 
+		amat::Array2d<a_real>& velocities) const
 {
 	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.resize(m->gnelem(), 3);
@@ -1512,7 +1530,8 @@ void FlowFV::postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars,
 	std::cout << "FlowFV: postprocess_cell(): Done.\n";
 }
 
-a_real FlowFV::compute_entropy_cell(const MVector& u)
+template<bool secondOrderRequested, bool constVisc>
+a_real FlowFV<secondOrderRequested,constVisc>::compute_entropy_cell(const MVector& u) const
 {
 	a_real sinf = physics.getEntropyFromConserved(&uinf[0]);
 
@@ -1532,6 +1551,11 @@ a_real FlowFV::compute_entropy_cell(const MVector& u)
 
 	return error;
 }
+
+template class FlowFV<true,true>;
+template class FlowFV<false,true>;
+template class FlowFV<true,false>;
+template class FlowFV<false,false>;
 
 
 template<short nvars>
@@ -1583,7 +1607,8 @@ void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& inst
 }
 
 template<short nvars>
-void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up)
+void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up,
+		amat::Array2d<a_real>& vec) const
 {
 	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
 	
