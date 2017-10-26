@@ -287,8 +287,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(const amat:
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ied, const a_real *const ins, 
-		a_real *const gs) const
+void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ied, 
+		const a_real *const ins, 
+		a_real *const gs        ) const
 {
 	const a_real nx = m->ggallfa(ied,0);
 	const a_real ny = m->ggallfa(ied,1);
@@ -318,6 +319,55 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf[i];
+	}
+
+	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
+	 * the free-stream state with certainty,
+	 * while the state at the outlet is not certain to be the free-stream state.
+	 * 
+	 * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
+	 *
+	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
+	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
+	 * isentropic.
+	 *
+	 * Whether the flow is subsonic or supersonic at the boundary
+	 * is decided by interior value of the Mach number.
+	 */
+	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	{
+		const a_real ci = physics.getSoundSpeedFromConserved(ins);
+		const a_real Mni = vni/ci;
+		const a_real pinf = physics.getFreestreamPressure();
+
+		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
+		 * takes care of signal propagation at the boundary.
+		 */
+		if(Mni <= 0)
+		{
+			for(short i = 0; i < NVARS; i++)
+				gs[i] = uinf[i];
+		}
+
+		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
+		 * are taken from the interior.
+		 */
+		else if(Mni < 1)
+		{
+			gs[0] = ins[0];
+			for(int i = 1; i < NDIM+1; i++)
+				gs[i] = ins[i];
+			//gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			gs[NDIM+1] = physics.getEnergyFromPressure( pinf, ins[0],
+					dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
+		}
+		
+		// At supersonic outflow, everything is taken from the interior
+		else
+		{
+			for(int i = 0; i < NVARS; i++)
+				gs[i] = ins[i];
+		}
 	}
 
 	else if(computeViscous) 
@@ -360,55 +410,6 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 			gs[2] = gs[0]*(-2.0*isothermalbaric_wall_tangvel*nx - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
-		}
-	}
-
-	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
-	 * the free-stream state with certainty,
-	 * while the state at the outlet is not certain to be the free-stream state.
-	 * 
-	 * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
-	 *
-	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
-	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
-	 * isentropic.
-	 *
-	 * Whether the flow is subsonic or supersonic at the boundary
-	 * is decided by interior value of the Mach number.
-	 */
-	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
-	{
-		const a_real ci = physics.getSoundSpeedFromConserved(ins);
-		const a_real Mni = vni/ci;
-		const a_real pinf = physics.getPressureFromConserved(&uinf[0]);
-
-		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
-		 * takes care of signal propagation at the boundary.
-		 */
-		if(Mni <= 0)
-		{
-			for(short i = 0; i < NVARS; i++)
-				gs[i] = uinf[i];
-		}
-
-		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
-		 * are taken from the interior.
-		 */
-		else if(Mni < 1)
-		{
-			gs[0] = ins[0];
-			for(int i = 1; i < NDIM+1; i++)
-				gs[i] = ins[i];
-			//gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
-			gs[NDIM+1] = physics.getEnergyFromPressure( pinf, ins[0],
-					dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
-		}
-		
-		// At supersonic outflow, everything is taken from the interior
-		else
-		{
-			for(int i = 0; i < NVARS; i++)
-				gs[i] = ins[i];
 		}
 	}
 	
@@ -477,6 +478,53 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 			gs[i] = uinf[i];
 	}
 
+	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	{
+		const a_real ci = physics.getSoundSpeedFromConserved(ins);
+		const a_real Mni = vni/ci;
+		
+		const a_real pinf = physics.getPressureFromConserved(&uinf[0]);
+
+		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
+		 * takes care of signal propagation at the boundary.
+		 */
+		if(Mni <= 0)
+		{
+			for(short i = 0; i < NVARS; i++)
+				gs[i] = uinf[i];
+		}
+
+		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
+		 * are taken from the interior.
+		 */
+		else if(Mni <= 1)
+		{
+			gs[0] = ins[0];
+			gs[1] = ins[1];
+			gs[2] = ins[2];
+			for(int k = 0; k < NVARS-1; k++)
+				dgs[k*NVARS+k] = 1.0;
+
+			//gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
+			gs[NDIM+1] = physics.getEnergyFromPressure( pinf, ins[0],
+					dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
+			
+			dgs[3*NVARS+0] = -0.5*(ins[1]*ins[1]+ins[2]*ins[2])/(ins[0]*ins[0]);
+			dgs[3*NVARS+1] = ins[1]/ins[0];
+			dgs[3*NVARS+2] = ins[2]/ins[0];
+			dgs[3*NVARS+3] = 0;
+		}
+		
+		// At supersonic outflow, everything is taken from the interior
+		else
+		{
+			for(int i = 0; i < NVARS; i++) {
+				gs[i] = ins[i];
+				dgs[i*NVARS+i] = 1.0;
+			}
+		}
+	}
+
 	else if(computeViscous) 
 	{
 		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
@@ -542,62 +590,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 	}
-
-	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
-	 * the free-stream state with certainty,
-	 * while the state at the outlet is not certain to be the free-stream state.
-	 * 
-	 * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
-	 *
-	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
-	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
-	 * isentropic.
-	 *
-	 * Whether the flow is subsonic or supersonic at the boundary
-	 * is decided by interior value of the Mach number.
-	 */
-	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
-	{
-		const a_real ci = physics.getSoundSpeedFromConserved(ins);
-		const a_real Mni = vni/ci;
-		
-		const a_real pinf = physics.getPressureFromConserved(&uinf[0]);
-
-		/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
-		 * takes care of signal propagation at the boundary.
-		 */
-		if(Mni <= 0)
-		{
-			for(short i = 0; i < NVARS; i++)
-				gs[i] = uinf[i];
-		}
-
-		/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
-		 * are taken from the interior.
-		 */
-		else if(Mni <= 1)
-		{
-			gs[0] = ins[0];
-			gs[1] = ins[1];
-			gs[2] = ins[2];
-			for(int k = 0; k < NVARS-1; k++)
-				dgs[k*NVARS+k] = 1.0;
-
-			gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
-			dgs[3*NVARS+0] = -0.5*(ins[1]*ins[1]+ins[2]*ins[2])/(ins[0]*ins[0]);
-			dgs[3*NVARS+1] = ins[1]/ins[0];
-			dgs[3*NVARS+2] = ins[2]/ins[0];
-			dgs[3*NVARS+3] = 0;
-		}
-		
-		// At supersonic outflow, everything is taken from the interior
-		else
-		{
-			for(int i = 0; i < NVARS; i++) {
-				gs[i] = ins[i];
-				dgs[i*NVARS+i] = 1.0;
-			}
-		}
+	else {
+		std::cout << " ! FlowFV: Cannot compute BC Jacobian - BC does not exist!!\n";
+		std::abort();
 	}
 }
 

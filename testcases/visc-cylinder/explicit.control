@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-cylinder/grids/sqcylquad2.msh
+../testcases/visc-cylinder/grids/sqcylquad1.msh
 ---Output-file
 ../data/vsqcyl.vtu
 ---Log-file-for-runtimes
@@ -60,7 +60,7 @@ NO
 NO
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLLC
+ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)

@@ -3,10 +3,11 @@ cmake_minimum_required(VERSION 2.8)
 # The environment variable EIGEN_DIR needs to be set to the path of the Eigen top-level directory.
 # The environment variable BLASTED_DIR needs to set to the root of the BLASTed linear algebra library.
 
-# Pass -DOMP=1 to compile with OpenMP
+# Pass -DNOOMP=1 to compile without OpenMP
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DSSE=1 to compile with SSE 4.2 instructions; ignored when compiling for KNC.
-# Pass -DAVX=1 to compile with AVX instructions
+# Pass -DAVX=1 to compile with AVX instructions.
+# Pass -DPROFILE=1 for profiling.
 
 project (fvens)
 
@@ -15,7 +16,9 @@ set (CMAKE_CXX_FLAGS_DEBUG " ")
 set (CMAKE_CXX_FLAGS_RELEASE " ")
 
 # to compile with OpenMP
-if(OMP)
+if(NOOMP)
+	message(STATUS "Compiling without OpenMP")
+else()
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 		message(STATUS "Compiling with OpenMP for GNU")
@@ -59,6 +62,11 @@ else()
 			message(STATUS "Compiling with AVX")
 		endif()
 	endif()
+endif()
+
+# profiling
+if(PROFILE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 endif()
 
 # Eigen
