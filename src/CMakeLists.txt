@@ -17,6 +17,7 @@ set (CMAKE_CXX_FLAGS_RELEASE " ")
 
 # to compile with OpenMP
 if(NOOMP)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 	message(STATUS "Compiling without OpenMP")
 else()
 	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
