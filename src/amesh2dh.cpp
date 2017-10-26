@@ -1,4 +1,5 @@
 #include "amesh2dh.hpp"
+#include "autilities.hpp"
 #include <boost/algorithm/string.hpp>
 
 namespace acfd {
@@ -107,6 +108,10 @@ void UMesh2dh::readMesh(std::string mfile)
 void UMesh2dh::readDomn(std::string mfile)
 {
 	std::ifstream infile(mfile);
+	if(!infile) {
+		std::cout << "UMesh2dh: Could not open domn mesh file!\n";
+		std::abort();
+	}
 
 	int nnode2, nfael2, ndim;
 	
@@ -250,7 +255,8 @@ void UMesh2dh::readDomn(std::string mfile)
 void UMesh2dh::readPlot2d(std::string mfile, const int bci0, const int bcimx,
 		const int bcj0, const int bcjmx)
 {
-	std::ifstream fin(mfile);
+	std::ifstream fin = open_file_toRead(mfile);
+
 	a_int imx, jmx, nbl;
 	a_real ddum;
 
@@ -280,6 +286,8 @@ void UMesh2dh::readPlot2d(std::string mfile, const int bci0, const int bcimx,
 	maxnnode = 4;
 	maxnfael = 4;
 	nnofa = 2;
+
+	fin.close();
 }
 
 /// Reads mesh from Gmsh 2 format file
@@ -287,7 +295,8 @@ void UMesh2dh::readGmsh2(std::string mfile)
 {
 	int dum; double dummy; std::string dums; char ch;
 
-	std::ifstream infile(mfile);
+	std::ifstream infile = open_file_toRead(mfile);
+	
 	for(int i = 0; i < 4; i++)		//skip 4 lines
 		do
 			ch = infile.get();
@@ -487,7 +496,7 @@ void UMesh2dh::readGmsh2(std::string mfile)
 void UMesh2dh::readSU2(std::string mfile)
 {
 	std::string dum;
-	std::ifstream fin(mfile);
+	std::ifstream fin = open_file_toRead(mfile);
 
 	std::getline(fin, dum, '='); std::getline(fin,dum);
 	int ndim = std::stoi(dum);
@@ -728,7 +737,8 @@ void UMesh2dh::writeGmsh2(std::string mfile)
 	if(nnofa == 3)
 		face_type = 8;
 
-	std::ofstream outf(mfile);
+	std::ofstream outf = open_file_toWrite(mfile);
+	
 	outf << std::setprecision(MESHDATA_DOUBLE_PRECISION);
 	//std::cout << "nodes\n";
 	outf << "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n";
@@ -853,7 +863,9 @@ void UMesh2dh::compute_areas()
 	}
 }
 
-/// \todo: TODO: There is an issue with psup for some boundary nodes belonging to elements of different types. Correct this.
+/** \todo: There is an issue with psup for some boundary nodes 
+ * belonging to elements of different types. Correct this.
+ */
 void UMesh2dh::compute_topological()
 {
 #ifdef DEBUG
@@ -1102,12 +1114,22 @@ void UMesh2dh::compute_topological()
 		}
 	}
 
-	/** Computes, for each face, the elements on either side, the starting node and the ending node of the face. This is stored in intfac. 
-	 * The orientation of the face is such that the element with smaller index is always to the left of the face, while the element with greater index is always to the right of the face.
+	/** Computes, for each face, the elements on either side, the starting node and 
+	 * the ending node of the face. These are stored in \ref intfac. 
+	 * 
+	 * The orientation of the face is such that the element with smaller index is 
+	 * always to the left of the face, while the element with greater index 
+	 * is always to the right of the face.
+	 * 
 	 * The node ordering of the face is such that the face `points' to the cell with greater index;
-	 * this means the vector starting at node 0 and pointing towards node 1 would rotate clockwise by 90 degrees to point to the cell with greater index.
-	 * Also computes element-face connectivity array elemface in the same loop which computes intfac.
-	 * \note After the following portion, esuel holds (nelem + face no.) for each ghost cell, instead of -1 as before.
+	 * this means the vector starting at node 0 and pointing towards node 1 would 
+	 * rotate clockwise by 90 degrees to point to the cell with greater index.
+	 * 
+	 * Also computes element-face connectivity array \ref elemface in the same loop 
+	 * which computes intfac.
+	 * 
+	 * \note After the following portion, \ref esuel holds (nelem + face no.) for each ghost cell, 
+	 * instead of -1 as before.
 	 */
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;

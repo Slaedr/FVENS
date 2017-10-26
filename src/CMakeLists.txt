@@ -100,7 +100,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # libraries to be compiled
 add_library(fvens_base aodesolver.cpp alinalg.cpp aspatial.cpp afactory.cpp 
-	areconstruction.cpp agradientschemes.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp aphysics.cpp)
+	areconstruction.cpp agradientschemes.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp aphysics.cpp
+	autilities.cpp)
 
 if(WITH_PETSC)
 	target_link_libraries(fvens_base ${PETSC_LIB})
