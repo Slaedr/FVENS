@@ -107,57 +107,60 @@ protected:
 	const a_real eps;
 };
 
+/// The collection of physical data needed to initialize flow spatial discretizations
+struct FlowPhysicsConfig
+{
+	const a_real gamma;                       ///< Adiabatic index 
+	const a_real Minf;                        ///< Free-stream Mach number
+	const a_real Tinf;                        ///< Free-stream temperature in Kelvin
+	const a_real Reinf;                       ///< Free-stream Reynolds number
+	const a_real Pr;                          ///< (Constant) Prandtl number
+	const a_real aoa;                         ///< Angle of attack in radians 
+	const bool viscous_sim;                   ///< Whether to include viscous effects
+	const bool const_visc;                  ///< Whether to use constant viscosity
+	const int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
+	const int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
+	const int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
+	const int slipwall_id;                  ///< Marker for slip wall
+	const int farfield_id;                  ///< Marker for far-field boundary
+	const int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
+	const int extrapolation_id;             ///< Marker for an extrapolation boundary
+	const int periodic_id;                  ///< Marker for periodic boundary
+	const a_real isothermalwall_temp;       ///< Temperature at isothermal wall
+	const a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
+	const a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
+	const a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
+	const a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
+};
+
+/// Collection of options related to the spatial discretization scheme
+struct FlowNumericsConfig
+{
+	const std::string conv_numflux;         ///< Convective numerical flux to use
+	const std::string conv_numflux_jac;     ///< Conv. numer. flux to use for approximate Jacobian
+	const std::string gradientscheme;       ///< Method to use to compute gradients
+	const std::string reconstruction;       ///< Method to use to reconstruct the solution
+	const bool order2;                      ///< Whether to compute a second-order solution
+};
+
 /// Computes the integrated fluxes and their Jacobians for compressible flow
 /** Note about BCs: normal velocity is assumed zero at all walls.
  * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
  * have been called on the mesh object prior to initialzing an object of this class.
  */
 template <
-	bool secondOrderRequested,             ///< Whether to computes gradients to get a 2nd order solution
-	bool constVisc                         ///< Whether to use constant viscosity (true) or Sutherland
+	bool secondOrderRequested,        ///< Whether to computes gradients to get a 2nd order solution
+	bool constVisc                    ///< Whether to use constant viscosity (true) or Sutherland
 >
 class FlowFV : public Spatial<NVARS>
 {
 public:
-	/// Sets data and various numerics objects
-	/** \param[in] mesh The mesh context
-	 * \param[in] g Adiabatic index
-	 * \param[in] Minf Free-stream Mach number
-	 * \param[in] Tinf Free stream dimensional temperature
-	 * \param[in] Reinf Free-stream Reynolds number
-	 * \param[in] Pr Prandtl number
-	 * \param[in] aoa Angle of attack in radians
-	 * \param[in] compute_viscous Set to true if viscous fluxes are required
-	 * \param[in] isothermal_marker The boundary marker in the mesh file corresponding to
-	 *   isothermal wall boundaries
-	 * \param[in] farfield_marker ID for boundaries where farfield conditions are imposed in ghost
-	 *   cells
-	 * \param[in] inflowoutflow_marker ID for boundaries where farfield condititions are imposed in
-	 *   ghost cells of inflow boundaries, and only farfield pressure is imposed in ghost cells
-	 *   of outflow boundaries
-	 * \param[in] extrap_marker Boundary marker for extrapolation BC
-	 * \param[in] isothermal_Temperature Wall temperature boundary value in Kelvin; this is
-	 *   divided by free-stream temperature in this routine and the non-dimensional value is stored
-	 * \param[in] isothermal_TangVel Tangential non-dimensional velocity at isothermal boundaries
-	 * \param[in] invflux The inviscid flux to use in the residual
-	 * \param[in] jacflux The inviscid flux to use for computing the first-order Jacobian
-	 * \param[in] reconst The method used for gradient reconstruction 
-	 *   - NONE, GREENGAUSS, LEASTSQUARES
-	 * \param[in] limiter The kind of slope limiter to use
+	/// Sets data and initializes the numerics
+	/** \note The parameter for the Venkatakrishnan limiter is set here, for some reason.
 	 */
-	FlowFV(const UMesh2dh *const mesh, const a_real g, const a_real Minf, const a_real Tinf, 
-		const a_real Reinf, const a_real Pr, const a_real aoa, 
-		const bool compute_viscous,
-		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker, 
-		const int slip_marker, const int farfield_marker, const int inflowoutflow_marker,
-		const int extrap_marker, const int periodic_marker,
-		const a_real isothermal_Temperature, const a_real isothermal_TangVel, 
-		const a_real adiabisobaric_Temperature, const a_real adiabisobaric_TangVel, 
-		const a_real adiabisobaric_Pressure,
-		const a_real adiabatic_TangVel,
-		const std::string invflux, const std::string jacflux, 
-		const std::string reconst, const std::string limiter,
-		const bool reconst_prim);
+	FlowFV(const UMesh2dh *const mesh,                  ///< Mesh context
+		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
+		const FlowNumericsConfig& nconfiguration);      ///< Options defining the numerical method
 	
 	~FlowFV();
 
@@ -207,13 +210,16 @@ public:
 	a_real compute_entropy_cell(const MVector& u) const;
 
 protected:
+	/// Problem specification
+	const FlowPhysicsConfig& pconfig;
+
+	/// Numerical method specification
+	const FlowNumericsConfig& nconfig;
+
 	/// Analytical flux vector computation
 	const IdealGasPhysics physics;
 	
 	const std::array<a_real,NVARS> uinf;                    ///< Free-stream/reference condition
-
-	/// If true, compute Navier Stokes fluxes, else only Euler
-	const bool computeViscous;
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
@@ -228,26 +234,6 @@ protected:
 
 	/// Reconstruction context
 	const SolutionReconstruction *const lim;
-
-	const int isothermal_wall_id;               ///< Boundary marker for isothermal wall
-	const int adiabatic_wall_id;                ///< Boundary marker for adiabatic wall
-	const int isothermalbaric_wall_id;          /**< Marker for adiabatic wall with a pressure value 
-													additionally imposed */
-	const int slip_wall_id;						///< Boundary marker for solid wall
-	const int farfield_id;                      ///< Boundary marker for farfield
-	const int inflowoutflow_id;			        ///< Boundary marker for inflow/outflow
-	const int extrap_id;                        ///< Marker for extrapolation boundary
-	const int periodic_id;                      ///< Marker for a set of periodic boundaries
-
-	const a_real isothermal_wall_temperature;    ///< Non-dim temperature imposed at isothermal wall
-	const a_real isothermal_wall_tangvel;           ///< Tangential velocity at isothermal wall
-	const a_real adiabatic_wall_tangvel;            ///< Tangential velocity at adiabatic wall
-	const a_real isothermalbaric_wall_temperature;  ///< Temperature at isothermal isobaric wall
-	const a_real isothermalbaric_wall_tangvel;      ///< Tangent velocity at isothermal isobaric wall
-	const a_real isothermalbaric_wall_pressure;     ///< Pressure at isothermal isobaric wall
-
-	/// True if primitive variables should be reconstructed rather than conserved variables
-	const bool reconstructPrimitive;
 
 	/// Computes flow variables at all boundaries (either Gauss points or ghost cell centers) 
 	/// using the interior state provided

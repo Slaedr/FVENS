@@ -1,4 +1,5 @@
 #include <blockmatrices.hpp>
+#include "autilities.hpp"
 #include "aoutput.hpp"
 #include "aodesolver.hpp"
 #include "afactory.hpp"
@@ -16,7 +17,8 @@ int main(int argc, char* argv[])
 	}
 
 	// Read control file
-	ifstream control(argv[1]);
+	
+	ifstream control = open_file_toRead(argv[1]);
 
 	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
 	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
@@ -36,7 +38,7 @@ int main(int argc, char* argv[])
 	short inittype, usestarter;
 	unsigned short nbuildsweeps, napplysweeps;
 	
-	bool use_matrix_free, lognres, reconstPrim, useconstvisc=false, viscsim=false,
+	bool use_matrix_free, lognres, useconstvisc=false, viscsim=false,
 		 order2 = true, residualsmoothing = false;
 	
 	char mattype, dumc;
@@ -65,7 +67,7 @@ int main(int argc, char* argv[])
 	if(inittype == 1) {
 		control >> dum; control >> initcondfile;
 	}
-	control.get(dumc); std::getline(control,dum); // FIXME
+	control.get(dumc); std::getline(control,dum); // FIXME formatting of control file
 	control >> dum; control >> slipwall_marker;
 	control >> dum; control >> farfield_marker;
 	control >> dum; control >> inout_marker;
@@ -163,17 +165,15 @@ int main(int argc, char* argv[])
 		lognres = true;
 	else
 		lognres = false;
-	if(recprim == "NO")
-		reconstPrim = false;
-	else
-		reconstPrim = true;
 	
 	if(meshfile == "READFROMCMD")
 	{
 		if(argc >= 3)
 			meshfile = argv[2];
-		else
+		else {
 			std::cout << "! Mesh file not given in command line!\n";
+			std::abort();
+		}
 	}
 
 	// Set up mesh
@@ -182,29 +182,34 @@ int main(int argc, char* argv[])
 	m.readMesh(meshfile);
 	m.compute_topological();
 	m.compute_areas();
-	m.compute_jacobians();
 	m.compute_face_data();
 	m.compute_periodic_map(periodic_marker, periodic_axis);
 
 	std::cout << "\n***\n";
 
 	// set up problem
+	
+	// physical configuration
+	const FlowPhysicsConfig pconf { 
+		gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0,
+		viscsim, useconstvisc,
+		isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
+		slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
+		twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel
+	};
+
+	// numerics for main solver
+	const FlowNumericsConfig nconfmain {invflux, invfluxjac, reconst, limiter, order2};
+	// simpler numerics for startup
+	const FlowNumericsConfig nconfstart {invflux, invfluxjac, "NONE", "NONE", false};
+
 	const Spatial<NVARS> *prob, *startprob;
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	prob = create_const_flowSpatialDiscretization(
-			&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
-			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-			slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-			invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
+	prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+	
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	startprob = create_const_flowSpatialDiscretization(
-			&m, gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0, viscsim, useconstvisc,
-			isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-			slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-			twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-			invflux, invfluxjac, "NONE", "NONE",false,true);
+	startprob = create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
 	
 	std::cout << "\n***\n";
 	

@@ -152,64 +152,29 @@ const SolutionReconstruction* create_const_reconstruction(const std::string& typ
 	return create_mutable_reconstruction(type, m, rc, gr, param);
 }
 
-Spatial<NVARS>* create_mutable_flowSpatialDiscretization(const UMesh2dh *const m, 
-		const a_real gamma, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr, 
-		const a_real alpha, const bool viscsim, const bool useconstvisc,
-		const int isothermalwall_marker, const int adiabaticwall_marker, 
-		const int isothermalpressurewall_marker,
-		const int slipwall_marker, const int farfield_marker, const int inout_marker, const int extrap_marker, 
-		const int periodic_marker,
-		const a_real twalltemp, const a_real twallvel, const a_real adiawallvel, const a_real tpwalltemp, 
-		const a_real tpwallvel, const a_real tpwallpressure,
-		const std::string invflux, const std::string invfluxjac, const std::string reconst, 
-		const std::string limiter, const bool order2, const bool reconstPrim)
+Spatial<NVARS>* create_mutable_flowSpatialDiscretization(
+	const UMesh2dh *const m,
+	const FlowPhysicsConfig& pconf,
+	const FlowNumericsConfig& nconf)
 {
-	if(order2)
-		if(useconstvisc)
-			return new FlowFV<true,true>(m, gamma, Minf, Tinf, Reinf, Pr, alpha, viscsim, 
-				isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-				slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-				twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-				invflux, invfluxjac, reconst, limiter, reconstPrim);
+	if(nconf.order2)
+		if(pconf.const_visc)
+			return new FlowFV<true,true>(m, pconf, nconf);
 		else
-			return new FlowFV<true,false>(m, gamma, Minf, Tinf, Reinf, Pr, alpha, viscsim, 
-				isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-				slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-				twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-				invflux, invfluxjac, reconst, limiter, reconstPrim);
+			return new FlowFV<true,false>(m, pconf, nconf);
 	else
-		if(useconstvisc)
-			return new FlowFV<false,true>(m, gamma, Minf, Tinf, Reinf, Pr, alpha, viscsim, 
-				isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-				slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-				twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-				invflux, invfluxjac, reconst, limiter, reconstPrim);
+		if(pconf.const_visc)
+			return new FlowFV<false,true>(m, pconf, nconf);
 		else
-			return new FlowFV<false,false>(m, gamma, Minf, Tinf, Reinf, Pr, alpha, viscsim, 
-				isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-				slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-				twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-				invflux, invfluxjac, reconst, limiter, reconstPrim);
+			return new FlowFV<false,false>(m, pconf, nconf);
 }
 
-const Spatial<NVARS>* create_const_flowSpatialDiscretization(const UMesh2dh *const m, 
-		const a_real gamma, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr, 
-		const a_real alpha, const bool viscsim, const bool useconstvisc,
-		const int isothermalwall_marker, const int adiabaticwall_marker, 
-		const int isothermalpressurewall_marker,
-		const int slipwall_marker, const int farfield_marker, const int inout_marker, const int extrap_marker, 
-		const int periodic_marker,
-		const a_real twalltemp, const a_real twallvel, const a_real adiawallvel, const a_real tpwalltemp, 
-		const a_real tpwallvel, const a_real tpwallpressure,
-		const std::string invflux, const std::string invfluxjac, const std::string reconst, 
-		const std::string limiter, const bool order2, const bool reconstPrim)
+const Spatial<NVARS>* create_const_flowSpatialDiscretization(
+	const UMesh2dh *const m,
+	const FlowPhysicsConfig& pconf,
+	const FlowNumericsConfig& nconf)
 {
-	return create_mutable_flowSpatialDiscretization(
-		m, gamma, Minf, Tinf, Reinf, Pr, alpha, viscsim, useconstvisc,
-		isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-		slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-		twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel, tpwallpressure,
-		invflux, invfluxjac, reconst, limiter, order2, reconstPrim);
+	return create_mutable_flowSpatialDiscretization(m, pconf, nconf);
 }
 
 }

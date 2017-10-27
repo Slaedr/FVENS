@@ -59,32 +59,18 @@ const SolutionReconstruction* create_const_reconstruction(const std::string& typ
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.
  */
-Spatial<NVARS>* create_mutable_flowSpatialDiscretization(const UMesh2dh *const m, 
-		const a_real gamma, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr, 
-		const a_real alpha, const bool viscsim, const bool useconstvisc,
-		const int isothermalwall_marker, const int adiabaticwall_marker, 
-		const int isothermalpressurewall_marker,
-		const int slipwall_marker, const int farfield_marker, const int inout_marker, const int extrap_marker, 
-		const int periodic_marker,
-		const a_real twalltemp, const a_real twallvel, const a_real adiawallvel, const a_real tpwalltemp, 
-		const a_real tpwallvel, const a_real tpwallpressure,
-		const std::string invflux, const std::string invfluxjac, const std::string reconst, 
-		const std::string limiter, const bool order2, const bool reconstPrim);
+Spatial<NVARS>* create_mutable_flowSpatialDiscretization(
+	const UMesh2dh *const m,                       ///< Mesh context
+	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
+	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 
 /// Generates an immutable spatial discretization for slow problems
 /** \sa create_mutable_flowSpatialDiscretization
  */
-const Spatial<NVARS>* create_const_flowSpatialDiscretization(const UMesh2dh *const m, 
-		const a_real gamma, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr, 
-		const a_real alpha, const bool viscsim, const bool useconstvisc,
-		const int isothermalwall_marker, const int adiabaticwall_marker, 
-		const int isothermalpressurewall_marker,
-		const int slipwall_marker, const int farfield_marker, const int inout_marker, const int extrap_marker, 
-		const int periodic_marker,
-		const a_real twalltemp, const a_real twallvel, const a_real adiawallvel, const a_real tpwalltemp, 
-		const a_real tpwallvel, const a_real tpwallpressure,
-		const std::string invflux, const std::string invfluxjac, const std::string reconst, 
-		const std::string limiter, const bool order2, const bool reconstPrim);
+const Spatial<NVARS>* create_const_flowSpatialDiscretization(
+	const UMesh2dh *const m,                       ///< Mesh context
+	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
+	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 
 }
 

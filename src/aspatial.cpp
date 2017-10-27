@@ -198,51 +198,36 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 }
 
 template<bool secondOrderRequested, bool constVisc>
-FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh, 
-		const a_real g, const a_real Minf, const a_real Tinf, const a_real Reinf, const a_real Pr,
-		const a_real a, const bool compute_viscous, 
-		const int isothermal_marker, const int adiabatic_marker, const int isothermalbaric_marker,
-		const int slip_marker, const int farfield_marker, const int inoutflow_marker, 
-		const int extrap_marker, const int periodic_marker,
-		const a_real isothermal_Temperature, const a_real isothermal_TangVel,
-		const a_real adiabatic_TangVel,
-		const a_real isothermalbaric_Temperature, const a_real isothermalbaric_TangVel, 
-		const a_real isothermalbaric_Pressure, 
-		const std::string invflux, const std::string jacflux, 
-		const std::string grad_scheme, const std::string limiter,
-		const bool reconstructPrim)
+FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
+		const FlowPhysicsConfig& pconf, 
+		const FlowNumericsConfig& nconf)
 	: 
 	Spatial<NVARS>(mesh), 
-	physics(g, Minf, Tinf, Reinf, Pr), 
-	uinf{physics.compute_freestream_state(a)},
-	computeViscous{compute_viscous},
+	pconfig{pconf},
+	nconfig{nconf},
+	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
+	uinf{physics.compute_freestream_state(pconfig.aoa)},
 
-	inviflux {create_const_inviscidflux(invflux, &physics)}, 
-	jflux {create_const_inviscidflux(jacflux, &physics)},
+	inviflux {create_const_inviscidflux(nconfig.conv_numflux, &physics)}, 
+	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &physics)},
 
-	gradcomp {create_const_gradientscheme(grad_scheme, m, &rc)},
-	lim {create_const_reconstruction(limiter, m, &rc, gr, 6.0)},
+	gradcomp {create_const_gradientscheme(nconfig.gradientscheme, m, &rc)},
 
-	isothermal_wall_id{isothermal_marker}, adiabatic_wall_id{adiabatic_marker}, 
-	isothermalbaric_wall_id{isothermalbaric_marker},
-	slip_wall_id{slip_marker}, farfield_id{farfield_marker}, inflowoutflow_id{inoutflow_marker},
-	extrap_id{extrap_marker}, periodic_id{periodic_marker},
-	isothermal_wall_temperature{isothermal_Temperature/Tinf},
-	isothermal_wall_tangvel{isothermal_TangVel}, 
-	adiabatic_wall_tangvel{adiabatic_TangVel},
-	isothermalbaric_wall_temperature{isothermalbaric_Temperature}, 
-	isothermalbaric_wall_tangvel{isothermalbaric_TangVel}, 
-	isothermalbaric_wall_pressure{isothermalbaric_Pressure},
-	reconstructPrimitive{reconstructPrim}
+	// the last argument in the next line is the Venkatakrishnan parameter
+	lim {create_const_reconstruction(nconfig.reconstruction, m, &rc, gr, 6.0)}
+
 {
 	std::cout << " FlowFV: Boundary markers:\n";
-	std::cout << "  Farfield " << farfield_id << ", inflow/outflow " << inflowoutflow_id
-		<< ", slip wall " << slip_wall_id;
-	std::cout << "  Extrapolation " << extrap_id << ", Periodic " << periodic_id << '\n';
-	std::cout << "  Isothermal " << isothermal_wall_id;
-	std::cout << "  Adiabatic " << adiabatic_wall_id;
-	std::cout << "  Isothermal isobaric " << isothermalbaric_wall_id << '\n';
-	std::cout << " FlowFV: Adiabatic wall tangential velocity = " << adiabatic_wall_tangvel << '\n';
+	std::cout << "  Farfield " << pconfig.farfield_id 
+		<< ", inflow/outflow " << pconfig.inflowoutflow_id
+		<< ", slip wall " << pconfig.slipwall_id;
+	std::cout << "  Extrapolation " << pconfig.extrapolation_id 
+		<< ", Periodic " << pconfig.periodic_id << '\n';
+	std::cout << "  Isothermal " << pconfig.isothermalwall_id;
+	std::cout << "  Adiabatic " << pconfig.adiabaticwall_id;
+	std::cout << "  Isothermal isobaric " << pconfig.isothermalbaricwall_id << '\n';
+	std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
+		<< pconfig.adiabaticwall_vel << '\n';
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
 }
@@ -270,15 +255,16 @@ void FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(MVector& u) cons
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(const amat::Array2d<a_real>& ins, 
-		amat::Array2d<a_real>& bs) const
+void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(
+		const amat::Array2d<a_real>& ins, 
+		       amat::Array2d<a_real>& bs ) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
 	
-		if(m->gintfacbtags(ied,0) == periodic_id)
+		if(m->gintfacbtags(ied,0) == pconfig.periodic_id)
 		{
 			for(int i = 0; i < NVARS; i++)
 				bs(ied,i) = ins(m->gperiodicmap(ied), i);
@@ -297,7 +283,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
 
-	if(m->gintfacbtags(ied,0) == slip_wall_id)
+	if(m->gintfacbtags(ied,0) == pconfig.slipwall_id)
 	{
 		gs[0] = ins[0];
 		for(int i = 1; i < NDIM+1; i++)
@@ -305,7 +291,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		gs[3] = ins[3];
 	}
 
-	else if(m->gintfacbtags(ied,0) == extrap_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.extrapolation_id)
 	{
 		gs[0] = ins[0];
 		for(int i = 1; i < NDIM+1; i++)
@@ -315,7 +301,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 	/** For the far-field BCs, ghost state values are always free-stream values.
 	 */
-	else if(m->gintfacbtags(ied,0) == farfield_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf[i];
@@ -334,7 +320,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 */
-	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.inflowoutflow_id)
 	{
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
@@ -370,44 +356,44 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		}
 	}
 
-	else if(computeViscous) 
+	else if(pconfig.viscous_sim) 
 	{
-		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
+		if(m->gintfacbtags(ied,0) == pconfig.adiabaticwall_id)
 		{
-			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
+			const a_real tangMomentum = pconfig.adiabaticwall_vel * ins[0];
 			gs[0] = ins[0];
 			gs[1] =  2.0*tangMomentum*ny - ins[1];
 			gs[2] = -2.0*tangMomentum*nx - ins[2];
 			gs[3] = ins[3];
 		}
 
-		else if(m->gintfacbtags(ied,0) == isothermal_wall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.isothermalwall_id)
 		{
 			// pressure in the interior cell as well as ghost cell
 			const a_real p = physics.getPressureFromConserved(ins);
 			
 			// temperature in the ghost cell
-			const a_real gtemp = 2.0*isothermal_wall_temperature - physics.getTemperature(ins[0],p);
+			const a_real gtemp = 2.0*pconfig.isothermalwall_temp - physics.getTemperature(ins[0],p);
 
 			gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
-			gs[1] = gs[0]*( 2.0*isothermal_wall_tangvel*ny - ins[1]/ins[0]);
-			gs[2] = gs[0]*(-2.0*isothermal_wall_tangvel*nx - ins[2]/ins[0]);
+			gs[1] = gs[0]*( 2.0*pconfig.isothermalwall_vel*ny - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*pconfig.isothermalwall_vel*nx - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
 
-		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.isothermalbaricwall_id)
 		{
 			// pressure in the ghost cell
 			const a_real gp = physics.getFreestreamPressure();
 			
 			// temperature in the ghost cell
-			const a_real gtemp= 2.0*isothermalbaric_wall_temperature 
+			const a_real gtemp= 2.0*pconfig.isothermalbaricwall_temp 
 				- physics.getTemperature(ins[0],gp);
 
 			gs[0] = physics.getDensityFromPressureTemperature(gp, gtemp);
-			gs[1] = gs[0]*( 2.0*isothermalbaric_wall_tangvel*ny - ins[1]/ins[0]);
-			gs[2] = gs[0]*(-2.0*isothermalbaric_wall_tangvel*nx - ins[2]/ins[0]);
+			gs[1] = gs[0]*( 2.0*pconfig.isothermalbaricwall_vel*ny - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*pconfig.isothermalbaricwall_vel*nx - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
@@ -436,7 +422,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		0
 	};
 
-	if(m->gintfacbtags(ied,0) == slip_wall_id)
+	if(m->gintfacbtags(ied,0) == pconfig.slipwall_id)
 	{
 		gs[0] = ins[0];
 		
@@ -459,7 +445,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		dgs[3*NVARS+3] = 1.0;
 	}
 
-	else if(m->gintfacbtags(ied,0) == extrap_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.extrapolation_id)
 	{
 		gs[0] = ins[0];
 		gs[1] = ins[1];
@@ -472,13 +458,13 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 	/* For the far-field BCs, ghost state values are always free-stream values.
 	 * Therefore the Jacobian is zero.
 	 */
-	else if(m->gintfacbtags(ied,0) == farfield_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf[i];
 	}
 
-	else if(m->gintfacbtags(ied,0) == inflowoutflow_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.inflowoutflow_id)
 	{
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
@@ -525,44 +511,44 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		}
 	}
 
-	else if(computeViscous) 
+	else if(pconfig.viscous_sim) 
 	{
-		if(m->gintfacbtags(ied,0) == adiabatic_wall_id)
+		if(m->gintfacbtags(ied,0) == pconfig.adiabaticwall_id)
 		{
-			const a_real tangMomentum = adiabatic_wall_tangvel * ins[0];
+			const a_real tangMomentum = pconfig.adiabaticwall_vel * ins[0];
 			gs[0] = ins[0];
 			dgs[0] = 1.0;
 
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			dgs[NVARS+0] = 2.0*adiabatic_wall_tangvel*n[1];
+			dgs[NVARS+0] = 2.0*pconfig.adiabaticwall_vel*n[1];
 			dgs[NVARS+1] = -1.0;
 
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			dgs[2*NVARS+0] = -2.0*adiabatic_wall_tangvel*n[0];
+			dgs[2*NVARS+0] = -2.0*pconfig.adiabaticwall_vel*n[0];
 			dgs[2*NVARS+2] = -1.0;
 
 			gs[3] = ins[3];
 			dgs[3*NVARS+3] = 1.0;
 		}
 
-		else if(m->gintfacbtags(ied,0) == isothermal_wall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.isothermalwall_id)
 		{
 			/// \todo Fix isothermal BC Jacobian
 			// FIXME: Wrong Jacobian
-			const a_real tangMomentum = isothermal_wall_tangvel * ins[0];
+			const a_real tangMomentum = pconfig.isothermalwall_vel * ins[0];
 			gs[0] = ins[0];
 			dgs[0] = 1.0;
 
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			dgs[NVARS+0] = 2.0*isothermal_wall_tangvel*n[1];
+			dgs[NVARS+0] = 2.0*pconfig.isothermalwall_vel*n[1];
 			dgs[NVARS+1] = -1.0;
 
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			dgs[2*NVARS+0] = -2.0*isothermal_wall_tangvel*n[0];
+			dgs[2*NVARS+0] = -2.0*pconfig.isothermalwall_vel*n[0];
 			dgs[2*NVARS+2] = -1.0;
 
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
-			gs[3] = physics.getEnergyFromTemperature(isothermal_wall_temperature, ins[0], vmag2);
+			gs[3] = physics.getEnergyFromTemperature(pconfig.isothermalwall_temp, ins[0], vmag2);
 			
 			a_real dvmag2[NVARS]; // derivative of vmag2 w.r.t. ins
 			dvmag2[0] = -2.0*dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]*ins[0]);
@@ -574,19 +560,19 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 			a_real dT[NVARS];
 			for(int i = 0; i < NVARS; i++) dT[i] = 0;
 
-			physics.getJacobianEnergyFromJacobiansTemperatureVmag2(isothermal_wall_temperature,
+			physics.getJacobianEnergyFromJacobiansTemperatureVmag2(pconfig.isothermalwall_temp,
 				ins[0], vmag2, dT, dvmag2, &dgs[3*NVARS]);
 		}
 
-		else if(m->gintfacbtags(ied,0) == isothermalbaric_wall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.isothermalbaricwall_id)
 		{
 			// FIXME: Wrong Jacobian
-			const a_real tangMomentum = isothermalbaric_wall_tangvel * ins[0];
-			gs[0] = physics.getDensityFromPressureTemperature(isothermalbaric_wall_pressure,
-					isothermalbaric_wall_temperature);
+			const a_real tangMomentum = pconfig.isothermalbaricwall_vel * ins[0];
+			const a_real gp = physics.getFreestreamPressure();
+			gs[0] = physics.getDensityFromPressureTemperature(gp, pconfig.isothermalbaricwall_temp);
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],isothermalbaric_wall_temperature};
+			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],pconfig.isothermalbaricwall_temp};
 			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 	}
@@ -637,8 +623,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 				gradl[1][i] = dudy(lelem,i);
 			}
 
-			if(reconstructPrimitive) 
-			{
+			/*if(reconstructPrimitive) 
+			{*/
 				/* If gradients are those of primitive variables,
 				 * convert cell-centred variables to primitive; we need primitive variables
 				 * to compute temperature gradient from primitive gradients.
@@ -652,17 +638,17 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 				for(int j = 0; j < NDIM; j++)
 					gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
 								ucl[NVARS-1], gradl[j][NVARS-1]);
-			} 
+			/*} 
 			else 
-			{
+			{*/
 				/* Get one-sided primitive-2 gradients from conserved variables and 
 				 * one-sided conservative gradients.
 				 * "Primitive-2" variables are density, velocities and temperature.
 				 */
-				for(int j = 0; j < NDIM; j++) {
+				/*for(int j = 0; j < NDIM; j++) {
 					physics.getGradPrimitive2FromConservedAndGradConserved(ucl,gradl[j],gradl[j]);
 				}
-			}
+			}*/
 
 			/* Use the same gradients on both sides of a boundary face;
 			 * this will amount to just using the one-sided gradient for the modified average
@@ -696,8 +682,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 				gradr[1][i] = dudy(relem,i);
 			}
 
-			if(reconstructPrimitive) 
-			{
+			/*if(reconstructPrimitive) 
+			{*/
 				physics.getPrimitiveFromConserved(ucl, ucl);
 				physics.getPrimitiveFromConserved(ucr, ucr);
 				
@@ -710,22 +696,21 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 					gradr[j][NVARS-1] = physics.getGradTemperature(ucr[0], gradr[j][0],
 								ucr[NVARS-1], gradr[j][NVARS-1]);
 				}
-			}
-			else 
+			//}
+			/*else 
 			{
-				/* get one-sided primitive-2 gradients from one-sided conservative gradients
-				 * "Primitive-2" variables are density, velocities and temperature.
-				 */
+				//get one-sided primitive-2 gradients from one-sided conservative gradients
+				// "Primitive-2" variables are density, velocities and temperature.
 				for(int j = 0; j < NDIM; j++) {
 					physics.getGradPrimitive2FromConservedAndGradConserved(ucl,gradl[j],gradl[j]);
 					physics.getGradPrimitive2FromConservedAndGradConserved(ucr,gradr[j],gradr[j]);
 				}
-			}
+			}*/
 		}
 	}
 
 	// convert cell-centred variables to primitive-2
-	if(secondOrderRequested && reconstructPrimitive)
+	if(secondOrderRequested /*&& reconstructPrimitive*/)
 	{
 		ucl[NVARS-1] = physics.getTemperature(ucl[0], ucl[NVARS-1]);
 		ucr[NVARS-1] = physics.getTemperature(ucr[0], ucr[NVARS-1]);
@@ -1037,7 +1022,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFluxApproximateJacobi
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, MVector& __restrict residual, 
+void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, 
+		MVector& __restrict residual, 
 		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const
 {
 	amat::Array2d<a_real> integ, dudx, dudy, ug, uleft, uright;	
@@ -1072,48 +1058,39 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, 
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
-		if(reconstructPrimitive)
+		MVector up(m->gnelem(), NVARS);
+
+		// convert everything to primitive variables
+#pragma omp parallel default(shared)
 		{
-			MVector up(m->gnelem(), NVARS);
-
-			// convert everything to primitive variables
-#pragma omp parallel default(shared)
+#pragma omp for
+			for(a_int iface = 0; iface < m->gnbface(); iface++)
 			{
-#pragma omp for
-				for(a_int iface = 0; iface < m->gnbface(); iface++)
-				{
-					physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
-				}
-
-#pragma omp for
-				for(a_int iel = 0; iel < m->gnelem(); iel++)
-					physics.getPrimitiveFromConserved(&u(iel,0), &up(iel,0));
+				physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
 			}
 
-			// reconstruct
-			gradcomp->compute_gradients(&up, &ug, &dudx, &dudy);
-			lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
-
-			// convert face values back to conserved variables - gradients stay primitive
-#pragma omp parallel default(shared)
-			{
 #pragma omp for
-				for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
-				{
-					physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
-					physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
-				}
-#pragma omp for
-				for(a_int iface = 0; iface < m->gnbface(); iface++) {
-					physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
-				}
-			}
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
+				physics.getPrimitiveFromConserved(&u(iel,0), &up(iel,0));
 		}
-		else
+
+		// reconstruct
+		gradcomp->compute_gradients(&up, &ug, &dudx, &dudy);
+		lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
+
+		// convert face values back to conserved variables - gradients stay primitive
+#pragma omp parallel default(shared)
 		{
-			std::cout << " No primitive reconstruction! ";
-			gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
-			lim->compute_face_values(u, ug, dudx, dudy, uleft, uright);
+#pragma omp for
+			for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+			{
+				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+				physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
+			}
+#pragma omp for
+			for(a_int iface = 0; iface < m->gnbface(); iface++) {
+				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+			}
 		}
 	}
 	else
@@ -1164,7 +1141,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, 
 			for(short ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] *= len;
 
-			if(computeViscous) 
+			if(pconfig.viscous_sim) 
 			{
 				// get viscous fluxes
 				a_real vflux[NVARS];
@@ -1197,7 +1174,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, 
 
 				a_real specradi = (fabs(vni)+ci)*len, specradj = (fabs(vnj)+cj)*len;
 
-				if(computeViscous) 
+				if(pconfig.viscous_sim) 
 				{
 					a_real mui, muj;
 					if(constVisc) {
@@ -1375,7 +1352,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u,
 		
 		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
 
-		if(computeViscous) {
+		if(pconfig.viscous_sim) {
 			computeViscousFluxApproximateJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
 		}
 		
@@ -1407,8 +1384,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u,
 		/// NOTE: the values of L and U get REPLACED here, not added to
 		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
 
-		if(computeViscous) {
-			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
+		if(pconfig.viscous_sim) {
+			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), &u(relem,0), 
+					&L(0,0), &U(0,0));
 		}
 
 		L *= len; U *= len;
@@ -1431,7 +1409,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u,
 #endif
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u, MVector grad[NDIM]) const
+void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u, 
+		                                                 MVector grad[NDIM]) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
