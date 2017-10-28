@@ -130,9 +130,10 @@ int main(int argc, char* argv[])
 	
 	if(timesteptype == "IMPLICIT") 
 	{
-		time = new SteadyBackwardEulerSolver<1>(&m, prob, u, M, initcfl, endcfl, rampstart, rampend, 
+		time = new SteadyBackwardEulerSolver<1>(prob, M, initcfl, endcfl, rampstart, rampend, 
 				tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, lognres);
+				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, 
+				lognres, logfile);
 
 		startprob->initializeUnknowns(u);
 		
@@ -140,12 +141,13 @@ int main(int argc, char* argv[])
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyBackwardEulerSolver<1>(&m, startprob, u, M, initcfl, endcfl, 
+			starttime = new SteadyBackwardEulerSolver<1>(startprob, M, initcfl, endcfl, 
 					rampstart, rampend, tolerance, maxiter, 
-					lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, lognres);
+					lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, 
+					lognres, logfile);
 
 			// solve the starter problem to get the initial solution
-			starttime->solve(logfile);
+			starttime->solve(u);
 
 			delete starttime;
 		}
@@ -153,24 +155,24 @@ int main(int argc, char* argv[])
 		/* Solve the main problem using either the initial solution
 		 * set by initializeUnknowns or the one computed by the starter problem.
 		 */
-		time->solve(logfile);
+		time->solve(u);
 	}
 	else {
 		if(residualsmoothing)
 			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
 
-		time = new SteadyForwardEulerSolver<1>(&m, prob, u, tolerance, maxiter, initcfl, 
-				residualsmoothing, M, lognres);
+		time = new SteadyForwardEulerSolver<1>(prob, tolerance, maxiter, initcfl, 
+				residualsmoothing, M, lognres, logfile);
 		
 		startprob->initializeUnknowns(u);
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyForwardEulerSolver<1>(&m, startprob, u, tolerance, 
-					maxiter, initcfl, residualsmoothing, M, lognres);
+			starttime = new SteadyForwardEulerSolver<1>(startprob, tolerance, 
+					maxiter, initcfl, residualsmoothing, M, lognres, logfile);
 
 			// solve the starter problem to get the initial solution
-			starttime->solve(logfile);
+			starttime->solve(u);
 
 			delete starttime;
 		}
@@ -178,7 +180,7 @@ int main(int argc, char* argv[])
 		/* Solve the main problem using either the initial solution
 		 * set by initializeUnknowns or the one computed by the starter problem.
 		 */
-		time->solve(logfile);
+		time->solve(u);
 	}
 
 	// postprocess

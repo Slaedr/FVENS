@@ -8,182 +8,20 @@ using namespace amat;
 using namespace std;
 using namespace acfd;
 
-int main(int argc, char* argv[])
+int main(const int argc, const char *const argv[])
 {
-	if(argc < 2)
-	{
-		cout << "Please give a control file name.\n";
-		return -1;
-	}
-
 	// Read control file
 	
-	ifstream control = open_file_toRead(argv[1]);
-
-	string dum, meshfile, outf, logfile, lognresstr, simtype, recprim, initcondfile;
-	string invflux, invfluxjac, reconst, limiter, linsolver, prec, timesteptype, usemf;
-	string constvisc, surfnamepref, volnamepref, isVolOutReq;
-	
-	double initcfl, endcfl, Minf, alpha, tolerance, lintol, 
-		   firstinitcfl, firstendcfl, firsttolerance;
-	double Reinf=0, Tinf=0, Pr=0, gamma, twalltemp=0, twallvel = 0;
-	double tpwalltemp=0, tpwallpressure=0, tpwallvel=0, adiawallvel;
-	
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, 
-		firstmaxiter, firstrampstart, firstrampend,
-		restart_vecs, farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker=-1,
-		isothermalpressurewall_marker=-1, adiabaticwall_marker=-1, 
-		extrap_marker, periodic_marker, periodic_axis;
-	int out_nwalls, out_nothers;
-	short inittype, usestarter;
-	unsigned short nbuildsweeps, napplysweeps;
-	
-	bool use_matrix_free, lognres, useconstvisc=false, viscsim=false,
-		 order2 = true, residualsmoothing = false;
-	
-	char mattype, dumc;
-	
-	std::vector<int> lwalls, lothers;
-
-	std::getline(control,dum); control >> meshfile;
-	control >> dum; control >> outf;
-	control >> dum; control >> logfile;
-	control >> dum; control >> lognresstr;
-	control >> dum;
-	control >> dum; control >> simtype;
-	control >> dum; control >> gamma;
-	control >> dum; control >> alpha;
-	control >> dum; control >> Minf;
-	if(simtype == "NAVIERSTOKES") {
-		control >> dum; control >> Tinf;
-		control >> dum; control >> Reinf;
-		control >> dum; control >> Pr;
-		control >> dum; control >> constvisc;
-		if(constvisc == "YES")
-			useconstvisc = true;
-		viscsim = true;
-	}
-	control >> dum; control >> inittype;
-	if(inittype == 1) {
-		control >> dum; control >> initcondfile;
-	}
-	control.get(dumc); std::getline(control,dum); // FIXME formatting of control file
-	control >> dum; control >> slipwall_marker;
-	control >> dum; control >> farfield_marker;
-	control >> dum; control >> inout_marker;
-	control >> dum; control >> extrap_marker;
-	control >> dum; control >> periodic_marker;
-	if(periodic_marker >= 0) {
-		control >> dum; control >> periodic_axis;
-	}
-	if(viscsim) {
-		std::getline(control,dum); std::getline(control,dum); control >> isothermalwall_marker;
-		std::getline(control,dum); std::getline(control,dum); control >> twalltemp >> twallvel;
-		std::getline(control,dum); std::getline(control,dum); control >> adiabaticwall_marker;
-		std::getline(control,dum); std::getline(control,dum); control >> adiawallvel;
-		std::getline(control,dum); std::getline(control,dum); 
-		control >> isothermalpressurewall_marker;
-		std::getline(control,dum); std::getline(control,dum); control >> tpwalltemp >> tpwallvel 
-			>> tpwallpressure;
-	}
-	control >> dum; control >> out_nwalls;
-	lwalls.resize(out_nwalls);
-	if(out_nwalls > 0) {
-		control >> dum;
-		for(int i = 0; i < out_nwalls; i++)
-			control >> lwalls[i];
-	}
-	control >> dum; control >> out_nothers;
-	lothers.resize(out_nothers);
-	if(out_nothers > 0) {
-		control >> dum;
-		for(int i = 0; i < out_nothers; i++)
-			control >> lothers[i];
-	}
-	if(out_nothers > 0 || out_nwalls > 0) {
-		control >> dum; 
-		control >> surfnamepref;
-	}
-	control >> dum; control >> isVolOutReq;
-	if(isVolOutReq == "YES") {
-		control >> dum; 
-		control >> volnamepref;
-	}
-
-	control >> dum;
-	control >> dum; control >> invflux;
-	control >> dum; control >> reconst;
-	if(reconst == "NONE")
-		order2 = false;
-	control >> dum; control >> limiter;
-	control >> dum; control >> recprim;
-	control >> dum;
-	control >> dum; control >> timesteptype;
-	control >> dum; control >> initcfl;
-	control >> dum; control >> endcfl;
-	control >> dum; control >> rampstart >> rampend;
-	control >> dum; control >> tolerance;
-	control >> dum; control >> maxiter;
-	control >> dum;
-	control >> dum; control >> usestarter;
-	control >> dum; control >> firstinitcfl;
-	control >> dum; control >> firstendcfl;
-	control >> dum; control >> firstrampstart >> firstrampend;
-	control >> dum; control >> firsttolerance;
-	control >> dum; control >> firstmaxiter;
-	if(timesteptype == "IMPLICIT") {
-		control >> dum;
-		control >> dum; control >> invfluxjac;
-		control >> dum; control >> usemf;
-		control >> dum; control >> mattype;
-		control >> dum; control >> linsolver;
-		control >> dum; control >> lintol;
-		control >> dum; control >> linmaxiterstart;
-		control >> dum; control >> linmaxiterend;
-		control >> dum; control >> restart_vecs;
-		control >> dum; control >> prec;
-		control >> dum; control >> nbuildsweeps >> napplysweeps;
-	}
-	else {
-		control >> dum;
-		std::string residualsmoothingstr;
-		control >> dum; control >> residualsmoothingstr;
-		control >> dum; control >> nbuildsweeps >> napplysweeps;
-		
-		if(residualsmoothingstr == "YES")
-			residualsmoothing = true;
-		invfluxjac = invflux;
-	}
-	control.close();
-
-	if(usemf == "YES")
-		use_matrix_free = true;
-	else
-		use_matrix_free = false;
-	
-	if(lognresstr == "YES")
-		lognres = true;
-	else
-		lognres = false;
-	
-	if(meshfile == "READFROMCMD")
-	{
-		if(argc >= 3)
-			meshfile = argv[2];
-		else {
-			std::cout << "! Mesh file not given in command line!\n";
-			std::abort();
-		}
-	}
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 
 	// Set up mesh
 
 	UMesh2dh m;
-	m.readMesh(meshfile);
+	m.readMesh(opts.meshfile);
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();
-	m.compute_periodic_map(periodic_marker, periodic_axis);
+	m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
 
 	std::cout << "\n***\n";
 
@@ -191,17 +29,20 @@ int main(int argc, char* argv[])
 	
 	// physical configuration
 	const FlowPhysicsConfig pconf { 
-		gamma, Minf, Tinf, Reinf, Pr, alpha*PI/180.0,
-		viscsim, useconstvisc,
-		isothermalwall_marker, adiabaticwall_marker, isothermalpressurewall_marker,
-		slipwall_marker, farfield_marker, inout_marker, extrap_marker, periodic_marker,
-		twalltemp, twallvel, adiawallvel, tpwalltemp, tpwallvel
+		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
+		opts.viscsim, opts.useconstvisc,
+		opts.isothermalwall_marker, opts.adiabaticwall_marker, opts.isothermalpressurewall_marker,
+		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker, 
+		opts.extrap_marker, opts.periodic_marker,
+		opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel
 	};
 
 	// numerics for main solver
-	const FlowNumericsConfig nconfmain {invflux, invfluxjac, reconst, limiter, order2};
+	const FlowNumericsConfig nconfmain {opts.invflux, opts.invfluxjac, 
+		opts.gradientmethod, opts.limiter, opts.order2};
+
 	// simpler numerics for startup
-	const FlowNumericsConfig nconfstart {invflux, invfluxjac, "NONE", "NONE", false};
+	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
 
 	const Spatial<NVARS> *prob, *startprob;
 	
@@ -218,16 +59,16 @@ int main(int argc, char* argv[])
 
 	// Initialize Jacobian for implicit schemes; no storage allocated here
 	blasted::LinearOperator<a_real,a_int> * M;
-	if(mattype == 'd') {
-		M = new blasted::DLUMatrix<NVARS>(&m,nbuildsweeps,napplysweeps);
+	if(opts.mattype == 'd') {
+		M = new blasted::DLUMatrix<NVARS>(&m,opts.nbuildsweeps,opts.napplysweeps);
 		std::cout << " Selected DLU matrix for Jacobian storage, if required.\n";
 	}
-	else if(mattype == 'c') {
-		M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
+	else if(opts.mattype == 'c') {
+		M = new blasted::BSRMatrix<a_real,a_int,1>(opts.nbuildsweeps,opts.napplysweeps);
 		std::cout << " Selected CSR matrix for Jacobian storage, if required.\n";
 	}
 	else {
-		M = new blasted::BSRMatrix<a_real,a_int,NVARS>(nbuildsweeps,napplysweeps);
+		M = new blasted::BSRMatrix<a_real,a_int,NVARS>(opts.nbuildsweeps,opts.napplysweeps);
 		std::cout << " Selected BSR matrix for Jacobian storage, if required.\n";
 	}
 
@@ -235,41 +76,44 @@ int main(int argc, char* argv[])
 
 	SteadySolver<4> * starttime=nullptr, * time=nullptr;
 
-	if(timesteptype == "IMPLICIT") 
+	if(opts.timesteptype == "IMPLICIT") 
 	{
-		if(use_matrix_free)
+		if(opts.use_matrix_free)
 			std::cout << "!! Matrix-free not implemented yet! Using matrix-storage instead.\n";
 			
 		// Pre-allocate storage for Jacobian matrix	
-		setupMatrixStorage<NVARS>(&m, mattype, M);
+		setupMatrixStorage<NVARS>(&m, opts.mattype, M);
 		
-		if(usestarter != 0)
-			starttime = new SteadyBackwardEulerSolver<4>(&m, startprob, u, M,
-				firstinitcfl, firstendcfl, firstrampstart, firstrampend, 
-				firsttolerance, firstmaxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
-				restart_vecs, lognres);
+		if(opts.usestarter != 0)
+			starttime = new SteadyBackwardEulerSolver<4>(startprob, M,
+				opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend, 
+				opts.firsttolerance, opts.firstmaxiter, 
+				opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, 
+				opts.linsolver, opts.preconditioner, 
+				opts.restart_vecs, opts.lognres, opts.logfile);
 
-		time = new SteadyBackwardEulerSolver<4>(&m, prob, u, M,
-				initcfl, endcfl, rampstart, rampend, tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, 
-				restart_vecs, lognres);
+		time = new SteadyBackwardEulerSolver<4>(prob, M,
+				opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend, 
+				opts.tolerance, opts.maxiter, 
+				opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, 
+				opts.linsolver, opts.preconditioner, 
+				opts.restart_vecs, opts.lognres, opts.logfile);
 
 		std::cout << "Set up backward Euler temporal scheme.\n";
 	}
 	else 
 	{
-		if(residualsmoothing)
+		if(opts.residualsmoothing)
 			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
 
-		if(usestarter != 0)
-			starttime = new SteadyForwardEulerSolver<4>(&m, startprob, u,
-					firsttolerance, firstmaxiter, firstinitcfl, 
-					residualsmoothing, M, lognres);
+		if(opts.usestarter != 0)
+			starttime = new SteadyForwardEulerSolver<4>(startprob,
+					opts.firsttolerance, opts.firstmaxiter, opts.firstinitcfl, 
+					opts.residualsmoothing, M, opts.lognres, opts.logfile);
 
-		time = new SteadyForwardEulerSolver<4>(&m, prob, u,
-				tolerance, maxiter, initcfl,
-				residualsmoothing, M, lognres);
+		time = new SteadyForwardEulerSolver<4>(prob,
+				opts.tolerance, opts.maxiter, opts.initcfl,
+				opts.residualsmoothing, M, opts.lognres, opts.logfile);
 
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}
@@ -281,14 +125,12 @@ int main(int argc, char* argv[])
 
 	// computation
 	
-	if(usestarter != 0)
+	if(opts.usestarter != 0)
 		// solve the starter problem to get the initial solution
-		starttime->solve(logfile);
+		starttime->solve(u);
 
-	/* Solve the main problem using either the initial solution
-	 * set by initializeUnknowns or the one computed by the starter problem.
-	 */
-	time->solve(logfile);
+	// Solve the main problem
+	time->solve(u);
 	
 	std::cout << "***\n";
 
@@ -299,20 +141,20 @@ int main(int argc, char* argv[])
 	prob->postprocess_point(u, scalars, velocities);
 
 	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
-	writeScalarsVectorToVtu_PointData(outf, m, scalars, scalarnames, velocities, "velocity");
+	writeScalarsVectorToVtu_PointData(opts.vtu_output_file, 
+			m, scalars, scalarnames, velocities, "velocity");
 
 	// export surface data like pressure coeff etc and volume data as plain text files
 	
-	IdealGasPhysics phy(gamma, Minf, Tinf, Reinf, Pr);
-	FlowOutput out(&m, prob, &phy, alpha);
+	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	FlowOutput out(&m, prob, &phy, opts.alpha);
 	
-	out.exportSurfaceData(u, lwalls, lothers, surfnamepref);
+	out.exportSurfaceData(u, opts.lwalls, opts.lothers, opts.surfnameprefix);
 	
-	if(isVolOutReq == "YES")
-		out.exportVolumeData(u, volnamepref);
+	if(opts.vol_output_reqd == "YES")
+		out.exportVolumeData(u, opts.volnameprefix);
 
-	if(usestarter != 0)
-		delete starttime;
+	delete starttime;
 	delete time;
 
 	delete prob;

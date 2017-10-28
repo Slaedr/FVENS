@@ -2,6 +2,20 @@
  * @brief Implements driver class(es) for solution of ODEs arising from PDE discretizations
  * @author Aditya Kashi
  * @date Feb 24, 2016
+ *
+ * This file is part of FVENS.
+ *   FVENS is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   FVENS is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "aodesolver.hpp"
@@ -40,16 +54,18 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 }
 
 template<short nvars>
-SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const mesh, 
-		const Spatial<nvars> *const euler, MVector& soln,
+SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
+		const Spatial<nvars> *const spatial,
 		const double toler, const int maxits, const double cfl_n, 
 		const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
-		bool lognlres)
+		bool lognlres, const std::string log_file)
 
-	: SteadySolver<nvars>(mesh, euler, soln, lognlres), 
+	: SteadySolver<nvars>(spatial, lognlres, log_file), 
 	tol{toler}, maxiter{maxits}, cfl{cfl_n}, useImplicitSmoothing{use_implicitSmoothing}, M{A},
 	linsolv{nullptr}, prec{nullptr}
 {
+	const UMesh2dh *const m = space->mesh();
+
 	residual.resize(m->gnelem(),nvars);
 	dtm.setup(m->gnelem(), 1);
 	
@@ -57,7 +73,7 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const UMesh2dh *const 
 		prec = new SGS<nvars>(M);
 		std::cout << " SteadyForwardEulerSolver: Selected ";
 		std::cout << "SGS preconditioned ";
-		linsolv = new RichardsonSolver<nvars>(mesh, M, prec);
+		linsolv = new RichardsonSolver<nvars>(m, M, prec);
 		std::cout << "Richardson iteration\n   for implicit residual averaging.\n";
 
 		double lintol = 1e-1; int linmaxiter = 1;
@@ -74,8 +90,10 @@ SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 }
 
 template<short nvars>
-void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
+void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 {
+	const UMesh2dh *const m = space->mesh();
+
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
@@ -98,7 +116,7 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 		}
 
 		// update residual
-		eul->compute_residual(u, residual, true, dtm);
+		space->compute_residual(u, residual, true, dtm);
 
 		if(useImplicitSmoothing)
 		{
@@ -173,19 +191,21 @@ void SteadyForwardEulerSolver<nvars>::solve(std::string logfile)
 /** By default, the Jacobian is stored in a block sparse row format.
  */
 template <short nvars>
-SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const mesh, 
-		const Spatial<nvars> *const spatial, MVector& soln, LinearOperator<a_real,a_int> *const pmat,
+SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
+		const Spatial<nvars> *const spatial, LinearOperator<a_real,a_int> *const pmat,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
 		const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
 		std::string linearsolver, std::string precond,
-		const int mrestart, bool lognlres)
+		const int mrestart, bool lognlres, const std::string log_file)
 
-	: SteadySolver<nvars>(mesh, spatial, soln, lognlres), M{pmat}, 
+	: SteadySolver<nvars>(spatial, lognlres, log_file), M{pmat}, 
 	cflinit{cfl_init}, cflfin{cfl_fin}, rampstart{ramp_start}, rampend{ramp_end}, 
 	tol{toler}, maxiter{maxits}, 
 	lintol{lin_tol}, linmaxiterstart{linmaxiter_start}, linmaxiterend{linmaxiter_end}
 {
+	const UMesh2dh *const m = space->mesh();
+
 	// NOTE: the number of columns here MUST match the static number of columns, which is nvars.
 	residual.resize(m->gnelem(),nvars);
 	dtm.setup(m->gnelem(), 1);
@@ -221,7 +241,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const UMesh2dh*const
 			<< mrestart << " iterations\n";
 	}
 	else {
-		linsolv = new RichardsonSolver<nvars>(mesh, M, prec);
+		linsolv = new RichardsonSolver<nvars>(m, M, prec);
 		std::cout << " SteadyBackwardEulerSolver: Richardson iteration selected, no acceleration.\n";
 	}
 }
@@ -234,8 +254,10 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 }
 
 template <short nvars>
-void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
+void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 {
+	const UMesh2dh *const m = space->mesh();
+
 	double curCFL; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
@@ -270,9 +292,9 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 		M->setAllZero();
 		
 		// update residual and local time steps
-		eul->compute_residual(u, residual, true, dtm);
+		space->compute_residual(u, residual, true, dtm);
 
-		eul->compute_jacobian(u, M);
+		space->compute_jacobian(u, M);
 		
 		// compute ramped quantities
 		if(step < rampstart) {
@@ -388,17 +410,19 @@ void SteadyBackwardEulerSolver<nvars>::solve(std::string logfile)
 }
 
 template <short nvars>
-TVDRKSolver<nvars>::TVDRKSolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, 
-		MVector& soln, const int temporal_order, const double cfl_num)
-	: UnsteadySolver<nvars>(mesh, spatial, soln, temporal_order), cfl{cfl_num},
+TVDRKSolver<nvars>::TVDRKSolver(const Spatial<nvars> *const spatial, 
+		MVector& soln, const int temporal_order, const std::string log_file, const double cfl_num)
+	: UnsteadySolver<nvars>(spatial, soln, temporal_order, log_file), cfl{cfl_num},
 	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
 {
-	dtm.setup(m->gnelem(), 1);
+	dtm.setup(space->mesh()->gnelem(), 1);
 }
 
 template<short nvars>
-void TVDRKSolver<nvars>::solve(const a_real finaltime, const std::string logfile)
+void TVDRKSolver<nvars>::solve(const a_real finaltime)
 {
+	const UMesh2dh *const m = space->mesh();
+
 	int step = 0;
 	a_real time = 0;   //< Physical time elapsed
 	a_real dtmin;      //< Time step
@@ -425,7 +449,7 @@ void TVDRKSolver<nvars>::solve(const a_real finaltime, const std::string logfile
 			}
 
 			// update residual
-			eul->compute_residual(u, residual, true, dtm);
+			space->compute_residual(u, residual, true, dtm);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)

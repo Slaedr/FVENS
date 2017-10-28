@@ -190,6 +190,9 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		fout << "# " << Cl << "  " << Cdp << "  " << Cdf << '\n';
 
 		fout.close();
+
+		std::cout << "FlowOutput: CL = " << Cl << "   CDp = " << Cdp << "    CDf = " << Cdf
+			<< std::endl;
 	}
 
 	// Iterate over `other' boundary markers and compute normalized velocities

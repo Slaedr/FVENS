@@ -2,7 +2,22 @@
  * @brief Spatial discretization for Euler/Navier-Stokes equations.
  * @author Aditya Kashi
  * @date Feb 24, 2016; modified May 13 2017
+ *
+ * This file is part of FVENS.
+ *   FVENS is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   FVENS is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef ASPATIAL_H
 #define ASPATIAL_H 1
 
@@ -85,6 +100,12 @@ public:
 	/// Compute nodal quantities to export
 	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vector) const = 0;
+
+	/// Exposes access to the mesh context
+	const UMesh2dh* mesh() const
+	{
+		return m;
+	}
 
 protected:
 	/// Mesh context

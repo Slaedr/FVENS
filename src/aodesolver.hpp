@@ -19,27 +19,17 @@ namespace acfd {
 template <short nvars>
 class SteadySolver
 {
-protected:
-	const UMesh2dh *const m;
-	const Spatial<nvars> * eul;
-	MVector& u;
-	MVector residual;
-	double cputime;
-	double walltime;
-	bool lognres;
-
 public:
 	/** 
-	 * \param[in] mesh Mesh context
 	 * \param[in] spatial Spatial discretization context
 	 * \param[in] soln The solution vector to use and update
 	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
 	 * \param[in] log_nonlinear_residual Set to true if output of convergence history is needed
 	 */
-	SteadySolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, MVector& soln,
-			bool log_nonlinear_residual)
-		: m(mesh), eul(spatial), u(soln), cputime{0.0}, walltime{0.0}, 
-		  lognres{log_nonlinear_residual}
+	SteadySolver(const Spatial<nvars> *const spatial,
+			bool log_nonlinear_residual, const std::string log_file)
+		: space(spatial), cputime{0.0}, walltime{0.0}, 
+		  lognres{log_nonlinear_residual}, logfile{log_file}
 	{ }
 
 	const MVector& residuals() const {
@@ -51,9 +41,17 @@ public:
 		wall_time = walltime; cpu_time = cputime;
 	}
 
-	virtual void solve(std::string logfile) = 0;
+	virtual void solve(MVector& u) = 0;
 
 	virtual ~SteadySolver() {}
+
+protected:
+	const Spatial<nvars> * space;
+	MVector residual;
+	double cputime;
+	double walltime;
+	bool lognres;
+	const std::string logfile;
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -67,13 +65,28 @@ public:
 template <short nvars>
 class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
-	using SteadySolver<nvars>::m;
-	using SteadySolver<nvars>::eul;
+public:
+	SteadyForwardEulerSolver(const Spatial<nvars> *const euler,
+			const double toler, const int maxits, const double cfl,
+			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
+			bool log_nonlinear_res, const std::string log_file);
+	
+	~SteadyForwardEulerSolver();
+
+	/// Solves the steady problem by a first-order explicit method, using local time-stepping
+	/**
+	 * \param[in,out] u The solution vector containing the initial solution and which
+	 *   will contain the final solution on return.
+	 */
+	void solve(MVector& u);
+
+private:
+	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::residual;
-	using SteadySolver<nvars>::u;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 	using SteadySolver<nvars>::lognres;
+	using SteadySolver<nvars>::logfile;
 
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
 	const double tol;
@@ -88,30 +101,18 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 
 	IterativeSolver<nvars> * linsolv;        ///< Linear solver context for Laplacian smoothing
 	Preconditioner<nvars>* prec;             ///< preconditioner context for Laplacian smoothing
-
-public:
-	SteadyForwardEulerSolver(const UMesh2dh *const mesh, const Spatial<nvars> *const euler, MVector& sol,
-			const double toler, const int maxits, const double cfl,
-			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
-			bool log_nonlinear_res);
-	
-	~SteadyForwardEulerSolver();
-
-	/// Solves the steady problem by a first-order explicit method, using local time-stepping
-	void solve(std::string logfile);
 };
 
 /// Implicit pseudo-time iteration to steady state
 template <short nvars>
 class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 {
-	using SteadySolver<nvars>::m;
-	using SteadySolver<nvars>::eul;
+	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::residual;
-	using SteadySolver<nvars>::u;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 	using SteadySolver<nvars>::lognres;
+	using SteadySolver<nvars>::logfile;
 
 	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
 
@@ -138,9 +139,7 @@ public:
 	
 	/// Sets required data and sets up the sparse Jacobian storage
 	/** 
-	 * \param[in] mesh Mesh context
 	 * \param[in] spatial Spatial discretization context
-	 * \param[in] soln Reference to the solution vector
 	 * \param[in] pmat Jacobian matrix context for the preconditioner (and perhaps the solver)
 	 * \param[in] cfl_init CFL to be used when the main solver starts
 	 * \param[in] cfl_fin Final CFL number attained at \ref ramp_end iterations
@@ -160,13 +159,13 @@ public:
 	 * \param[in] restart_vecs Number of Krylov subspace vectors to store per restart iteration
 	 * \param[in] log_nonlinear_res True if you want nonlinear convergence history
 	 */
-	SteadyBackwardEulerSolver(const UMesh2dh*const mesh, const Spatial<nvars> *const spatial,
-		MVector& soln, LinearOperator<a_real,a_int> *const pmat,
+	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial,
+		LinearOperator<a_real,a_int> *const pmat,
 		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
 		const double toler, const int maxits, 
 		const double lin_tol, const int linmaxiterstart, 
 		const int linmaxiterend, std::string linearsolver, std::string precond,
-		const int restart_vecs, bool log_nonlinear_res);
+		const int restart_vecs, bool log_nonlinear_res, const std::string log_file);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -174,9 +173,10 @@ public:
 	/** Appends a line of timing-related data to a log file as follows.
 	 *  num-cells num-threads  wall-time  CPU-time   avg-linear-solver-iterations 
 	 *      number-of-time-steps  <\n>
-	 * \param[in] logfile The file name to append timing data to
+	 * \param[in,out] u The solution vector containing the initial solution and which
+	 *   will contain the final solution on return.
 	 */
-	void solve(std::string logfile);
+	void solve(MVector& u);
 };
 
 /// Base class for unsteady simulations
@@ -187,13 +187,13 @@ template <short nvars>
 class UnsteadySolver
 {
 protected:
-	const UMesh2dh *const m;
-	const Spatial<nvars> * eul;
+	const Spatial<nvars> * space;
 	MVector& u;
 	MVector residual;
 	const int order;               ///< Deisgn order of accuracy in time
 	double cputime;
 	double walltime;
+	const std::string logfile;
 
 public:
 	/** 
@@ -202,9 +202,10 @@ public:
 	 * \param[in] soln The solution vector to use and update
 	 * \param[in] temporal_order Design order of accuracy in time
 	 */
-	UnsteadySolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, MVector& soln,
-			const int temporal_order)
-		: m(mesh), eul(spatial), u(soln), order{temporal_order}, cputime{0.0}, walltime{0.0}
+	UnsteadySolver(const Spatial<nvars> *const spatial, MVector& soln,
+			const int temporal_order, const std::string log_file)
+		: space(spatial), u(soln), order{temporal_order}, cputime{0.0}, walltime{0.0},
+		  logfile{log_file}
 	{ }
 
 	const MVector& residuals() const {
@@ -219,7 +220,7 @@ public:
 	/// Solve the ODE
 	/**
 	 */
-	virtual void solve(const a_real time, const std::string logfile) = 0;
+	virtual void solve(const a_real time) = 0;
 
 	virtual ~UnsteadySolver() {}
 };
@@ -229,19 +230,19 @@ template<short nvars>
 class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
-	TVDRKSolver(const UMesh2dh *const mesh, const Spatial<nvars> *const spatial, MVector& soln,
-			const int temporal_order, const double cfl_num);
+	TVDRKSolver(const Spatial<nvars> *const spatial, MVector& soln,
+			const int temporal_order, const std::string log_file, const double cfl_num);
 	
-	void solve(const a_real finaltime, const std::string logfile);
+	void solve(const a_real finaltime);
 
 protected:
-	using UnsteadySolver<nvars>::m;
-	using UnsteadySolver<nvars>::eul;
+	using UnsteadySolver<nvars>::space;
 	using UnsteadySolver<nvars>::residual;
 	using UnsteadySolver<nvars>::u;
 	using UnsteadySolver<nvars>::order;
 	using UnsteadySolver<nvars>::cputime;
 	using UnsteadySolver<nvars>::walltime;
+	using UnsteadySolver<nvars>::logfile;
 
 	const double cfl;
 
