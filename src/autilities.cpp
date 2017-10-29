@@ -108,17 +108,23 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	if(opts.viscsim) {
 		std::getline(control,dum); std::getline(control,dum); 
 		control >> opts.isothermalwall_marker;
+
 		std::getline(control,dum); std::getline(control,dum); 
 		control >> opts.twalltemp >> opts.twallvel;
+
 		std::getline(control,dum); std::getline(control,dum); 
 		control >> opts.adiabaticwall_marker;
+
 		std::getline(control,dum); std::getline(control,dum); 
 		control >> opts.adiawallvel;
+
 		std::getline(control,dum); std::getline(control,dum); 
 		control >> opts.isothermalpressurewall_marker;
+
 		std::getline(control,dum); std::getline(control,dum); 
 		control >> opts.tpwalltemp >> opts.tpwallvel >> opts.tpwallpressure;
 	}
+
 	control >> dum; control >> opts.num_out_walls;
 	opts.lwalls.resize(opts.num_out_walls);
 	if(opts.num_out_walls > 0) {
@@ -126,13 +132,16 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 		for(int i = 0; i < opts.num_out_walls; i++)
 			control >> opts.lwalls[i];
 	}
+
 	control >> dum; control >> opts.num_out_others;
 	opts.lothers.resize(opts.num_out_others);
-	if(opts.num_out_others > 0) {
+	if(opts.num_out_others > 0)
+	{
 		control >> dum;
 		for(int i = 0; i < opts.num_out_others; i++)
 			control >> opts.lothers[i];
 	}
+
 	if(opts.num_out_others > 0 || opts.num_out_walls > 0) {
 		control >> dum; 
 		control >> opts.surfnameprefix;
@@ -202,6 +211,26 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	control.close();
 
 	return opts;
+}
+
+FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts)
+{
+	const FlowPhysicsConfig pconf { 
+		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
+		opts.viscsim, opts.useconstvisc,
+		opts.isothermalwall_marker, opts.adiabaticwall_marker, opts.isothermalpressurewall_marker,
+		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker, 
+		opts.extrap_marker, opts.periodic_marker,
+		opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel
+	};
+	return pconf;
+}
+
+FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts)
+{
+	const FlowNumericsConfig nconf {opts.invflux, opts.invfluxjac, 
+		opts.gradientmethod, opts.limiter, opts.order2};
+	return nconf;
 }
 
 }

@@ -1,5 +1,6 @@
 #include <string>
 #include "../aspatial.hpp"
+#include "../autilities.hpp"
 
 using namespace acfd;
 
@@ -25,7 +26,7 @@ public:
 			for(int i = 0; i < NDIM; i++)
 				n[i] = m->ggallfa(iface,i);
 
-			compute_boundary_state(iface, n, u, ug);
+			compute_boundary_state(iface, u, ug);
 
 			a_real flux[NVARS];
 			inviflux->get_flux(u,ug,n,flux);
@@ -64,19 +65,40 @@ protected:
 	using FlowFV<true,false>::inviflux;
 };
 
-int main()
+/** The first command line argument is the control file.
+ * The second is a string that decides which test to perform.
+ * Currently avaiable:
+ * - no_slip_boundaries
+ */
+int main(const int argc, const char *const argv[])
 {
-	if(argc < 2) {
+	if(argc < 3) {
 		std::cout << "Not enough command-line arguments!\n";
 		return -2;
 	}
 
 	int finerr = 0;
+	
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	std::string testchoice = argv[2];
 
-	std::string meshfile = argv[1];
 	UMesh2dh m;
-	m.readMesh(meshfile);
+	m.readMesh(opts.meshfile);
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();
+
+	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
+	const FlowNumericsConfig nconf = extract_spatial_numerics_config(opts);
+	TestFlowFVGeneral testfv(&m, pconf, nconf);
+
+	if(testchoice == "no_slip_boundaries") {
+		const a_real p_nondim = 10.0;
+		const a_real u[NVARS] = {1.0, 0.5, 0.5, p_nondim/(opts.gamma-1.0) + 0.5*0.5 };
+		
+		int err = testfv.testWalls(u);
+		finerr = finerr || err;
+	}
+
+	return finerr;
 }
