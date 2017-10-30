@@ -11,6 +11,20 @@
 
 namespace acfd {
 
+struct SteadySolverConfig {
+	a_real cflinit;              ///< Initial CFL number, used for steps before \ref rampstart
+	a_real cflfin;               ///< Final CFL, used for time steps after \ref rampend
+	int rampstart;               ///< Time step at which to begin CFL ramping
+	int rampend;                 ///< Time step at which to end CFL ramping
+	a_real tol;                  ///< Tolerance for the final solution to the nonlinear system
+	int maxiter;                 ///< Maximum number of iterations to solve the nonlinear system
+	a_real lintol;               ///< Tolerance of the linear solver in case of implicit schemes
+	int linmaxiterstart;         ///< Max linear solver iterations before step \ref rampstart
+	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
+	bool lognres;                ///< Whether to output nonlinear residual history
+	std::string logfile;         ///< File in which to write nonlinear residual history if needed
+};
+
 /// Base class for steady-state simulations in pseudo-time
 /** Note that the unknowns u and residuals R correspond to the following ODE:
  * \f$ \frac{du}{dt} + R(u) = 0 \f$. Note that the residual is on the LHS.
@@ -25,10 +39,8 @@ public:
 	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
 	 * \param[in] log_nonlinear_residual Set to true if output of convergence history is needed
 	 */
-	SteadySolver(const Spatial<nvars> *const spatial,
-			bool log_nonlinear_residual, const std::string log_file)
-		: space(spatial), cputime{0.0}, walltime{0.0}, 
-		  lognres{log_nonlinear_residual}, logfile{log_file}
+	SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
+		: space{spatial}, config{conf}, cputime{0.0}, walltime{0.0}, 
 	{ }
 
 	const MVector& residuals() const {
@@ -45,12 +57,9 @@ public:
 	virtual ~SteadySolver() {}
 
 protected:
-	const Spatial<nvars> * space;
+	const Spatial<nvars> *const space;
+	const SteadySolverConfig& config;
 	MVector residual;
-	double cputime;
-	double walltime;
-	bool lognres;
-	const std::string logfile;
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -124,15 +133,6 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 	 */
 	LinearOperator<a_real,a_int>* M;
 
-	const double cflinit;
-	double cflfin;
-	int rampstart;
-	int rampend;
-	double tol;
-	int maxiter;
-	double lintol;
-	int linmaxiterstart;
-	int linmaxiterend;
 
 public:
 	
