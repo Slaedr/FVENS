@@ -12,7 +12,7 @@ public:
 	: FlowFV<true,false>(mesh, pconf, nconf)
 	{ }
 	
-	/// Tests whether the LLF flux is zero at solid walls
+	/// Tests whether the inviscid mass flux is zero at solid walls
 	/** \param u Interior state for boundary cells
 	 */
 	int testWalls(const a_real u[NVARS]) const
@@ -55,6 +55,19 @@ public:
 					ierr = 1;
 					std::cerr << "! Normal mass flux at isothermalbaric wall is nonzero!\n";
 				}
+			
+			if(m->gintfacbtags(iface,0) == pconfig.slipwall_id)
+			{
+				if(std::fabs(flux[0]) > ZERO_TOL) {
+					ierr = 1;
+					std::cerr << "! Normal mass flux at slip wall is nonzero!\n";
+				}
+
+				if(std::fabs(flux[NVARS-1]) > ZERO_TOL) {
+					ierr = 1;
+					std::cerr << "! Normal energy flux at slip wall is nonzero!\n";
+				}
+			}
 		}
 
 		return ierr;
@@ -68,7 +81,8 @@ protected:
 /** The first command line argument is the control file.
  * The second is a string that decides which test to perform.
  * Currently avaiable:
- * - no_slip_boundaries
+ * - 'wall_boundaries': Tests whether certain components of the numerical inviscid flux
+ *     are zero for the 3 types of solid walls - adiabatic, isothermal and slip.
  */
 int main(const int argc, const char *const argv[])
 {
@@ -92,7 +106,7 @@ int main(const int argc, const char *const argv[])
 	const FlowNumericsConfig nconf = extract_spatial_numerics_config(opts);
 	TestFlowFVGeneral testfv(&m, pconf, nconf);
 
-	if(testchoice == "no_slip_boundaries") {
+	if(testchoice == "wall_boundaries") {
 		const a_real p_nondim = 10.0;
 		const a_real u[NVARS] = {1.0, 0.5, 0.5, p_nondim/(opts.gamma-1.0) + 0.5*0.5 };
 		

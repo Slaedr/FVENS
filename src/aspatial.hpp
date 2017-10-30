@@ -181,14 +181,15 @@ public:
 	 */
 	FlowFV(const UMesh2dh *const mesh,                  ///< Mesh context
 		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
-		const FlowNumericsConfig& nconfiguration);      ///< Options defining the numerical method
+		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
+	);
 	
 	~FlowFV();
 
 	/// Sets initial conditions
 	/** \param[in] fromfile True if initial data is to be read from a file
 	 * \param[in] file Name of initial conditions file
-	 * \param[in|out] u Vector to store the initial data in
+	 * \param[in,out] u Vector to store the initial data in
 	 */
 	void initializeUnknowns(MVector& u) const;
 
@@ -270,7 +271,7 @@ protected:
 	/// Computes ghost cell state across one face
 	/** \param[in] ied Face id in face data structure intfac
 	 * \param[in] ins Interior state of conserved variables
-	 * \param[in|out] gs Ghost state of conserved variables
+	 * \param[in,out] gs Ghost state of conserved variables
 	 */
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const;
 
@@ -278,8 +279,8 @@ protected:
 	/** The output array dgs is zeroed first, so any previous content will be lost. 
 	 * \param[in] ied Face id in face data structure intfac
 	 * \param[in] ins Interior state of conserved variables
-	 * \param[in|out] gs Ghost state of conserved variables
-	 * \param[in|out] dgs Derivatives of ghost state of conserved variables w.r.t.
+	 * \param[in,out] gs Ghost state of conserved variables
+	 * \param[in,out] dgs Derivatives of ghost state of conserved variables w.r.t.
 	 *   the interior state ins, NVARS x NVARS stored in a row-major 1D array
 	 */
 	void compute_boundary_Jacobian(const int ied, const a_real *const ins, 
@@ -294,7 +295,7 @@ protected:
 	 * \param[in] dudy Cell-centred gradients ("optional", see below)
 	 * \param[in] ul Left state of faces (conserved variables)
 	 * \param[in] ul Right state of faces (conserved variables)
-	 * \param[in|out] vflux On output, contains the viscous flux across the face
+	 * \param[in,out] vflux On output, contains the viscous flux across the face
 	 *
 	 * Note that dudx and dudy can be unallocated if only first-order fluxes are being computed,
 	 * but ul and ur are always used.
@@ -311,9 +312,9 @@ protected:
 	 * \param[in] iface Face index
 	 * \param[in] ul Cell-centred conserved variable on left
 	 * \param[in] ur Cell-centred conserved variable on right
-	 * \param[in|out] vfluxi Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_i \f$
+	 * \param[in,out] vfluxi Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_i \f$
 	 *   NVARS x NVARS array stored as a 1D row-major array
-	 * \param[in|out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
+	 * \param[in,out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
 	 *   NVARS x NVARS array stored as a 1D row-major array
 	 */
 	void computeViscousFluxJacobian(const a_int iface,

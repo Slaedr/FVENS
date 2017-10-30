@@ -323,12 +323,11 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 	/** The "inflow-outflow" BC assumes we know the state at the inlet is 
 	 * the free-stream state with certainty,
-	 * while the state at the outlet is not certain to be the free-stream state.
-	 * 
+	 * while the state at the outlet is not certain to be the free-stream state. 
 	 * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
 	 *
 	 * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
-	 * in the paper \cite{carlson_bcs}. It assumes that the flow at the outflow boundary is
+	 * in the paper \cite carlson_bcs. It assumes that the flow at the outflow boundary is
 	 * isentropic.
 	 *
 	 * Whether the flow is subsonic or supersonic at the boundary

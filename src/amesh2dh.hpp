@@ -235,7 +235,7 @@ private:
 	int ndtag;                      ///< number of tags for each element
 	
 	/// Coordinates of nodes
-	amat::Array2d<double > coords;
+	amat::Array2d<a_real> coords;
 	
 	/// Interconnectivity matrix: lists node numbers of nodes in each element
 	amat::Array2d<a_int > inpoel; 
@@ -243,7 +243,7 @@ private:
 	/// Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
 	amat::Array2d<a_int > bface;	
 	
-	amat::Array2d<double > vol_regions;			///< to hold volume region markers, if any
+	amat::Array2d<int> vol_regions;                ///< to hold volume region markers, if any
 	
 	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
 	amat::Array2d<a_real > flag_bpoin;	
