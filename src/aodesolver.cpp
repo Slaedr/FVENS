@@ -92,6 +92,11 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 {
 	const UMesh2dh *const m = space->mesh();
 
+	if(config.maxiter <= 0) {
+		std::cout << " SteadyForwardEulerSolver: solve(): No iterations to be done.\n";
+		return;
+	}
+
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
@@ -250,6 +255,11 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 {
 	const UMesh2dh *const m = space->mesh();
 
+	if(config.maxiter <= 0) {
+		std::cout << " SteadyBackwardEulerSolver: solve(): No iterations to be done.\n";
+		return;
+	}
+
 	a_real curCFL; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
@@ -270,7 +280,6 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 	walltime = cputime = 0;
 	linsolv->resetRunTimes();
 
-	std::cout << " SteadyBackwardEulerSolver: solve(): Starting solver.\n";
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 #pragma omp parallel for default(shared)
