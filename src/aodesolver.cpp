@@ -56,12 +56,10 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 template<short nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 		const Spatial<nvars> *const spatial,
-		const double toler, const int maxits, const double cfl_n, 
-		const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
-		bool lognlres, const std::string log_file)
+		const SteadySolverConfig& conf,
+		const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A)
 
-	: SteadySolver<nvars>(spatial, lognlres, log_file), 
-	tol{toler}, maxiter{maxits}, cfl{cfl_n}, useImplicitSmoothing{use_implicitSmoothing}, M{A},
+	: SteadySolver<nvars>(spatial, conf), useImplicitSmoothing{use_implicitSmoothing}, M{A},
 	linsolv{nullptr}, prec{nullptr}
 {
 	const UMesh2dh *const m = space->mesh();
@@ -191,18 +189,11 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 /** By default, the Jacobian is stored in a block sparse row format.
  */
 template <short nvars>
-SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
-		const Spatial<nvars> *const spatial, LinearOperator<a_real,a_int> *const pmat,
-		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, 
-		const double lin_tol, const int linmaxiter_start, const int linmaxiter_end, 
-		std::string linearsolver, std::string precond,
-		const int mrestart, bool lognlres, const std::string log_file)
+SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, 
+		const SteadySolverConfig& conf,	
+		LinearOperator<a_real,a_int> *const pmat)
 
-	: SteadySolver<nvars>(spatial, lognlres, log_file), M{pmat}, 
-	cflinit{cfl_init}, cflfin{cfl_fin}, rampstart{ramp_start}, rampend{ramp_end}, 
-	tol{toler}, maxiter{maxits}, 
-	lintol{lin_tol}, linmaxiterstart{linmaxiter_start}, linmaxiterend{linmaxiter_end}
+	: SteadySolver<nvars>(spatial, conf), M{pmat}
 {
 	const UMesh2dh *const m = space->mesh();
 

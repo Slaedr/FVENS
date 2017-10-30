@@ -11,7 +11,10 @@
 
 namespace acfd {
 
+/// A collection of parameters specifying the temporal discretization
 struct SteadySolverConfig {
+	bool lognres;                ///< Whether to output nonlinear residual history
+	std::string logfile;         ///< File in which to write nonlinear residual history if needed
 	a_real cflinit;              ///< Initial CFL number, used for steps before \ref rampstart
 	a_real cflfin;               ///< Final CFL, used for time steps after \ref rampend
 	int rampstart;               ///< Time step at which to begin CFL ramping
@@ -21,8 +24,9 @@ struct SteadySolverConfig {
 	a_real lintol;               ///< Tolerance of the linear solver in case of implicit schemes
 	int linmaxiterstart;         ///< Max linear solver iterations before step \ref rampstart
 	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
-	bool lognres;                ///< Whether to output nonlinear residual history
-	std::string logfile;         ///< File in which to write nonlinear residual history if needed
+	std::string linearsolver;    ///< Linear solver to use for implicit solvers
+	int restart_vecs;            ///< Number of Krylov basis vectors to store before restart
+	std::string preconditioner;  ///< Preconditioner to use for implicit solvers
 };
 
 /// Base class for steady-state simulations in pseudo-time
@@ -74,10 +78,8 @@ template <short nvars>
 class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
 public:
-	SteadyForwardEulerSolver(const Spatial<nvars> *const euler,
-			const double toler, const int maxits, const double cfl,
-			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A,
-			bool log_nonlinear_res, const std::string log_file);
+	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const SteadySolverConfig& conf,
+			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A);
 	
 	~SteadyForwardEulerSolver();
 
@@ -90,16 +92,12 @@ public:
 
 private:
 	using SteadySolver<nvars>::space;
+	using SteadySolver<nvars>::config;
 	using SteadySolver<nvars>::residual;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
-	using SteadySolver<nvars>::lognres;
-	using SteadySolver<nvars>::logfile;
 
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
-	const double tol;
-	const int maxiter;
-	const double cfl;
 
 	/// Stores whether implicit Laplacian smoothing is to be used for the residual
 	const bool useImplicitSmoothing;
@@ -115,56 +113,15 @@ private:
 template <short nvars>
 class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 {
-	using SteadySolver<nvars>::space;
-	using SteadySolver<nvars>::residual;
-	using SteadySolver<nvars>::cputime;
-	using SteadySolver<nvars>::walltime;
-	using SteadySolver<nvars>::lognres;
-	using SteadySolver<nvars>::logfile;
-
-	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
-
-	IterativeSolver<nvars> * linsolv;        ///< Linear solver context
-	Preconditioner<nvars>* prec;             ///< preconditioner context
-
-	/// Sparse matrix of the preconditioning Jacobian
-	/** Note that the same matrix is used as the actual LHS as well,
-	 * if matrix-free solution is disabled.
-	 */
-	LinearOperator<a_real,a_int>* M;
-
-
 public:
-	
 	/// Sets required data and sets up the sparse Jacobian storage
 	/** 
 	 * \param[in] spatial Spatial discretization context
+	 * \param[in] conf Temporal discretization settings
 	 * \param[in] pmat Jacobian matrix context for the preconditioner (and perhaps the solver)
-	 * \param[in] cfl_init CFL to be used when the main solver starts
-	 * \param[in] cfl_fin Final CFL number attained at \ref ramp_end iterations
-	 * \param[in] ramp_start Iteration number of main solver at which 
-	 *            CFL number begins to linearly increase
-	 * \param[in] ramp_end Iteration number of the main solver at which CFL ramping ends
-	 * \param[in] toler Relative residual tolerance for the ODE solver for the main solver
-	 * \param[in] maxits Maximum number of pseudo-time steps for the main solver
-	 * \param[in] linmaxiterstart Maximum iterations per time step for the linear solver
-	 *              both for the starting ODE solver and initially for the main ODE solver
-	 * \param[in] linmaxiterend Maximum iterations per time step at the end of the CFL ramping
-	 *              of the main ODE solver
-	 * \param[in] linearsolver Selects the linear solver to use; possible values:
-	 *              "RICHARDSON", "BCGSTB" (BiCGStab)
-	 * \param[in] precond Selects preconditioner to use for the linear solver; possible values:
-	 *              "BSGS", "BILU0", "BJ"
-	 * \param[in] restart_vecs Number of Krylov subspace vectors to store per restart iteration
-	 * \param[in] log_nonlinear_res True if you want nonlinear convergence history
 	 */
-	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial,
-		LinearOperator<a_real,a_int> *const pmat,
-		const double cfl_init, const double cfl_fin, const int ramp_start, const int ramp_end, 
-		const double toler, const int maxits, 
-		const double lin_tol, const int linmaxiterstart, 
-		const int linmaxiterend, std::string linearsolver, std::string precond,
-		const int restart_vecs, bool log_nonlinear_res, const std::string log_file);
+	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf,
+		LinearOperator<a_real,a_int> *const pmat);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -176,6 +133,24 @@ public:
 	 *   will contain the final solution on return.
 	 */
 	void solve(MVector& u);
+
+protected:
+	using SteadySolver<nvars>::space;
+	using SteadySolver<nvars>::config;
+	using SteadySolver<nvars>::residual;
+	using SteadySolver<nvars>::cputime;
+	using SteadySolver<nvars>::walltime;
+
+	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
+
+	IterativeSolver<nvars> * linsolv;        ///< Linear solver context
+	Preconditioner<nvars>* prec;             ///< preconditioner context
+
+	/// Sparse matrix of the preconditioning Jacobian
+	/** Note that the same matrix is used as the actual LHS as well,
+	 * if matrix-free solution is disabled.
+	 */
+	LinearOperator<a_real,a_int> *const M;
 };
 
 /// Base class for unsteady simulations
