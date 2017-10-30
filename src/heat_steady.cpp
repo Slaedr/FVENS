@@ -124,16 +124,21 @@ int main(int argc, char* argv[])
 		default:
 			M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
 	}
+	
+	const SteadySolverConfig tconf {
+		lognres, logfile,
+		initcfl, endcfl, rampstart, rampend,
+		tolerance, maxiter,
+		lintol, linmaxiterstart, linmaxiterend, linsolver, restart_vecs,
+		prec
+	};
 
-	SteadySolver<1> *time;
-	SteadySolver<1> *starttime;
+	SteadySolver<1> *time = nullptr;
+	SteadySolver<1> *starttime = nullptr;
 	
 	if(timesteptype == "IMPLICIT") 
 	{
-		time = new SteadyBackwardEulerSolver<1>(prob, M, initcfl, endcfl, rampstart, rampend, 
-				tolerance, maxiter, 
-				lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, 
-				lognres, logfile);
+		time = new SteadyBackwardEulerSolver<1>(prob, tconf, M);
 
 		startprob->initializeUnknowns(u);
 		
@@ -141,10 +146,7 @@ int main(int argc, char* argv[])
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyBackwardEulerSolver<1>(startprob, M, initcfl, endcfl, 
-					rampstart, rampend, tolerance, maxiter, 
-					lintol, linmaxiterstart, linmaxiterend, linsolver, prec, restart_vecs, 
-					lognres, logfile);
+			starttime = new SteadyBackwardEulerSolver<1>(startprob, tconf, M);
 
 			// solve the starter problem to get the initial solution
 			starttime->solve(u);
@@ -161,15 +163,13 @@ int main(int argc, char* argv[])
 		if(residualsmoothing)
 			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
 
-		time = new SteadyForwardEulerSolver<1>(prob, tolerance, maxiter, initcfl, 
-				residualsmoothing, M, lognres, logfile);
+		time = new SteadyForwardEulerSolver<1>(prob, tconf, residualsmoothing, M);
 		
 		startprob->initializeUnknowns(u);
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyForwardEulerSolver<1>(startprob, tolerance, 
-					maxiter, initcfl, residualsmoothing, M, lognres, logfile);
+			starttime = new SteadyForwardEulerSolver<1>(startprob, tconf, residualsmoothing, M);
 
 			// solve the starter problem to get the initial solution
 			starttime->solve(u);

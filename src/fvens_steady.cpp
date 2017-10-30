@@ -73,8 +73,24 @@ int main(const int argc, const char *const argv[])
 	}
 
 	// set up time discrization
+	
+	const SteadySolverConfig maintconf {
+		opts.lognres, opts.logfile,
+		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
+		opts.tolerance, opts.maxiter,
+		opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
+		opts.preconditioner
+	};
+	
+	const SteadySolverConfig starttconf {
+		opts.lognres, opts.logfile,
+		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
+		opts.firsttolerance, opts.firstmaxiter,
+		opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
+		opts.preconditioner
+	};
 
-	SteadySolver<4> * starttime=nullptr, * time=nullptr;
+	SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
 
 	if(opts.timesteptype == "IMPLICIT") 
 	{
@@ -85,19 +101,9 @@ int main(const int argc, const char *const argv[])
 		setupMatrixStorage<NVARS>(&m, opts.mattype, M);
 		
 		if(opts.usestarter != 0)
-			starttime = new SteadyBackwardEulerSolver<4>(startprob, M,
-				opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend, 
-				opts.firsttolerance, opts.firstmaxiter, 
-				opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, 
-				opts.linsolver, opts.preconditioner, 
-				opts.restart_vecs, opts.lognres, opts.logfile);
+			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, M);
 
-		time = new SteadyBackwardEulerSolver<4>(prob, M,
-				opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend, 
-				opts.tolerance, opts.maxiter, 
-				opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, 
-				opts.linsolver, opts.preconditioner, 
-				opts.restart_vecs, opts.lognres, opts.logfile);
+		time = new SteadyBackwardEulerSolver<4>(prob, maintconf, M);
 
 		std::cout << "Set up backward Euler temporal scheme.\n";
 	}
@@ -107,13 +113,11 @@ int main(const int argc, const char *const argv[])
 			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
 
 		if(opts.usestarter != 0)
-			starttime = new SteadyForwardEulerSolver<4>(startprob,
-					opts.firsttolerance, opts.firstmaxiter, opts.firstinitcfl, 
-					opts.residualsmoothing, M, opts.lognres, opts.logfile);
+			starttime = new SteadyForwardEulerSolver<4>(startprob, starttconf,
+					opts.residualsmoothing, M);
 
-		time = new SteadyForwardEulerSolver<4>(prob,
-				opts.tolerance, opts.maxiter, opts.initcfl,
-				opts.residualsmoothing, M, opts.lognres, opts.logfile);
+		time = new SteadyForwardEulerSolver<4>(prob, maintconf,
+				opts.residualsmoothing, M);
 
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}

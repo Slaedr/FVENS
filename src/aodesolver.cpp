@@ -97,15 +97,15 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 	a_real initres = 1.0;
 
 	std::ofstream convout;
-	if(lognres)
-		convout.open(logfile+".conv", std::ofstream::app);
+	if(config.lognres)
+		convout.open(config.logfile+".conv", std::ofstream::app);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-	while(resi/initres > tol && step < maxiter)
+	while(resi/initres > config.tol && step < config.maxiter)
 	{
 #pragma omp parallel for simd default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++) {
@@ -136,7 +136,7 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 			{
 				for(short i = 0; i < nvars; i++)
 				{
-					u(iel,i) -= cfl*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
+					u(iel,i) -= config.cflinit*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
 				}
 			}
 
@@ -157,11 +157,11 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 				<< ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		if(lognres)
+		if(config.lognres)
 			convout << step << " " << std::setw(10) << resi/initres << '\n';
 	}
 
-	if(lognres)
+	if(config.lognres)
 		convout.close();
 	
 	gettimeofday(&time2, NULL);
@@ -169,7 +169,7 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 
-	if(step == maxiter)
+	if(step == config.maxiter)
 		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
 	std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
 	std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
@@ -181,7 +181,7 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 #ifdef _OPENMP
 	numthreads = omp_get_max_threads();
 #endif
-	std::ofstream outf; outf.open(logfile, std::ofstream::app);
+	std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
 	outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
 	outf.close();
 }
@@ -189,7 +189,8 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 /** By default, the Jacobian is stored in a block sparse row format.
  */
 template <short nvars>
-SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, 
+SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
+		const Spatial<nvars> *const spatial, 
 		const SteadySolverConfig& conf,	
 		LinearOperator<a_real,a_int> *const pmat)
 
@@ -202,17 +203,17 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const Spatial<nvars>
 	dtm.setup(m->gnelem(), 1);
 
 	// select preconditioner
-	if(precond == "J") {
+	if(config.preconditioner == "J") {
 		prec = new Jacobi<nvars>(M);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		std::cout << "Jacobi preconditioner.\n";
 	}
-	else if(precond == "SGS") {
+	else if(config.preconditioner == "SGS") {
 		prec = new SGS<nvars>(M);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		std::cout << "SGS preconditioner.\n";
 	}
-	else if(precond == "ILU0") {
+	else if(config.preconditioner == "ILU0") {
 		prec = new ILU0<nvars>(M);
 		std::cout << " SteadyBackwardEulerSolver: Selected ";
 		std::cout << " ILU0 preconditioner.\n";
@@ -222,14 +223,14 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(const Spatial<nvars>
 		std::cout << " SteadyBackwardEulerSolver: No preconditioning will be applied.\n";
 	}
 
-	if(linearsolver == "BCGSTB") {
+	if(config.linearsolver == "BCGSTB") {
 		linsolv = new BiCGSTAB<nvars>(m, M, prec);
 		std::cout << " SteadyBackwardEulerSolver: BiCGStab solver selected.\n";
 	}
-	else if(linearsolver == "GMRES") {
-		linsolv = new GMRES<nvars>(m, M, prec, mrestart);
+	else if(config.linearsolver == "GMRES") {
+		linsolv = new GMRES<nvars>(m, M, prec, config.restart_vecs);
 		std::cout << " SteadyBackwardEulerSolver: GMRES solver selected, restart after " 
-			<< mrestart << " iterations\n";
+			<< config.restart_vecs << " iterations\n";
 	}
 	else {
 		linsolv = new RichardsonSolver<nvars>(m, M, prec);
@@ -249,28 +250,28 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 {
 	const UMesh2dh *const m = space->mesh();
 
-	double curCFL; int curlinmaxiter;
+	a_real curCFL; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 	MVector du = MVector::Zero(m->gnelem(), nvars);
 
 	std::ofstream convout;
-	if(lognres)
-		convout.open(logfile+".conv", std::ofstream::app);
+	if(config.lognres)
+		convout.open(config.logfile+".conv", std::ofstream::app);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
-	unsigned int avglinsteps = 0;
+	int avglinsteps = 0;
 
 	walltime = cputime = 0;
 	linsolv->resetRunTimes();
 
 	std::cout << " SteadyBackwardEulerSolver: solve(): Starting solver.\n";
-	while(resi/initres > tol && step < maxiter)
+	while(resi/initres > config.tol && step < config.maxiter)
 	{
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++) {
@@ -288,25 +289,28 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 		space->compute_jacobian(u, M);
 		
 		// compute ramped quantities
-		if(step < rampstart) {
-			curCFL = cflinit;
-			curlinmaxiter = linmaxiterstart;
+		if(step < config.rampstart) {
+			curCFL = config.cflinit;
+			curlinmaxiter = config.linmaxiterstart;
 		}
-		else if(step < rampend) {
-			if(rampend-rampstart <= 0) {
-				curCFL = cflfin;
-				curlinmaxiter = linmaxiterend;
+		else if(step < config.rampend) {
+			if(config.rampend-config.rampstart <= 0) {
+				curCFL = config.cflfin;
+				curlinmaxiter = config.linmaxiterend;
 			}
 			else {
-				double slopec = (cflfin-cflinit)/(rampend-rampstart);
-				curCFL = cflinit + slopec*(step-rampstart);
-				double slopei = double(linmaxiterend-linmaxiterstart)/(rampend-rampstart);
-				curlinmaxiter = int(linmaxiterstart + slopei*(step-rampstart));
+				const a_real slopec = (config.cflfin-config.cflinit)
+					                    /(config.rampend-config.rampstart);
+				curCFL = config.cflinit + slopec*(step-config.rampstart);
+				
+				const a_real slopei = a_real(config.linmaxiterend-config.linmaxiterstart)
+					                    /(config.rampend-config.rampstart);
+				curlinmaxiter = int(config.linmaxiterstart + slopei*(step-config.rampstart));
 			}
 		}
 		else {
-			curCFL = cflfin;
-			curlinmaxiter = linmaxiterend;
+			curCFL = config.cflfin;
+			curlinmaxiter = config.linmaxiterend;
 		}
 
 		// add pseudo-time terms to diagonal blocks
@@ -326,7 +330,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 		// setup and solve linear system for the update du
 		
 		linsolv->setupPreconditioner();
-		linsolv->setParams(lintol, curlinmaxiter);
+		linsolv->setParams(config.lintol, curlinmaxiter);
 		int linstepsneeded = linsolv->solve(residual, du);
 		avglinsteps += linstepsneeded;
 		
@@ -359,7 +363,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 
 		step++;
 			
-		if(lognres)
+		if(config.lognres)
 			convout << step << " " << std::setw(10)  << resi/initres << '\n';
 	}
 
@@ -369,10 +373,10 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 	avglinsteps /= step;
 
-	if(lognres)
+	if(config.lognres)
 		convout.close();
 
-	if(step == maxiter)
+	if(step == config.maxiter)
 		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
 	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " 
 		<< resi/initres << std::endl;
@@ -391,7 +395,7 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 #ifdef _OPENMP
 	numthreads = omp_get_max_threads();
 #endif
-	std::ofstream outf; outf.open(logfile, std::ofstream::app);
+	std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
 	outf << std::setw(10) << m->gnelem() << " "
 		<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
 		<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "

@@ -39,12 +39,10 @@ class SteadySolver
 public:
 	/** 
 	 * \param[in] spatial Spatial discretization context
-	 * \param[in] soln The solution vector to use and update
-	 * \param[in] use_starter Whether to use \ref starterfv to generate an initial solution
-	 * \param[in] log_nonlinear_residual Set to true if output of convergence history is needed
+	 * \param[in] conf Reference to temporal discretization configuration settings
 	 */
 	SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
-		: space{spatial}, config{conf}, cputime{0.0}, walltime{0.0}, 
+		: space{spatial}, config{conf}, cputime{0.0}, walltime{0.0}
 	{ }
 
 	const MVector& residuals() const {
@@ -63,6 +61,8 @@ public:
 protected:
 	const Spatial<nvars> *const space;
 	const SteadySolverConfig& config;
+	double cputime;
+	double walltime;
 	MVector residual;
 };
 	
@@ -84,7 +84,8 @@ public:
 	~SteadyForwardEulerSolver();
 
 	/// Solves the steady problem by a first-order explicit method, using local time-stepping
-	/**
+	/** Currently, the CFL number is constant and set to the 
+	 * ['initial' CFL number](\ref SteadySolverConfig::cflinit).
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
