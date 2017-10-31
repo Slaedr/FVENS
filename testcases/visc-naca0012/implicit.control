@@ -29,9 +29,9 @@ NO
 ---Slip-wall-marker
 -1
 ---Farfield-marker
-4
----Inflow-outflow-marker
 -1
+---Inflow-outflow-marker
+4
 ---Extrapolation-marker
 -1
 ---Periodic-marker
@@ -79,20 +79,20 @@ IMPLICIT
 ---Tolerance
 1e-6
 ---Max-pseudotime-iterations
-2000
+0
 #######################################################################
 ---use-first-order-initial-condition
 1
 ---initial-CFL
-5.0
+20.0
 ---final-CFL
-100.0
+500.0
 ---ramp-start-step-and-end-step
-200 400
+50 100
 ---tolerance-for-initialization
-1e-2
+1e-5
 ---max-time-steps-for-initialization
-1000
+500
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL,HLLC,ROE)
 ROE
@@ -101,16 +101,16 @@ NO
 ---Matrix-type(c=CSR,b=BSR,d=DLU)
 b
 ---linear-solver(RICHARDSON,BCGSTB,GMRES)
-RICHARDSON
+BCGSTB
 ---Linear-solver-tolerance
 1e-2
 ---Linear-solver-max-iterations-initial
-30
+25
 ---Linear-solver-max-iterations-end
-80
+100
 ---Krylov-vectors
 30
 ---preconditioner(J=Jacobi,SGS,ILU0)
-SGS
+ILU0
 ---preconditioner-build-and-application-sweeps
 1 1

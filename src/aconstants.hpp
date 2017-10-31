@@ -68,6 +68,12 @@ namespace acfd
 	/// Multi-vector type, used for storing mesh functions like the residual
 	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
 
+	/// A fixed-size array typedef
+	/** \warning Column-major!
+	 */
+	template<int rows, int cols>
+	using FArray = Eigen::Array<a_real,rows,cols>;
+
 	/// Fill a raw array of reals with zeros
 	inline void zeros(a_real *const a, const a_int n) {
 		for(int i = 0; i < n; i++)

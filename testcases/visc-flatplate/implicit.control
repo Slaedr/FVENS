@@ -61,7 +61,7 @@ NO
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
----Inviscid-flux(LLF,VANLEER,HLL,HLLC)
+---Inviscid-flux(LLF,VANLEER,HLL,AUSM,AUSMPLUS,HLLC,ROE)
 ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES

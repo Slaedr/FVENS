@@ -275,6 +275,22 @@ protected:
 	 */
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const;
 
+	/// Computes gradients of state variables of the ghost state across one face
+	/** Note that gradients are computed for use in computing viscous fluxes;
+	 * do not use for anything but that.
+	 * \param[in] ied Face id in face data structure intfac
+	 * \param[in] ins Interior CELL-CENTRED state (NOT reconstructed state) of conserved variables
+	 * \param[in] grin Interior gradients of primitive variables
+	 * \param[in,out] gs Ghost state of conserved variables
+	 * \param[in,out] grg Gradients of primitive variables for the ghost state
+	 */
+	void compute_ghost_state_and_gradients(const int ied, 
+			const a_real *const __restrict       ins, 
+			const FArray<NDIM,NVARS>& __restrict grin,
+			a_real *const __restrict             gs, 
+			FArray<NDIM,NVARS>& __restrict       grg
+		) const;
+
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	/** The output array dgs is zeroed first, so any previous content will be lost. 
 	 * \param[in] ied Face id in face data structure intfac

@@ -1,12 +1,21 @@
 /**
 
-\todo 1 Template the FlowFV class for
+1:
+Template the FlowFV class for
 - whether viscous fluxes are to be computed
-- whether we're reconstructing primitive or conserved
 - whether or not viscosity is constant
 - possibly whether time-steps need to be computed
-- Numerical flux type
+- Numerical flux type (not really needed)
 
 Write a factory function/class to instantiate a particular FlowFV based on the control file input.
+
+This is about done.
+
+2:
+Keep state variables in primitive for everything in the spatial residual function.
+Convert everything to primitive on entry into the compute_residual class;
+we could possibly create a local copy to do that.
+Once BCs are re-written in terms of primitive variables, I expect the residual computation
+to be much more efficient.
 
 */

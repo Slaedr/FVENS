@@ -422,6 +422,42 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 	}
 }
 
+template<bool order2, bool constVisc>
+void FlowFV<order2,constVisc>::compute_ghost_state_and_gradients(const int ied, 
+		const a_real *const __restrict ins, const FArray<NDIM,NVARS>& __restrict grin,
+		a_real *const __restrict gs, FArray<NDIM,NVARS>& __restrict grg
+	) const
+{
+	compute_boundary_state(ied, ins, gs);
+
+	const a_int lelem = m->gintfac(ied,0);
+	const a_int relem = m->gintfac(ied,1);
+	a_real dr[NDIM], dist=0;
+
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+	}
+	dist = sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] /= dist;
+	}
+	
+	a_real gsp[NVARS], insp[NVARS];
+	physics.getPrimitiveFromConserved(gs, gsp);
+	physics.getPrimitiveFromConserved(ins, insp);
+	
+	for(int j = 0; j < NDIM; j++)
+		if(std::fabs(dr[j])>ZERO_TOL)
+			for(int i = 0; i < NVARS; i++)
+				grg(j,i) = 2.0*(gsp[i]-insp[i])/dr[j] - grin(j,i);
+		else
+			for(int i = 0; i < NVARS; i++)
+				grg(j,i) = 0;
+
+	// NOTE: Above, the slope is set to zero if dx or dy is zero
+}
+
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int ied, 
 		const a_real *const ins, 
@@ -606,8 +642,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 		a_real *const __restrict vflux) const
 {
-	a_int lelem = m->gintfac(iface,0);
-	a_int relem = m->gintfac(iface,1);
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
 
 	/* Get proper state variables and grads at cell centres
 	 * we start with all conserved variables and either conservative or primitive gradients
@@ -625,7 +661,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 		}
 	}
 	
-	if(iface < m->gnbface())
+	/*if(iface < m->gnbface())
 	{
 		// boundary face
 		
@@ -640,37 +676,24 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 				gradl[1][i] = dudy(lelem,i);
 			}
 
-			/*if(reconstructPrimitive) 
-			{*/
-				/* If gradients are those of primitive variables,
-				 * convert cell-centred variables to primitive; we need primitive variables
-				 * to compute temperature gradient from primitive gradients.
-				 */
-				physics.getPrimitiveFromConserved(ucl, ucl);
-				physics.getPrimitiveFromConserved(ucr, ucr);
-				
-				/* get one-sided temperature gradients from one-sided primitive gradients
-				 * and discard grad p in favor of grad T.
-				 */
-				for(int j = 0; j < NDIM; j++)
-					gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
-								ucl[NVARS-1], gradl[j][NVARS-1]);
-			/*} 
-			else 
-			{*/
-				/* Get one-sided primitive-2 gradients from conserved variables and 
-				 * one-sided conservative gradients.
-				 * "Primitive-2" variables are density, velocities and temperature.
-				 */
-				/*for(int j = 0; j < NDIM; j++) {
-					physics.getGradPrimitive2FromConservedAndGradConserved(ucl,gradl[j],gradl[j]);
-				}
-			}*/
+			// If gradients are those of primitive variables,
+			// convert cell-centred variables to primitive; we need primitive variables
+			// to compute temperature gradient from primitive gradients.
+			///
+			physics.getPrimitiveFromConserved(ucl, ucl);
+			physics.getPrimitiveFromConserved(ucr, ucr);
+			
+			// get one-sided temperature gradients from one-sided primitive gradients
+			// and discard grad p in favor of grad T.
+			//
+			for(int j = 0; j < NDIM; j++)
+				gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
+							ucl[NVARS-1], gradl[j][NVARS-1]);
 
-			/* Use the same gradients on both sides of a boundary face;
-			 * this will amount to just using the one-sided gradient for the modified average
-			 * gradient later.
-			 */
+			// Use the same gradients on both sides of a boundary face;
+			// this will amount to just using the one-sided gradient for the modified average
+			// gradient later.
+			//
 			for(int i = 0; i < NVARS; i++) {
 				gradr[0][i] = gradl[0][i]; 
 				gradr[1][i] = gradl[1][i];
@@ -684,50 +707,47 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 			}
 		}
 	}
-	else {
-		// interior face
-		
+	else {*/
+	if(iface < m->gnbface())
+		if(secondOrderRequested)
+			for(int i = 0; i < NVARS; i++) {
+				ucr[i] = ug(iface,i);
+			}
+		else
+			for(int i = 0; i < NVARS; i++) {
+				ucr[i] = ur(iface,i);
+			}
+	else
 		for(int i = 0; i < NVARS; i++) {
 			ucr[i] = u(relem,i);
 		}
-		if(secondOrderRequested)
-		{
-			for(int i = 0; i < NVARS; i++) {
-				gradl[0][i] = dudx(lelem,i); 
-				gradl[1][i] = dudy(lelem,i);
-				gradr[0][i] = dudx(relem,i); 
-				gradr[1][i] = dudy(relem,i);
-			}
 
-			/*if(reconstructPrimitive) 
-			{*/
-				physics.getPrimitiveFromConserved(ucl, ucl);
-				physics.getPrimitiveFromConserved(ucr, ucr);
-				
-				/* get one-sided temperature gradients from one-sided primitive gradients
-				 * and discard grad p in favor of grad T.
-				 */
-				for(int j = 0; j < NDIM; j++) {
-					gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
-								ucl[NVARS-1], gradl[j][NVARS-1]);
-					gradr[j][NVARS-1] = physics.getGradTemperature(ucr[0], gradr[j][0],
-								ucr[NVARS-1], gradr[j][NVARS-1]);
-				}
-			//}
-			/*else 
-			{
-				//get one-sided primitive-2 gradients from one-sided conservative gradients
-				// "Primitive-2" variables are density, velocities and temperature.
-				for(int j = 0; j < NDIM; j++) {
-					physics.getGradPrimitive2FromConservedAndGradConserved(ucl,gradl[j],gradl[j]);
-					physics.getGradPrimitive2FromConservedAndGradConserved(ucr,gradr[j],gradr[j]);
-				}
-			}*/
+	if(secondOrderRequested)
+	{
+		for(int i = 0; i < NVARS; i++) {
+			gradl[0][i] = dudx(lelem,i); 
+			gradl[1][i] = dudy(lelem,i);
+			gradr[0][i] = dudx(relem,i); 
+			gradr[1][i] = dudy(relem,i);
+		}
+
+		physics.getPrimitiveFromConserved(ucl, ucl);
+		physics.getPrimitiveFromConserved(ucr, ucr);
+		
+		/* get one-sided temperature gradients from one-sided primitive gradients
+		 * and discard grad p in favor of grad T.
+		 */
+		for(int j = 0; j < NDIM; j++) {
+			gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
+						ucl[NVARS-1], gradl[j][NVARS-1]);
+			gradr[j][NVARS-1] = physics.getGradTemperature(ucr[0], gradr[j][0],
+						ucr[NVARS-1], gradr[j][NVARS-1]);
 		}
 	}
+	//}
 
 	// convert cell-centred variables to primitive-2
-	if(secondOrderRequested /*&& reconstructPrimitive*/)
+	if(secondOrderRequested)
 	{
 		ucl[NVARS-1] = physics.getTemperature(ucl[0], ucl[NVARS-1]);
 		ucr[NVARS-1] = physics.getTemperature(ucr[0], ucr[NVARS-1]);
@@ -825,8 +845,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	 */
 }
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::computeViscousFluxJacobian(const a_int iface,
+template<bool secondOrder, bool constVisc>
+void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
@@ -1002,8 +1022,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFluxJacobian(const a_
 	}
 }
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::computeViscousFluxApproximateJacobian(const a_int iface,
+template<bool secondOrder, bool constVisc>
+void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
@@ -1069,8 +1089,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 
 	if(secondOrderRequested)
 	{
-		dudx.resize(m->gnelem(), NVARS);
-		dudy.resize(m->gnelem(), NVARS);
+		// for storing cell-centred gradients at interior cells and ghost cells
+		dudx.resize(m->gnelem()+m->gnbface(), NVARS);
+		dudy.resize(m->gnelem()+m->gnbface(), NVARS);
 
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
@@ -1095,7 +1116,10 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 		gradcomp->compute_gradients(&up, &ug, &dudx, &dudy);
 		lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
 
-		// convert face values back to conserved variables - gradients stay primitive
+		/* Convert face values back to conserved variables - gradients stay primitive.
+		 * Compute gradients in ghost cells according to boundary conditions.
+		 * Note that ug is also converted back to conserved.
+		 */
 #pragma omp parallel default(shared)
 		{
 #pragma omp for
@@ -1105,8 +1129,29 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 				physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
 			}
 #pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++) {
+			for(a_int iface = 0; iface < m->gnbface(); iface++) 
+			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+				//physics.getConservedFromPrimitive(&ug(iface,0), &ug(iface,0));
+
+				// get ghost gradients
+				
+				const a_int ielem = m->gintfac(iface,0);
+				const a_int jelem = m->gintfac(iface,1);
+
+				FArray<NDIM,NVARS> grin, grg;   //< Gradients in interior cell and ghost cell
+				for(int i = 0; i < NVARS; i++) {
+					grin(0,i) = dudx(ielem,i);
+					grin(1,i) = dudy(ielem,i);
+				}
+
+				compute_ghost_state_and_gradients(iface, &u(ielem,0), grin, &ug(iface,0), grg);
+				// TODO: Treat periodic boundaries here
+
+				for(int i = 0; i < NVARS; i++) {
+					dudx(jelem,i) = grg(0,i);
+					dudy(jelem,i) = grg(1,i);
+				}
 			}
 		}
 	}
@@ -1232,8 +1277,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 
 #if HAVE_PETSC==1
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u, const bool blocked, Mat A) 
+template<bool order2, bool constVisc>
+void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blocked, Mat A) 
 	const
 {
 	if(blocked)
@@ -1347,8 +1392,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u, 
  * Also, the contribution of face ij to diagonal blocks are 
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u, 
+template<bool order2, bool constVisc>
+void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, 
 				LinearOperator<a_real,a_int> *const __restrict A) const
 {
 #pragma omp parallel for default(shared)
@@ -1371,6 +1416,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u,
 
 		if(pconfig.viscous_sim) {
 			computeViscousFluxApproximateJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
+			//computeViscousFluxJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
@@ -1404,6 +1450,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_jacobian(const MVector& u,
 		if(pconfig.viscous_sim) {
 			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), &u(relem,0), 
 					&L(0,0), &U(0,0));
+			//computeViscousFluxJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
 		}
 
 		L *= len; U *= len;
