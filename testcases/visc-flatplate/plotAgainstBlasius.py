@@ -38,8 +38,12 @@ cf = np.genfromtxt(sys.argv[3])
 # Velocities
 
 eta = vel[:,1]*np.sqrt(vinf/(nu*vel[:,0]))
+inds = np.where(eta <= 8.0)
+xvelstoplot = vel[inds,2].T
+yvelstoplot = vel[inds,3].T
+etatoplot = eta[inds]
 
-plt.plot(vel[:,2], eta, symbs[0], label = "Computed")
+plt.plot(xvelstoplot, etatoplot, symbs[0], label = "Computed")
 plt.plot(blvel[:,1], blvel[:,0], symbs[1], label = "Blasius")
 plt.title("X-velocity")
 plt.xlabel("$u/u_\infty$")
@@ -48,7 +52,7 @@ plt.grid('on')
 plt.legend()
 plt.show()
 
-plt.plot(np.abs(vel[:,3])*np.sqrt(Reinf), eta, symbs[0], label = "Computed")
+plt.plot(yvelstoplot*np.sqrt(Reinf), etatoplot, symbs[0], label = "Computed")
 plt.plot(blvel[:,2], blvel[:,0], symbs[1], label = "Blasius")
 plt.title("Y-velocity")
 plt.xlabel("$v/v_\infty$")
