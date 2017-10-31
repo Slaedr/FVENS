@@ -43,14 +43,12 @@ int main(const int argc, const char *const argv[])
 
 	// simpler numerics for startup
 	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
-
-	const Spatial<NVARS> *prob, *startprob;
 	
 	std::cout << "Setting up main spatial scheme.\n";
-	prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 	
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	startprob = create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
+	const Spatial<NVARS> *const startprob = create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
 	
 	std::cout << "\n***\n";
 	

@@ -131,37 +131,37 @@ protected:
 /// The collection of physical data needed to initialize flow spatial discretizations
 struct FlowPhysicsConfig
 {
-	const a_real gamma;                       ///< Adiabatic index 
-	const a_real Minf;                        ///< Free-stream Mach number
-	const a_real Tinf;                        ///< Free-stream temperature in Kelvin
-	const a_real Reinf;                       ///< Free-stream Reynolds number
-	const a_real Pr;                          ///< (Constant) Prandtl number
-	const a_real aoa;                         ///< Angle of attack in radians 
-	const bool viscous_sim;                   ///< Whether to include viscous effects
-	const bool const_visc;                  ///< Whether to use constant viscosity
-	const int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
-	const int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
-	const int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
-	const int slipwall_id;                  ///< Marker for slip wall
-	const int farfield_id;                  ///< Marker for far-field boundary
-	const int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
-	const int extrapolation_id;             ///< Marker for an extrapolation boundary
-	const int periodic_id;                  ///< Marker for periodic boundary
-	const a_real isothermalwall_temp;       ///< Temperature at isothermal wall
-	const a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
-	const a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
-	const a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
-	const a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
+	a_real gamma;                       ///< Adiabatic index 
+	a_real Minf;                        ///< Free-stream Mach number
+	a_real Tinf;                        ///< Free-stream temperature in Kelvin
+	a_real Reinf;                       ///< Free-stream Reynolds number
+	a_real Pr;                          ///< (Constant) Prandtl number
+	a_real aoa;                         ///< Angle of attack in radians 
+	bool viscous_sim;                   ///< Whether to include viscous effects
+	bool const_visc;                  ///< Whether to use constant viscosity
+	int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
+	int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
+	int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
+	int slipwall_id;                  ///< Marker for slip wall
+	int farfield_id;                  ///< Marker for far-field boundary
+	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
+	int extrapolation_id;             ///< Marker for an extrapolation boundary
+	int periodic_id;                  ///< Marker for periodic boundary
+	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
+	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
+	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
+	a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
+	a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
 };
 
 /// Collection of options related to the spatial discretization scheme
 struct FlowNumericsConfig
 {
-	const std::string conv_numflux;         ///< Convective numerical flux to use
-	const std::string conv_numflux_jac;     ///< Conv. numer. flux to use for approximate Jacobian
-	const std::string gradientscheme;       ///< Method to use to compute gradients
-	const std::string reconstruction;       ///< Method to use to reconstruct the solution
-	const bool order2;                      ///< Whether to compute a second-order solution
+	std::string conv_numflux;         ///< Convective numerical flux to use
+	std::string conv_numflux_jac;     ///< Conv. numer. flux to use for approximate Jacobian
+	std::string gradientscheme;       ///< Method to use to compute gradients
+	std::string reconstruction;       ///< Method to use to reconstruct the solution
+	bool order2;                      ///< Whether to compute a second-order solution
 };
 
 /// Computes the integrated fluxes and their Jacobians for compressible flow

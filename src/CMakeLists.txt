@@ -97,7 +97,6 @@ else()
 endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
-#set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # libraries to be compiled
 add_library(fvens_base aodesolver.cpp alinalg.cpp aspatial.cpp afactory.cpp 

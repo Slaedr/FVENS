@@ -56,8 +56,9 @@ Examples are present in the various test cases' directories. Note that the locat
 
 Known Issues
 ------------
-- GMRES solver does not work
-- Viscous computations are currently unreliable
+- The HLLC flux implementation has roundoff error greater than machine epsilon.
+- GMRES solver does not work.
+- Spatially second-order viscous computations are currently unreliable.
 
 ---
 

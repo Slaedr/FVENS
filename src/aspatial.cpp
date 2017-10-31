@@ -380,15 +380,19 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 			gs[3] = ins[3];
 		}
 
+		/** At an isothermal wall, density in the ghost cell is the same as that in the interior cell.
+		 * Temperature is computed from the boundary value, and is used to compute the energy.
+		 */
 		else if(m->gintfacbtags(ied,0) == pconfig.isothermalwall_id)
 		{
-			// pressure in the interior cell as well as ghost cell
+			// pressure in the interior cell
 			const a_real p = physics.getPressureFromConserved(ins);
 			
 			// temperature in the ghost cell
 			const a_real gtemp = 2.0*pconfig.isothermalwall_temp - physics.getTemperature(ins[0],p);
 
-			gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
+			//gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
+			gs[0] = ins[0];
 			gs[1] = gs[0]*( 2.0*pconfig.isothermalwall_vel*ny - ins[1]/ins[0]);
 			gs[2] = gs[0]*(-2.0*pconfig.isothermalwall_vel*nx - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
