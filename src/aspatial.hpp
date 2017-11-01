@@ -284,12 +284,12 @@ protected:
 	 * \param[in,out] gs Ghost state of conserved variables
 	 * \param[in,out] grg Gradients of primitive variables for the ghost state
 	 */
-	void compute_ghost_state_and_gradients(const int ied, 
+	/*void compute_ghost_state_and_gradients(const int ied, 
 			const a_real *const __restrict       ins, 
 			const FArray<NDIM,NVARS>& __restrict grin,
 			a_real *const __restrict             gs, 
 			FArray<NDIM,NVARS>& __restrict       grg
-		) const;
+		) const;*/
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	/** The output array dgs is zeroed first, so any previous content will be lost. 

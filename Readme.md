@@ -1,7 +1,7 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical convective fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. 
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical convective fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. 
 
 Currently, only steady-state problems are supported. Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. A number of linear solvers and preconditioners are available.
 
@@ -58,7 +58,6 @@ Known Issues
 ------------
 - The HLLC flux implementation has roundoff error greater than machine epsilon.
 - GMRES solver does not work.
-- Spatially second-order viscous computations are currently unreliable.
 
 ---
 
