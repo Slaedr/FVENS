@@ -983,7 +983,7 @@ void setupMatrixStorage(const UMesh2dh *const m, const char mattype,
 		// check
 		std::cout << " CSR: Checking..\n";
 		blasted::BSRMatrix<a_real,a_int,1>* B 
-			= reinterpret_cast<blasted::BSRMatrix<a_real,a_int,1>*>(A);
+			= reinterpret_cast<blasted::BSRMatrix<a_real,a_int,1>*>(M);
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			std::vector<int> nbd; nbd.reserve(5);

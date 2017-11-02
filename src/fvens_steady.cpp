@@ -56,7 +56,7 @@ int main(const int argc, const char *const argv[])
 	MVector u(m.gnelem(),NVARS);
 
 	// Initialize Jacobian for implicit schemes; no storage allocated here
-	blasted::LinearOperator<a_real,a_int> * M;
+	blasted::LinearOperator<a_real,a_int> * M = nullptr;
 	if(opts.mattype == 'd') {
 		M = new blasted::DLUMatrix<NVARS>(&m,opts.nbuildsweeps,opts.napplysweeps);
 		std::cout << " Selected DLU matrix for Jacobian storage, if required.\n";
