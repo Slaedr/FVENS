@@ -41,19 +41,21 @@ const InviscidFlux* create_const_inviscidflux(const std::string& type,
 		const IdealGasPhysics *const p) ;
 
 /// Returns a newly-created gradient computation context
-GradientScheme* create_mutable_gradientscheme(const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) ;
+template <int nvars>
+GradientScheme<nvars>* create_mutable_gradientscheme(const std::string& type, 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) ;
 
 /// Returns a newly-created immutable gradient computation context
-const GradientScheme* create_const_gradientscheme(const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) ;
+template <int nvars>
+const GradientScheme<nvars>* create_const_gradientscheme(const std::string& type, 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) ;
 
 SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param);
 
 const SolutionReconstruction* create_const_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param);
 
 /// Creates the appropriate flow solver class

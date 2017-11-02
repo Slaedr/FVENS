@@ -68,11 +68,12 @@ namespace acfd
 	/// Multi-vector type, used for storing mesh functions like the residual
 	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
 
-	/// A fixed-size array typedef
-	/** \warning Column-major!
+	/// A fixed-size row-major array typedef \warning Has to be column major!
+	/** We could have made this row major, but Eigen complains against defining
+	 * row-major matrices with only one column, as required by scalar problems.
 	 */
 	template<int rows, int cols>
-	using FArray = Eigen::Array<a_real,rows,cols>;
+	using FArray = Eigen::Array<a_real,rows,cols,ColMajor>;
 
 	/// Fill a raw array of reals with zeros
 	inline void zeros(a_real *const a, const a_int n) {

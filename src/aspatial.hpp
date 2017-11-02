@@ -88,7 +88,7 @@ public:
 			MVector& __restrict prod);
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
+	virtual void getGradients(const MVector& u, std::vector<FArray<NDIM,nvars>>& grads) const = 0;
 
 	/// Sets initial conditions
 	/** \param[in] fromfile True if initial data is to be read from a file
@@ -212,7 +212,8 @@ public:
 	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) const;
 #endif
 	
-	void getGradients(const MVector& u, MVector grad[NDIM]) const;
+	/// Computes gradients of converved variables
+	void getGradients(const MVector& u, std::vector<FArray<NDIM,NVARS>>& grads) const;
 
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
@@ -252,7 +253,7 @@ protected:
 	const InviscidFlux *const jflux;
 
 	/// Gradient computation context
-	const GradientScheme *const gradcomp;
+	const GradientScheme<NVARS> *const gradcomp;
 
 	/// Reconstruction context
 	const SolutionReconstruction *const lim;
@@ -274,22 +275,6 @@ protected:
 	 * \param[in,out] gs Ghost state of conserved variables
 	 */
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const;
-
-	/// Computes gradients of state variables of the ghost state across one face
-	/** Note that gradients are computed for use in computing viscous fluxes;
-	 * do not use for anything but that.
-	 * \param[in] ied Face id in face data structure intfac
-	 * \param[in] ins Interior CELL-CENTRED state (NOT reconstructed state) of conserved variables
-	 * \param[in] grin Interior gradients of primitive variables
-	 * \param[in,out] gs Ghost state of conserved variables
-	 * \param[in,out] grg Gradients of primitive variables for the ghost state
-	 */
-	/*void compute_ghost_state_and_gradients(const int ied, 
-			const a_real *const __restrict       ins, 
-			const FArray<NDIM,NVARS>& __restrict grin,
-			a_real *const __restrict             gs, 
-			FArray<NDIM,NVARS>& __restrict       grg
-		) const;*/
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	/** The output array dgs is zeroed first, so any previous content will be lost. 
@@ -317,7 +302,7 @@ protected:
 	 * but ul and ur are always used.
 	 */
 	void computeViscousFlux(const a_int iface, const MVector& u, const amat::Array2d<a_real>& ug,
-			const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
 
@@ -373,7 +358,7 @@ public:
 	virtual void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A) const = 0;
 	
-	virtual void getGradients(const MVector& u, MVector grad[NDIM]) const = 0;
+	virtual void getGradients(const MVector& u, std::vector<FArray<NDIM,nvars>>& grads) const = 0;
 	
 	virtual ~Diffusion();
 
@@ -422,7 +407,7 @@ public:
 	void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A) const;
 	
-	void getGradients(const MVector& u, MVector grad[NDIM]) const;
+	void getGradients(const MVector& u, std::vector<FArray<NDIM,nvars>>& grads) const;
 
 	~DiffusionMA();
 
@@ -439,7 +424,7 @@ protected:
 	using Diffusion<nvars>::compute_boundary_state;
 	using Diffusion<nvars>::compute_boundary_states;
 	
-	const GradientScheme *const gradcomp;
+	const GradientScheme<nvars> *const gradcomp;
 };
 
 /// Creates a first-order `thin-layer' Laplacian smoothing matrix

@@ -20,18 +20,18 @@ class SolutionReconstruction
 {
 protected:
 	const UMesh2dh *const m;
-	const amat::Array2d<a_real> *const ri;      ///< coords of cell centers of cells
-	const amat::Array2d<a_real> *const gr;      ///< coords of gauss points of each face
+	const amat::Array2d<a_real>& ri;            ///< coords of cell centers of cells
+	const amat::Array2d<a_real> *const gr;      ///< coords of Gauss quadrature points of each face
 	const int ng;                               ///< Number of Gauss points
 
 public:
     SolutionReconstruction (const UMesh2dh* mesh,         ///< Mesh context
-			const amat::Array2d<a_real>* c_centres,       ///< Cell centres
+			const amat::Array2d<a_real>& c_centres,       ///< Cell centres
 			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
 
-	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv,
+	virtual void compute_face_values(const MVector& unknowns, 
+			const amat::Array2d<a_real>& unknow_ghost,
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
 
 	virtual ~SolutionReconstruction();
@@ -46,12 +46,12 @@ class LinearUnlimitedReconstruction : public SolutionReconstruction
 public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
 	LinearUnlimitedReconstruction(const UMesh2dh* mesh,
-			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -69,12 +69,12 @@ class WENOReconstruction : public SolutionReconstruction
 	const a_real epsilon;
 public:
     WENOReconstruction(const UMesh2dh* mesh,
-			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -85,12 +85,12 @@ class MUSCLReconstruction : public SolutionReconstruction
 {
 public:
     MUSCLReconstruction(const UMesh2dh* mesh,
-			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
-	virtual void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+	virtual void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
 
 protected:
@@ -131,12 +131,12 @@ class MUSCLVanAlbada : public MUSCLReconstruction
 {
 public:
     MUSCLVanAlbada(const UMesh2dh* mesh,
-			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -145,12 +145,12 @@ class BarthJespersenLimiter : public SolutionReconstruction
 {
 public:
     BarthJespersenLimiter(const UMesh2dh* mesh, 
-			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -169,17 +169,14 @@ public:
 	 *             in the solution.
 	 */
     VenkatakrishnanLimiter(const UMesh2dh* mesh, 
-			const amat::Array2d<a_real>* c_centres, 
+			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r, a_real k_param);
     
-	void compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& unknowns, 
+	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const amat::Array2d<a_real>& x_deriv, const amat::Array2d<a_real>& y_deriv, 
+			const std::vector<FArray<NDIM,NVARS>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
-
-/*template <int nvars>
-void modifiedAverageGradient(const a_real *const dr, const a_real *const n);*/
 
 } // end namespace
 #endif

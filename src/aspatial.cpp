@@ -227,10 +227,10 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 	inviflux {create_const_inviscidflux(nconfig.conv_numflux, &physics)}, 
 	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &physics)},
 
-	gradcomp {create_const_gradientscheme(nconfig.gradientscheme, m, &rc)},
+	gradcomp {create_const_gradientscheme<NVARS>(nconfig.gradientscheme, m, rc)},
 
 	// the last argument in the next line is the Venkatakrishnan parameter
-	lim {create_const_reconstruction(nconfig.reconstruction, m, &rc, gr, 6.0)}
+	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, 6.0)}
 
 {
 	std::cout << " FlowFV: Boundary markers:\n";
@@ -424,42 +424,6 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 	}
 }
 
-/*template<bool order2, bool constVisc>
-void FlowFV<order2,constVisc>::compute_ghost_state_and_gradients(const int ied, 
-		const a_real *const __restrict ins, const FArray<NDIM,NVARS>& __restrict grin,
-		a_real *const __restrict gs, FArray<NDIM,NVARS>& __restrict grg
-	) const
-{
-	compute_boundary_state(ied, ins, gs);
-
-	const a_int lelem = m->gintfac(ied,0);
-	const a_int relem = m->gintfac(ied,1);
-	a_real dr[NDIM], dist=0;
-
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] = rc(relem,i)-rc(lelem,i);
-		dist += dr[i]*dr[i];
-	}
-	dist = sqrt(dist);
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] /= dist;
-	}
-	
-	a_real gsp[NVARS], insp[NVARS];
-	physics.getPrimitiveFromConserved(gs, gsp);
-	physics.getPrimitiveFromConserved(ins, insp);
-	
-	for(int j = 0; j < NDIM; j++)
-		if(std::fabs(dr[j])>ZERO_TOL)
-			for(int i = 0; i < NVARS; i++)
-				grg(j,i) = 2.0*(gsp[i]-insp[i])/dr[j] - grin(j,i);
-		else
-			for(int i = 0; i < NVARS; i++)
-				grg(j,i) = 0;
-
-	// NOTE: Above, the slope is set to zero if dx or dy is zero
-}*/
-
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int ied, 
 		const a_real *const ins, 
@@ -640,7 +604,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int iface, 
 		const MVector& u, const amat::Array2d<a_real>& ug,
-		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		const std::vector<FArray<NDIM,NVARS>>& grads,
 		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 		a_real *const __restrict vflux) const
 {
@@ -675,22 +639,22 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 			for(int i = 0; i < NVARS; i++) {
 				ucr[i] = ug(iface,i);
 			}
-		
-			for(int i = 0; i < NVARS; i++) {
-				gradl[0][i] = dudx(lelem,i); 
-				gradl[1][i] = dudy(lelem,i);
-			}
+	
+			// note: these copies are necessary because we need row-major raw C arrays for
+			// the physics operations later in the function
+			for(int j = 0; j < NDIM; j++)
+				for(int i = 0; i < NVARS; i++) {
+					gradl[j][i] = grads[lelem](j,i);
+				}
 
 			// If gradients are those of primitive variables,
 			// convert cell-centred variables to primitive; we need primitive variables
 			// to compute temperature gradient from primitive gradients.
 			// ug was already primitive, so don't convert ucr.
 			physics.getPrimitiveFromConserved(ucl, ucl);
-			//physics.getPrimitiveFromConserved(ucr, ucr);
 			
 			// get one-sided temperature gradients from one-sided primitive gradients
 			// and discard grad p in favor of grad T.
-			//
 			for(int j = 0; j < NDIM; j++)
 				gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
 							ucl[NVARS-1], gradl[j][NVARS-1]);
@@ -698,7 +662,6 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 			// Use the same gradients on both sides of a boundary face;
 			// this will amount to just using the one-sided gradient for the modified average
 			// gradient later.
-			//
 			for(int i = 0; i < NVARS; i++) {
 				gradr[0][i] = gradl[0][i]; 
 				gradr[1][i] = gradl[1][i];
@@ -719,12 +682,11 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 
 		if(secondOrderRequested)
 		{
-			for(int i = 0; i < NVARS; i++) {
-				gradl[0][i] = dudx(lelem,i); 
-				gradl[1][i] = dudy(lelem,i);
-				gradr[0][i] = dudx(relem,i); 
-				gradr[1][i] = dudy(relem,i);
-			}
+			for(int j = 0; j < NDIM; j++)
+				for(int i = 0; i < NVARS; i++) {
+					gradl[j][i] = grads[lelem](j,i);
+					gradr[j][i] = grads[relem](j,i);
+				}
 
 			physics.getPrimitiveFromConserved(ucl, ucl);
 			physics.getPrimitiveFromConserved(ucr, ucr);
@@ -1058,11 +1020,12 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 		MVector& __restrict residual, 
 		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const
 {
-	amat::Array2d<a_real> integ, dudx, dudy, ug, uleft, uright;	
+	amat::Array2d<a_real> integ, ug, uleft, uright;	
 	integ.resize(m->gnelem(), 1);
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
+	std::vector<FArray<NDIM,NVARS>> grads;
 
 #pragma omp parallel default(shared)
 	{
@@ -1085,8 +1048,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 	if(secondOrderRequested)
 	{
 		// for storing cell-centred gradients at interior cells and ghost cells
-		dudx.resize(m->gnelem()+m->gnbface(), NVARS);
-		dudy.resize(m->gnelem()+m->gnbface(), NVARS);
+		/*dudx.resize(m->gnelem()+m->gnbface(), NVARS);
+		dudy.resize(m->gnelem()+m->gnbface(), NVARS);*/
+		grads.resize(m->gnelem());
 
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
@@ -1108,8 +1072,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 		}
 
 		// reconstruct
-		gradcomp->compute_gradients(&up, &ug, &dudx, &dudy);
-		lim->compute_face_values(up, ug, dudx, dudy, uleft, uright);
+		gradcomp->compute_gradients(up, ug, grads);
+		lim->compute_face_values(up, ug, grads, uleft, uright);
 
 		// Convert face values back to conserved variables - gradients stay primitive.
 #pragma omp parallel default(shared)
@@ -1179,7 +1143,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 			{
 				// get viscous fluxes
 				a_real vflux[NVARS];
-				computeViscousFlux(ied, u, ug, dudx, dudy, uleft, uright, vflux);
+				computeViscousFlux(ied, u, ug, grads, uleft, uright, vflux);
 
 				for(short ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] += vflux[ivar]*len;
@@ -1229,6 +1193,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 
 #pragma omp atomic
 				integ(lelem) += specradi;
+				
 				if(relem < m->gnelem()) {
 #pragma omp atomic
 					integ(relem) += specradj;
@@ -1446,25 +1411,16 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u,
 
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u, 
-		                                                 MVector grad[NDIM]) const
+		                             std::vector<FArray<NDIM,NVARS>>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		a_int lelem = m->gintfac(iface,0);
+		const a_int lelem = m->gintfac(iface,0);
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	amat::Array2d<a_real> dudx(m->gnelem(), NVARS), dudy(m->gnelem(), NVARS);
-	gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
-
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int ivar = 0; ivar < NVARS; ivar++) {
-			grad[0](ielem,ivar) = dudx(ielem,ivar);
-			grad[1](ielem,ivar) = dudy(ielem,ivar);
-		}
-	}
+	gradcomp->compute_gradients(u, ug, grads);
 }
 
 template<bool secondOrderRequested, bool constVisc>
@@ -1642,13 +1598,13 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 			up(ipoin,ivar) /= areasum(ipoin);
 }
 
-	template<short nvars>
+template<short nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, 
 		const a_real diffcoeff, const a_real bvalue,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
 		std::string grad_scheme)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
-	  gradcomp {create_const_gradientscheme(grad_scheme, m, &rc)}
+	  gradcomp {create_const_gradientscheme<nvars>(grad_scheme, m, rc)}
 { }
 
 template<short nvars>
@@ -1663,13 +1619,9 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
                                           const bool gettimesteps, 
 										  amat::Array2d<a_real>& __restrict dtm) const
 {
-	amat::Array2d<a_real> dudx;
-	amat::Array2d<a_real> dudy;
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
 	
-	dudx.resize(m->gnelem(),nvars);
-	dudy.resize(m->gnelem(),nvars);
 	uleft.resize(m->gnbface(),nvars);	// Modified
 	ug.resize(m->gnbface(),nvars);
 
@@ -1679,9 +1631,12 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 		for(short ivar = 0; ivar < nvars; ivar++)
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
+
+	std::vector<FArray<NDIM,nvars>> grads;
+	grads.resize(m->gnelem());
 	
 	compute_boundary_states(uleft, ug);
-	gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
+	gradcomp->compute_gradients(u, ug, grads);
 	
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
@@ -1699,10 +1654,14 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 		}
 
 		// compute modified gradient
-		for(short ivar = 0; ivar < nvars; ivar++) {
-			gradterm[ivar] 
-			 = 0.5*(dudx(lelem,ivar)+dudx(relem,ivar)) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
-			 + 0.5*(dudy(lelem,ivar)+dudy(relem,ivar)) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
+		for(short ivar = 0; ivar < nvars; ivar++) 
+		{
+			gradterm[ivar] = 0;
+			for(int idim = 0; idim < NDIM; idim++)
+				gradterm[ivar] += 0.5*(grads[lelem](idim,ivar)+grads[relem](idim,ivar)) 
+			 		* (m->ggallfa(iface,idim) - sn*dr[idim]/dist);
+			 /*+ 0.5*(grads[lelem](1,ivar)+grads[relem](1,ivar)) 
+			 	* (m->ggallfa(iface,1) - sn*dr[1]/dist);*/
 		}
 
 		for(short ivar = 0; ivar < nvars; ivar++){
@@ -1732,8 +1691,14 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 		
 		// compute modified gradient
 		for(short ivar = 0; ivar < nvars; ivar++)
-			gradterm[ivar] = dudx(lelem,ivar) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
-							+dudy(lelem,ivar) * (m->ggallfa(iface,1) - sn*dr[1]/dist);
+		{
+			/*gradterm[ivar] = grads[lelem](0,ivar) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
+							+grads[lelem](1,ivar) * (m->ggallfa(iface,1) - sn*dr[1]/dist);*/
+			gradterm[ivar] = 0;
+			for(int idim = 0; idim < NDIM; idim++)
+				gradterm[ivar] += grads[lelem](idim,ivar) 
+					* (m->ggallfa(iface,idim) - sn*dr[idim]/dist);
+		}
 
 		for(int ivar = 0; ivar < nvars; ivar++){
 #pragma omp atomic
@@ -1830,7 +1795,8 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 }
 
 template <short nvars>
-void DiffusionMA<nvars>::getGradients(const MVector& u, MVector grad[NDIM]) const
+void DiffusionMA<nvars>::getGradients(const MVector& u, 
+		std::vector<FArray<NDIM,nvars>>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1839,16 +1805,7 @@ void DiffusionMA<nvars>::getGradients(const MVector& u, MVector grad[NDIM]) cons
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	amat::Array2d<a_real> dudx(m->gnelem(), nvars), dudy(m->gnelem(), nvars);
-	gradcomp->compute_gradients(&u, &ug, &dudx, &dudy);
-
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int ivar = 0; ivar < nvars; ivar++) {
-			grad[0](ielem,ivar) = dudx(ielem,ivar);
-			grad[1](ielem,ivar) = dudy(ielem,ivar);
-		}
-	}
+	gradcomp->compute_gradients(u, ug, grads);
 }
 
 template <short nvars>

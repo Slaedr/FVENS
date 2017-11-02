@@ -49,9 +49,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		std::vector<int> obcm, std::string basename) const
 {
 	// Get conserved variables' gradients
-	MVector grad[NDIM];
-	for(int j = 0; j < NDIM; j++)
-		grad[j].resize(m->gnelem(), NVARS);
+	std::vector<FArray<NDIM,NVARS>> grad;
+	grad.resize(m->gnelem());
 
 	space->getGradients(u, grad);
 
@@ -142,13 +141,13 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 
 				// velocity gradient tensor
 				a_real gradu[NDIM][NDIM];
-				gradu[0][0] = (grad[0](lelem,1)*u(lelem,0)-u(lelem,1)*grad[0](lelem,0))
+				gradu[0][0] = (grad[lelem](0,1)*u(lelem,0)-u(lelem,1)*grad[lelem](0,0))
 				                / (u(lelem,0)*u(lelem,0));
-				gradu[0][1] = (grad[1](lelem,1)*u(lelem,0)-u(lelem,1)*grad[1](lelem,0))
+				gradu[0][1] = (grad[lelem](1,1)*u(lelem,0)-u(lelem,1)*grad[lelem](1,0))
 				                / (u(lelem,0)*u(lelem,0));
-				gradu[1][0] = (grad[0](lelem,2)*u(lelem,0)-u(lelem,2)*grad[0](lelem,0))
+				gradu[1][0] = (grad[lelem](0,2)*u(lelem,0)-u(lelem,2)*grad[lelem](0,0))
 				                / (u(lelem,0)*u(lelem,0));
-				gradu[1][1] = (grad[1](lelem,2)*u(lelem,0)-u(lelem,2)*grad[1](lelem,0))
+				gradu[1][1] = (grad[lelem](1,2)*u(lelem,0)-u(lelem,2)*grad[lelem](1,0))
 				                / (u(lelem,0)*u(lelem,0));
 				
 				const a_real tauw = 

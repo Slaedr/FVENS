@@ -2,8 +2,24 @@
 
 namespace acfd {
 
+/// Reconstructs a face value
+static inline a_real linearExtrapolate(
+		const a_real ucell,             ///< Relevant cell centred value
+		const FArray<NDIM,NVARS>& grad, ///< Gradients
+		const int ivar,                 ///< Index of physical variable to be reconstructed
+		const a_real lim,               ///< Limiter value
+		const a_real *const gp,         ///< Quadrature point coords
+		const a_real *const rc          ///< Cell centre coords
+	)
+{
+	a_real uface = ucell;
+	for(int idim = 0; idim < NDIM; idim++)
+		uface += lim*grad(idim,ivar)*(gp[idim] - rc[idim]);
+	return uface;
+}
+
 SolutionReconstruction::SolutionReconstruction (const UMesh2dh* mesh, 
-		const amat::Array2d<a_real>* c_centres, 
+		const amat::Array2d<a_real>& c_centres, 
 		const amat::Array2d<a_real>* gauss_r)
 	: m{mesh}, ri{c_centres}, gr{gauss_r}, ng{gr[0].rows()}
 { }
@@ -12,14 +28,14 @@ SolutionReconstruction::~SolutionReconstruction()
 { }
 
 LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh* mesh,
-		const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
+		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, c_centres, gauss_r)
 { }
 
 void LinearUnlimitedReconstruction::compute_face_values(
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+		const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
+		const std::vector<FArray<NDIM,NVARS>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// (a) internal faces
@@ -31,48 +47,50 @@ void LinearUnlimitedReconstruction::compute_face_values(
 			a_int ielem = m->gintfac(ied,0);
 			a_int jelem = m->gintfac(ied,1);
 
-			for(int ig = 0; ig < NGAUSS; ig++)      // iterate over gauss points
+			for(int i = 0; i < NVARS; i++)
 			{
-				for(int i = 0; i < NVARS; i++)
-				{
-
-					ufl(ied,i) = u(ielem,i) 
-						+ dudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
-						+ dudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
-					ufr(ied,i) = u(jelem,i) 
-						+ dudx(jelem,i)*(gr[ied].get(ig,0)-ri->get(jelem,0)) 
-						+ dudy(jelem,i)*(gr[ied].get(ig,1)-ri->get(jelem,1));
-				}
+				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
+						&gr[ied](0,0), &ri(ielem,0));
+				ufr(ied,i) = linearExtrapolate(u(jelem,i), grads[jelem], i, 1.0,
+						&gr[ied](0,0), &ri(jelem,0));
 			}
 		}
 		
-		//Now calculate ghost states at boundary faces using the ufl and ufr of cells
 #pragma omp for
 		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
 
-			for(int ig = 0; ig < NGAUSS; ig++)
+			for(int i = 0; i < NVARS; i++) 
 			{
-				for(int i = 0; i < NVARS; i++)
-					ufl(ied,i) = u(ielem,i) 
-						+ dudx(ielem,i)*(gr[ied].get(ig,0)-ri->get(ielem,0)) 
-						+ dudy(ielem,i)*(gr[ied].get(ig,1)-ri->get(ielem,1));
+				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
+						&gr[ied](0,0), &ri(ielem,0));
 			}
 		}
 	}
 }
 
 WENOReconstruction::WENOReconstruction(const UMesh2dh* mesh,
-		const amat::Array2d<a_real>* c_centres, const amat::Array2d<a_real>* gauss_r)
+		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, c_centres, gauss_r),
 	  gamma{4.0}, lambda{1.0e3}, epsilon{1.0e-5}
 {
 }
 
-void WENOReconstruction::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+/// Returns the squared magnitude of the gradient of a variable
+/** \param[in] grad The gradient array
+ * \param[in] ivar The index of the physical variable whose gradient magnitude is needed
+ */
+static inline a_real gradientMagnitude2(const FArray<NDIM,NVARS>& grad, const int ivar) {
+	a_real res = 0;
+	for(int j = 0; j < NDIM; j++)
+		res += grad(j,ivar)*grad(j,ivar);
+	return res;
+}
+
+void WENOReconstruction::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
+		const std::vector<FArray<NDIM,NVARS>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// first compute limited derivatives at each cell
@@ -83,16 +101,15 @@ void WENOReconstruction::compute_face_values(const Matrix<a_real,Dynamic,Dynamic
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
 			a_real wsum = 0;
-			a_real ldudx = 0;
-			a_real ldudy = 0;
+			a_real lgrad[NDIM]; 
+			zeros(lgrad, NDIM);
 
 			// Central stencil
-			a_real denom = pow( dudx(ielem,ivar)*dudx(ielem,ivar) 
-					+ dudy(ielem,ivar)*dudy(ielem,ivar) + epsilon, gamma);
-			a_real w = lambda / denom;
+			const a_real denom = pow( gradientMagnitude2(grads[ielem],ivar) + epsilon , gamma );
+			const a_real w = lambda / denom;
 			wsum += w;
-			ldudx += w*dudx(ielem,ivar);
-			ldudy += w*dudy(ielem,ivar);
+			for(int j = 0; j < NDIM; j++)
+				lgrad[j] += w*grads[ielem](j,ivar);
 
 			// Biased stencils
 			for(int jel = 0; jel < m->gnfael(ielem); jel++)
@@ -103,37 +120,38 @@ void WENOReconstruction::compute_face_values(const Matrix<a_real,Dynamic,Dynamic
 				if(jelem >= m->gnelem())
 					continue;
 
-				denom = pow( dudx(jelem,ivar)*dudx(jelem,ivar) 
-						+ dudy(jelem,ivar)*dudy(jelem,ivar) + epsilon, gamma);
-				w = 1.0 / denom;
+				const a_real denom = pow( gradientMagnitude2(grads[jelem],ivar) + epsilon , gamma );
+				const a_real w = 1.0 / denom;
 				wsum += w;
-				ldudx += w*dudx(jelem,ivar);
-				ldudy += w*dudy(jelem,ivar);
+				for(int j = 0; j < NDIM; j++)
+					lgrad[j] += w*grads[jelem](j,ivar);
 			}
 
-			ldudx /= wsum;
-			ldudy /= wsum;
+			for(int j = 0; j < NDIM; j++)
+				lgrad[j] /= wsum;
 			
 			for(int j = 0; j < m->gnfael(ielem); j++)
 			{
 				const a_int face = m->gelemface(ielem,j);
 				const a_int jelem = m->gesuel(ielem,j);
 				
-				if(ielem < jelem)
-					ufl(face,ivar) = u(ielem,ivar) 
-						+ ldudx*(gr[face](0,0)-(*ri)(ielem,0))
-						+ ldudy*(gr[face](0,1)-(*ri)(ielem,1));
-				else
-					ufr(face,ivar) = u(ielem,ivar) 
-						+ ldudx*(gr[face](0,0)-(*ri)(ielem,0))
-						+ ldudy*(gr[face](0,1)-(*ri)(ielem,1));
+				if(ielem < jelem) {
+					ufl(face,ivar) = u(ielem,ivar);
+					for(int j = 0; j < NDIM; j++)
+						ufl(face,ivar) += lgrad[j]*(gr[face](0,j) - ri(ielem,j));
+				}
+				else {
+					ufr(face,ivar) = u(ielem,ivar);
+					for(int j = 0; j < NDIM; j++)
+						ufr(face,ivar) += lgrad[j]*(gr[face](0,j)-ri(ielem,j));
+				}
 			}
 		}
 	}
 }
 
 MUSCLReconstruction::MUSCLReconstruction(const UMesh2dh* mesh,
-		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
 { }
 
@@ -163,13 +181,13 @@ a_real MUSCLReconstruction::musclReconstructRight(const a_real ui, const a_real 
 }
 
 MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh* mesh,
-		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
 	: MUSCLReconstruction(mesh, r_centres, gauss_r)
 { }
 
-void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void MUSCLVanAlbada::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy, 
+		const std::vector<FArray<NDIM,NVARS>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
@@ -180,12 +198,15 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 
 		for(int i = 0; i < NVARS; i++)
 		{
-			const a_real grads[NDIM] = {dudx(ielem,i), dudy(ielem,i)};
+			// Note that the copy below is necessary because grads[ielem] is column major
+			a_real grad[NDIM];
+			for(int j = 0; j < NDIM; j++)
+				grad[j] = grads[ielem](j,i);
 			
-			const a_real deltam = computeBiasedDifference(&(*ri)(ielem,0), &(*ri)(jelem,0),
-					u(ielem,i), ug(ied,i), grads);
+			const a_real deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+					u(ielem,i), ug(ied,i), grad);
 			
-			a_real phi_l = (2*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
+			a_real phi_l = (2.0*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (ug(ied,i) - u(ielem,i))*(ug(ied,i) - u(ielem,i)) + eps);
 			if( phi_l < 0.0) phi_l = 0.0;
 
@@ -201,15 +222,19 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 
 		for(int i = 0; i < NVARS; i++)
 		{
-			const a_real gradsl[NDIM] = {dudx(ielem,i), dudy(ielem,i)};
-			const a_real gradsr[NDIM] = {dudx(jelem,i), dudy(jelem,i)};
+			// Note that the copy below is necessary because grads[ielem] is column major
+			a_real gradl[NDIM], gradr[NDIM];
+			for(int j = 0; j < NDIM; j++) {
+				gradl[j] = grads[ielem](j,i);
+				gradr[j] = grads[jelem](j,i);
+			}
 
-			const a_real deltam = computeBiasedDifference(&(*ri)(ielem,0), &(*ri)(jelem,0),
-					u(ielem,i), u(jelem,i), gradsl);
-			const a_real deltap = computeBiasedDifference(&(*ri)(ielem,0), &(*ri)(jelem,0),
-					u(ielem,i), u(jelem,i), gradsr);
+			const a_real deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+					u(ielem,i), u(jelem,i), gradl);
+			const a_real deltap = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+					u(ielem,i), u(jelem,i), gradr);
 			
-			a_real phi_l = (2*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
+			a_real phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
 			if( phi_l < 0.0) phi_l = 0.0;
 
@@ -224,14 +249,14 @@ void MUSCLVanAlbada::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,Row
 }
 
 BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh* mesh, 
-		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r)
+		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, r_centres, gauss_r)
 {
 }
 
-void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void BarthJespersenLimiter::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		const std::vector<FArray<NDIM,NVARS>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
@@ -252,8 +277,9 @@ void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyna
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
 				const a_int face = m->gelemface(iel,j);
-				const a_real uface = u(iel,ivar) + dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
-					+ dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+				
+				const a_real uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
+						&gr[face](0,0), &ri(iel,0));
 				
 				a_real phiik;
 				const a_real diff = uface - u(iel,ivar);
@@ -274,13 +300,11 @@ void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyna
 				const a_int jel = m->gesuel(iel,j);
 				
 				if(iel < jel)
-					ufl(face,ivar) = u(iel,ivar) 
-						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
-						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+					ufl(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
+						&gr[face](0,0), &ri(iel,0));
 				else
-					ufr(face,ivar) = u(iel,ivar) 
-						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
-						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+					ufr(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
+						&gr[face](0,0), &ri(iel,0));
 			}
 
 		}
@@ -288,7 +312,7 @@ void BarthJespersenLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyna
 }
 
 VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh, 
-		const amat::Array2d<a_real>* r_centres, const amat::Array2d<a_real>* gauss_r,
+		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r,
 		a_real k_param=2.0)
 	: SolutionReconstruction(mesh, r_centres, gauss_r), K{k_param}
 {
@@ -312,9 +336,9 @@ VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh,
 	}
 }
 
-void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dynamic,RowMajor>& u, 
+void VenkatakrishnanLimiter::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		const amat::Array2d<a_real>& dudx, const amat::Array2d<a_real>& dudy,
+		const std::vector<FArray<NDIM,NVARS>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
@@ -337,8 +361,9 @@ void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyn
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
 				const a_int face = m->gelemface(iel,j);
-				const a_real uface = u(iel,ivar) + dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
-					+ dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+				
+				const a_real uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
+						&gr[face](0,0), &ri(iel,0));
 				
 				const a_real dm = uface - u(iel,ivar);
 
@@ -356,13 +381,11 @@ void VenkatakrishnanLimiter::compute_face_values(const Matrix<a_real,Dynamic,Dyn
 				const a_int jel = m->gesuel(iel,j);
 				
 				if(iel < jel)
-					ufl(face,ivar) = u(iel,ivar) 
-						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
-						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+					ufl(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
+						&gr[face](0,0), &ri(iel,0));
 				else
-					ufr(face,ivar) = u(iel,ivar) 
-						+ lim*dudx(iel,ivar)*(gr[face](0,0)-(*ri)(iel,0))
-						+ lim*dudy(iel,ivar)*(gr[face](0,1)-(*ri)(iel,1));
+					ufr(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
+						&gr[face](0,0), &ri(iel,0));
 			}
 
 		}

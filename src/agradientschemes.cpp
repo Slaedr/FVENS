@@ -10,61 +10,59 @@
 namespace acfd
 {
 
-GradientScheme::GradientScheme(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc)
-	: m(mesh), rc(_rc)
+template<short nvars>
+GradientScheme<nvars>::GradientScheme(const UMesh2dh *const mesh, 
+		const amat::Array2d<a_real>& _rc)
+	: m{mesh}, rc{_rc}
 { }
 
-GradientScheme::~GradientScheme()
+template<short nvars>
+GradientScheme<nvars>::~GradientScheme()
 { }
 
 template<short nvars>
 ZeroGradients<nvars>::ZeroGradients(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc)
-	: GradientScheme(mesh, _rc)
+		const amat::Array2d<a_real>& _rc)
+	: GradientScheme<nvars>(mesh, _rc)
 { }
 
 template<short nvars>
 void ZeroGradients<nvars>::compute_gradients(
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
-		const amat::Array2d<a_real>*const ug, 
-		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy) const
+		const MVector& u, 
+		const amat::Array2d<a_real>& ug, 
+		std::vector<FArray<NDIM,nvars>>& grad ) const
 {
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		for(int i = 0; i < nvars; i++)
-		{
-			(*dudx)(iel,i) = 0;
-			(*dudy)(iel,i) = 0;
-		}
+		for(int j = 0; j < NDIM; j++)
+			for(int i = 0; i < nvars; i++)
+				grad[iel](j,i) = 0;
 	}
 }
 
 template<short nvars>
 GreenGaussGradients<nvars>::GreenGaussGradients(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc)
-	: GradientScheme(mesh, _rc)
+		const amat::Array2d<a_real>& _rc)
+	: GradientScheme<nvars>(mesh, _rc)
 { }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
  */
 template<short nvars>
 void GreenGaussGradients<nvars>::compute_gradients(
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor>*const u, 
-		const amat::Array2d<a_real>*const ug, 
-		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy) const
+		const MVector& u, 
+		const amat::Array2d<a_real>& ug, 
+		std::vector<FArray<NDIM,nvars>>& grad ) const
 {
 #pragma omp parallel default(shared)
 	{
 #pragma omp for simd
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
-			for(int i = 0; i < nvars; i++)
-			{
-				(*dudx)(iel,i) = 0;
-				(*dudy)(iel,i) = 0;
-			}
+			for(int j = 0; j < NDIM; j++)
+				for(int i = 0; i < nvars; i++)
+					grad[iel](j,i) = 0;
 		}
 		
 #pragma omp for
@@ -82,8 +80,8 @@ void GreenGaussGradients<nvars>::compute_gradients(
 			for(int idim = 0; idim < NDIM; idim++)
 			{
 				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
-				dR += (mid[idim]-(*rc)(jelem,idim))*(mid[idim]-(*rc)(jelem,idim));
+				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
+				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -91,9 +89,10 @@ void GreenGaussGradients<nvars>::compute_gradients(
 			
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar]= ((*u)(ielem,ivar)*dL + (*ug)(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
-				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
-				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
+				ut[ivar]= (u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+
+				for(int idim = 0; idim < NDIM; idim++)
+					grad[ielem](idim,ivar) += (ut[ivar] * m->ggallfa(iface,idim))*areainv1;
 			}
 		}
 
@@ -113,8 +112,8 @@ void GreenGaussGradients<nvars>::compute_gradients(
 			for(int idim = 0; idim < NDIM; idim++)
 			{
 				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid[idim]-(*rc)(ielem,idim))*(mid[idim]-(*rc)(ielem,idim));
-				dR += (mid[idim]-(*rc)(jelem,idim))*(mid[idim]-(*rc)(jelem,idim));
+				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
+				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -123,15 +122,15 @@ void GreenGaussGradients<nvars>::compute_gradients(
 			
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar] = ((*u)(ielem,ivar)*dL + (*u)(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar] = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+
+				for(int idim = 0; idim < NDIM; idim++)
+				{
 #pragma omp atomic update
-				(*dudx)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,0))*areainv1;
+					grad[ielem](idim,ivar) += (ut[ivar] * m->ggallfa(iface,idim))*areainv1;
 #pragma omp atomic update
-				(*dudy)(ielem,ivar) += (ut[ivar] * m->ggallfa(iface,1))*areainv1;
-#pragma omp atomic update
-				(*dudx)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,0))*areainv2;
-#pragma omp atomic update
-				(*dudy)(jelem,ivar) -= (ut[ivar] * m->ggallfa(iface,1))*areainv2;
+					grad[jelem](idim,ivar) -= (ut[ivar] * m->ggallfa(iface,idim))*areainv2;
+				}
 			}
 		}
 	} // end parallel region
@@ -142,8 +141,8 @@ void GreenGaussGradients<nvars>::compute_gradients(
 template<short nvars>
 WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 		const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real> *const _rc)
-	: GradientScheme(mesh, _rc)
+		const amat::Array2d<a_real>& _rc)
+	: GradientScheme<nvars>(mesh, _rc)
 { 
 	V.resize(m->gnelem());
 #pragma omp parallel for default(shared)
@@ -162,8 +161,8 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 		a_real w2 = 0, dr[2];
 		for(short idim = 0; idim < 2; idim++)
 		{
-			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
-			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
+			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
+			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -185,8 +184,8 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 		a_real w2 = 0, dr[2];
 		for(short idim = 0; idim < 2; idim++)
 		{
-			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
-			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
+			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
+			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -212,18 +211,15 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 #pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		//a_real det = V[ielem].determinant();
-		//if(det < ZERO_TOL*100) std::cout << "  !!!! ERROR!\n";
-		
 		V[ielem] = V[ielem].inverse().eval();
 	}
 }
 
 template<short nvars>
 void WeightedLeastSquaresGradients<nvars>::compute_gradients(
-		const Matrix<a_real,Dynamic,Dynamic,RowMajor> *const u, 
-		const amat::Array2d<a_real> *const ug, 
-		amat::Array2d<a_real>*const dudx, amat::Array2d<a_real>*const dudy) const
+		const MVector& u, 
+		const amat::Array2d<a_real>& ug, 
+		std::vector<FArray<NDIM,nvars>>& grad ) const
 {
 	std::vector<Matrix<a_real,2,nvars>> f;		//< RHS of least-squares problems
 	f.resize(m->gnelem());
@@ -242,13 +238,13 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		a_real w2 = 0, dr[NDIM], du[nvars];
 		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
-			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
+			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
+			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
-			du[ivar] = (*u)(ielem,ivar) - (*ug)(iface,ivar);
+			du[ivar] = u(ielem,ivar) - ug(iface,ivar);
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
@@ -267,13 +263,13 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		a_real w2 = 0, dr[NDIM], du[nvars];
 		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += ((*rc)(ielem,idim)-(*rc)(jelem,idim))*((*rc)(ielem,idim)-(*rc)(jelem,idim));
-			dr[idim] = (*rc)(ielem,idim)-(*rc)(jelem,idim);
+			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
+			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
-			du[ivar] = (*u)(ielem,ivar) - (*u)(jelem,ivar);
+			du[ivar] = u(ielem,ivar) - u(jelem,ivar);
 
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
@@ -294,10 +290,9 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		Matrix <a_real,2,nvars> d = V[ielem]*f[ielem];
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
-			(*dudx)(ielem,ivar) = d(0,ivar);
-			(*dudy)(ielem,ivar) = d(1,ivar);
+			for(short idim = 0; idim < NDIM; idim++)
+				grad[ielem](idim,ivar) = d(idim,ivar);
 		}
-		//f[ielem] = Matrix<a_real,2,nvars>::Zero();
 	}
 }
 

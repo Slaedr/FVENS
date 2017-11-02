@@ -76,39 +76,59 @@ const InviscidFlux* create_const_inviscidflux(
 	return const_cast<const InviscidFlux*>(create_mutable_inviscidflux(type, p));
 }
 
-GradientScheme* create_mutable_gradientscheme(
+template <int nvars>
+GradientScheme<nvars>* create_mutable_gradientscheme(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) 
 {
-	GradientScheme * gradcomp = nullptr;
+	GradientScheme<nvars> * gradcomp = nullptr;
 
 	if(type == "LEASTSQUARES")
 	{
-		gradcomp = new WeightedLeastSquaresGradients<NVARS>(m, rc);
+		gradcomp = new WeightedLeastSquaresGradients<nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
 	}
 	else if(type == "GREENGAUSS")
 	{
-		gradcomp = new GreenGaussGradients<NVARS>(m, rc);
+		gradcomp = new GreenGaussGradients<nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used." << std::endl;
 	}
 	else {
-		gradcomp = new ZeroGradients<NVARS>(m, rc);
+		gradcomp = new ZeroGradients<nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: No gradient computation!" << std::endl;
 	}
 
 	return gradcomp;
 }
 
-const GradientScheme* create_const_gradientscheme(
+template <int nvars>
+const GradientScheme<nvars>* create_const_gradientscheme(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc) 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) 
 {
-	return create_mutable_gradientscheme(type, m, rc);
+	return create_mutable_gradientscheme<nvars>(type, m, rc);
 }
 
+// template instantiations
+template GradientScheme<NVARS>* create_mutable_gradientscheme<NVARS>(
+		const std::string& type, 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+
+template const GradientScheme<NVARS>* create_const_gradientscheme<NVARS>(
+		const std::string& type, 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+
+template GradientScheme<1>* create_mutable_gradientscheme<1>(
+		const std::string& type, 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+
+template const GradientScheme<1>* create_const_gradientscheme<1>(
+		const std::string& type, 
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+
+
 SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param)
 {
 	SolutionReconstruction * reconst = nullptr;
@@ -146,7 +166,7 @@ SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
 }
 
 const SolutionReconstruction* create_const_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real> *const rc,
+		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param)
 {
 	return create_mutable_reconstruction(type, m, rc, gr, param);
