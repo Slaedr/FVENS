@@ -49,7 +49,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		std::vector<int> obcm, std::string basename) const
 {
 	// Get conserved variables' gradients
-	std::vector<FArray<NDIM,NVARS>> grad;
+	std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>> grad;
 	grad.resize(m->gnelem());
 
 	space->getGradients(u, grad);

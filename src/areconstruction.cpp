@@ -35,7 +35,7 @@ LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh* mes
 void LinearUnlimitedReconstruction::compute_face_values(
 		const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>>& grads,
+		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// (a) internal faces
@@ -90,7 +90,7 @@ static inline a_real gradientMagnitude2(const FArray<NDIM,NVARS>& grad, const in
 
 void WENOReconstruction::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>>& grads,
+		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// first compute limited derivatives at each cell
@@ -187,7 +187,7 @@ MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh* mesh,
 
 void MUSCLVanAlbada::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>>& grads,
+		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
@@ -256,7 +256,7 @@ BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh* mesh,
 
 void BarthJespersenLimiter::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		const std::vector<FArray<NDIM,NVARS>>& grads,
+		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
@@ -338,7 +338,7 @@ VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh,
 
 void VenkatakrishnanLimiter::compute_face_values(const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		const std::vector<FArray<NDIM,NVARS>>& grads,
+		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)

@@ -43,9 +43,8 @@
 // We don't want any built-in threading in Eigen interfering with ours
 #define EIGEN_DONT_PARALLELIZE
 
-#ifndef EIGEN_CORE_H
 #include <Eigen/Core>
-#endif
+#include <Eigen/StdVector>
 
 namespace acfd
 {
@@ -64,6 +63,7 @@ namespace acfd
 	using Eigen::RowMajor;
 	using Eigen::ColMajor;
 	using Eigen::Matrix;
+	using Eigen::aligned_allocator;
 
 	/// Multi-vector type, used for storing mesh functions like the residual
 	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;

@@ -7,7 +7,6 @@
 #ifndef AGRADIENTSCHEMES_H
 #define AGRADIENTSCHEMES_H 1
 
-#include <Eigen/StdVector>
 #include "amesh2dh.hpp"
 
 namespace acfd
@@ -33,8 +32,7 @@ public:
 	virtual void compute_gradients(
 			const MVector& unk,                         ///< [in] Solution multi-vector
 			const amat::Array2d<a_real>& unkg,          ///< [in] Ghost cell states 
-			std::vector<FArray<NDIM,nvars>>& grad
-		) const = 0;
+			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
 };
 
 /// Simply sets the gradient to zero
@@ -47,8 +45,8 @@ public:
 
 	void compute_gradients(const MVector& unk, 
 			const amat::Array2d<a_real>& unkg, 
-			std::vector<FArray<NDIM,nvars>>& grad
-		) const;
+			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
+
 protected:
 	using GradientScheme<nvars>::m;
 	using GradientScheme<nvars>::rc;
@@ -68,7 +66,7 @@ public:
 
 	void compute_gradients(const MVector& unk, 
 			const amat::Array2d<a_real>& unkg,
-			std::vector<FArray<NDIM,nvars>>& grad ) const;
+			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
 
 protected:
 	using GradientScheme<nvars>::m;
@@ -85,7 +83,7 @@ public:
 
 	void compute_gradients(const MVector& unk, 
 			const amat::Array2d<a_real>& unkg, 
-			std::vector<FArray<NDIM,nvars>>& grad ) const;
+			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
 
 protected:
 	using GradientScheme<nvars>::m;
@@ -97,7 +95,7 @@ private:
 	 * fixed-size vectorizable Eigen arrays; see 
 	 * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
 	 */
-	std::vector< Matrix<a_real,NDIM,NDIM>, Eigen::aligned_allocator<Matrix<a_real,NDIM,NDIM>> > V;
+	std::vector< Matrix<a_real,NDIM,NDIM>, aligned_allocator<Matrix<a_real,NDIM,NDIM>> > V;
 };
 
 

@@ -30,7 +30,7 @@ template<short nvars>
 void ZeroGradients<nvars>::compute_gradients(
 		const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		std::vector<FArray<NDIM,nvars>>& grad ) const
+		std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grad ) const
 {
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -53,7 +53,7 @@ template<short nvars>
 void GreenGaussGradients<nvars>::compute_gradients(
 		const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		std::vector<FArray<NDIM,nvars>>& grad ) const
+		std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grad ) const
 {
 #pragma omp parallel default(shared)
 	{
@@ -206,9 +206,9 @@ template<short nvars>
 void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		const MVector& u, 
 		const amat::Array2d<a_real>& ug, 
-		std::vector<FArray<NDIM,nvars>>& grad ) const
+		std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grad ) const
 {
-	std::vector<Matrix<a_real,NDIM,nvars>, Eigen::aligned_allocator<Matrix<a_real,NDIM,nvars>> > f;
+	std::vector<Matrix<a_real,NDIM,nvars>, aligned_allocator<Matrix<a_real,NDIM,nvars>> > f;
 	f.resize(m->gnelem());
 
 #pragma omp parallel for default(shared)

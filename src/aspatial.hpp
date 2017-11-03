@@ -88,7 +88,8 @@ public:
 			MVector& __restrict prod);
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const MVector& u, std::vector<FArray<NDIM,nvars>>& grads) const = 0;
+	virtual void getGradients(const MVector& u,
+		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
 
 	/// Sets initial conditions
 	/** \param[in] fromfile True if initial data is to be read from a file
@@ -213,7 +214,8 @@ public:
 #endif
 	
 	/// Computes gradients of converved variables
-	void getGradients(const MVector& u, std::vector<FArray<NDIM,NVARS>>& grads) const;
+	void getGradients(const MVector& u,
+		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const;
 
 	/// Compute cell-centred quantities to export
 	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
@@ -302,7 +304,7 @@ protected:
 	 * but ul and ur are always used.
 	 */
 	void computeViscousFlux(const a_int iface, const MVector& u, const amat::Array2d<a_real>& ug,
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
 
@@ -358,7 +360,8 @@ public:
 	virtual void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A) const = 0;
 	
-	virtual void getGradients(const MVector& u, std::vector<FArray<NDIM,nvars>>& grads) const = 0;
+	virtual void getGradients(const MVector& u,
+		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
 	
 	virtual ~Diffusion();
 
@@ -407,7 +410,8 @@ public:
 	void compute_jacobian(const MVector& u, 
 			LinearOperator<a_real,a_int> *const A) const;
 	
-	void getGradients(const MVector& u, std::vector<FArray<NDIM,nvars>>& grads) const;
+	void getGradients(const MVector& u,
+		    std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const;
 
 	~DiffusionMA();
 

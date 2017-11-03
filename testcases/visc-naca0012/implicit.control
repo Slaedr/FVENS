@@ -71,26 +71,26 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-5.0
----final-CFL
-200.0
----ramp-start-step-and-end-step
-200 300
+50.0
+---final-CFL(500)
+500.0
+---ramp-start-step-and-end-step(50-200)
+50 150
 ---Tolerance
-1e-6
+1e-7
 ---Max-pseudotime-iterations
-0
+500
 #######################################################################
 ---use-first-order-initial-condition
 1
 ---initial-CFL
-20.0
+50.0
 ---final-CFL
 500.0
 ---ramp-start-step-and-end-step
-50 100
+30 60
 ---tolerance-for-initialization
-1e-5
+1e-2
 ---max-time-steps-for-initialization
 500
 ########################################################################
@@ -107,10 +107,10 @@ BCGSTB
 ---Linear-solver-max-iterations-initial
 25
 ---Linear-solver-max-iterations-end
-100
+50
 ---Krylov-vectors
 30
 ---preconditioner(J=Jacobi,SGS,ILU0)
 ILU0
----preconditioner-build-and-application-sweeps
+---preconditioner-build-and-application-sweeps(13-SGS,10-ILU0)
 1 1

@@ -31,7 +31,7 @@ public:
 
 	virtual void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost,
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
 
 	virtual ~SolutionReconstruction();
@@ -51,7 +51,7 @@ public:
 
 	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -74,7 +74,7 @@ public:
 
 	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -90,7 +90,7 @@ public:
     
 	virtual void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
 
 protected:
@@ -136,7 +136,7 @@ public:
     
 	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -150,7 +150,7 @@ public:
     
 	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 
@@ -174,7 +174,7 @@ public:
     
 	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>>& grads,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
 };
 

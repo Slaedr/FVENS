@@ -604,7 +604,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int iface, 
 		const MVector& u, const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>>& grads,
+		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 		a_real *const __restrict vflux) const
 {
@@ -1025,7 +1025,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
-	std::vector<FArray<NDIM,NVARS>> grads;
+	std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>> > grads;
 
 #pragma omp parallel default(shared)
 	{
@@ -1411,7 +1411,7 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u,
 
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u, 
-		                             std::vector<FArray<NDIM,NVARS>>& grads) const
+		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1632,7 +1632,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 
-	std::vector<FArray<NDIM,nvars>> grads;
+	std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>> grads;
 	grads.resize(m->gnelem());
 	
 	compute_boundary_states(uleft, ug);
@@ -1795,8 +1795,8 @@ void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 }
 
 template <short nvars>
-void DiffusionMA<nvars>::getGradients(const MVector& u, 
-		std::vector<FArray<NDIM,nvars>>& grads) const
+void DiffusionMA<nvars>::getGradients(const MVector& u,
+		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
