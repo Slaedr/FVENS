@@ -146,9 +146,9 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 { 
 	V.resize(m->gnelem());
 #pragma omp parallel for default(shared)
-	for(a_int i = 0; i < m->gnelem(); i++)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		V[i] = Matrix<a_real,2,2>::Zero();
+		V[iel] = Matrix<a_real,NDIM,NDIM>::Zero();
 	}
 
 	// compute LHS of least-squares problem
@@ -158,22 +158,19 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 	{
 		const a_int ielem = m->gintfac(iface,0);
 		const a_int jelem = m->gintfac(iface,1);
-		a_real w2 = 0, dr[2];
-		for(short idim = 0; idim < 2; idim++)
+		a_real w2 = 0, dr[NDIM];
+		for(short idim = 0; idim < NDIM; idim++)
 		{
 			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
-
+		
+		for(int i = 0; i<NDIM; i++)
+			for(int j = 0; j < NDIM; j++) {
 #pragma omp atomic update
-		V[ielem](0,0) += w2*dr[0]*dr[0];
-#pragma omp atomic update
-		V[ielem](1,1) += w2*dr[1]*dr[1];
-#pragma omp atomic update
-		V[ielem](0,1) += w2*dr[0]*dr[1];
-#pragma omp atomic update
-		V[ielem](1,0) += w2*dr[0]*dr[1];
+				V[ielem](i,j) += w2*dr[i]*dr[j];
+			}
 	}
 
 #pragma omp parallel for default(shared)
@@ -181,31 +178,21 @@ WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
 	{
 		a_int ielem = m->gintfac(iface,0);
 		a_int jelem = m->gintfac(iface,1);
-		a_real w2 = 0, dr[2];
-		for(short idim = 0; idim < 2; idim++)
+		a_real w2 = 0, dr[NDIM];
+		for(int idim = 0; idim < NDIM; idim++)
 		{
 			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
-
-#pragma omp atomic update
-		V[ielem](0,0) += w2*dr[0]*dr[0];
-#pragma omp atomic update
-		V[ielem](1,1) += w2*dr[1]*dr[1];
-#pragma omp atomic update
-		V[ielem](0,1) += w2*dr[0]*dr[1];
-#pragma omp atomic update
-		V[ielem](1,0) += w2*dr[0]*dr[1];
 		
+		for(int i = 0; i<NDIM; i++)
+			for(int j = 0; j < NDIM; j++) {
 #pragma omp atomic update
-		V[jelem](0,0) += w2*dr[0]*dr[0];
+				V[ielem](i,j) += w2*dr[i]*dr[j];
 #pragma omp atomic update
-		V[jelem](1,1) += w2*dr[1]*dr[1];
-#pragma omp atomic update
-		V[jelem](0,1) += w2*dr[0]*dr[1];
-#pragma omp atomic update
-		V[jelem](1,0) += w2*dr[0]*dr[1];
+				V[jelem](i,j) += w2*dr[i]*dr[j];
+			}
 	}
 
 #pragma omp parallel for default(shared)
@@ -221,12 +208,12 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		const amat::Array2d<a_real>& ug, 
 		std::vector<FArray<NDIM,nvars>>& grad ) const
 {
-	std::vector<Matrix<a_real,2,nvars>> f;		//< RHS of least-squares problems
+	std::vector<Matrix<a_real,NDIM,nvars>, Eigen::aligned_allocator<Matrix<a_real,NDIM,nvars>> > f;
 	f.resize(m->gnelem());
 
 #pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-		f[ielem] = Matrix<a_real,2,nvars>::Zero();
+		f[ielem] = Matrix<a_real,NDIM,nvars>::Zero();
 	
 	// compute least-squares RHS
 
@@ -248,10 +235,9 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 		
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
+			for(int jdim = 0; jdim < NDIM; jdim++)
 #pragma omp atomic update
-			f[ielem](0,ivar) += w2*dr[0]*du[ivar];
-#pragma omp atomic update
-			f[ielem](1,ivar) += w2*dr[1]*du[ivar];
+				f[ielem](jdim,ivar) += w2*dr[jdim]*du[ivar];
 		}
 	}
 
@@ -273,21 +259,19 @@ void WeightedLeastSquaresGradients<nvars>::compute_gradients(
 
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
+			for(int jdim = 0; jdim < NDIM; jdim++) {
 #pragma omp atomic update
-			f[ielem](0,ivar) += w2*dr[0]*du[ivar];
+				f[ielem](jdim,ivar) += w2*dr[jdim]*du[ivar];
 #pragma omp atomic update
-			f[ielem](1,ivar) += w2*dr[1]*du[ivar];
-#pragma omp atomic update
-			f[jelem](0,ivar) += w2*dr[0]*du[ivar];
-#pragma omp atomic update
-			f[jelem](1,ivar) += w2*dr[1]*du[ivar];
+				f[jelem](jdim,ivar) += w2*dr[jdim]*du[ivar];
+			}
 		}
 	}
 
 #pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		Matrix <a_real,2,nvars> d = V[ielem]*f[ielem];
+		Matrix <a_real,NDIM,nvars> d = V[ielem]*f[ielem];
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
 			for(short idim = 0; idim < NDIM; idim++)

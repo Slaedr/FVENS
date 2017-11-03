@@ -7,6 +7,7 @@
 #ifndef AGRADIENTSCHEMES_H
 #define AGRADIENTSCHEMES_H 1
 
+#include <Eigen/StdVector>
 #include "amesh2dh.hpp"
 
 namespace acfd
@@ -91,7 +92,12 @@ protected:
 	using GradientScheme<nvars>::rc;
 
 private:
-	std::vector<Matrix<a_real,2,2>> V;			///< LHS of least-squares problems
+	/// The least squares LHS matrix
+	/** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
+	 * fixed-size vectorizable Eigen arrays; see 
+	 * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
+	 */
+	std::vector< Matrix<a_real,NDIM,NDIM>, Eigen::aligned_allocator<Matrix<a_real,NDIM,NDIM>> > V;
 };
 
 
