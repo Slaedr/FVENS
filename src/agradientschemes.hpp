@@ -1,5 +1,5 @@
 /** @file agradientschemes.hpp
- * @brief Classes for different gradient reconstruction schemes.
+ * @brief Classes for different gradient estimation schemes.
  * @author Aditya Kashi
  * @date February 3, 2016
  */

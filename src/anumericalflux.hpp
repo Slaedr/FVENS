@@ -92,7 +92,7 @@ public:
 /** I call this flux vector splitting (FVS) for want of a better term; even though it is not
  * FVS strictly speaking, it's close enough. It's a FVS of the convective and pressure fluxes
  * separately.
- * \warning The Jacobian does not work, except for useless small CFL numbers.
+ * \warning The Jacobian does not work; use the LLF Jacobian instead.
  */
 class AUSMFlux : public InviscidFlux
 {
@@ -111,9 +111,7 @@ public:
 			a_real *const dfdl, a_real *const dfdr) const;
 };
 
-/// AUSM+ flux
-/** Supposed to be better than AUSMFlux, but is not, for some reason.
- */
+/// Liou's AUSM+ flux
 class AUSMPlusFlux : public InviscidFlux
 {
 public:

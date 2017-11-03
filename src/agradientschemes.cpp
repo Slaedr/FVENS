@@ -1,5 +1,5 @@
 /** @file agradientschemes.cpp
- * @brief Implementations for different gradient reconstruction schemes.
+ * @brief Implementations of gradient estimation schemes.
  * @author Aditya Kashi
  * @date February 3, 2016
  */
