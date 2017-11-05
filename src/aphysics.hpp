@@ -71,7 +71,7 @@ public:
 	/// Returns an array containing the non-dimensional free-stream state
 	/** \param aoa The angle of attack in radians
 	 */
-	const std::array<a_real,NVARS> compute_freestream_state(const a_real aoa) const;
+	std::array<a_real,NVARS> compute_freestream_state(const a_real aoa) const;
 
 	/// Computes flux in a given direction efficiently using specific data
 	/** Note that this function is independent of what kind of gas it is. 

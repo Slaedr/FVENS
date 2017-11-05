@@ -73,7 +73,7 @@ int main(const int argc, const char *const argv[])
 	// set up time discrization
 	
 	const SteadySolverConfig maintconf {
-		opts.lognres, opts.logfile,
+		opts.lognres, opts.logfile+".tlog",
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
 		opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
@@ -81,7 +81,7 @@ int main(const int argc, const char *const argv[])
 	};
 	
 	const SteadySolverConfig starttconf {
-		opts.lognres, opts.logfile,
+		opts.lognres, opts.logfile+"-init.tlog",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
 		opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,

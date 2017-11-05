@@ -32,7 +32,7 @@ public:
 	virtual void compute_gradients(
 			const MVector& unk,                         ///< [in] Solution multi-vector
 			const amat::Array2d<a_real>& unkg,          ///< [in] Ghost cell states 
-			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
+			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const = 0;
 };
 
 /// Simply sets the gradient to zero

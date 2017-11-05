@@ -20,7 +20,8 @@ FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const f
 
 void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
 {
-	std::ofstream fout = open_file_toWrite(volfile+"-vol.out");
+	std::ofstream fout;
+	open_file_toWrite(volfile+"-vol.out", fout);
 	fout << "#   x    y    rho     u      v      p      T      M \n";
 
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -74,7 +75,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	for(int im=0; im < static_cast<int>(wbcm.size()); im++)
 	{
 		std::string fname = basename+"-surf_w"+std::to_string(wbcm[im])+".out";
-		std::ofstream fout = open_file_toWrite(fname);
+		std::ofstream fout; 
+		open_file_toWrite(fname, fout);
 		
 		Matrix<a_real,Dynamic,Dynamic> output(nwbfaces[im], 2+NDIM);
 
@@ -199,7 +201,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	for(int im=0; im < static_cast<int>(obcm.size()); im++)
 	{
 		std::string fname = basename+"-surf_o"+std::to_string(obcm[im])+".out";
-		std::ofstream fout = open_file_toWrite(fname);
+		std::ofstream fout;
+		open_file_toWrite(fname, fout);
 		
 		Matrix<a_real,Dynamic,Dynamic> output(nobfaces[im], 2+NDIM);
 		a_int facecoun = 0;
@@ -257,7 +260,8 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 {
 	int elemcode;
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
-	std::ofstream out = open_file_toWrite(fname);
+	std::ofstream out;
+	open_file_toWrite(fname, out);
 
 	int nscalars = x.cols();
 
@@ -380,7 +384,8 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 {
 	int elemcode;
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
-	std::ofstream out = open_file_toWrite(fname);
+	std::ofstream out;
+	open_file_toWrite(fname, out);
 
 	int nscalars = x.cols();
 

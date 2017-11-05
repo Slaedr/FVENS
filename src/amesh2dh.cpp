@@ -255,7 +255,8 @@ void UMesh2dh::readDomn(std::string mfile)
 void UMesh2dh::readPlot2d(std::string mfile, const int bci0, const int bcimx,
 		const int bcj0, const int bcjmx)
 {
-	std::ifstream fin = open_file_toRead(mfile);
+	std::ifstream fin;
+	open_file_toRead(mfile, fin);
 
 	a_int imx, jmx, nbl;
 	a_real ddum;
@@ -295,7 +296,8 @@ void UMesh2dh::readGmsh2(std::string mfile)
 {
 	int dum; double dummy; std::string dums; char ch;
 
-	std::ifstream infile = open_file_toRead(mfile);
+	std::ifstream infile;
+	open_file_toRead(mfile, infile);
 	
 	for(int i = 0; i < 4; i++)		//skip 4 lines
 		do
@@ -496,7 +498,8 @@ void UMesh2dh::readGmsh2(std::string mfile)
 void UMesh2dh::readSU2(std::string mfile)
 {
 	std::string dum;
-	std::ifstream fin = open_file_toRead(mfile);
+	std::ifstream fin;
+	open_file_toRead(mfile, fin);
 
 	std::getline(fin, dum, '='); std::getline(fin,dum);
 	int ndim = std::stoi(dum);
@@ -737,7 +740,8 @@ void UMesh2dh::writeGmsh2(std::string mfile)
 	if(nnofa == 3)
 		face_type = 8;
 
-	std::ofstream outf = open_file_toWrite(mfile);
+	std::ofstream outf;
+	open_file_toWrite(mfile, outf);
 	
 	outf << std::setprecision(MESHDATA_DOUBLE_PRECISION);
 	//std::cout << "nodes\n";

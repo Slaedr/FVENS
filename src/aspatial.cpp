@@ -222,7 +222,7 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 	pconfig{pconf},
 	nconfig{nconf},
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
-	uinf{physics.compute_freestream_state(pconfig.aoa)},
+	uinf(physics.compute_freestream_state(pconfig.aoa)),
 
 	inviflux {create_const_inviscidflux(nconfig.conv_numflux, &physics)}, 
 	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &physics)},

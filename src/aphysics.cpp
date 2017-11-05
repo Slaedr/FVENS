@@ -19,7 +19,7 @@ void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, con
 /** The reference density and reference velocity are the free-stream values, therefore
  * the non-dimensional free-stream density and velocity magnitude are 1.0.
  */
-const std::array<a_real,NVARS> IdealGasPhysics::compute_freestream_state(const a_real aoa) const
+std::array<a_real,NVARS> IdealGasPhysics::compute_freestream_state(const a_real aoa) const
 {
 	std::array<a_real,NVARS> uinf;
 	uinf[0] = 1.0;

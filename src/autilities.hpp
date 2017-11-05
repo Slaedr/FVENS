@@ -15,10 +15,10 @@
 namespace acfd {
 
 /// Opens a file for reading but aborts in case of an error
-std::ifstream open_file_toRead(const std::string file);
+void open_file_toRead(const std::string file, std::ifstream& fin);
 
 /// Opens a file for writing but aborts in case of an error
-std::ofstream open_file_toWrite(const std::string file);
+void open_file_toWrite(const std::string file, std::ofstream& fout);
 
 /// Data read from a control file for flow problems
 struct FlowParserOptions

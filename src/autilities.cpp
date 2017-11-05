@@ -3,26 +3,22 @@
 
 namespace acfd {
 
-std::ifstream open_file_toRead(const std::string file)
+void open_file_toRead(const std::string file, std::ifstream& fin)
 {
-	std::ifstream fin(file);
+	fin.open(file);
 	if(!fin) {
 		std::cout << "! Could not open file "<< file <<" !\n";
 		std::abort();
 	}
-
-	return fin;
 }
 
-std::ofstream open_file_toWrite(const std::string file)
+void open_file_toWrite(const std::string file, std::ofstream& fout)
 {
-	std::ofstream fout(file);
+	fout.open(file);
 	if(!fout) {
 		std::cout << "! Could not open file "<< file <<" !\n";
 		//std::abort();
 	}
-
-	return fout;
 }
 
 const FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[])
@@ -49,7 +45,8 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	opts.isothermalpressurewall_marker=-1; 
 	opts.adiabaticwall_marker=-1; 
 
-	std::ifstream control = open_file_toRead(argv[1]);
+	std::ifstream control; 
+	open_file_toRead(argv[1], control);
 
 	std::string dum; char dumc;
 
