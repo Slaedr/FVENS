@@ -421,7 +421,7 @@ public:
 };
 
 /// H.A. Van der Vorst's stabilized biconjugate gradient solver
-/** Uses left-preconditioning only.
+/** Uses right-preconditioning only.
  */
 template <short nvars>
 class BiCGSTAB : public IterativeSolver<nvars>
