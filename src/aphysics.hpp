@@ -105,24 +105,26 @@ public:
 	/// Outputs various quantities, especially needed by numerical fluxes
 	/** \param[in] uc Conserved variables
 	 * \param[in] n Normal vector
-	 * \param[out] vx X-velocity
-	 * \param[out] vy Y-velocity
+	 * \param[out] v Velocity vector (of length NDIM)
 	 * \param[out] vn Normal velocity
 	 * \param[out] vm2 Square of velocity magnitude
 	 * \param[out] p Pressure
 	 * \param[out] H Specific enthalpy
 	 */
 	void getVarsFromConserved(const a_real *const uc, const a_real *const n,
-			a_real& vx, a_real& vy,
+			a_real *const v,
 			a_real& vn,
 			a_real& p, a_real& H ) const
 		__attribute__((always_inline));
 
 	/// Computes derivatives of variables computed in getVarsFromConserved
-	/** \warning The result is added to the original content of the  output variables!
+	/** \param[in] uc Vector of conserved variables
+	 * \param[in] n Normal vector
+	 * \param[in,out] dv is a NDIM x NVARS matrix stored as a row-major 1D array
+	 * \warning The result is added to the original content of the  output variables!
 	 */
 	void getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,
-		a_real dvx[NVARS], a_real dvy[NVARS], a_real dvn[NVARS],
+		a_real *const dv, a_real dvn[NVARS],
 		a_real dp[NVARS], a_real dH[NVARS]) const;
 
 	/// Returns the non-dimensionalized free-stream pressure
@@ -364,14 +366,15 @@ void IdealGasPhysics::getDirectionalFlux(const a_real *const uc, const a_real *c
 
 inline
 void IdealGasPhysics::getVarsFromConserved(const a_real *const uc, const a_real *const n,
-		a_real& vx, a_real& vy,
+		a_real *const __restrict v,
 		a_real& vn,
 		a_real& p, a_real& H ) const
 {
-	vx = uc[1]/uc[0]; 
-	vy = uc[2]/uc[0];
-	vn = vx*n[0] + vy*n[1];
-	p = (g-1.0)*(uc[3] - 0.5*uc[0]*(vx*vx+vy*vy));
+	for(int j = 0; j < NDIM; j++)
+		v[j] = uc[j+1]/uc[0]; 
+	vn = dimDotProduct(v,n);
+	const a_real vmag2 = dimDotProduct(v,v);
+	p = (g-1.0)*(uc[3] - 0.5*uc[0]*vmag2);
 	H = (uc[3]+p)/uc[0];
 }
 

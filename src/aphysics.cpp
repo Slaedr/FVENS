@@ -57,25 +57,26 @@ void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const
 }
 
 void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,
-	a_real *const __restrict dvx, a_real *const __restrict dvy, a_real *const __restrict dvn,
+	a_real *const __restrict dv, a_real *const __restrict dvn,
 	a_real *const __restrict dp, a_real *const __restrict dH) const
 {
-	dvx[0] += -uc[1]/(uc[0]*uc[0]);
-	dvx[1] += 1.0/uc[0];
+	for(int j = 0; j < NDIM; j++) 
+	{
+		dv[j*NVARS+0] += -uc[j+1]/(uc[0]*uc[0]);
+		dv[j*NVARS+j+1] += 1.0/uc[0];
+	}
 
-	dvy[0] += -uc[2]/(uc[0]*uc[0]);
-	dvy[2] += 1.0/uc[0];
-
-	dvn[0] += dvx[0]*n[0]+dvy[0]*n[1];
-	dvn[1] += n[0]/uc[0];
-	dvn[2] += n[1]/uc[0];
+	for(int j = 0; j < NDIM; j++) {
+		dvn[0] += dv[j*NVARS]*n[j];
+		dvn[j+1] += n[j]/uc[0];
+	}
 
 	const a_real p = getPressureFromConserved(uc);
 	getJacobianPressureWrtConserved(uc, dp);
 
 	dH[0] += (dp[0]*uc[0] - (uc[3]+p))/(uc[0]*uc[0]);
-	dH[1] += dp[1]/uc[0];
-	dH[2] += dp[2]/uc[0];
+	for(int j = 1; j < NDIM+1; j++)
+		dH[j] += dp[j]/uc[0];
 	dH[3] += (1.0+dp[3])/uc[0];
 }
 

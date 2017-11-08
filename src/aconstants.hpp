@@ -1,3 +1,8 @@
+/** \file aconstants.hpp
+ * \brief Defines some macro constants and typedefs used throughout the code
+ * \author Aditya Kashi
+ */
+
 #ifndef ACONSTANTS_H
 
 #define ACONSTANTS_H 1

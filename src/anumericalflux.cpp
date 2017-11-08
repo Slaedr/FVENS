@@ -34,9 +34,9 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul,
 		const a_real *const n, 
 		a_real *const __restrict flux) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
 
@@ -55,9 +55,9 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 		const a_real* const n, 
 		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
 
@@ -99,9 +99,9 @@ void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul,
 		const a_real* const n, 
 		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj, eig;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
 
@@ -189,12 +189,9 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 {
 	a_real fiplus[NVARS], fjminus[NVARS];
 
-	const a_real nx = n[0];
-	const a_real ny = n[1];
-
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
 
@@ -212,8 +209,8 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	{
 		const a_real vmags = pow(ul[1]/ul[0], 2) + pow(ul[2]/ul[0], 2);
 		fiplus[0] = ul[0]*ci*pow(Mni+1, 2)/4.0;
-		fiplus[1] = fiplus[0] * (ul[1]/ul[0] + nx*(2.0*ci - vni)/g);
-		fiplus[2] = fiplus[0] * (ul[2]/ul[0] + ny*(2.0*ci - vni)/g);
+		fiplus[1] = fiplus[0] * (ul[1]/ul[0] + n[0]*(2.0*ci - vni)/g);
+		fiplus[2] = fiplus[0] * (ul[2]/ul[0] + n[1]*(2.0*ci - vni)/g);
 		fiplus[3] = fiplus[0] * ( (vmags - vni*vni)/2.0 + pow((g-1)*vni+2*ci, 2)/(2*(g*g-1)) );
 	}
 
@@ -226,8 +223,8 @@ void VanLeerFlux::get_flux(const a_real *const ul, const a_real *const ur,
 	{
 		const a_real vmags = pow(ur[1]/ur[0], 2) + pow(ur[2]/ur[0], 2);
 		fjminus[0] = -ur[0]*cj*pow(Mnj-1, 2)/4.0;
-		fjminus[1] = fjminus[0] * (ur[1]/ur[0] + nx*(-2.0*cj - vnj)/g);
-		fjminus[2] = fjminus[0] * (ur[2]/ur[0] + ny*(-2.0*cj - vnj)/g);
+		fjminus[1] = fjminus[0] * (ur[1]/ur[0] + n[0]*(-2.0*cj - vnj)/g);
+		fjminus[2] = fjminus[0] * (ur[2]/ur[0] + n[1]*(-2.0*cj - vnj)/g);
 		fjminus[3] = fjminus[0] * ( (vmags - vnj*vnj)/2.0 + pow((g-1)*vnj-2*cj, 2)/(2*(g*g-1)) );
 	}
 
@@ -250,9 +247,9 @@ void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		const a_real* const n, a_real *const __restrict flux) const
 {
 	a_real ML, MR, pL, pR;
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
 
@@ -292,8 +289,8 @@ void AUSMFlux::get_flux(const a_real *const ul, const a_real *const ur,
 
 	// Fluxes
 	flux[0] = Mhalf/2.0*(ul[0]*ci+ur[0]*cj) -std::fabs(Mhalf)/2.0*(ur[0]*cj-ul[0]*ci);
-	flux[1] = Mhalf/2.0*(ul[1]*ci+ur[1]*cj) -std::fabs(Mhalf)/2.0*(ur[1]*cj-ul[1]*ci) + phalf*n[0];
-	flux[2] = Mhalf/2.0*(ul[2]*ci+ur[2]*cj) -std::fabs(Mhalf)/2.0*(ur[2]*cj-ul[2]*ci) + phalf*n[1];
+	for(int j = 1; j < NDIM+1; j++)
+		flux[j] = Mhalf/2.0*(ul[j]*ci+ur[j]*cj) -std::fabs(Mhalf)/2.0*(ur[j]*cj-ul[j]*ci) + phalf*n[j-1];
 	flux[3] = Mhalf/2.0*(ci*(ul[3]+pi)+cj*(ur[3]+pj)) 
 		-std::fabs(Mhalf)/2.0*(cj*(ur[3]+pj)-ci*(ul[3]+pi));
 }
@@ -303,9 +300,9 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 {
 	using std::fabs;
 	a_real ML, MR;
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
 
@@ -404,44 +401,27 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		( (Mhalf>=0 ? 1.0:-1.0)*dMR[k]/2.0*(ur[0]*cj-ul[0]*ci) + fabs(Mhalf)/2.0*ur[0]*dcj[k] );
 	}
 
-	// x-momentum
-	//flux[1] = Mhalf/2.0*(ul[1]*ci+ur[1]*cj) -fabs(Mhalf)/2.0*(ur[1]*cj-ul[1]*ci) + phalf*n[0];
-
-	dfdl[NVARS+1] = dML[1]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*(ci+ul[1]*dci[1]) -
-		( (Mhalf>=0? 1.0:-1.0)*dML[1]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*(-ci-ul[1]*dci[1]) )
-		+ dpL[1]*n[0];
-	dfdr[NVARS+1] = dMR[1]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*(cj+ur[1]*dcj[1]) -
-		( (Mhalf>=0? 1.0:-1.0)*dMR[1]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*(cj+ur[1]*dcj[1]) )
-		+ dpR[1]*n[0];
-	for(int k = 0; k < NVARS; k++)
+	// momentum
+	//flux[j] = Mhalf/2.0*(ul[j]*ci+ur[j]*cj) -fabs(Mhalf)/2.0*(ur[j]*cj-ul[j]*ci) + phalf*n[j-1];
+	
+	for(int j = 1; j < NDIM+1; j++)
 	{
-		if(k == 1) continue;
-		dfdl[NVARS+k] = dML[k]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*ul[1]*dci[k] - 
-			( (Mhalf>=0?1.0:-1.0)*dML[k]/2.0*(ur[1]*cj-ul[1]*ci) - fabs(Mhalf)/2.0*ul[1]*dci[k] )
-			+ dpL[k]*n[0];
-		dfdr[NVARS+k] = dMR[k]/2.0*(ul[1]*ci+ur[1]*cj) + Mhalf/2.0*ur[1]*dcj[k] - 
-			( (Mhalf>=0?1.0:-1.0)*dMR[k]/2.0*(ur[1]*cj-ul[1]*ci) + fabs(Mhalf)/2.0*ur[1]*dcj[k] )
-			+ dpR[k]*n[0];
-	}
-
-	// y-momentum
-	//flux[2] = Mhalf/2.0*(ul[2]*ci+ur[2]*cj) -fabs(Mhalf)/2.0*(ur[2]*cj-ul[2]*ci) + phalf*n[1];
-
-	dfdl[2*NVARS+2] = dML[2]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*(ci+ul[2]*dci[2]) -
-		( (Mhalf>=0? 1.0:-1.0)*dML[2]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*(-ci-ul[2]*dci[2]) )
-		+ dpL[2]*n[1];
-	dfdr[2*NVARS+2] = dMR[2]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*(cj+ur[2]*dcj[2]) -
-		( (Mhalf>=0? 1.0:-1.0)*dMR[2]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*(cj+ur[2]*dcj[2]) )
-		+ dpR[2]*n[1];
-	for(int k = 0; k < NVARS; k++)
-	{
-		if(k == 2) continue;
-		dfdl[2*NVARS+k] = dML[k]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*ul[2]*dci[k] - 
-			( (Mhalf>=0?1.0:-1.0)*dML[k]/2.0*(ur[2]*cj-ul[2]*ci) - fabs(Mhalf)/2.0*ul[2]*dci[k] )
-			+ dpL[k]*n[1];
-		dfdr[2*NVARS+k] = dMR[k]/2.0*(ul[2]*ci+ur[2]*cj) + Mhalf/2.0*ur[2]*dcj[k] - 
-			( (Mhalf>=0?1.0:-1.0)*dMR[k]/2.0*(ur[2]*cj-ul[2]*ci) + fabs(Mhalf)/2.0*ur[2]*dcj[k] )
-			+ dpR[k]*n[1];
+		dfdl[j*NVARS+j] = dML[j]/2.0*(ul[j]*ci+ur[j]*cj) + Mhalf/2.0*(ci+ul[j]*dci[j]) -
+			( (Mhalf>=0? 1.0:-1.0)*dML[j]/2.0*(ur[j]*cj-ul[j]*ci) + fabs(Mhalf)/2.0*(-ci-ul[j]*dci[j]) )
+			+ dpL[j]*n[j-1];
+		dfdr[j*NVARS+j] = dMR[j]/2.0*(ul[j]*ci+ur[j]*cj) + Mhalf/2.0*(cj+ur[j]*dcj[j]) -
+			( (Mhalf>=0? 1.0:-1.0)*dMR[j]/2.0*(ur[j]*cj-ul[j]*ci) + fabs(Mhalf)/2.0*(cj+ur[j]*dcj[j]) )
+			+ dpR[j]*n[j-1];
+		for(int k = 0; k < NVARS; k++)
+		{
+			if(k == j) continue;
+			dfdl[j*NVARS+k] = dML[k]/2.0*(ul[j]*ci+ur[j]*cj) + Mhalf/2.0*ul[j]*dci[k] - 
+				( (Mhalf>=0?1.0:-1.0)*dML[k]/2.0*(ur[j]*cj-ul[j]*ci) - fabs(Mhalf)/2.0*ul[j]*dci[k] )
+				+ dpL[k]*n[j-1];
+			dfdr[j*NVARS+k] = dMR[k]/2.0*(ul[j]*ci+ur[j]*cj) + Mhalf/2.0*ur[j]*dcj[k] - 
+				( (Mhalf>=0?1.0:-1.0)*dMR[k]/2.0*(ur[j]*cj-ul[j]*ci) + fabs(Mhalf)/2.0*ur[j]*dcj[k] )
+				+ dpR[k]*n[j-1];
+		}
 	}
 
 	// Energy flux
@@ -479,13 +459,13 @@ void AUSMPlusFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		const a_real* const n, a_real *const __restrict flux) const
 {
 	a_real ML, MR, pL, pR;
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0],pi);
 	cj = physics->getSoundSpeed(ur[0],pj);
-	const a_real vmag2i = vxi*vxi+vyi*vyi;
-	const a_real vmag2j = vxj*vxj+vyj*vyj;
+	const a_real vmag2i = dimDotProduct(vi,vi);
+	const a_real vmag2j = dimDotProduct(vj,vj);
 
 	// Interface speed of sound
 	a_real csi = std::sqrt((ci*ci/(g-1.0)+0.5*vmag2i)*2.0*(g-1.0)/(g+1.0));
@@ -539,8 +519,8 @@ void AUSMPlusFlux::get_flux(const a_real *const ul, const a_real *const ur,
 
 	// Fluxes
 	flux[0] = chalf* (Mhalf/2.0*(ul[0]+ur[0]) -std::fabs(Mhalf)/2.0*(ur[0]-ul[0]));
-	flux[1] = chalf* (Mhalf/2.0*(ul[1]+ur[1]) -std::fabs(Mhalf)/2.0*(ur[1]-ul[1])) + phalf*n[0];
-	flux[2] = chalf* (Mhalf/2.0*(ul[2]+ur[2]) -std::fabs(Mhalf)/2.0*(ur[2]-ul[2])) + phalf*n[1];
+	for(int j = 1; j < NDIM+1; j++)
+		flux[j] = chalf* (Mhalf/2.0*(ul[j]+ur[j]) -std::fabs(Mhalf)/2.0*(ur[j]-ul[j])) + phalf*n[j-1];
 	flux[3] = chalf* (Mhalf/2.0*(ul[3]+pi+ur[3]+pj) -std::fabs(Mhalf)/2.0*((ur[3]+pj)-(ul[3]+pi)));
 	
 	/*const a_real mplus = 0.5*(Mhalf + std::fabs(Mhalf)), mminus = 0.5*(Mhalf - std::fabs(Mhalf));
@@ -655,9 +635,11 @@ RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux)
 void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		const a_real* const n, a_real *const __restrict flux) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
+
+	const a_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -716,11 +698,13 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 }
 
 void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
-		const a_real* const n, a_real *const dfdl, a_real *const dfdr) const
+		const a_real* const n, a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
+
+	const a_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -728,19 +712,30 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	
 	//> Derivatives of the above variables
 	
-	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvxi[NVARS], dvxj[NVARS],
-	dHi[NVARS], dHj[NVARS], dvyi[NVARS],dvyj[NVARS], 
+	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvi[NDIM*NVARS], dvj[NDIM*NVARS],
+	dHi[NVARS], dHj[NVARS],
 	dRiji[NVARS], dRijj[NVARS], dvxiji[NVARS], dvyiji[NVARS], dvxijj[NVARS], dvyijj[NVARS],
 	dvniji[NVARS], dvnijj[NVARS],dvm2iji[NVARS], dvm2ijj[NVARS], dciji[NVARS], dcijj[NVARS],
 	drhoiji[NVARS], drhoijj[NVARS], dHiji[NVARS], dHijj[NVARS];
 	for(int k = 0; k < NVARS; k++)
 	{
 		dpi[k] = dpj[k] = dHi[k] = dHj[k] = 0;
-		dvxi[k] = dvxj[k] = dvyi[k] = dvyj[k] = dvni[k] = dvnj[k] = 0;
+		dvni[k] = dvnj[k] = 0;
+		for(int j = 0; j < NDIM; j++) 
+		{
+			dvi[j*NVARS+k] = 0;
+			dvj[j*NVARS+k] = 0;
+		}
 	}
 
-	physics->getJacobianVarsWrtConserved(ul,n,dvxi,dvyi,dvni,dpi,dHi);
-	physics->getJacobianVarsWrtConserved(ur,n,dvxj,dvyj,dvnj,dpj,dHj);
+	physics->getJacobianVarsWrtConserved(ul,n,dvi,dvni,dpi,dHi);
+	physics->getJacobianVarsWrtConserved(ur,n,dvj,dvnj,dpj,dHj);
+
+	a_real dvxj[NVARS], dvyj[NVARS], dvxi[NVARS], dvyi[NVARS];
+	for(int k = 0; k < NVARS; k++) {
+		dvxi[k] = dvi[k];       dvxj[k] = dvj[k];
+		dvyi[k] = dvi[NVARS+k]; dvyj[k] = dvj[NVARS+k];
+	}
 
 	getJacobiansRoeAveragesWrtConserved(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj,dvxi,dvyi,dHi,dvxj,dvyj,dHj,
 		dRiji, drhoiji, dvxiji, dvyiji, dvm2iji, dvniji, dHiji, dciji,
@@ -937,11 +932,13 @@ HLLFlux::HLLFlux(const IdealGasPhysics *const analyticalflux)
 void HLLFlux::get_flux(const a_real *const __restrict__ ul, const a_real *const __restrict__ ur, 
 		const a_real* const __restrict__ n, a_real *const __restrict__ flux) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 	ci = physics->getSoundSpeed(ul[0], pi);
 	cj = physics->getSoundSpeed(ur[0], pj);
+
+	const a_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	//> compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1340,11 +1337,13 @@ void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		const a_real* const n, 
 		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeed(ul[0],pi);
-	cj = physics->getSoundSpeed(ur[0],pj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
+	ci = physics->getSoundSpeed(ul[0], pi);
+	cj = physics->getSoundSpeed(ur[0], pj);
+
+	const a_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1493,11 +1492,13 @@ void HLLCFlux::getStarStateAndJacobian(const a_real u[NVARS], const a_real n[NDI
 void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 		a_real *const __restrict flux) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeed(ul[0],pi);
-	cj = physics->getSoundSpeed(ur[0],pj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
+	ci = physics->getSoundSpeed(ul[0], pi);
+	cj = physics->getSoundSpeed(ur[0], pj);
+
+	const a_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1546,11 +1547,13 @@ void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_
 void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 		a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {
-	a_real vxi, vxj, vyi, vyj, vni, vnj, pi, pj, Hi, Hj, ci, cj;
-	physics->getVarsFromConserved(ul, n, vxi, vyi, vni, pi, Hi);
-	physics->getVarsFromConserved(ur, n, vxj, vyj, vnj, pj, Hj);
-	ci = physics->getSoundSpeed(ul[0],pi);
-	cj = physics->getSoundSpeed(ur[0],pj);
+	a_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
+	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
+	ci = physics->getSoundSpeed(ul[0], pi);
+	cj = physics->getSoundSpeed(ur[0], pj);
+
+	const a_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
 	a_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;	
@@ -1558,21 +1561,31 @@ void HLLCFlux::get_jacobian(const a_real *const ul, const a_real *const ur, cons
 	
 	//> Derivatives of the above variables
 	
-	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvxi[NVARS], dvxj[NVARS],
-	dHi[NVARS], dHj[NVARS], dvyi[NVARS],dvyj[NVARS], dci[NVARS], dcj[NVARS], 
+	a_real dpi[NVARS], dpj[NVARS], dvni[NVARS], dvnj[NVARS], dvi[NDIM*NVARS], dvj[NDIM*NVARS],
+	dHi[NVARS], dHj[NVARS], dci[NVARS], dcj[NVARS], 
 	dRiji[NVARS], dRijj[NVARS], dvxiji[NVARS], dvyiji[NVARS], dvxijj[NVARS], dvyijj[NVARS],
-	dvniji[NVARS], dvnijj[NVARS],dvm2iji[NVARS], dvm2ijj[NVARS], dciji[NVARS], dcijj[NVARS],
+	dvniji[NVARS], dvnijj[NVARS], dvm2iji[NVARS], dvm2ijj[NVARS], dciji[NVARS], dcijj[NVARS],
 	drhoiji[NVARS], drhoijj[NVARS], dHiji[NVARS], dHijj[NVARS];
 	for(int k = 0; k < NVARS; k++)
 	{
 		dpi[k] = dpj[k] = dHi[k] = dHj[k] = dci[k] = dcj[k] = 0;
-		dvxi[k] = dvxj[k] = dvyi[k] = dvyj[k] = dvni[k] = dvnj[k] = 0;
+		dvni[k] = dvnj[k] = 0;
+		for(int j = 0; j < NDIM; j++) {
+			dvi[j*NVARS+k] = 0;
+			dvj[j*NVARS+k] = 0;
+		}
 	}
 
-	physics->getJacobianVarsWrtConserved(ul,n,dvxi,dvyi,dvni,dpi,dHi);
-	physics->getJacobianVarsWrtConserved(ur,n,dvxj,dvyj,dvnj,dpj,dHj);
+	physics->getJacobianVarsWrtConserved(ul,n,dvi,dvni,dpi,dHi);
+	physics->getJacobianVarsWrtConserved(ur,n,dvj,dvnj,dpj,dHj);
 	physics->getJacobianSoundSpeed(ul[0],pi,dpi,ci,dci);
 	physics->getJacobianSoundSpeed(ur[0],pj,dpj,cj,dcj);
+
+	a_real dvxi[NVARS], dvxj[NVARS], dvyi[NVARS],dvyj[NVARS]; 
+	for(int k = 0; k < NVARS; k++) {
+		dvxi[k] = dvi[k]; dvxj[k] = dvj[k];
+		dvyi[k] = dvi[NVARS+k]; dvyj[k] = dvj[NVARS+k];
+	}
 
 	getJacobiansRoeAveragesWrtConserved(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj,dvxi,dvyi,dHi,dvxj,dvyj,dHj,
 		dRiji, drhoiji, dvxiji, dvyiji, dvm2iji, dvniji, dHiji, dciji,
