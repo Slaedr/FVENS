@@ -32,7 +32,7 @@
 #include "agradientschemes.hpp"
 #include "areconstruction.hpp"
 
-#if HAVE_PETSC==1
+#if WITH_PETSC==1
 #include <petscmat.h>
 #endif
 
@@ -200,7 +200,7 @@ public:
 	void compute_residual(const MVector& u, MVector& __restrict residual, 
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const;
 
-#if HAVE_PETSC==1
+#if WITH_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
 	void compute_jacobian(const MVector& u, const bool blocked, Mat A) const;
 #else

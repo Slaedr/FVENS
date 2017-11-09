@@ -1212,7 +1212,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 	} // end parallel region
 }
 
-#if HAVE_PETSC==1
+#if WITH_PETSC==1
 
 template<bool order2, bool constVisc>
 void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blocked, Mat A) 
