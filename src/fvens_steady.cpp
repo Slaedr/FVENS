@@ -162,6 +162,8 @@ int main(const int argc, const char *const argv[])
 	delete prob;
 	delete startprob;
 
+	delete M;
+
 	cout << "\n--------------- End --------------------- \n\n";
 	return 0;
 }

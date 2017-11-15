@@ -137,6 +137,9 @@ public:
 	/// Allocates storage for a vector \ref ytemp required for both SGS and ILU applications
 	void allocTempVector();
 
+	/// Inverts diagonal blocks and allocates a temporary array
+	void precSGSSetup();
+
 	/// Applies a block symmetric Gauss-Seidel preconditioner ("LU-SGS")
 	void precSGSApply(const a_real *const r, a_real *const __restrict z) const;
 
@@ -278,13 +281,11 @@ class SGS : public Preconditioner<nvars>
 
 public:
 	SGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) 
-	{
-		A->allocTempVector();
-	}
+	{ }
 
-	/// Sets D,L,U and inverts each D
+	/// Sets D,L,U and inverts each D; also allocates temp storage
 	void compute() {
-		A->precJacobiSetup();
+		A->precSGSSetup();
 	}
 
 	void apply(const a_real *const r, 

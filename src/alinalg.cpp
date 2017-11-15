@@ -264,8 +264,13 @@ void DLUMatrix<bs>::allocTempVector()
 	y = MVector::Zero(m->gnelem(),bs);
 }
 
-/** \warning allocTempVector() must have been called prior to calling this method.
- */
+template <int bs>
+void DLUMatrix<bs>::precSGSSetup()
+{
+	precJacobiSetup();
+	y = MVector::Zero(m->gnelem(),bs);
+}
+
 template <int bs>
 void DLUMatrix<bs>::precSGSApply(const a_real *const rr, a_real *const __restrict zz) const
 {
