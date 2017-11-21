@@ -24,9 +24,6 @@ struct SteadySolverConfig {
 	a_real lintol;               ///< Tolerance of the linear solver in case of implicit schemes
 	int linmaxiterstart;         ///< Max linear solver iterations before step \ref rampstart
 	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
-	std::string linearsolver;    ///< Linear solver to use for implicit solvers
-	int restart_vecs;            ///< Number of Krylov basis vectors to store before restart
-	std::string preconditioner;  ///< Preconditioner to use for implicit solvers
 };
 
 /// Base class for steady-state simulations in pseudo-time
@@ -45,7 +42,7 @@ public:
 		: space{spatial}, config{conf}, cputime{0.0}, walltime{0.0}
 	{ }
 
-	const MVector& residuals() const {
+	const Vec residuals() const {
 		return residual;
 	}
 
@@ -54,7 +51,7 @@ public:
 		wall_time = walltime; cpu_time = cputime;
 	}
 
-	virtual void solve(MVector& u) = 0;
+	virtual void solve(Vec u) = 0;
 
 	virtual ~SteadySolver() {}
 
@@ -63,7 +60,7 @@ protected:
 	const SteadySolverConfig& config;
 	double cputime;
 	double walltime;
-	MVector residual;
+	Vec residual;
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -78,8 +75,7 @@ template <short nvars>
 class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
 public:
-	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const SteadySolverConfig& conf,
-			const bool use_implicitSmoothing, AbstractMatrix<a_real,a_int> *const A);
+	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const SteadySolverConfig& conf);
 	
 	~SteadyForwardEulerSolver();
 
@@ -89,7 +85,7 @@ public:
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
-	void solve(MVector& u);
+	void solve(Vec u);
 
 private:
 	using SteadySolver<nvars>::space;
@@ -99,15 +95,6 @@ private:
 	using SteadySolver<nvars>::walltime;
 
 	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
-
-	/// Stores whether implicit Laplacian smoothing is to be used for the residual
-	const bool useImplicitSmoothing;
-
-	/// Sparse matrix for the Laplacian
-	AbstractMatrix<a_real,a_int> *const M;
-
-	IterativeSolver<nvars> * linsolv;        ///< Linear solver context for Laplacian smoothing
-	Preconditioner<nvars>* prec;             ///< preconditioner context for Laplacian smoothing
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -122,7 +109,7 @@ public:
 	 * \param[in] pmat Jacobian matrix context for the preconditioner (and perhaps the solver)
 	 */
 	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf,
-		AbstractMatrix<a_real,a_int> *const pmat);
+		Mat pmat);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -133,7 +120,7 @@ public:
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
-	void solve(MVector& u);
+	void solve(Vec u);
 
 protected:
 	using SteadySolver<nvars>::space;
@@ -144,14 +131,11 @@ protected:
 
 	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
 
-	IterativeSolver<nvars> * linsolv;        ///< Linear solver context
-	Preconditioner<nvars>* prec;             ///< preconditioner context
-
 	/// Sparse matrix of the preconditioning Jacobian
 	/** Note that the same matrix is used as the actual LHS as well,
 	 * if matrix-free solution is disabled.
 	 */
-	AbstractMatrix<a_real,a_int> *const M;
+	Mat M;
 };
 
 /// Base class for unsteady simulations
@@ -163,8 +147,8 @@ class UnsteadySolver
 {
 protected:
 	const Spatial<nvars> * space;
-	MVector& u;
-	MVector residual;
+	Vec u;
+	Vec residual;
 	const int order;               ///< Deisgn order of accuracy in time
 	double cputime;
 	double walltime;
@@ -177,13 +161,13 @@ public:
 	 * \param[in] soln The solution vector to use and update
 	 * \param[in] temporal_order Design order of accuracy in time
 	 */
-	UnsteadySolver(const Spatial<nvars> *const spatial, MVector& soln,
+	UnsteadySolver(const Spatial<nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file)
 		: space(spatial), u(soln), order{temporal_order}, cputime{0.0}, walltime{0.0},
 		  logfile{log_file}
 	{ }
 
-	const MVector& residuals() const {
+	const Vec residuals() const {
 		return residual;
 	}
 
@@ -205,7 +189,7 @@ template<short nvars>
 class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
-	TVDRKSolver(const Spatial<nvars> *const spatial, MVector& soln,
+	TVDRKSolver(const Spatial<nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file, const double cfl_num);
 	
 	void solve(const a_real finaltime);
@@ -225,7 +209,7 @@ protected:
 	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
 
 private:
-	amat::Array2d<a_real> dtm;
+	Vec dtm;
 };
 	
 

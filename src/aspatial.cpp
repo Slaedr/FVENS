@@ -1808,38 +1808,9 @@ void DiffusionMA<nvars>::getGradients(const MVector& u,
 	gradcomp->compute_gradients(u, ug, grads);
 }
 
-template <short nvars>
-void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, AbstractMatrix<a_real,a_int> *const M)
-{
-	// For laplacian implicit residual smoothing, we just use the block format.
-	// Note that this function allocates more than necessary for Laplacian smoothing.
-	setupMatrixStorage<nvars>(m, 'b', M);
-	
-	std::function <
-	void(const a_real *const, const a_real, const a_real *const, a_real *const)
-		> source;
-
-	constexpr a_real eps = 0.5;
-	DiffusionMA<nvars> laplacian(m,-eps,0.0,source,"NONE");
-	MVector u;
-	laplacian.compute_jacobian(u,M);
-
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
-	{
-		a_real eye[nvars*nvars];
-		for(int k = 0; k < nvars*nvars; k++)
-			eye[k] = 0;
-		for(int k = 0; k < nvars; k++)
-			eye[k*nvars+k] = 1.0;
-		M->updateDiagBlock(iel*nvars, eye, 0);
-	}
-}
-
 // template instantiations
 
 template class Diffusion<1>;
 template class DiffusionMA<1>;
-template void setupLaplacianSmoothingMatrix<NVARS>(const UMesh2dh *const m, 
-		AbstractMatrix<a_real,a_int> *const M);
 
 }	// end namespace

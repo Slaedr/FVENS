@@ -7,6 +7,7 @@
 
 #define ACONSTANTS_H 1
 
+/*
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -15,13 +16,13 @@
 #include <iomanip>
 #include <functional>
 #include <time.h>
-// Unix only:
 #include <sys/time.h>
 
 // for floating point exceptions
 #ifdef DEBUG
 #include <fenv.h>
 #endif
+*/
 
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353
@@ -85,12 +86,6 @@ namespace acfd
 		for(int i = 0; i < n; i++)
 			a[i] = 0;
 	}
-}
-
-// sparse matrix library
-#include <linearoperator.hpp>
-namespace acfd {
-	using blasted::AbstractMatrix;
 }
 
 #endif

@@ -32,9 +32,7 @@
 #include "agradientschemes.hpp"
 #include "areconstruction.hpp"
 
-#if WITH_PETSC==1
 #include <petscmat.h>
-#endif
 
 namespace acfd {
 
@@ -57,11 +55,11 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
+	virtual void compute_residual(const Vec u, Vec residual, 
+			const bool gettimesteps, Vec dtm) const = 0;
 	
 	/// Computes the Jacobian matrix of the residual
-	virtual void compute_jacobian(const MVector& u, AbstractMatrix<a_real,a_int> *const A) const = 0;
+	virtual void compute_jacobian(const Vec u, Mat A) const = 0;
 
 	/// Computes the Frechet derivative of the residual along a given direction 
 	/// using finite difference
@@ -73,22 +71,22 @@ public:
 	 * \param aux Storage for intermediate state
 	 * \param[out] prod The vector containing the directional derivative
 	 */
-	virtual void compute_jac_vec(const MVector& resu, const MVector& u, 
-			const MVector& v,
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			MVector& __restrict aux,
-			MVector& __restrict prod);
+	virtual void compute_jac_vec(const Vec resu, const Vec u, 
+			const Vec v,
+			const bool add_time_deriv, const Vec dtm,
+			Vec __restrict aux,
+			Vec __restrict prod);
 	
 	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
-	virtual void compute_jac_gemv(const a_real a, const MVector& resu, const MVector& u, 
-			const MVector& v,
-			const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-			const a_real b, const MVector& w,
-			MVector& __restrict aux,
-			MVector& __restrict prod);
+	virtual void compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
+			const Vec v,
+			const bool add_time_deriv, const Vec dtm,
+			const a_real b, const Vec w,
+			Vec __restrict aux,
+			Vec __restrict prod);
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const MVector& u,
+	virtual void getGradients(const Vec u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
 
 	/// Sets initial conditions
@@ -96,10 +94,10 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in|out] u Vector to store the initial data in
 	 */
-	virtual void initializeUnknowns(MVector& u) const = 0;
+	virtual void initializeUnknowns(Vec u) const = 0;
 	
 	/// Compute nodal quantities to export
-	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+	virtual void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vector) const = 0;
 
 	/// Exposes access to the mesh context
@@ -192,33 +190,23 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(MVector& u) const;
+	void initializeUnknowns(Vec u) const;
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
-	void compute_residual(const MVector& u, MVector& __restrict residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const;
+	void compute_residual(const Vec u, Vec residual, 
+			const bool gettimesteps, Vec dtm) const;
 
-#if WITH_PETSC==1
 	/// Computes the residual Jacobian as a PETSc martrix
-	void compute_jacobian(const MVector& u, const bool blocked, Mat A) const;
-#else
-	/// Computes the residual Jacobian as arrays of diagonal blocks for each cell, 
-	/// and lower and upper blocks for each face
-	/** Periodic boundary conditions are not linearized, and as such,
-	 * implicit solution of problems with periodic boundaries should not be attempted.
-	 * Also, A is not zeroed before use.
-	 */
-	void compute_jacobian(const MVector& u, AbstractMatrix<a_real,a_int> *const A) const;
-#endif
+	void compute_jacobian(const Vec u, Mat A) const;
 	
 	/// Computes gradients of converved variables
-	void getGradients(const MVector& u,
+	void getGradients(const Vec u,
 		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const;
 
 	/// Compute cell-centred quantities to export
-	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
+	void postprocess_cell(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities) const;
 	
 	/// Compute nodal quantities to export
@@ -226,13 +214,13 @@ public:
 	 * Density, Mach number, pressure and temperature are the exported scalars,
 	 * and velocity is exported as well.
 	 */
-	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+	void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities) const;
 
 	/// Compute norm of cell-centered entropy production
 	/** Call aftr computing pressure etc \sa postprocess_cell
 	 */
-	a_real compute_entropy_cell(const MVector& u) const;
+	a_real compute_entropy_cell(const Vec u) const;
 
 protected:
 	/// Problem specification
@@ -346,21 +334,20 @@ public:
 	/** 
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(MVector& u) const;
+	void initializeUnknowns(Vec u) const;
 	
 	/// Compute nodal quantities to export
 	/** \param vec Dummy argument, not used
 	 */
-	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+	void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vec) const;
 	
-	virtual void compute_residual(const MVector& u, MVector& __restrict residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
+	virtual void compute_residual(const Vec u, Vec __restrict residual, 
+			const bool gettimesteps, Vec __restrict dtm) const = 0;
 	
-	virtual void compute_jacobian(const MVector& u, 
-			AbstractMatrix<a_real,a_int> *const A) const = 0;
+	virtual void compute_jacobian(const Vec u, Mat A) const = 0;
 	
-	virtual void getGradients(const MVector& u,
+	virtual void getGradients(const Vec u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
 	
 	virtual ~Diffusion();
@@ -401,16 +388,15 @@ public:
 			                                           ///< scheme to use
 			);
 	
-	void compute_residual(const MVector& u, MVector& __restrict residual, 
-			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const;
+	void compute_residual(const Vec u, Vec __restrict residual, 
+			const bool gettimesteps, Vec __restrict dtm) const;
 	
 	/*void add_source(const MVector& u, 
 			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
-	void compute_jacobian(const MVector& u, 
-			AbstractMatrix<a_real,a_int> *const A) const;
+	void compute_jacobian(const Vec u, Mat A) const;
 	
-	void getGradients(const MVector& u,
+	void getGradients(const Vec u,
 		    std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const;
 
 	~DiffusionMA();
@@ -430,12 +416,6 @@ protected:
 	
 	const GradientScheme<nvars> *const gradcomp;
 };
-
-/// Creates a first-order `thin-layer' Laplacian smoothing matrix
-/** \cite{jameson1986}
- */
-template <short nvars>
-void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, AbstractMatrix<a_real,a_int> *const M);
 
 }	// end namespace
 #endif

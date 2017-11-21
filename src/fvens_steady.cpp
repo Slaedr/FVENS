@@ -53,22 +53,11 @@ int main(const int argc, const char *const argv[])
 	std::cout << "\n***\n";
 	
 	// solution vector
-	MVector u(m.gnelem(),NVARS);
+	Vec u;
+	//MVector u(m.gnelem(),NVARS);
 
 	// Initialize Jacobian for implicit schemes; no storage allocated here
-	blasted::AbstractMatrix<a_real,a_int> * M = nullptr;
-	if(opts.mattype == 'd') {
-		M = new blasted::DLUMatrix<NVARS>(&m,opts.nbuildsweeps,opts.napplysweeps);
-		std::cout << " Selected DLU matrix for Jacobian storage, if required.\n";
-	}
-	else if(opts.mattype == 'c') {
-		M = new blasted::BSRMatrix<a_real,a_int,1>(opts.nbuildsweeps,opts.napplysweeps);
-		std::cout << " Selected CSR matrix for Jacobian storage, if required.\n";
-	}
-	else {
-		M = new blasted::BSRMatrix<a_real,a_int,NVARS>(opts.nbuildsweeps,opts.napplysweeps);
-		std::cout << " Selected BSR matrix for Jacobian storage, if required.\n";
-	}
+	Mat M;
 
 	// set up time discrization
 	
@@ -96,7 +85,7 @@ int main(const int argc, const char *const argv[])
 			std::cout << "!! Matrix-free not implemented yet! Using matrix-storage instead.\n";
 			
 		// Pre-allocate storage for Jacobian matrix	
-		setupMatrixStorage<NVARS>(&m, opts.mattype, M);
+		setupMatrixStorage<NVARS>(&m, M);
 		
 		if(opts.usestarter != 0)
 			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, M);
@@ -107,9 +96,6 @@ int main(const int argc, const char *const argv[])
 	}
 	else 
 	{
-		if(opts.residualsmoothing)
-			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
-
 		if(opts.usestarter != 0)
 			starttime = new SteadyForwardEulerSolver<4>(startprob, starttconf,
 					opts.residualsmoothing, M);

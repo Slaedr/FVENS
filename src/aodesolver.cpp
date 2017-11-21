@@ -66,18 +66,6 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 
 	residual.resize(m->gnelem(),nvars);
 	dtm.setup(m->gnelem(), 1);
-	
-	if(useImplicitSmoothing) {
-		prec = new SGS<nvars>(M);
-		std::cout << " SteadyForwardEulerSolver: Selected ";
-		std::cout << "SGS preconditioned ";
-		linsolv = new RichardsonSolver<nvars>(m, M, prec);
-		std::cout << "Richardson iteration\n   for implicit residual averaging.\n";
-
-		double lintol = 1e-1; int linmaxiter = 1;
-		linsolv->setupPreconditioner();
-		linsolv->setParams(lintol, linmaxiter);
-	}
 }
 
 template<short nvars>
@@ -120,17 +108,6 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 
 		// update residual
 		space->compute_residual(u, residual, true, dtm);
-
-		if(useImplicitSmoothing)
-		{
-			MVector resbar = MVector::Zero(m->gnelem(),nvars);
-
-			linsolv->solve(residual, resbar);
-
-#pragma omp parallel for simd default(shared)
-			for(a_int k = 0; k < m->gnelem()*nvars; k++)
-				residual.data()[k] = resbar.data()[k];
-		}
 
 		a_real errmass = 0;
 
