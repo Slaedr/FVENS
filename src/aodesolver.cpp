@@ -57,7 +57,7 @@ template<short nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 		const Spatial<nvars> *const spatial,
 		const SteadySolverConfig& conf,
-		const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A)
+		const bool use_implicitSmoothing, AbstractMatrix<a_real,a_int> *const A)
 
 	: SteadySolver<nvars>(spatial, conf), useImplicitSmoothing{use_implicitSmoothing}, M{A},
 	linsolv{nullptr}, prec{nullptr}
@@ -197,7 +197,7 @@ template <short nvars>
 SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 		const Spatial<nvars> *const spatial, 
 		const SteadySolverConfig& conf,	
-		LinearOperator<a_real,a_int> *const pmat)
+		AbstractMatrix<a_real,a_int> *const pmat)
 
 	: SteadySolver<nvars>(spatial, conf), M{pmat}
 {

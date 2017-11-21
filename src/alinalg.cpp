@@ -10,7 +10,7 @@ namespace blasted {
 template <int bs>
 DLUMatrix<bs>::DLUMatrix(const acfd::UMesh2dh *const mesh, 
 	const short n_buildsweeps, const short n_applysweeps)
-	: LinearOperator<a_real,a_int>('d'),
+	: AbstractMatrix<a_real,a_int>(OTHER),
 	  m(mesh), D(nullptr), L(nullptr), U(nullptr), luD(nullptr), luL(nullptr), luU(nullptr),
 	  nbuildsweeps{n_buildsweeps}, napplysweeps{n_applysweeps},
 	  thread_chunk_size{200}
@@ -524,7 +524,7 @@ IterativeSolverBase::IterativeSolverBase(const UMesh2dh *const mesh)
 
 template <short nvars>
 IterativeSolver<nvars>::IterativeSolver(const UMesh2dh* const mesh, 
-		LinearOperator<a_real,a_int>* const mat, 
+		AbstractMatrix<a_real,a_int>* const mat, 
 		Preconditioner<nvars> *const precond)
 	: IterativeSolverBase(mesh), A(mat), prec(precond)
 { }
@@ -548,7 +548,7 @@ void IterativeSolver<nvars>::setupPreconditioner()
 // Richardson iteration
 template <short nvars>
 RichardsonSolver<nvars>::RichardsonSolver(const UMesh2dh *const mesh, 
-		LinearOperator<a_real,a_int> *const mat,
+		AbstractMatrix<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond)
 	: IterativeSolver<nvars>(mesh, mat, precond)
 { }
@@ -594,7 +594,7 @@ int RichardsonSolver<nvars>::solve(const MVector& res,
 
 template <short nvars>
 BiCGSTAB<nvars>::BiCGSTAB(const UMesh2dh *const mesh, 
-		LinearOperator<a_real,a_int> *const mat,
+		AbstractMatrix<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond)
 	: IterativeSolver<nvars>(mesh, mat, precond)
 { }
@@ -694,7 +694,7 @@ int BiCGSTAB<nvars>::solve(const MVector& res,
 
 template <short nvars>
 GMRES<nvars>::GMRES(const UMesh2dh *const mesh, 
-		LinearOperator<a_real,a_int> *const mat,
+		AbstractMatrix<a_real,a_int> *const mat,
 		Preconditioner<nvars> *const precond,
 		int m_restart)
 	: IterativeSolver<nvars>(mesh, mat, precond), mrestart(m_restart)
@@ -912,7 +912,7 @@ int MFRichardsonSolver<nvars>::solve(const MVector& __restrict__ u,
 
 template <short nvars>
 void setupMatrixStorage(const UMesh2dh *const m, const char mattype,
-	LinearOperator<a_real,a_int> *const M)
+	AbstractMatrix<a_real,a_int> *const M)
 {
 	// set Jacobian storage
 	if(mattype == 'd')
@@ -1083,8 +1083,8 @@ template class BiCGSTAB<1>;
 template class GMRES<1>;
 
 template void setupMatrixStorage<NVARS>(const UMesh2dh *const m, const char mattype,
-		LinearOperator<a_real,a_int> *const A);
+		AbstractMatrix<a_real,a_int> *const A);
 template void setupMatrixStorage<1>(const UMesh2dh *const m, const char mattype,
-		LinearOperator<a_real,a_int> *const A);
+		AbstractMatrix<a_real,a_int> *const A);
 
 }

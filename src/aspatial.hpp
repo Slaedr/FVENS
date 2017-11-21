@@ -61,7 +61,7 @@ public:
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
 	
 	/// Computes the Jacobian matrix of the residual
-	virtual void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) const = 0;
+	virtual void compute_jacobian(const MVector& u, AbstractMatrix<a_real,a_int> *const A) const = 0;
 
 	/// Computes the Frechet derivative of the residual along a given direction 
 	/// using finite difference
@@ -210,7 +210,7 @@ public:
 	 * implicit solution of problems with periodic boundaries should not be attempted.
 	 * Also, A is not zeroed before use.
 	 */
-	void compute_jacobian(const MVector& u, LinearOperator<a_real,a_int> *const A) const;
+	void compute_jacobian(const MVector& u, AbstractMatrix<a_real,a_int> *const A) const;
 #endif
 	
 	/// Computes gradients of converved variables
@@ -358,7 +358,7 @@ public:
 			const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const = 0;
 	
 	virtual void compute_jacobian(const MVector& u, 
-			LinearOperator<a_real,a_int> *const A) const = 0;
+			AbstractMatrix<a_real,a_int> *const A) const = 0;
 	
 	virtual void getGradients(const MVector& u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
@@ -408,7 +408,7 @@ public:
 			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
 	void compute_jacobian(const MVector& u, 
-			LinearOperator<a_real,a_int> *const A) const;
+			AbstractMatrix<a_real,a_int> *const A) const;
 	
 	void getGradients(const MVector& u,
 		    std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const;
@@ -435,7 +435,7 @@ protected:
 /** \cite{jameson1986}
  */
 template <short nvars>
-void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_real,a_int> *const M);
+void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, AbstractMatrix<a_real,a_int> *const M);
 
 }	// end namespace
 #endif

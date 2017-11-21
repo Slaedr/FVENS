@@ -79,7 +79,7 @@ class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
 public:
 	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const SteadySolverConfig& conf,
-			const bool use_implicitSmoothing, LinearOperator<a_real,a_int> *const A);
+			const bool use_implicitSmoothing, AbstractMatrix<a_real,a_int> *const A);
 	
 	~SteadyForwardEulerSolver();
 
@@ -104,7 +104,7 @@ private:
 	const bool useImplicitSmoothing;
 
 	/// Sparse matrix for the Laplacian
-	LinearOperator<a_real,a_int> *const M;
+	AbstractMatrix<a_real,a_int> *const M;
 
 	IterativeSolver<nvars> * linsolv;        ///< Linear solver context for Laplacian smoothing
 	Preconditioner<nvars>* prec;             ///< preconditioner context for Laplacian smoothing
@@ -122,7 +122,7 @@ public:
 	 * \param[in] pmat Jacobian matrix context for the preconditioner (and perhaps the solver)
 	 */
 	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf,
-		LinearOperator<a_real,a_int> *const pmat);
+		AbstractMatrix<a_real,a_int> *const pmat);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -151,7 +151,7 @@ protected:
 	/** Note that the same matrix is used as the actual LHS as well,
 	 * if matrix-free solution is disabled.
 	 */
-	LinearOperator<a_real,a_int> *const M;
+	AbstractMatrix<a_real,a_int> *const M;
 };
 
 /// Base class for unsteady simulations

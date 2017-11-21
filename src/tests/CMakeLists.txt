@@ -13,8 +13,6 @@ target_link_libraries(exec_testflowspatial testflowspatial)
 
 # Tests
 
-enable_testing()
-
 add_test(NAME Mesh COMMAND exec_testmesh ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 
 add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflowspatial input/test.cfg wall_boundaries)

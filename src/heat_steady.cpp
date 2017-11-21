@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
 	// solution vector	
 	MVector u(m.gnelem(),1);
 
-	blasted::LinearOperator<a_real,a_int> * M;
+	blasted::AbstractMatrix<a_real,a_int> * M;
 	switch(mattype) {
 		case 'd':
 			M = new blasted::DLUMatrix<1>(&m,nbuildsweeps,napplysweeps);

@@ -1331,7 +1331,7 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blo
  */
 template<bool order2, bool constVisc>
 void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, 
-				LinearOperator<a_real,a_int> *const __restrict A) const
+				AbstractMatrix<a_real,a_int> *const __restrict A) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1722,7 +1722,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
  */
 template<short nvars>
 void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
-		LinearOperator<a_real,a_int> *const A) const
+		AbstractMatrix<a_real,a_int> *const A) const
 {
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
@@ -1809,7 +1809,7 @@ void DiffusionMA<nvars>::getGradients(const MVector& u,
 }
 
 template <short nvars>
-void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_real,a_int> *const M)
+void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, AbstractMatrix<a_real,a_int> *const M)
 {
 	// For laplacian implicit residual smoothing, we just use the block format.
 	// Note that this function allocates more than necessary for Laplacian smoothing.
@@ -1840,6 +1840,6 @@ void setupLaplacianSmoothingMatrix(const UMesh2dh *const m, LinearOperator<a_rea
 template class Diffusion<1>;
 template class DiffusionMA<1>;
 template void setupLaplacianSmoothingMatrix<NVARS>(const UMesh2dh *const m, 
-		LinearOperator<a_real,a_int> *const M);
+		AbstractMatrix<a_real,a_int> *const M);
 
 }	// end namespace

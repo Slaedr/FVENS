@@ -27,7 +27,7 @@ using acfd::MVector;
 /** Includes some BLAS 2 and preconditioning operations
  */
 template <int bs>
-class DLUMatrix : public LinearOperator<a_real,a_int>
+class DLUMatrix : public AbstractMatrix<a_real,a_int>
 {
 protected:
 	/// The mesh which describes the graph of the non-zero structure
@@ -201,7 +201,7 @@ inline a_real dot(const a_int N, const a_real *const a,
 
 /// Preconditioner, ie, performs one iteration to solve M z = r
 /** Note that subclasses do not directly perform any computation but
- * delegate all computation to the relevant subclass of LinearOperator. 
+ * delegate all computation to the relevant subclass of AbstractMatrix. 
  * As such, the precise preconditioning operation applied depends on 
  * which kind of matrix the LHS is stored as.
  */
@@ -209,10 +209,10 @@ template <short nvars>
 class Preconditioner
 {
 protected:
-	LinearOperator<a_real,a_int>* A;
+	AbstractMatrix<a_real,a_int>* A;
 
 public:
-	Preconditioner(LinearOperator<a_real,a_int> *const op)
+	Preconditioner(AbstractMatrix<a_real,a_int> *const op)
 		: A(op)
 	{ }
 	
@@ -239,7 +239,7 @@ class NoPrec : public Preconditioner<nvars>
 	using Preconditioner<nvars>::A;
 
 public:
-	NoPrec(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op)
+	NoPrec(AbstractMatrix<a_real,a_int> *const op) : Preconditioner<nvars>(op)
 	{ }
 	
 	void compute()
@@ -261,7 +261,7 @@ class Jacobi : public Preconditioner<nvars>
 	using Preconditioner<nvars>::A;
 
 public:
-	Jacobi(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
+	Jacobi(AbstractMatrix<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
 	
 	void compute() {
 		A->precJacobiSetup();
@@ -280,7 +280,7 @@ class SGS : public Preconditioner<nvars>
 	using Preconditioner<nvars>::A;
 
 public:
-	SGS(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) 
+	SGS(AbstractMatrix<a_real,a_int> *const op) : Preconditioner<nvars>(op) 
 	{ }
 
 	/// Sets D,L,U and inverts each D; also allocates temp storage
@@ -301,7 +301,7 @@ class ILU0 : public Preconditioner<nvars>
 	using Preconditioner<nvars>::A;
 
 public:
-	ILU0(LinearOperator<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
+	ILU0(AbstractMatrix<a_real,a_int> *const op) : Preconditioner<nvars>(op) { }
 
 	/// Sets D,L,U and computes the ILU factorization
 	void compute() {
@@ -369,14 +369,14 @@ template <short nvars>
 class IterativeSolver : public IterativeSolverBase
 {
 protected:
-	LinearOperator<a_real,a_int> *const A;        ///< The LHS matrix context
+	AbstractMatrix<a_real,a_int> *const A;        ///< The LHS matrix context
 
 	/// Preconditioner context
 	Preconditioner<nvars> *const prec;
 
 public:
 	IterativeSolver(const UMesh2dh* const mesh, 
-			LinearOperator<a_real,a_int>* const mat, 
+			AbstractMatrix<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond);
 
 	//virtual ~IterativeSolver();
@@ -409,7 +409,7 @@ class RichardsonSolver : public IterativeSolver<nvars>
 
 public:
 	RichardsonSolver(const UMesh2dh* const mesh, 
-			LinearOperator<a_real,a_int>* const mat, 
+			AbstractMatrix<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond);
 
 	/** \param[in] res The right hand side vector
@@ -437,7 +437,7 @@ class BiCGSTAB : public IterativeSolver<nvars>
 
 public:
 	BiCGSTAB(const UMesh2dh* const mesh, 
-			LinearOperator<a_real,a_int>* const mat, 
+			AbstractMatrix<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond);
 
 	int solve(const MVector& res, 
@@ -461,7 +461,7 @@ class GMRES : public IterativeSolver<nvars>
 
 public:
 	GMRES(const UMesh2dh* const mesh, 
-			LinearOperator<a_real,a_int>* const mat, 
+			AbstractMatrix<a_real,a_int>* const mat, 
 			Preconditioner<nvars> *const precond,
 			int m_restart);
 
@@ -548,7 +548,7 @@ public:
  */
 template <short nvars>
 void setupMatrixStorage(const UMesh2dh *const m, const char mattype,
-		LinearOperator<a_real,a_int> *const A);
+		AbstractMatrix<a_real,a_int> *const A);
 
 }
 #endif

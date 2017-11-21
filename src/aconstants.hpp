@@ -90,7 +90,7 @@ namespace acfd
 // sparse matrix library
 #include <linearoperator.hpp>
 namespace acfd {
-	using blasted::LinearOperator;
+	using blasted::AbstractMatrix;
 }
 
 #endif

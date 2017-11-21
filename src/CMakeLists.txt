@@ -133,4 +133,5 @@ else()
 endif(CTAGS_PATH)
 
 # Tests
+enable_testing()
 add_subdirectory(tests)
