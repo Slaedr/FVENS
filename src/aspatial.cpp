@@ -154,7 +154,7 @@ void Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u,
 	MVector& __restrict aux,
 	MVector& __restrict prod)
 {
-	const a_int N = m->gnelem()*nvars;
+	/*const a_int N = m->gnelem()*nvars;
 	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
 	
@@ -176,7 +176,7 @@ void Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u,
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < nvars; ivar++)
 				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
-	}
+	}*/
 }
 
 // Computes a([M du/dt +] dR/du) v + b w and stores in prod
@@ -188,7 +188,7 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 		MVector& __restrict aux,
 		MVector& __restrict prod)
 {
-	const a_int N = m->gnelem()*nvars;
+	/*const a_int N = m->gnelem()*nvars;
 	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
 	
@@ -210,7 +210,7 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < nvars; ivar++)
 				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
-	}
+	}*/
 }
 
 template<bool secondOrderRequested, bool constVisc>
@@ -258,12 +258,21 @@ FlowFV<secondOrderRequested,constVisc>::~FlowFV()
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(MVector& u) const
+void FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) const
 {
+	PetscScalar * uloc;
+	VecGetArray(u, &uloc);
+	PetscInt locsize;
+	VecGetLocalSize(u, &locsize);
+	assert(locsize % NVARS == 0 && std::printf("  ASSERTS ARE ON.\n"));
+	locsize /= NVARS;
+	
 	//initial values are equal to boundary values
-	for(a_int i = 0; i < m->gnelem(); i++)
-		for(short j = 0; j < NVARS; j++)
-			u(i,j) = uinf[j];
+	for(a_int i = 0; i < locsize; i++)
+		for(int j = 0; j < NVARS; j++)
+			uloc[i*NVARS+j] = uinf[j];
+
+	VecRestoreArray(u, &uloc);
 
 #ifdef DEBUG
 	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
@@ -1016,9 +1025,9 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const 
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u, 
-		MVector& __restrict residual, 
-		const bool gettimesteps, amat::Array2d<a_real>& __restrict dtm) const
+void FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec, 
+		Vec __restrict rvec, 
+		const bool gettimesteps, Vec __restrict dtmvec) const
 {
 	amat::Array2d<a_real> integ, ug, uleft, uright;	
 	integ.resize(m->gnelem(), 1);
@@ -1026,6 +1035,17 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
 	std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>> > grads;
+
+	PetscInt locelems; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	VecGetLocalSize(uvec, &locnelem);
+	assert(locnelem % NVARS == 0);
+	locnelem /= NVARS;
+
+	VecGetArrayRead(uvec, &uarr);
+	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
+	VecGetArray(rvec, &rarr);
+	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
+	VecGetArray(dtmvec, &dtm);
 
 #pragma omp parallel default(shared)
 	{
@@ -1207,12 +1227,14 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const MVector& u,
 #pragma omp for simd
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				dtm(iel) = m->garea(iel)/integ(iel);
+				dtm[iel] = m->garea(iel)/integ(iel);
 			}
 	} // end parallel region
+	
+	VecRestoreArrayRead(uvec, &uarr);
+	VecRestoreArray(rvec, &rarr);
+	VecRestoreArray(dtmvec, &dtm);
 }
-
-#if WITH_PETSC==1
 
 template<bool order2, bool constVisc>
 void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blocked, Mat A) 
@@ -1320,7 +1342,7 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blo
 	}
 }
 
-#else
+#if 0
 
 /** Computes the Jacobian in a block diagonal, lower and upper format.
  * If the (numerical) flux from cell i to cell j is \f$ F_{ij}(u_i, u_j, n_{ij}) \f$,
