@@ -1237,14 +1237,25 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 }
 
 template<bool order2, bool constVisc>
-void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blocked, Mat A) 
-	const
+PetscErrorCode FlowFV<order2,constVisc>::compute_jacobian(
+		const Vec uvec, Mat A
+	) const
 {
-	if(blocked)
+	PetscErrorCode ierr = 0;
+
+	const PetscScalar *uarr;
+	VecGetArrayRead(uvec, &uarr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+
+	PetscInt bs;
+	ierr = MatGetBlockSize(A, &bs); CHKERRQ(ierr);
+
+	if(bs == NVARS)
 	{
 		// TODO: construct blocked Jacobian
+		SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "BSR Jacobian is currently unsupported.");
 	}
-	else
+	else if(bs == 1)
 	{
 		Array2d<a_real>* D = new Array2d<a_real>[m->gnelem()];
 		for(int iel = 0; iel < m->gnelem(); iel++) {
@@ -1340,6 +1351,13 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, const bool blo
 			std::free(cindices);
 		}
 	}
+	else {
+		//std::cout << "! FlowFV: compute_jacobian: Invalid block size!\n";
+		SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_SIZ, "Invalid block size!!");
+	}
+	
+	VecRestoreArrayRead(uvec, &uarr);
+	return ierr;
 }
 
 #if 0

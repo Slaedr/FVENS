@@ -10,7 +10,8 @@ Building
 The following libraries are required:
 - [Boost](http://www.boost.org/), present in the default package repositories of all GNU/Linux distributions
 - The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (version 3.3.4) - needs an environment variable called EIGEN_DIR to be set to the top-level Eigen directory
-- [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called BLASTED_DIR to be set to the top level BLASTed directory.
+- [PETSc](http://www.mcs.anl.gov/petsc/) for sparse linear solvers
+- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called BLASTED_DIR to be set to the top level BLASTed directory.
 
 OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
 
