@@ -86,6 +86,9 @@ namespace acfd
 		for(int i = 0; i < n; i++)
 			a[i] = 0;
 	}
+
+	/// A data type for error codes, mostly for use with PETSc
+	typedef int StatusCode;
 }
 
 #endif

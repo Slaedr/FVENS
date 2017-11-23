@@ -7,7 +7,6 @@
 #define AODESOLVER_H 1
 
 #include "aspatial.hpp"
-#include "alinalg.hpp"
 
 namespace acfd {
 

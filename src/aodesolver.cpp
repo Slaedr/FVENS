@@ -229,8 +229,9 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 }
 
 template <short nvars>
-void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
+StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 {
+	StatusCode ierr = 0;
 	const UMesh2dh *const m = space->mesh();
 
 	if(config.maxiter <= 0) {
@@ -313,6 +314,12 @@ void SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 			
 			M->updateDiagBlock(iel*nvars, db.data(), nvars);
 		}
+
+		MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY);
+		MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY);
+	
+		/// Freezes the non-zero structure for efficiency in subsequent time steps.
+		ierr = MatSetOption(M, MAT_NEW_NONZERO_LOCATIONS, PETSC_FALSE); CHKERRQ(ierr);
 
 		// setup and solve linear system for the update du
 		
