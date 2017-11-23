@@ -55,11 +55,11 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual void compute_residual(const Vec u, Vec residual, 
+	virtual PetscErrorCode compute_residual(const Vec u, Vec residual, 
 			const bool gettimesteps, Vec dtm) const = 0;
 	
 	/// Computes the Jacobian matrix of the residual
-	virtual void compute_jacobian(const Vec u, Mat A) const = 0;
+	virtual PetscErrorCode compute_jacobian(const Vec u, Mat A) const = 0;
 
 	/// Computes the Frechet derivative of the residual along a given direction 
 	/// using finite difference
@@ -71,14 +71,14 @@ public:
 	 * \param aux Storage for intermediate state
 	 * \param[out] prod The vector containing the directional derivative
 	 */
-	virtual void compute_jac_vec(const Vec resu, const Vec u, 
+	virtual PetscErrorCode compute_jac_vec(const Vec resu, const Vec u, 
 			const Vec v,
 			const bool add_time_deriv, const Vec dtm,
 			Vec __restrict aux,
 			Vec __restrict prod);
 	
 	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
-	virtual void compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
+	virtual PetscErrorCode compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
 			const Vec v,
 			const bool add_time_deriv, const Vec dtm,
 			const a_real b, const Vec w,
@@ -94,7 +94,7 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in|out] u Vector to store the initial data in
 	 */
-	virtual void initializeUnknowns(Vec u) const = 0;
+	virtual PetscErrorCode initializeUnknowns(Vec u) const = 0;
 	
 	/// Compute nodal quantities to export
 	virtual void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
@@ -190,16 +190,16 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(Vec u) const;
+	PetscErrorCode initializeUnknowns(Vec u) const;
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
-	void compute_residual(const Vec u, Vec residual, 
+	PetscErrorCode compute_residual(const Vec u, Vec residual, 
 			const bool gettimesteps, Vec dtm) const;
 
 	/// Computes the residual Jacobian as a PETSc martrix
-	void compute_jacobian(const Vec u, Mat A) const;
+	PetscErrorCode compute_jacobian(const Vec u, Mat A) const;
 	
 	/// Computes gradients of converved variables
 	void getGradients(const Vec u,
@@ -334,7 +334,7 @@ public:
 	/** 
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	void initializeUnknowns(Vec u) const;
+	PetscErrorCode initializeUnknowns(Vec u) const;
 	
 	/// Compute nodal quantities to export
 	/** \param vec Dummy argument, not used
@@ -342,10 +342,10 @@ public:
 	void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vec) const;
 	
-	virtual void compute_residual(const Vec u, Vec __restrict residual, 
+	virtual PetscErrorCode compute_residual(const Vec u, Vec __restrict residual, 
 			const bool gettimesteps, Vec __restrict dtm) const = 0;
 	
-	virtual void compute_jacobian(const Vec u, Mat A) const = 0;
+	virtual PetscErrorCode compute_jacobian(const Vec u, Mat A) const = 0;
 	
 	virtual void getGradients(const Vec u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
@@ -388,13 +388,13 @@ public:
 			                                           ///< scheme to use
 			);
 	
-	void compute_residual(const Vec u, Vec __restrict residual, 
+	PetscErrorCode compute_residual(const Vec u, Vec __restrict residual, 
 			const bool gettimesteps, Vec __restrict dtm) const;
 	
 	/*void add_source(const MVector& u, 
 			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
-	void compute_jacobian(const Vec u, Mat A) const;
+	PetscErrorCode compute_jacobian(const Vec u, Mat A) const;
 	
 	void getGradients(const Vec u,
 		    std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const;
@@ -416,6 +416,20 @@ protected:
 	
 	const GradientScheme<nvars> *const gradcomp;
 };
+
+/// Sets up storage preallocation for sparse matrix formats
+/** \param[in] m Mesh context
+ * \param[in|out] A The matrix to pre-allocate for
+ *	 
+ * We assume there's only 1 neighboring cell that's not in this subdomain
+ * \todo TODO: Once a partitioned mesh is used, set the preallocation properly.
+ *
+ * The type of sparse matrix is read from the PETSc options database, but
+ * only MPI matrices are supported.
+ */
+template <short nvars>
+PetscErrorCode setupMatrixStorage(const UMesh2dh *const m, Mat A);
+
 
 }	// end namespace
 #endif

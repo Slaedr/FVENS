@@ -149,11 +149,13 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 }
 
 template <short nvars>
-void Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u, 
+PetscErrorCode Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u, 
 	const MVector& v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 	MVector& __restrict aux,
 	MVector& __restrict prod)
 {
+	PetscErrorCode ierr = 0;
+
 	/*const a_int N = m->gnelem()*nvars;
 	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
@@ -177,17 +179,20 @@ void Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u,
 			for(int ivar = 0; ivar < nvars; ivar++)
 				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
 	}*/
+
+	return ierr;
 }
 
 // Computes a([M du/dt +] dR/du) v + b w and stores in prod
 template <short nvars>
-void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu, 
+PetscErrorCode Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu, 
 		const MVector& u, const MVector& v,
 		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 		const a_real b, const MVector& w,
 		MVector& __restrict aux,
 		MVector& __restrict prod)
 {
+	PetscErrorCode ierr = 0;
 	/*const a_int N = m->gnelem()*nvars;
 	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
@@ -211,6 +216,8 @@ void Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu,
 			for(int ivar = 0; ivar < nvars; ivar++)
 				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
 	}*/
+
+	return ierr;
 }
 
 template<bool secondOrderRequested, bool constVisc>
@@ -258,8 +265,9 @@ FlowFV<secondOrderRequested,constVisc>::~FlowFV()
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) const
+PetscErrorCode FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) const
 {
+	PetscErrorCode ierr = 0;
 	PetscScalar * uloc;
 	VecGetArray(u, &uloc);
 	PetscInt locsize;
@@ -277,6 +285,7 @@ void FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) const
 #ifdef DEBUG
 	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
 #endif
+	return ierr;
 }
 
 template<bool secondOrderRequested, bool constVisc>
@@ -1025,10 +1034,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const 
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec, 
+PetscErrorCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec, 
 		Vec __restrict rvec, 
 		const bool gettimesteps, Vec __restrict dtmvec) const
 {
+	PetscErrorCode ierr = 0;
 	amat::Array2d<a_real> integ, ug, uleft, uright;	
 	integ.resize(m->gnelem(), 1);
 	ug.resize(m->gnbface(),NVARS);
@@ -1234,6 +1244,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	VecRestoreArrayRead(uvec, &uarr);
 	VecRestoreArray(rvec, &rarr);
 	VecRestoreArray(dtmvec, &dtm);
+	return ierr;
 }
 
 template<bool order2, bool constVisc>
@@ -1250,12 +1261,86 @@ PetscErrorCode FlowFV<order2,constVisc>::compute_jacobian(
 	PetscInt bs;
 	ierr = MatGetBlockSize(A, &bs); CHKERRQ(ierr);
 
-	if(bs == NVARS)
+#pragma omp parallel for default(shared)
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		// TODO: construct blocked Jacobian
-		SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "BSR Jacobian is currently unsupported.");
+		a_int lelem = m->gintfac(iface,0);
+		a_real n[NDIM];
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		
+		a_real uface[NVARS];
+		Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
+		Matrix<a_real,NVARS,NVARS,RowMajor> left;
+		Matrix<a_real,NVARS,NVARS,RowMajor> right;
+		
+		compute_boundary_Jacobian(iface, &u(lelem,0), uface, &drdl(0,0));	
+		
+		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
+
+		if(pconfig.viscous_sim) {
+			computeViscousFluxApproximateJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
+			//computeViscousFluxJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
+		}
+		
+		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
+		 * We actually need to subtract dF/dr from dF/dl because the inviscid numerical flux
+		 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
+		 * get correct signs for lower and upper off-diagonal blocks.
+		 *
+		 * Integrate the results over the face and negate, as -ve of L is added to D
+		 */
+		left = -len*(left - right*drdl);
+
+		if(bs == NVARS)
+		{
+#pragma omp critical
+			{
+				MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
+			}
+		}
 	}
-	else if(bs == 1)
+
+#pragma omp parallel for default(shared)
+	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	{
+		a_int intface = iface-m->gnbface();
+		a_int lelem = m->gintfac(iface,0);
+		a_int relem = m->gintfac(iface,1);
+		a_real n[NDIM];
+		n[0] = m->ggallfa(iface,0);
+		n[1] = m->ggallfa(iface,1);
+		a_real len = m->ggallfa(iface,2);
+		Matrix<a_real,NVARS,NVARS,RowMajor> L;
+		Matrix<a_real,NVARS,NVARS,RowMajor> U;
+	
+		/// NOTE: the values of L and U get REPLACED here, not added to
+		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
+
+		if(pconfig.viscous_sim) {
+			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), &u(relem,0), 
+					&L(0,0), &U(0,0));
+			//computeViscousFluxJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
+		}
+
+		L *= len; U *= len;
+		if(A->type()=='d') {
+			A->submitBlock(relem*NVARS,lelem*NVARS, L.data(), 1,intface);
+			A->submitBlock(lelem*NVARS,relem*NVARS, U.data(), 2,intface);
+		}
+		else {
+			A->submitBlock(relem*NVARS,lelem*NVARS, L.data(), NVARS,NVARS);
+			A->submitBlock(lelem*NVARS,relem*NVARS, U.data(), NVARS,NVARS);
+		}
+
+		// negative L and U contribute to diagonal blocks
+		L *= -1.0; U *= -1.0;
+		A->updateDiagBlock(lelem*NVARS, L.data(), NVARS);
+		A->updateDiagBlock(relem*NVARS, U.data(), NVARS);
+	}
+	
+	/*else if(bs == 1)
 	{
 		Array2d<a_real>* D = new Array2d<a_real>[m->gnelem()];
 		for(int iel = 0; iel < m->gnelem(); iel++) {
@@ -1354,7 +1439,7 @@ PetscErrorCode FlowFV<order2,constVisc>::compute_jacobian(
 	else {
 		//std::cout << "! FlowFV: compute_jacobian: Invalid block size!\n";
 		SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_SIZ, "Invalid block size!!");
-	}
+	}*/
 	
 	VecRestoreArrayRead(uvec, &uarr);
 	return ierr;
@@ -1587,7 +1672,7 @@ Diffusion<nvars>::~Diffusion()
 { }
 
 template<short nvars>
-void Diffusion<nvars>::initializeUnknowns(MVector& u)
+PetscErrorCode Diffusion<nvars>::initializeUnknowns(MVector& u)
 	const
 {
 	for(a_int i = 0; i < u.rows(); i++)
@@ -1654,7 +1739,7 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<short nvars>
-void DiffusionMA<nvars>::compute_residual(const MVector& u, 
+PetscErrorCode DiffusionMA<nvars>::compute_residual(const MVector& u, 
                                           MVector& __restrict residual, 
                                           const bool gettimesteps, 
 										  amat::Array2d<a_real>& __restrict dtm) const
@@ -1761,7 +1846,7 @@ void DiffusionMA<nvars>::compute_residual(const MVector& u,
 /** For now, this is the same as the thin-layer Jacobian
  */
 template<short nvars>
-void DiffusionMA<nvars>::compute_jacobian(const MVector& u,
+PetscErrorCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		AbstractMatrix<a_real,a_int> *const A) const
 {
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
@@ -1852,5 +1937,49 @@ void DiffusionMA<nvars>::getGradients(const MVector& u,
 
 template class Diffusion<1>;
 template class DiffusionMA<1>;
+
+template <short nvars>
+PetscErrorCode setupMatrix(const UMesh2dh *const m, Mat A)
+{
+	PetscErrorCode ierr = 0;
+	MatCreate(PETSC_COMM_WORLD,&A);
+	ierr = MatSetFromOptions(A); CHKERRQ(ierr);
+
+	MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m->gnelem()*nvars, m->gnelem()*nvars);
+	std::vector<PetscInt> dnnz(m->gnelem()*nvars);
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		for(int i = 0; i < nvars; i++) {
+			dnnz[iel*nvars+i] = m->gnfael(iel)*nvars;
+		}
+	}
+
+	ierr = MatMPIAIJSetPreallocation(A, 3*nvars, &dnnz[0], nvars, NULL); CHKERRQ(ierr);
+
+	dnnz.resize(m->gnelem());
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		dnnz[iel] = m->gnfael(iel);
+	}
+	
+	ierr = MatMPIBAIJSetPreallocation(A, 3, &dnnz[0], 1, NULL); CHKERRQ(ierr);
+
+	/*MatType mattype; 
+	ierr = MatGetType(A, &mattype); CHKERRQ(ierr);
+	if(!std::strcmp(mattype,MATMPIAIJ)) {
+		// scalar AIJ format	
+	}
+	else if(mattype == MATMPIBAIJ) {
+		// construct non-zero structure for block sparse format
+
+	}*/
+
+	ierr = MatSetBlockSize(A, nvars); CHKERRQ(ierr);
+
+	return ierr;
+}
+
+template PetscErrorCode setupMatrixStorage<NVARS>(const UMesh2dh *const m, Mat A);
+template PetscErrorCode setupMatrixStorage<1>(const UMesh2dh *const m, Mat A);
 
 }	// end namespace

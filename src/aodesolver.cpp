@@ -19,12 +19,13 @@
  */
 
 #include "aodesolver.hpp"
-#include <blockmatrices.hpp>
 #include <algorithm>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include <petscksp.h>
 
 namespace acfd {
 
