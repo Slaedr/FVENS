@@ -24,7 +24,7 @@ namespace acfd {
  * only MPI matrices are supported.
  */
 template <int nvars>
-StatusCode setupMatrixStorage(const UMesh2dh *const m, Mat A);
+StatusCode setupMatrixStorage(const UMesh2dh *const m, Mat *const A);
 
 }
 #endif

@@ -87,7 +87,7 @@ UMesh2dh::~UMesh2dh()
 {
 }
 
-void UMesh2dh::readMesh(std::string mfile)
+void UMesh2dh::readMesh(const std::string mfile)
 {
 	std::vector<std::string> parts;
 	boost::split(parts, mfile, boost::is_any_of("."));
@@ -105,7 +105,7 @@ void UMesh2dh::readMesh(std::string mfile)
    ntype makes no sense for us now.
    Can only be used for linear mesh having all cells of the same shape.
 */
-void UMesh2dh::readDomn(std::string mfile)
+void UMesh2dh::readDomn(const std::string mfile)
 {
 	std::ifstream infile(mfile);
 	if(!infile) {
@@ -252,7 +252,7 @@ void UMesh2dh::readDomn(std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-void UMesh2dh::readPlot2d(std::string mfile, const int bci0, const int bcimx,
+void UMesh2dh::readPlot2d(const std::string mfile, const int bci0, const int bcimx,
 		const int bcj0, const int bcjmx)
 {
 	std::ifstream fin;
@@ -292,7 +292,7 @@ void UMesh2dh::readPlot2d(std::string mfile, const int bci0, const int bcimx,
 }
 
 /// Reads mesh from Gmsh 2 format file
-void UMesh2dh::readGmsh2(std::string mfile)
+void UMesh2dh::readGmsh2(const std::string mfile)
 {
 	int dum; double dummy; std::string dums; char ch;
 
@@ -495,7 +495,7 @@ void UMesh2dh::readGmsh2(std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-void UMesh2dh::readSU2(std::string mfile)
+void UMesh2dh::readSU2(const std::string mfile)
 {
 	std::string dum;
 	std::ifstream fin;
@@ -730,7 +730,7 @@ void UMesh2dh::printmeshstats()
 		<< ", max no. of faces per element: " << maxnfael << std::endl;
 }
 
-void UMesh2dh::writeGmsh2(std::string mfile)
+void UMesh2dh::writeGmsh2(const std::string mfile)
 {
 	std::cout << "UMesh2dh: writeGmsh2(): writing mesh to file " << mfile << std::endl;
 	// decide element type first, based on nfael/nnode and nnofa

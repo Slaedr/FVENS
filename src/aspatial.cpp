@@ -1247,18 +1247,13 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 }
 
 template<bool order2, bool constVisc>
-StatusCode FlowFV<order2,constVisc>::compute_jacobian(
-		const Vec uvec, Mat A
-	) const
+StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) const
 {
 	StatusCode ierr = 0;
 
 	const PetscScalar *uarr;
 	VecGetArrayRead(uvec, &uarr);
 	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
-
-	PetscInt bs;
-	ierr = MatGetBlockSize(A, &bs); CHKERRQ(ierr);
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1292,12 +1287,9 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(
 		 */
 		left = -len*(left - right*drdl);
 
-		if(bs == NVARS)
-		{
 #pragma omp critical
-			{
-				MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
-			}
+		{
+			MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
 		}
 	}
 
@@ -1314,7 +1306,7 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(
 		Matrix<a_real,NVARS,NVARS,RowMajor> L;
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
-		/// NOTE: the values of L and U get REPLACED here, not added to
+		// NOTE: the values of L and U get REPLACED here, not added to
 		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
 
 		if(pconfig.viscous_sim) {
@@ -1324,121 +1316,26 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(
 		}
 
 		L *= len; U *= len;
-		if(A->type()=='d') {
-			A->submitBlock(relem*NVARS,lelem*NVARS, L.data(), 1,intface);
-			A->submitBlock(lelem*NVARS,relem*NVARS, U.data(), 2,intface);
+#pragma omp critical
+		{
+			MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
 		}
-		else {
-			A->submitBlock(relem*NVARS,lelem*NVARS, L.data(), NVARS,NVARS);
-			A->submitBlock(lelem*NVARS,relem*NVARS, U.data(), NVARS,NVARS);
+#pragma omp critical
+		{
+			MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
 		}
 
 		// negative L and U contribute to diagonal blocks
 		L *= -1.0; U *= -1.0;
-		A->updateDiagBlock(lelem*NVARS, L.data(), NVARS);
-		A->updateDiagBlock(relem*NVARS, U.data(), NVARS);
-	}
-	
-	/*else if(bs == 1)
-	{
-		Array2d<a_real>* D = new Array2d<a_real>[m->gnelem()];
-		for(int iel = 0; iel < m->gnelem(); iel++) {
-			D[iel].resize(NVARS,NVARS);
-			D[iel].zeros();
-		}
-
-		for(a_int iface = 0; iface < m->gnbface(); iface++)
+#pragma omp critical
 		{
-			a_int lelem = m->gintfac(iface,0);
-			a_real n[NDIM];
-			n[0] = m->ggallfa(iface,0);
-			n[1] = m->ggallfa(iface,1);
-			a_real len = m->ggallfa(iface,2);
-			a_real uface[NVARS];
-			amat::Array2d<a_real> left(NVARS,NVARS);
-			amat::Array2d<a_real> right(NVARS,NVARS);
-			
-			compute_boundary_state(iface, &u(lelem,0), uface);
-			jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
-			
-			for(int i = 0; i < NVARS; i++)
-				for(int j = 0; j < NVARS; j++) {
-					left(i,j) *= len;
-#pragma omp atomic write
-					D[lelem](i,j) -= left(i,j);
-				}
+			MatSetValuesBLocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
 		}
-
-		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+#pragma omp critical
 		{
-			a_int lelem = m->gintfac(iface,0);
-			a_int relem = m->gintfac(iface,1);
-			a_real n[NDIM];
-			n[0] = m->ggallfa(iface,0);
-			n[1] = m->ggallfa(iface,1);
-			a_real len = m->ggallfa(iface,2);
-			a_real uface[NVARS];
-			amat::Array2d<a_real> left(NVARS,NVARS);
-			amat::Array2d<a_real> right(NVARS,NVARS);
-			
-			jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &left(0,0), &right(0,0));
-
-			for(int i = 0; i < NVARS; i++)
-				for(int j = 0; j < NVARS; j++) {
-					left(i,j) *= len;
-					right(i,j) *= len;
-#pragma omp atomic write
-					D[lelem](i,j) -= left(i,j);
-#pragma omp atomic write
-					D[relem](i,j) -= right(i,j);
-				}
-
-			PetscInt* rindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
-			PetscInt* cindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
-			// insert upper block U = right
-			for(int i = 0; i < NVARS; i++)
-				for(int j = 0; j < NVARS; j++)
-				{
-					rindices[i*NVARS+j] = ielem*NVARS+i;
-					cindices[i*NVARS+j] = jelem*NVARS+j;
-				}
-			MatSetValues(A, NVARS, rindices, NVARS, cindices, &right(0,0), INSERT_VALUES);
-
-			// insert lower block L = left
-			for(int i = 0; i < NVARS; i++)
-				for(int j = 0; j < NVARS; j++)
-				{
-					rindices[i*NVARS+j] = jelem*NVARS+i;
-					cindices[i*NVARS+j] = ielem*NVARS+j;
-				}
-			MatSetValues(A, NVARS, rindices, NVARS, cindices, &left(0,0), INSERT_VALUES);
-
-			std::free(rindices);
-			std::free(cindices);
-		}
-
-		// diagonal blocks
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-		{
-			PetscInt* rindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
-			PetscInt* cindices = std::malloc(NVARS*NVARS*sizeof(PetscInt));
-			
-			for(int i = 0; i < NVARS; i++)
-				for(int j = 0; j < NVARS; j++)
-				{
-					rindices[i*NVARS+j] = iel*NVARS+i;
-					cindices[i*NVARS+j] = iel*NVARS+j;
-				}
-			MatSetValues(A, NVARS, rindices, NVARS, cindices, &D[iel](0,0), ADD_VALUES);
-
-			std::free(rindices);
-			std::free(cindices);
+			MatSetValuesBLocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
 		}
 	}
-	else {
-		//std::cout << "! FlowFV: compute_jacobian: Invalid block size!\n";
-		SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_SIZ, "Invalid block size!!");
-	}*/
 
 	VecRestoreArrayRead(uvec, &uarr);
 	

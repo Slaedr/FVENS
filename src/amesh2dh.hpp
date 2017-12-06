@@ -16,20 +16,22 @@ class UMesh2dh
 {
 public:
 	UMesh2dh();
+
 	UMesh2dh(const UMesh2dh& other);
 	UMesh2dh& operator=(const UMesh2dh& other);
+
 	~UMesh2dh();
 		
 	/* Functions to get mesh data. */
 
 	/// Returns coordinates of a mesh node
-	double gcoords(a_int pointno, int dim) const
+	double gcoords(const a_int pointno, const int dim) const
 	{
 		return coords.get(pointno,dim);
 	}
 
 	/// Returns global node indices corresponding to local node indices of an element
-	a_int ginpoel(a_int elemnum, int localnodenum) const
+	a_int ginpoel(const a_int elemnum, const int localnodenum) const
 	{
 		return inpoel.get(elemnum, localnodenum);
 	}
@@ -38,7 +40,7 @@ public:
 	/** \note The face indexing here could be different from the indexing in the
 	 * [face data structure](\ref intfac) \sa gintfac
 	 */
-	a_int gbface(a_int facenum, int locindex) const
+	a_int gbface(const a_int facenum, const int locindex) const
 	{
 		return bface.get(facenum, locindex);
 	}
@@ -53,11 +55,11 @@ public:
 	 * local node (j+1) % nfael, where nfael is the total number of faces bounding the given
 	 * element.
 	 */
-	a_int gesuel(a_int ielem, int jface) const { return esuel.get(ielem, jface); }
+	a_int gesuel(const a_int ielem, const int jface) const { return esuel.get(ielem, jface); }
 
 	/// Returns the face number in the [face data structure](\ref intfac) corresponding to 
 	/// the local face index of an element
-	a_int gelemface(a_int ielem, int inode) const { return elemface.get(ielem,inode); }
+	a_int gelemface(const a_int ielem, const int inode) const { return elemface.get(ielem,inode); }
 
 	/// Returns an entry from the face data structure [computed](\ref compute_topological) by us
 	/** \param face Index of the face of which data is needed 
@@ -71,13 +73,13 @@ public:
 	a_int gintfac(const a_int face, const int i) const { return intfac.get(face,i); }
 
 	/// Returns the boundary marker of a face indexed by \ref intfac.
-	int gintfacbtags(a_int face, int i) const { return intfacbtags.get(face,i); }
+	int gintfacbtags(const a_int face, const int i) const { return intfacbtags.get(face,i); }
 
 	/// Returns the measure of a cell
 	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
 
 	/// Returns the components of the unit normal or the length of a face \sa gallfa
-	a_real ggallfa(a_int iface, int index) const { return gallfa.get(iface,index); }
+	a_real ggallfa(const a_int iface, const int index) const { return gallfa.get(iface,index); }
 
 	/// Returns paired faces in case of periodic boundaries \sa periodicmap
 	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
@@ -95,10 +97,10 @@ public:
 	a_int gnelem() const { return nelem; }
 	a_int gnface() const { return nface; }
 	a_int gnbface() const { return nbface; }
-	int gnnode(int ielem) const { return nnode[ielem]; }
+	int gnnode(const int ielem) const { return nnode[ielem]; }
 	int gndim() const { return NDIM; }
 	a_int gnaface() const {return naface; }
-	int gnfael(int ielem) const { return nfael[ielem]; }
+	int gnfael(const int ielem) const { return nfael[ielem]; }
 	int gnnofa() const { return nnofa; }
 	int gnbtag() const{ return nbtag; }
 	int gndtag() const { return ndtag; }
@@ -125,24 +127,24 @@ public:
 	 * \note For an SU2 mesh file, string marker names must be replaced with integers
 	 * before this function is called on it.
 	 */
-	void readMesh(std::string mfile);
+	void readMesh(const std::string mfile);
 
 	/// Reads a file in the 2D version of the Plot3D structured format
-	void readPlot2d(std::string mfile, const int bci0, const int bcimx, 
+	void readPlot2d(const std::string mfile, const int bci0, const int bcimx, 
 			const int bcj0, const int bcjmx);
 
 	/// Reads mesh from Gmsh 2 format file
-	void readGmsh2(std::string mfile);
+	void readGmsh2(const std::string mfile);
 
 	/// Reads hybrid grids in the SU2 format
-	void readSU2(std::string mfile);
+	void readSU2(const std::string mfile);
 
 	/** \brief Reads 'domn' format
 	 * 
 	 * \note NOTE: Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
 	 * \deprecated Please use Gmsh format instead.
 	*/
-	void readDomn(std::string mfile);
+	void readDomn(const std::string mfile);
 	
 	/** Stores (in array bpointsb) for each boundary point: the associated global point number 
 	 * and the two bfaces associated with it.
@@ -152,7 +154,7 @@ public:
 	void printmeshstats();
 	
 	/// Writes out the mesh in the Gmsh 2.0 format
-	void writeGmsh2(std::string mfile);
+	void writeGmsh2(const std::string mfile);
 
 	/// Computes the Jacobian for linear triangles
 	void compute_jacobians();
