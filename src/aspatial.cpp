@@ -25,7 +25,7 @@ namespace acfd {
 
 /** \todo TODO: Replace midpoint-reflected ghost cells with face-reflected ones.
  */
-template<short nvars>
+template<int nvars>
 Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL)/10.0}
 {
 	rc.resize(m->gnelem()+m->gnbface(),m->gndim());
@@ -37,7 +37,7 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL
 	
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(short idim = 0; idim < m->gndim(); idim++)
+		for(int idim = 0; idim < m->gndim(); idim++)
 		{
 			rc(ielem,idim) = 0;
 			for(int inode = 0; inode < m->gnnode(ielem); inode++)
@@ -67,7 +67,7 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL
 		y1 = m->gcoords(m->gintfac(ied,2),1);
 		x2 = m->gcoords(m->gintfac(ied,3),0);
 		y2 = m->gcoords(m->gintfac(ied,3),1);
-		for(short ig = 0; ig < NGAUSS; ig++)
+		for(int ig = 0; ig < NGAUSS; ig++)
 		{
 			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
 			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
@@ -75,13 +75,13 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL
 	}
 }
 
-template<short nvars>
+template<int nvars>
 Spatial<nvars>::~Spatial()
 {
 	delete [] gr;
 }
 
-template<short nvars>
+template<int nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg)
 {
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -91,12 +91,12 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_re
 		a_int ip2 = m->gintfac(iface,3);
 		a_real midpoint[NDIM];
 
-		for(short idim = 0; idim < NDIM; idim++)
+		for(int idim = 0; idim < NDIM; idim++)
 		{
 			midpoint[idim] = 0.5 * (m->gcoords(ip1,idim) + m->gcoords(ip2,idim));
 		}
 
-		for(short idim = 0; idim < NDIM; idim++)
+		for(int idim = 0; idim < NDIM; idim++)
 			rchg(iface,idim) = 2*midpoint[idim] - rc(ielem,idim);
 	}
 }
@@ -104,7 +104,7 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_re
 /** The ghost cell is a reflection of the boundary cell about the boundary-face.
  * It is NOT the reflection about the midpoint of the boundary-face.
  */
-template<short nvars>
+template<int nvars>
 void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -147,7 +147,7 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 	}
 }
 
-template <short nvars>
+template <int nvars>
 StatusCode Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u, 
 	const MVector& v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
 	MVector& __restrict aux,
@@ -183,7 +183,7 @@ StatusCode Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u
 }
 
 // Computes a([M du/dt +] dR/du) v + b w and stores in prod
-template <short nvars>
+template <int nvars>
 StatusCode Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu, 
 		const MVector& u, const MVector& v,
 		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
@@ -363,7 +363,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		 */
 		if(Mni <= 0)
 		{
-			for(short i = 0; i < NVARS; i++)
+			for(int i = 0; i < NVARS; i++)
 				gs[i] = uinf[i];
 		}
 
@@ -512,7 +512,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		 */
 		if(Mni <= 0)
 		{
-			for(short i = 0; i < NVARS; i++)
+			for(int i = 0; i < NVARS; i++)
 				gs[i] = uinf[i];
 		}
 
@@ -637,11 +637,11 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	// left and right gradients; zero for first order scheme
 	a_real gradl[NDIM][NVARS], gradr[NDIM][NVARS];
 	
-	for(short i = 0; i < NVARS; i++) 
+	for(int i = 0; i < NVARS; i++) 
 	{
 		ucl[i] = u(lelem,i);
 		
-		for(short j = 0; j < NDIM; j++) {
+		for(int j = 0; j < NDIM; j++) {
 			gradl[j][i] = 0; 
 			gradr[j][i] = 0;
 		}
@@ -749,18 +749,18 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	}
 
 	a_real grad[NDIM][NVARS];
-	for(short i = 0; i < NVARS; i++) 
+	for(int i = 0; i < NVARS; i++) 
 	{
 		a_real davg[NDIM];
 		
-		for(short j = 0; j < NDIM; j++)
+		for(int j = 0; j < NDIM; j++)
 			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
 
 		const a_real corr = (ucr[i]-ucl[i])/dist;
 		
 		const a_real ddr = dimDotProduct(davg,dr);
 
-		for(short j = 0; j < NDIM; j++)
+		for(int j = 0; j < NDIM; j++)
 		{
 			grad[j][i] = davg[j] - ddr*dr[j] + corr*dr[j];
 		}
@@ -867,11 +867,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 	 */
 	a_real dgradr[NDIM][NVARS][NVARS];
 
-	for(short i = 0; i < NVARS; i++) 
+	for(int i = 0; i < NVARS; i++) 
 	{
 		const a_real corr = (upr[i]-upl[i])/dist;        //< The thin layer gradient magnitude
 		
-		for(short j = 0; j < NDIM; j++)
+		for(int j = 0; j < NDIM; j++)
 		{
 			grad[j][i] = corr*dr[j];
 			
@@ -1069,7 +1069,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
-			for(short ivar = 0; ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 				uleft(ied,ivar) = u(ielem,ivar);
 		}
 	}
@@ -1130,7 +1130,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 		{
 			a_int ielem = m->gintfac(ied,0);
 			a_int jelem = m->gintfac(ied,1);
-			for(short ivar = 0; ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				uleft(ied,ivar) = u(ielem,ivar);
 				uright(ied,ivar) = u(jelem,ivar);
@@ -1165,7 +1165,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 			inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, fluxes);
 
 			// integrate over the face
-			for(short ivar = 0; ivar < NVARS; ivar++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] *= len;
 
 			if(pconfig.viscous_sim) 
@@ -1174,7 +1174,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 				a_real vflux[NVARS];
 				computeViscousFlux(ied, u, ug, grads, uleft, uright, vflux);
 
-				for(short ivar = 0; ivar < NVARS; ivar++)
+				for(int ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] += vflux[ivar]*len;
 			}
 
@@ -1573,7 +1573,7 @@ void FlowFV<secondOrderRequested,constVisc>::postprocess_point(const MVector& u,
 	}
 
 	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(short ivar = 0; ivar < NVARS; ivar++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 	
 	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
@@ -1649,7 +1649,7 @@ template class FlowFV<true,false>;
 template class FlowFV<false,false>;
 
 
-template<short nvars>
+template<int nvars>
 Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
 		std::function< 
 		void(const a_real *const, const a_real, const a_real *const, a_real *const)
@@ -1667,11 +1667,11 @@ Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, 
 	}
 }
 
-template<short nvars>
+template<int nvars>
 Diffusion<nvars>::~Diffusion()
 { }
 
-template<short nvars>
+template<int nvars>
 StatusCode Diffusion<nvars>::initializeUnknowns(MVector& u)
 	const
 {
@@ -1681,15 +1681,15 @@ StatusCode Diffusion<nvars>::initializeUnknowns(MVector& u)
 }
 
 // Currently, all boundaries are constant Dirichlet
-template<short nvars>
+template<int nvars>
 inline void Diffusion<nvars>::compute_boundary_state(const int ied, 
 		const a_real *const ins, a_real *const bs) const
 {
-	for(short ivar = 0; ivar < nvars; ivar++)
+	for(int ivar = 0; ivar < nvars; ivar++)
 		bs[ivar] = 2.0*bval - ins[ivar];
 }
 
-template<short nvars>
+template<int nvars>
 void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates, 
                                                 amat::Array2d<a_real>& bounstates) const
 {
@@ -1697,7 +1697,7 @@ void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& inst
 		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
 }
 
-template<short nvars>
+template<int nvars>
 void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up,
 		amat::Array2d<a_real>& vec) const
 {
@@ -1711,7 +1711,7 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(short ivar = 0; ivar < nvars; ivar++)
+			for(int ivar = 0; ivar < nvars; ivar++)
 			{
 				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
 				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
@@ -1719,11 +1719,11 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 	}
 
 	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 }
 
-template<short nvars>
+template<int nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, 
 		const a_real diffcoeff, const a_real bvalue,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
@@ -1732,13 +1732,13 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh,
 	  gradcomp {create_const_gradientscheme<nvars>(grad_scheme, m, rc)}
 { }
 
-template<short nvars>
+template<int nvars>
 DiffusionMA<nvars>::~DiffusionMA()
 {
 	delete gradcomp;
 }
 
-template<short nvars>
+template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u, 
                                           MVector& __restrict residual, 
                                           const bool gettimesteps, 
@@ -1753,7 +1753,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u,
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		a_int ielem = m->gintfac(ied,0);
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 
@@ -1779,7 +1779,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u,
 		}
 
 		// compute modified gradient
-		for(short ivar = 0; ivar < nvars; ivar++) 
+		for(int ivar = 0; ivar < nvars; ivar++) 
 		{
 			gradterm[ivar] = 0;
 			for(int idim = 0; idim < NDIM; idim++)
@@ -1789,7 +1789,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u,
 			 	* (m->ggallfa(iface,1) - sn*dr[1]/dist);*/
 		}
 
-		for(short ivar = 0; ivar < nvars; ivar++){
+		for(int ivar = 0; ivar < nvars; ivar++){
 			a_real flux {diffusivity * 
 				(gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len};
 #pragma omp atomic
@@ -1815,7 +1815,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u,
 		}
 		
 		// compute modified gradient
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			/*gradterm[ivar] = grads[lelem](0,ivar) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
 							+grads[lelem](1,ivar) * (m->ggallfa(iface,1) - sn*dr[1]/dist);*/
@@ -1845,7 +1845,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u,
 
 /** For now, this is the same as the thin-layer Jacobian
  */
-template<short nvars>
+template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		AbstractMatrix<a_real,a_int> *const A) const
 {
@@ -1867,8 +1867,8 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		}
 
 		a_real ll[nvars*nvars];
-		for(short ivar = 0; ivar < nvars; ivar++) {
-			for(short jvar = 0; jvar < nvars; jvar++)
+		for(int ivar = 0; ivar < nvars; ivar++) {
+			for(int jvar = 0; jvar < nvars; jvar++)
 				ll[ivar*nvars+jvar] = 0;
 			
 			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
@@ -1884,7 +1884,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 			A->submitBlock(lelem*nvars,relem*nvars, ll, nvars,nvars);
 		}
 		
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 			ll[ivar*nvars+ivar] *= -1;
 
 		A->updateDiagBlock(lelem*nvars, ll, nvars);
@@ -1908,8 +1908,8 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 		}
 
 		a_real ll[nvars*nvars];
-		for(short ivar = 0; ivar < nvars; ivar++) {
-			for(short jvar = 0; jvar < nvars; jvar++)
+		for(int ivar = 0; ivar < nvars; ivar++) {
+			for(int jvar = 0; jvar < nvars; jvar++)
 				ll[ivar*nvars+jvar] = 0;
 			
 			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
@@ -1919,7 +1919,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 	}
 }
 
-template <short nvars>
+template <int nvars>
 void DiffusionMA<nvars>::getGradients(const MVector& u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const
 {

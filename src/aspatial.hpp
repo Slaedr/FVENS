@@ -37,7 +37,7 @@
 namespace acfd {
 
 /// Base class for finite volume spatial discretization
-template<short nvars>
+template<int nvars>
 class Spatial
 {
 public:
@@ -321,7 +321,7 @@ protected:
 };
 
 /// Spatial discretization of diffusion operator with constant difusivity
-template <short nvars>
+template <int nvars>
 class Diffusion : public Spatial<nvars>
 {
 public:
@@ -374,7 +374,7 @@ protected:
 
 /// Spatial discretization of diffusion operator with constant diffusivity 
 /// using `modified gradient' or `corrected gradient' method
-template <short nvars>
+template <int nvars>
 class DiffusionMA : public Diffusion<nvars>
 {
 public:
