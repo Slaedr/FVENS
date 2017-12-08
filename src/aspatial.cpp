@@ -1045,16 +1045,19 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	uright.resize(m->gnaface(), NVARS);
 	std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>> > grads;
 
-	PetscInt locelems; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
-	VecGetLocalSize(uvec, &locnelem);
+	PetscInt locnelem, dtsz; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % NVARS == 0);
 	locnelem /= NVARS;
+	assert(locnelem == m->gnelem());
+	ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
+	assert(locnelem == dtsz);
 
-	VecGetArrayRead(uvec, &uarr);
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
-	VecGetArray(rvec, &rarr);
+	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
-	VecGetArray(dtmvec, &dtm);
+	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
 
 #pragma omp parallel default(shared)
 	{
@@ -1251,8 +1254,14 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 {
 	StatusCode ierr = 0;
 
+	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % NVARS == 0);
+	locnelem /= NVARS;
+	assert(locnelem == m->gnelem());
+
 	const PetscScalar *uarr;
-	VecGetArrayRead(uvec, &uarr);
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
 
 #pragma omp parallel for default(shared)
@@ -1337,7 +1346,7 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 		}
 	}
 
-	VecRestoreArrayRead(uvec, &uarr);
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	
 	return ierr;
 }
@@ -1636,14 +1645,29 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<int nvars>
-StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u, 
-                                          MVector& __restrict residual, 
+StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
+                                          Vec rvec, 
                                           const bool gettimesteps, 
-										  amat::Array2d<a_real>& __restrict dtm) const
+										  Vec dtm) const
 {
+	StatusCode ierr = 0;
+
+	PetscInt locnelem, dtsz; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % nvars == 0);
+	locnelem /= nvars;
+	assert(locnelem == m->gnelem());
+	/*ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
+	assert(locnelem == dtsz);*/
+
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
+	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
+	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
-	
 	uleft.resize(m->gnbface(),nvars);	// Modified
 	ug.resize(m->gnbface(),nvars);
 
@@ -1738,14 +1762,30 @@ StatusCode DiffusionMA<nvars>::compute_residual(const MVector& u,
 		source(&rc(iel,0), 0, &u(iel,0), &sourceterm);
 		residual(iel,0) -= sourceterm*m->garea(iel);
 	}
+	
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	VecRestoreArray(rvec, &rarr);
+	return ierr;
 }
 
 /** For now, this is the same as the thin-layer Jacobian
  */
 template<int nvars>
-StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
+StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec u,
 		AbstractMatrix<a_real,a_int> *const A) const
 {
+	StatusCode ierr = 0;
+
+	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % nvars == 0);
+	locnelem /= nvars;
+	assert(locnelem == m->gnelem());
+
+	const PetscScalar *uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		//a_int intface = iface-m->gnbface();
@@ -1771,21 +1811,18 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
 		}
 
-		a_int faceid = iface - m->gnbface();
-		if(A->type() == 'd') {
-			A->submitBlock(relem*nvars,lelem*nvars, ll, 1,faceid);
-			A->submitBlock(lelem*nvars,relem*nvars, ll, 2,faceid);
-		}
-		else {
-			A->submitBlock(relem*nvars,lelem*nvars, ll, nvars,nvars);
-			A->submitBlock(lelem*nvars,relem*nvars, ll, nvars,nvars);
-		}
+		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, ll, ADD_VALUES); CHKERRQ(ierr);
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, ll, ADD_VALUES); CHKERRQ(ierr);
+		//A->submitBlock(relem*nvars,lelem*nvars, ll, nvars,nvars);
+		//A->submitBlock(lelem*nvars,relem*nvars, ll, nvars,nvars);
 		
 		for(int ivar = 0; ivar < nvars; ivar++)
 			ll[ivar*nvars+ivar] *= -1;
 
-		A->updateDiagBlock(lelem*nvars, ll, nvars);
-		A->updateDiagBlock(relem*nvars, ll, nvars);
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, ll, ADD_VALUES); CHKERRQ(ierr);
+		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, ll, ADD_VALUES); CHKERRQ(ierr);
+		//A->updateDiagBlock(lelem*nvars, ll, nvars);
+		//A->updateDiagBlock(relem*nvars, ll, nvars);
 	}
 	
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1812,8 +1849,12 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const MVector& u,
 			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
 		}
 
-		A->updateDiagBlock(lelem*nvars, ll, nvars);
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, ll, ADD_VALUES); CHKERRQ(ierr);
+		//A->updateDiagBlock(lelem*nvars, ll, nvars);
 	}
+	
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	return ierr;
 }
 
 template <int nvars>

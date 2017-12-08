@@ -86,7 +86,7 @@ public:
 			Vec __restrict prod);
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const Vec u,
+	virtual void getGradients(const MVector& u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
 
 	/// Sets initial conditions
@@ -97,7 +97,7 @@ public:
 	virtual PetscErrorCode initializeUnknowns(Vec u) const = 0;
 	
 	/// Compute nodal quantities to export
-	virtual void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
+	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vector) const = 0;
 
 	/// Exposes access to the mesh context
@@ -202,11 +202,11 @@ public:
 	PetscErrorCode compute_jacobian(const Vec u, Mat A) const;
 	
 	/// Computes gradients of converved variables
-	void getGradients(const Vec u,
+	void getGradients(const MVector& u,
 		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const;
 
 	/// Compute cell-centred quantities to export
-	void postprocess_cell(const Vec u, amat::Array2d<a_real>& scalars, 
+	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities) const;
 	
 	/// Compute nodal quantities to export
@@ -214,13 +214,13 @@ public:
 	 * Density, Mach number, pressure and temperature are the exported scalars,
 	 * and velocity is exported as well.
 	 */
-	void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
+	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities) const;
 
 	/// Compute norm of cell-centered entropy production
 	/** Call aftr computing pressure etc \sa postprocess_cell
 	 */
-	a_real compute_entropy_cell(const Vec u) const;
+	a_real compute_entropy_cell(const MVector& u) const;
 
 protected:
 	/// Problem specification
@@ -339,15 +339,15 @@ public:
 	/// Compute nodal quantities to export
 	/** \param vec Dummy argument, not used
 	 */
-	void postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
+	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vec) const;
 	
-	virtual PetscErrorCode compute_residual(const Vec u, Vec __restrict residual, 
+	virtual StatusCode compute_residual(const Vec u, Vec __restrict residual, 
 			const bool gettimesteps, Vec __restrict dtm) const = 0;
 	
-	virtual PetscErrorCode compute_jacobian(const Vec u, Mat A) const = 0;
+	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 	
-	virtual void getGradients(const Vec u,
+	virtual void getGradients(const MVector& u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
 	
 	virtual ~Diffusion();
@@ -388,15 +388,15 @@ public:
 			                                           ///< scheme to use
 			);
 	
-	PetscErrorCode compute_residual(const Vec u, Vec __restrict residual, 
-			const bool gettimesteps, Vec __restrict dtm) const;
+	StatusCode compute_residual(const Vec u, Vec residual, 
+							const bool gettimesteps, Vec dtm) const;
 	
 	/*void add_source(const MVector& u, 
 			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
-	PetscErrorCode compute_jacobian(const Vec u, Mat A) const;
+	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
-	void getGradients(const Vec u,
+	void getGradients(const MVector& u,
 		    std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const;
 
 	~DiffusionMA();
