@@ -1648,7 +1648,7 @@ template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
                                           Vec rvec, 
                                           const bool gettimesteps, 
-										  Vec dtm) const
+										  Vec dtmvec) const
 {
 	StatusCode ierr = 0;
 
@@ -1657,8 +1657,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
-	/*ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	assert(locnelem == dtsz);*/
+	ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
+	assert(locnelem == dtsz);
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
@@ -1755,7 +1755,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 
 	for(int iel = 0; iel < m->gnelem(); iel++) {
 		if(gettimesteps)
-			dtm(iel) = h[iel]*h[iel]/diffusivity;
+			dtm[iel] = h[iel]*h[iel]/diffusivity;
 
 		// subtract source term
 		a_real sourceterm;

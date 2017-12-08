@@ -6,6 +6,7 @@
 #ifndef AODESOLVER_H
 #define AODESOLVER_H 1
 
+#include <vector>
 #include "aspatial.hpp"
 
 namespace acfd {
@@ -29,7 +30,7 @@ struct SteadySolverConfig {
 /** Note that the unknowns u and residuals R correspond to the following ODE:
  * \f$ \frac{du}{dt} + R(u) = 0 \f$. Note that the residual is on the LHS.
  */
-template <short nvars>
+template <int nvars>
 class SteadySolver
 {
 public:
@@ -41,16 +42,16 @@ public:
 		: space{spatial}, config{conf}, cputime{0.0}, walltime{0.0}
 	{ }
 
-	const Vec residuals() const {
+	/*const Vec residuals() const {
 		return residual;
-	}
+	}*/
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
 		wall_time = walltime; cpu_time = cputime;
 	}
 
-	virtual void solve(Vec u) = 0;
+	virtual StatusCode solve(Vec u) = 0;
 
 	virtual ~SteadySolver() {}
 
@@ -59,7 +60,7 @@ protected:
 	const SteadySolverConfig& config;
 	double cputime;
 	double walltime;
-	Vec residual;
+	Vec rvec;
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -70,7 +71,7 @@ protected:
  * before starting the `main' loop.
  * The starter can perhaps use a first-order discretization.
  */
-template <short nvars>
+template <int nvars>
 class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
 public:
@@ -84,20 +85,20 @@ public:
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
-	void solve(Vec u);
+	StatusCode solve(Vec u);
 
 private:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
-	using SteadySolver<nvars>::residual;
+	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 
-	amat::Array2d<a_real> dtm;				///< Stores allowable local time step for each cell
+	std::vector<a_real> dtm;				///< Stores allowable local time step for each cell
 };
 
 /// Implicit pseudo-time iteration to steady state
-template <short nvars>
+template <int nvars>
 class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 {
 public:
@@ -119,16 +120,16 @@ public:
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
-	void solve(Vec u);
+	StatusCode solve(Vec u);
 
 protected:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
-	using SteadySolver<nvars>::residual;
+	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 
-	amat::Array2d<a_real> dtm;               ///< Stores allowable local time step for each cell
+	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell
 
 	/// Sparse matrix of the preconditioning Jacobian
 	/** Note that the same matrix is used as the actual LHS as well,
@@ -141,13 +142,13 @@ protected:
 /** Note that the unknowns u and residuals R correspond to the following ODE:
  * \f$ \frac{du}{dt} + R(u) = 0 \f$. Note that the residual is on the LHS.
  */
-template <short nvars>
+template <int nvars>
 class UnsteadySolver
 {
 protected:
 	const Spatial<nvars> * space;
-	Vec u;
-	Vec residual;
+	Vec uvec;
+	Vec rvec;
 	const int order;               ///< Deisgn order of accuracy in time
 	double cputime;
 	double walltime;
@@ -166,9 +167,9 @@ public:
 		  logfile{log_file}
 	{ }
 
-	const Vec residuals() const {
+	/*const Vec residuals() const {
 		return residual;
-	}
+	}*/
 
 	/// Get timing data
 	void getRunTimes(double& wall_time, double& cpu_time) const {
@@ -178,25 +179,25 @@ public:
 	/// Solve the ODE
 	/**
 	 */
-	virtual void solve(const a_real time) = 0;
+	virtual StatusCode solve(const a_real time) = 0;
 
 	virtual ~UnsteadySolver() {}
 };
 
 /// Total variation diminishing Runge-Kutta solvers upto order 3
-template<short nvars>
+template<int nvars>
 class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
 	TVDRKSolver(const Spatial<nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file, const double cfl_num);
 	
-	void solve(const a_real finaltime);
+	StatusCode solve(const a_real finaltime);
 
 protected:
 	using UnsteadySolver<nvars>::space;
-	using UnsteadySolver<nvars>::residual;
-	using UnsteadySolver<nvars>::u;
+	using UnsteadySolver<nvars>::rvec;
+	using UnsteadySolver<nvars>::uvec;
 	using UnsteadySolver<nvars>::order;
 	using UnsteadySolver<nvars>::cputime;
 	using UnsteadySolver<nvars>::walltime;

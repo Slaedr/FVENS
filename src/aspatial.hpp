@@ -55,11 +55,11 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual PetscErrorCode compute_residual(const Vec u, Vec residual, 
-			const bool gettimesteps, Vec dtm) const = 0;
+	virtual StatusCode compute_residual(const Vec u, Vec residual, 
+			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
 	
 	/// Computes the Jacobian matrix of the residual
-	virtual PetscErrorCode compute_jacobian(const Vec u, Mat A) const = 0;
+	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 
 	/// Computes the Frechet derivative of the residual along a given direction 
 	/// using finite difference
@@ -71,14 +71,14 @@ public:
 	 * \param aux Storage for intermediate state
 	 * \param[out] prod The vector containing the directional derivative
 	 */
-	virtual PetscErrorCode compute_jac_vec(const Vec resu, const Vec u, 
+	virtual StatusCode compute_jac_vec(const Vec resu, const Vec u, 
 			const Vec v,
 			const bool add_time_deriv, const Vec dtm,
 			Vec __restrict aux,
 			Vec __restrict prod);
 	
 	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
-	virtual PetscErrorCode compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
+	virtual StatusCode compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
 			const Vec v,
 			const bool add_time_deriv, const Vec dtm,
 			const a_real b, const Vec w,
@@ -94,7 +94,7 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in|out] u Vector to store the initial data in
 	 */
-	virtual PetscErrorCode initializeUnknowns(Vec u) const = 0;
+	virtual StatusCode initializeUnknowns(Vec u) const = 0;
 	
 	/// Compute nodal quantities to export
 	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
@@ -190,16 +190,16 @@ public:
 	 * \param[in] file Name of initial conditions file
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	PetscErrorCode initializeUnknowns(Vec u) const;
+	StatusCode initializeUnknowns(Vec u) const;
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
 	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
 	 */
-	PetscErrorCode compute_residual(const Vec u, Vec residual, 
-			const bool gettimesteps, Vec dtm) const;
+	StatusCode compute_residual(const Vec u, Vec residual, 
+			const bool gettimesteps, std::vector<a_real>& dtm) const;
 
 	/// Computes the residual Jacobian as a PETSc martrix
-	PetscErrorCode compute_jacobian(const Vec u, Mat A) const;
+	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 	/// Computes gradients of converved variables
 	void getGradients(const MVector& u,
@@ -343,7 +343,7 @@ public:
 			amat::Array2d<a_real>& vec) const;
 	
 	virtual StatusCode compute_residual(const Vec u, Vec __restrict residual, 
-			const bool gettimesteps, Vec __restrict dtm) const = 0;
+			const bool gettimesteps, std::vector<a_real>& __restrict dtm) const = 0;
 	
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 	
@@ -389,7 +389,7 @@ public:
 			);
 	
 	StatusCode compute_residual(const Vec u, Vec residual, 
-							const bool gettimesteps, Vec dtm) const;
+							const bool gettimesteps, std::vector<a_real>& dtm) const;
 	
 	/*void add_source(const MVector& u, 
 			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/

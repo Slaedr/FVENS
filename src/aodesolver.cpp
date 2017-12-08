@@ -54,31 +54,32 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 	return tvdrk;
 }
 
-template<short nvars>
+template<int nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 		const Spatial<nvars> *const spatial,
-		const SteadySolverConfig& conf,
-		const bool use_implicitSmoothing, AbstractMatrix<a_real,a_int> *const A)
+		const SteadySolverConfig& conf)
 
-	: SteadySolver<nvars>(spatial, conf), useImplicitSmoothing{use_implicitSmoothing}, M{A},
-	linsolv{nullptr}, prec{nullptr}
+	: SteadySolver<nvars>(spatial, conf)
 {
 	const UMesh2dh *const m = space->mesh();
-
-	residual.resize(m->gnelem(),nvars);
-	dtm.setup(m->gnelem(), 1);
+	dtm.resize(m->gnelem(), 0);
 }
 
-template<short nvars>
+template<int nvars>
 SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 {
-	delete linsolv;
-	delete prec;
+	int ierr = VecDestroy(&residual);
+	if(ierr)
+		std::cout << "! SteadyForwardEulerSolver: Could not destroy residual vector!\n";
 }
 
-template<short nvars>
-void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
+template<int nvars>
+StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 {
+	StatusCode ierr = 0;
+	int mpirank;
+	MPI_Comm_rank(comm, &mpirank);
+
 	const UMesh2dh *const m = space->mesh();
 
 	if(config.maxiter <= 0) {
@@ -86,13 +87,27 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 		return;
 	}
 
+	ierr = VecDuplicate(u, &residual); CHKERRQ(ierr);
+
+	PetscInt locnelem; PetscScalar *uarr; PetscScalar *rarr;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % nvars = 0);
+	locnelem /= nvars;
+	assert(locnelem == m->gnelem());
+
+	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, locnelem, nvars);
+	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
+
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 
 	std::ofstream convout;
-	if(config.lognres)
-		convout.open(config.logfile+".conv", std::ofstream::app);
+	if(mpirank==0)
+		if(config.lognres)
+			convout.open(config.logfile+".conv", std::ofstream::app);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -103,12 +118,12 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 	{
 #pragma omp parallel for simd default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++) {
-			for(short i = 0; i < nvars; i++)
+			for(int i = 0; i < nvars; i++)
 				residual(iel,i) = 0;
 		}
 
 		// update residual
-		space->compute_residual(u, residual, true, dtm);
+		space->compute_residual(uvec, rvec, true, dtm);
 
 		a_real errmass = 0;
 
@@ -117,9 +132,9 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 #pragma omp for simd
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(short i = 0; i < nvars; i++)
+				for(int i = 0; i < nvars; i++)
 				{
-					u(iel,i) -= config.cflinit*dtm(iel) * 1.0/m->garea(iel)*residual(iel,i);
+					u(iel,i) -= config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
 				}
 			}
 
@@ -136,42 +151,52 @@ void SteadyForwardEulerSolver<nvars>::solve(MVector& u)
 			initres = resi;
 
 		if(step % 50 == 0)
-			std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step 
-				<< ", rel residual " << resi/initres << std::endl;
+			if(mpirank==0)
+				std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step 
+					<< ", rel residual " << resi/initres << std::endl;
 
 		step++;
-		if(config.lognres)
-			convout << step << " " << std::setw(10) << resi/initres << '\n';
+		if(mpirank==0)
+			if(config.lognres)
+				convout << step << " " << std::setw(10) << resi/initres << '\n';
 	}
 
-	if(config.lognres)
-		convout.close();
+	if(mpirank==0)
+		if(config.lognres)
+			convout.close();
 	
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 
-	if(step == config.maxiter)
+	if(step == config.maxiter && mpirank == 0)
 		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
-	std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
-	std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
-	std::cout << "                                   CPU time = " << cputime 
-		<< ", wall time = " << walltime << std::endl << std::endl;
+	if(mpirank == 0) {
+		std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
+		std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
+		std::cout << "                                   CPU time = " << cputime 
+			<< ", wall time = " << walltime << std::endl << std::endl;
+	}
 
 	// append data to log file
-	int numthreads = 0;
+	if(mpirank==0) {
+		int numthreads = 0;
 #ifdef _OPENMP
-	numthreads = omp_get_max_threads();
+		numthreads = omp_get_max_threads();
 #endif
-	std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
-	outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
-	outf.close();
+		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
+		outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
+		outf.close();
+	}
+	
+	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 }
 
 /** By default, the Jacobian is stored in a block sparse row format.
  */
-template <short nvars>
+template <int nvars>
 SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 		const Spatial<nvars> *const spatial, 
 		const SteadySolverConfig& conf,	
@@ -221,14 +246,14 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 	}
 }
 
-template <short nvars>
+template <int nvars>
 SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 {
 	delete linsolv;
 	delete prec;
 }
 
-template <short nvars>
+template <int nvars>
 StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 {
 	StatusCode ierr = 0;
@@ -264,7 +289,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-			for(short i = 0; i < nvars; i++) {
+			for(int i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
 			}
 		}
@@ -309,7 +334,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 			Matrix<a_real,nvars,nvars,RowMajor> db 
 				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 
-			for(short i = 0; i < nvars; i++)
+			for(int i = 0; i < nvars; i++)
 				db(i,i) = m->garea(iel) / (curCFL*dtm(iel));
 			
 			M->updateDiagBlock(iel*nvars, db.data(), nvars);
@@ -398,7 +423,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 	outf.close();
 }
 
-template <short nvars>
+template <int nvars>
 TVDRKSolver<nvars>::TVDRKSolver(const Spatial<nvars> *const spatial, 
 		MVector& soln, const int temporal_order, const std::string log_file, const double cfl_num)
 	: UnsteadySolver<nvars>(spatial, soln, temporal_order, log_file), cfl{cfl_num},
@@ -407,7 +432,7 @@ TVDRKSolver<nvars>::TVDRKSolver(const Spatial<nvars> *const spatial,
 	dtm.setup(space->mesh()->gnelem(), 1);
 }
 
-template<short nvars>
+template<int nvars>
 void TVDRKSolver<nvars>::solve(const a_real finaltime)
 {
 	const UMesh2dh *const m = space->mesh();
@@ -433,7 +458,7 @@ void TVDRKSolver<nvars>::solve(const a_real finaltime)
 		{
 #pragma omp parallel for simd default(shared)
 			for(a_int iel = 0; iel < m->gnelem(); iel++) {
-				for(short i = 0; i < nvars; i++)
+				for(int i = 0; i < nvars; i++)
 					residual(iel,i) = 0;
 			}
 
@@ -447,7 +472,7 @@ void TVDRKSolver<nvars>::solve(const a_real finaltime)
 #pragma omp parallel for simd default(shared)
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(short i = 0; i < nvars; i++)
+				for(int i = 0; i < nvars; i++)
 				{
 					//u(iel,i) -= cfl*dtmin * 1.0/m->garea(iel)*residual(iel,i);
 					ustage(iel,i) = tvdcoeffs(istage,0)*u(iel,i)
