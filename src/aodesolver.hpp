@@ -7,6 +7,7 @@
 #define AODESOLVER_H 1
 
 #include <vector>
+#include <tuple>
 #include "aspatial.hpp"
 
 namespace acfd {
@@ -47,8 +48,8 @@ public:
 	}*/
 
 	/// Get timing data
-	void getRunTimes(double& wall_time, double& cpu_time) const {
-		wall_time = walltime; cpu_time = cputime;
+	std::tuple<double,double> getRunTimes() const {
+		return std::make_tuple(walltime, cputime);
 	}
 
 	virtual StatusCode solve(Vec u) = 0;
@@ -75,7 +76,10 @@ template <int nvars>
 class SteadyForwardEulerSolver : public SteadySolver<nvars>
 {
 public:
-	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const SteadySolverConfig& conf);
+	/// Sets the spatial context and problem configuration, and allocates required data
+	/** \param x A PETSc Vec from which the residual vector is duplicated.
+	 */
+	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, Vec x, const SteadySolverConfig& conf);
 	
 	~SteadyForwardEulerSolver();
 
@@ -129,10 +133,10 @@ protected:
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
 
+	Vec duvec;                             ///< Nonlinear update vector
 	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell
 
-	/// The solver context
-	KSP solver;
+	KSP solver;                            ///< The solver context
 };
 
 /// Base class for unsteady simulations
@@ -159,23 +163,14 @@ public:
 	 * \param[in] temporal_order Design order of accuracy in time
 	 */
 	UnsteadySolver(const Spatial<nvars> *const spatial, Vec soln,
-			const int temporal_order, const std::string log_file)
-		: space(spatial), u(soln), order{temporal_order}, cputime{0.0}, walltime{0.0},
-		  logfile{log_file}
-	{ }
-
-	/*const Vec residuals() const {
-		return residual;
-	}*/
+			const int temporal_order, const std::string log_file);
 
 	/// Get timing data
-	void getRunTimes(double& wall_time, double& cpu_time) const {
-		wall_time = walltime; cpu_time = cputime;
+	std::tuple<double,double> getRunTimes() const {
+		return std::make_tuple(walltime, cputime);
 	}
 
 	/// Solve the ODE
-	/**
-	 */
 	virtual StatusCode solve(const a_real time) = 0;
 
 	virtual ~UnsteadySolver() {}
@@ -188,6 +183,8 @@ class TVDRKSolver : public UnsteadySolver<nvars>
 public:
 	TVDRKSolver(const Spatial<nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file, const double cfl_num);
+
+	~TVDRKSolver();
 	
 	StatusCode solve(const a_real finaltime);
 
@@ -206,7 +203,7 @@ protected:
 	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
 
 private:
-	Vec dtm;
+	std::vector<a_real> dtm;
 };
 	
 
