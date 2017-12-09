@@ -87,7 +87,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		return;
 	}
 
-	ierr = VecDuplicate(u, &residual); CHKERRQ(ierr);
+	ierr = VecDuplicate(u, &rvec); CHKERRQ(ierr);
 
 	PetscInt locnelem; PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -192,6 +192,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	
 	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
+	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
 }
 
 /** By default, the Jacobian is stored in a block sparse row format.
@@ -200,79 +201,58 @@ template <int nvars>
 SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 		const Spatial<nvars> *const spatial, 
 		const SteadySolverConfig& conf,	
-		AbstractMatrix<a_real,a_int> *const pmat)
+		KSP ksp)
 
-	: SteadySolver<nvars>(spatial, conf), M{pmat}
+	: SteadySolver<nvars>(spatial, conf), solver{ksp}
 {
 	const UMesh2dh *const m = space->mesh();
-
-	// NOTE: the number of columns here MUST match the static number of columns, which is nvars.
-	residual.resize(m->gnelem(),nvars);
-	dtm.setup(m->gnelem(), 1);
-
-	// select preconditioner
-	if(config.preconditioner == "J") {
-		prec = new Jacobi<nvars>(M);
-		std::cout << " SteadyBackwardEulerSolver: Selected ";
-		std::cout << "Jacobi preconditioner.\n";
-	}
-	else if(config.preconditioner == "SGS") {
-		prec = new SGS<nvars>(M);
-		std::cout << " SteadyBackwardEulerSolver: Selected ";
-		std::cout << "SGS preconditioner.\n";
-	}
-	else if(config.preconditioner == "ILU0") {
-		prec = new ILU0<nvars>(M);
-		std::cout << " SteadyBackwardEulerSolver: Selected ";
-		std::cout << " ILU0 preconditioner.\n";
-	}
-	else {
-		prec = new NoPrec<nvars>(M);
-		std::cout << " SteadyBackwardEulerSolver: No preconditioning will be applied.\n";
-	}
-
-	if(config.linearsolver == "BCGSTB") {
-		linsolv = new BiCGSTAB<nvars>(m, M, prec);
-		std::cout << " SteadyBackwardEulerSolver: BiCGStab solver selected.\n";
-	}
-	else if(config.linearsolver == "GMRES") {
-		linsolv = new GMRES<nvars>(m, M, prec, config.restart_vecs);
-		std::cout << " SteadyBackwardEulerSolver: GMRES solver selected, restart after " 
-			<< config.restart_vecs << " iterations\n";
-	}
-	else {
-		linsolv = new RichardsonSolver<nvars>(m, M, prec);
-		std::cout << " SteadyBackwardEulerSolver: Richardson iteration selected, no acceleration.\n";
-	}
+	dtm.resize(m->gnelem(), 0);
 }
 
 template <int nvars>
 SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 {
-	delete linsolv;
-	delete prec;
+	int ierr = VecDestroy(&rvec);
+	if(ierr)
+		std::cout << "! SteadyBackwardEulerSolver: Could not destroy residual vector!\n";
 }
 
+/** The scaling of linear iterations is currently ignored; the constant set by -ksp_max_it is used
+ * for all time steps.
+ */
 template <int nvars>
-StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
+StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 {
-	StatusCode ierr = 0;
-	const UMesh2dh *const m = space->mesh();
-
 	if(config.maxiter <= 0) {
 		std::cout << " SteadyBackwardEulerSolver: solve(): No iterations to be done.\n";
 		return;
 	}
+	
+	const UMesh2dh *const m = space->mesh();
+	StatusCode ierr = 0;
+	int mpirank;
+	MPI_Comm_rank(comm, &mpirank);
+	Mat M; Vec duvec;
+	ierr = KSPGetOperators(solver, &M, NULL); CHKERRQ(ierr);
+	ierr = MatDuplicateVecs(M, &duvec, &rvec);
 
 	a_real curCFL; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
-	MVector du = MVector::Zero(m->gnelem(), nvars);
+
+	PetscScalar *duarr, *rarr, *uarr;
+	ierr = VecGetArray(duvec, &duarr); CHKERRQ(ierr);
+	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<MVector> du(duarr, m->gnelem(), nvars);
+	Eigen::Map<MVector> residual(rarr, m->gnelem(), nvars);
+	Eigen::Map<MVector> u(uarr, m->gnelem(), nvars);
 
 	std::ofstream convout;
 	if(config.lognres)
-		convout.open(config.logfile+".conv", std::ofstream::app);
+		if(mpirank == 0)
+			convout.open(config.logfile+".conv", std::ofstream::app);
 	
 	struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
@@ -282,7 +262,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 	int avglinsteps = 0;
 
 	walltime = cputime = 0;
-	linsolv->resetRunTimes();
 
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
@@ -294,12 +273,12 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 			}
 		}
 
-		M->setAllZero();
+		ierr = MatZeroEntries(A); CHKERRQ(ierr);
 		
 		// update residual and local time steps
-		space->compute_residual(u, residual, true, dtm);
+		space->compute_residual(uvec, rvec, true, dtm);
 
-		space->compute_jacobian(u, M);
+		space->compute_jacobian(uvec, M);
 		
 		// compute ramped quantities
 		if(step < config.rampstart) {
@@ -336,8 +315,12 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 
 			for(int i = 0; i < nvars; i++)
 				db(i,i) = m->garea(iel) / (curCFL*dtm(iel));
-			
-			M->updateDiagBlock(iel*nvars, db.data(), nvars);
+	
+#pragma omp critical
+			{
+				MatSetValuesBlocked(M, 1, iel, 1, iel, db.data(), ADD_VALUES);
+			}
+			//M->updateDiagBlock(iel*nvars, db.data(), nvars);
 		}
 
 		MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY);
@@ -349,8 +332,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 		// setup and solve linear system for the update du
 		
 		linsolv->setupPreconditioner();
-		linsolv->setParams(config.lintol, curlinmaxiter);
-		int linstepsneeded = linsolv->solve(residual, du);
+		//linsolv->setParams(config.lintol, curlinmaxiter);
+		ierr = KSPSolve(solver, rvec, duvec); CHKERRQ(ierr);
+		int linstepsneeded;
+		ierr = KSPGetIterationNumber(solver, &linstepsneeded); CHKERRQ(ierr);
 		avglinsteps += linstepsneeded;
 		
 		a_real resnorm2 = 0;
@@ -373,17 +358,19 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 		if(step == 0)
 			initres = resi;
 
-		if(step % 10 == 0) {
-			std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
-				<< ", rel residual " << resi/initres << std::endl;
-			std::cout << "      CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter 
-				<< ", iters used = " << linstepsneeded << std::endl;
-		}
+		if(step % 10 == 0)
+			if(mpirank == 0) {
+				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
+					<< ", rel residual " << resi/initres << std::endl;
+				std::cout << "      CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter 
+					<< ", iters used = " << linstepsneeded << std::endl;
+			}
 
 		step++;
 			
 		if(config.lognres)
-			convout << step << " " << std::setw(10)  << resi/initres << '\n';
+			if(mpirank == 0)
+				convout << step << " " << std::setw(10)  << resi/initres << '\n';
 	}
 
 	gettimeofday(&time2, NULL);
@@ -393,34 +380,47 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(MVector& u)
 	avglinsteps /= step;
 
 	if(config.lognres)
-		convout.close();
+		if(mpirank == 0)
+			convout.close();
 
 	if(step == config.maxiter)
-		std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
-	std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step << ", rel residual " 
-		<< resi/initres << std::endl;
+		if(mpirank == 0) {
+			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
+			std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step 
+				<< ", rel residual " << resi/initres << std::endl;
+		}
 
 	// print timing data
-	double linwtime, linctime;
+	/*double linwtime, linctime;
 	linsolv->getRunTimes(linwtime, linctime);
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
-	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
-	std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
-	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-	std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n\n";
+	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;*/
+	if(mpirank == 0) {
+		std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
+		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
+		std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n\n";
+	}
 
 	// append data to log file
 	int numthreads = 0;
 #ifdef _OPENMP
 	numthreads = omp_get_max_threads();
 #endif
-	std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
-	outf << std::setw(10) << m->gnelem() << " "
-		<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
-		<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "
-		<< std::setw(10) << step
-		<< "\n";
-	outf.close();
+	if(mpirank == 0) {
+		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
+		outf << std::setw(10) << m->gnelem() << " "
+			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
+			<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "
+			<< std::setw(10) << step
+			<< "\n";
+		outf.close();
+	}
+	
+	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
+	ierr = VecDestroy(&duvec); CHKERRQ(ierr);
+	return ierr;
 }
 
 template <int nvars>

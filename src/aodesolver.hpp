@@ -106,10 +106,10 @@ public:
 	/** 
 	 * \param[in] spatial Spatial discretization context
 	 * \param[in] conf Temporal discretization settings
-	 * \param[in] pmat Jacobian matrix context for the preconditioner (and perhaps the solver)
+	 * \param[in] ksp The PETSc top-level solver context
 	 */
 	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf,
-		Mat pmat);
+		KSP ksp);
 	
 	~SteadyBackwardEulerSolver();
 
@@ -131,11 +131,8 @@ protected:
 
 	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell
 
-	/// Sparse matrix of the preconditioning Jacobian
-	/** Note that the same matrix is used as the actual LHS as well,
-	 * if matrix-free solution is disabled.
-	 */
-	Mat M;
+	/// The solver context
+	KSP solver;
 };
 
 /// Base class for unsteady simulations
