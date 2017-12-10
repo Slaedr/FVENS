@@ -8,7 +8,7 @@
 namespace acfd {
 
 template <int nvars>
-StatusCode setupMatrix(const UMesh2dh *const m, Mat *const A)
+StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 {
 	StatusCode ierr = 0;
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
@@ -40,8 +40,8 @@ StatusCode setupMatrix(const UMesh2dh *const m, Mat *const A)
 	return ierr;
 }
 
-template PetscErrorCode setupMatrixStorage<NVARS>(const UMesh2dh *const m, Mat *const A);
-template PetscErrorCode setupMatrixStorage<1>(const UMesh2dh *const m, Mat *const A);
+template PetscErrorCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const A);
+template PetscErrorCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
 StatusCode setupVectors(const Mat A, Vec *const u, Vec *const r)
 {

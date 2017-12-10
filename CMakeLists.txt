@@ -74,15 +74,14 @@ endif()
 include_directories($ENV{EIGEN_DIR})
 
 # BLASTed
-include_directories($ENV{BLASTED_DIR}/src)
+include_directories($ENV{BLASTED_DIR}/include)
+set(BLASTED_LIB "$ENV{BLASTED_DIR}/build/lib/libblasted_petsc.a")
 
 # PETSc
-if(WITH_PETSC)
 	find_library(PETSC_LIB NAMES petsc PATHS $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib)
 	include_directories($ENV{PETSC_DIR}/include $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/include)
 	message(STATUS "Building with PETSc found at ${PETSC_LIB}")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
-endif()
 
 # ---------------------------------------------------------------------------- #
 

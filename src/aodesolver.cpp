@@ -56,7 +56,7 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 
 template<int nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
-		const Spatial<nvars> *const spatial, Vec uvec,
+		const Spatial<nvars> *const spatial, const Vec uvec,
 		const SteadySolverConfig& conf)
 
 	: SteadySolver<nvars>(spatial, conf)
@@ -213,7 +213,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 	dtm.resize(m->gnelem(), 0);
 	Mat M; int ierr;
 	ierr = KSPGetOperators(solver, &M, NULL);
-	ierr = MatDuplicateVecs(M, &duvec, &rvec);
+	ierr = MatCreateVecs(M, &duvec, &rvec);
 	if(ierr)
 		std::cout << "! SteadyBackwardEulerSolver: Could not create residual or update vector!\n";
 }

@@ -1,15 +1,21 @@
-#include <blockmatrices.hpp>
+#include <petscksp.h>
+#include "alinalg.hpp"
 #include "autilities.hpp"
 #include "aoutput.hpp"
 #include "aodesolver.hpp"
 #include "afactory.hpp"
 
 using namespace amat;
-using namespace std;
 using namespace acfd;
 
 int main(const int argc, const char *const argv[])
 {
+	StatusCode ierr = 0;
+	const char help[] = "Finite volume solver for Euler or Navier-Stokes equations.\n\
+		Arguments needed: FVENS control file and PETSc options file with -options_file,\n";
+
+	ierr = PetscInitialize(&argc,&aargv,NULL,help); CHKERRQ(ierr);
+
 	// Read control file
 	
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
@@ -54,10 +60,17 @@ int main(const int argc, const char *const argv[])
 	
 	// solution vector
 	Vec u;
-	//MVector u(m.gnelem(),NVARS);
 
-	// Initialize Jacobian for implicit schemes; no storage allocated here
+	// Initialize Jacobian for implicit schemes
 	Mat M;
+	ierr = setupMatrixStorage<NVARS>(&m, &M); CHKERRQ(ierr);
+	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
+
+	// initialize solver
+	KSP ksp;
+	ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
+	ierr = KSPSetUp(ksp); CHKERRQ(ierr);
+	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// set up time discrization
 	
@@ -65,7 +78,7 @@ int main(const int argc, const char *const argv[])
 		opts.lognres, opts.logfile+".tlog",
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
-		opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
+		opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
 		opts.preconditioner
 	};
 	
@@ -73,7 +86,7 @@ int main(const int argc, const char *const argv[])
 		opts.lognres, opts.logfile+"-init.tlog",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
-		opts.lintol, opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
+		opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
 		opts.preconditioner
 	};
 
@@ -83,25 +96,20 @@ int main(const int argc, const char *const argv[])
 	{
 		if(opts.use_matrix_free)
 			std::cout << "!! Matrix-free not implemented yet! Using matrix-storage instead.\n";
-			
-		// Pre-allocate storage for Jacobian matrix	
-		setupMatrixStorage<NVARS>(&m, M);
 		
 		if(opts.usestarter != 0)
-			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, M);
+			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, ksp);
 
-		time = new SteadyBackwardEulerSolver<4>(prob, maintconf, M);
+		time = new SteadyBackwardEulerSolver<4>(prob, maintconf, ksp);
 
 		std::cout << "Set up backward Euler temporal scheme.\n";
 	}
 	else 
 	{
 		if(opts.usestarter != 0)
-			starttime = new SteadyForwardEulerSolver<4>(startprob, starttconf,
-					opts.residualsmoothing, M);
+			starttime = new SteadyForwardEulerSolver<4>(startprob, u, starttconf);
 
-		time = new SteadyForwardEulerSolver<4>(prob, maintconf,
-				opts.residualsmoothing, M);
+		time = new SteadyForwardEulerSolver<4>(prob, u, maintconf);
 
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}
@@ -113,18 +121,19 @@ int main(const int argc, const char *const argv[])
 
 	// computation
 	
-	if(opts.usestarter != 0)
+	if(opts.usestarter != 0) {
 		// solve the starter problem to get the initial solution
-		starttime->solve(u);
+		ierr = starttime->solve(u); CHKERRQ(ierr);
+	}
 
 	// Solve the main problem
-	time->solve(u);
+	ierr = time->solve(u); CHKERRQ(ierr);
 	
 	std::cout << "***\n";
 
 	// export output to VTU
 
-	Array2d<a_real> scalars;
+	/*Array2d<a_real> scalars;
 	Array2d<a_real> velocities;
 	prob->postprocess_point(u, scalars, velocities);
 
@@ -140,7 +149,7 @@ int main(const int argc, const char *const argv[])
 	out.exportSurfaceData(u, opts.lwalls, opts.lothers, opts.surfnameprefix);
 	
 	if(opts.vol_output_reqd == "YES")
-		out.exportVolumeData(u, opts.volnameprefix);
+		out.exportVolumeData(u, opts.volnameprefix);*/
 
 	delete starttime;
 	delete time;
@@ -148,8 +157,11 @@ int main(const int argc, const char *const argv[])
 	delete prob;
 	delete startprob;
 
-	delete M;
+	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = VecDestroy(&u); CHKERRQ(ierr);
+	ierr = MatDestroy(&M); CHKERRQ(ierr);
 
 	cout << "\n--------------- End --------------------- \n\n";
-	return 0;
+	ierr = PetscFinalize(); CHKERRQ(ierr);
+	return ierr;
 }

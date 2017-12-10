@@ -22,7 +22,6 @@ struct SteadySolverConfig {
 	int rampend;                 ///< Time step at which to end CFL ramping
 	a_real tol;                  ///< Tolerance for the final solution to the nonlinear system
 	int maxiter;                 ///< Maximum number of iterations to solve the nonlinear system
-	a_real lintol;               ///< Tolerance of the linear solver in case of implicit schemes
 	int linmaxiterstart;         ///< Max linear solver iterations before step \ref rampstart
 	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
 };
@@ -79,7 +78,8 @@ public:
 	/// Sets the spatial context and problem configuration, and allocates required data
 	/** \param x A PETSc Vec from which the residual vector is duplicated.
 	 */
-	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, Vec x, const SteadySolverConfig& conf);
+	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const Vec x, 
+			const SteadySolverConfig& conf);
 	
 	~SteadyForwardEulerSolver();
 
