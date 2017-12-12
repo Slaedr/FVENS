@@ -20,6 +20,11 @@
 
 #include "aodesolver.hpp"
 #include <algorithm>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sys/time.h>
+#include <ctime>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -64,7 +69,7 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 	const UMesh2dh *const m = space->mesh();
 	dtm.resize(m->gnelem(), 0);
 
-	ierr = VecDuplicate(uvec, &rvec);
+	StatusCode ierr = VecDuplicate(uvec, &rvec);
 	if(ierr) {
 		std::cout << "! SteadyForwardEulerSolver: Could not create residual vector!\n";
 		std::abort();
@@ -74,7 +79,7 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 template<int nvars>
 SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 {
-	int ierr = VecDestroy(&residual);
+	int ierr = VecDestroy(&rvec);
 	if(ierr)
 		std::cout << "! SteadyForwardEulerSolver: Could not destroy residual vector!\n";
 }
@@ -84,23 +89,23 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 {
 	StatusCode ierr = 0;
 	int mpirank;
-	MPI_Comm_rank(comm, &mpirank);
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
 	const UMesh2dh *const m = space->mesh();
 
 	if(config.maxiter <= 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): No iterations to be done.\n";
-		return;
+		return ierr;
 	}
 
 	PetscInt locnelem; PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % nvars = 0);
+	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, locnelem, nvars);
+	Eigen::Map<MVector> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
 
@@ -197,6 +202,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
+	return ierr;
 }
 
 /** By default, the Jacobian is stored in a block sparse row format.
@@ -237,13 +243,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 {
 	if(config.maxiter <= 0) {
 		std::cout << " SteadyBackwardEulerSolver: solve(): No iterations to be done.\n";
-		return;
+		return 0;
 	}
 	
 	const UMesh2dh *const m = space->mesh();
 	StatusCode ierr = 0;
 	int mpirank;
-	MPI_Comm_rank(comm, &mpirank);
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 	Mat M;
 	ierr = KSPGetOperators(solver, &M, NULL); CHKERRQ(ierr);
 
@@ -284,7 +290,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		}
 
-		ierr = MatZeroEntries(A); CHKERRQ(ierr);
+		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		
 		// update residual and local time steps
 		ierr = space->compute_residual(uvec, rvec, true, dtm); CHKERRQ(ierr);
@@ -325,11 +331,11 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 
 			for(int i = 0; i < nvars; i++)
-				db(i,i) = m->garea(iel) / (curCFL*dtm(iel));
+				db(i,i) = m->garea(iel) / (curCFL*dtm[iel]);
 	
 #pragma omp critical
 			{
-				MatSetValuesBlocked(M, 1, iel, 1, iel, db.data(), ADD_VALUES);
+				MatSetValuesBlocked(M, 1, &iel, 1, &iel, db.data(), ADD_VALUES);
 			}
 			//M->updateDiagBlock(iel*nvars, db.data(), nvars);
 		}
@@ -401,8 +407,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 	// print timing data
-	/*double linwtime, linctime;
-	linsolv->getRunTimes(linwtime, linctime);
+	double linwtime, linctime;
+	linwtime = linctime = -1;
+	/*linsolv->getRunTimes(linwtime, linctime);
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
 	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;*/
 	if(mpirank == 0) {
@@ -446,7 +453,7 @@ TVDRKSolver<nvars>::TVDRKSolver(const Spatial<nvars> *const spatial,
 	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
 {
 	dtm.resize(space->mesh()->gnelem(), 0);
-	int ierr = VecDuplicate(uvec, &rvec); CHKERRQ(ierr);
+	int ierr = VecDuplicate(uvec, &rvec);
 	if(ierr)
 		std::cout << "! TVDRKSolver: Could not create residual vector!\n";
 }
@@ -464,11 +471,11 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	const UMesh2dh *const m = space->mesh();
 	StatusCode ierr = 0;
 	int mpirank;
-	MPI_Comm_rank(comm, &mpirank);
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
 	PetscInt locnelem; PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % nvars = 0);
+	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 

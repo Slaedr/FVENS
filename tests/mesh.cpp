@@ -1,4 +1,5 @@
-#include "../amesh2dh.hpp"
+#include <iostream>
+#include "../src/amesh2dh.hpp"
 
 using namespace acfd;
 

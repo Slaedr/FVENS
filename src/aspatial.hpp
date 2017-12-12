@@ -73,14 +73,14 @@ public:
 	 */
 	virtual StatusCode compute_jac_vec(const Vec resu, const Vec u, 
 			const Vec v,
-			const bool add_time_deriv, const Vec dtm,
+			const bool add_time_deriv, const std::vector<a_real>& dtm,
 			Vec __restrict aux,
 			Vec __restrict prod);
 	
 	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
 	virtual StatusCode compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
 			const Vec v,
-			const bool add_time_deriv, const Vec dtm,
+			const bool add_time_deriv, const std::vector<a_real>& dtm,
 			const a_real b, const Vec w,
 			Vec __restrict aux,
 			Vec __restrict prod);
@@ -280,7 +280,9 @@ protected:
 	/// Computes viscous flux across a face
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index
-	 * \param[in] u Cell-centred conserved variables
+	 * \param[in] ucell_l Cell-centred conserved variables on left side of the face
+	 * \param[in] ucell_r Cell-centred conserved variables on right side of the face
+	 *             Note that for boundary faces, this can be NULL because ug is used instead.
 	 * \param[in] ug Ghost cell-centred conserved variables
 	 * \param[in] dudx Cell-centred gradients ("optional")
 	 * \param[in] dudy Cell-centred gradients ("optional", see below)
@@ -291,7 +293,9 @@ protected:
 	 * Note that dudx and dudy can be unallocated if only first-order fluxes are being computed,
 	 * but ul and ur are always used.
 	 */
-	void computeViscousFlux(const a_int iface, const MVector& u, const amat::Array2d<a_real>& ug,
+	void computeViscousFlux(
+			const a_int iface, const a_real *const ucell_l, const a_real *const ucell_r,
+			const amat::Array2d<a_real>& ug,
 			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
@@ -334,7 +338,7 @@ public:
 	/** 
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	PetscErrorCode initializeUnknowns(Vec u) const;
+	StatusCode initializeUnknowns(Vec u) const;
 	
 	/// Compute nodal quantities to export
 	/** \param vec Dummy argument, not used
@@ -342,8 +346,8 @@ public:
 	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vec) const;
 	
-	virtual StatusCode compute_residual(const Vec u, Vec __restrict residual, 
-			const bool gettimesteps, std::vector<a_real>& __restrict dtm) const = 0;
+	virtual StatusCode compute_residual(const Vec u, Vec residual, 
+			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
 	
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 	

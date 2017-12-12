@@ -3,7 +3,7 @@
  * \author Aditya Kashi
  * \date 2017-10
  */
-
+#include <iostream>
 #include "testflowspatial.hpp"
 
 namespace acfd {

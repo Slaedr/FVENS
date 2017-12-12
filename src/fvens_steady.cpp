@@ -1,3 +1,4 @@
+#include <iostream>
 #include <petscksp.h>
 #include "alinalg.hpp"
 #include "autilities.hpp"
@@ -8,13 +9,13 @@
 using namespace amat;
 using namespace acfd;
 
-int main(const int argc, const char *const argv[])
+int main(int argc, char *argv[])
 {
 	StatusCode ierr = 0;
 	const char help[] = "Finite volume solver for Euler or Navier-Stokes equations.\n\
 		Arguments needed: FVENS control file and PETSc options file with -options_file,\n";
 
-	ierr = PetscInitialize(&argc,&aargv,NULL,help); CHKERRQ(ierr);
+	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
 
 	// Read control file
 	
@@ -63,13 +64,14 @@ int main(const int argc, const char *const argv[])
 
 	// Initialize Jacobian for implicit schemes
 	Mat M;
-	ierr = setupMatrixStorage<NVARS>(&m, &M); CHKERRQ(ierr);
+	ierr = setupSystemMatrix<NVARS>(&m, &M); CHKERRQ(ierr);
 	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
 
 	// initialize solver
 	KSP ksp;
+	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
-	ierr = KSPSetUp(ksp); CHKERRQ(ierr);
+	//ierr = KSPSetUp(ksp); CHKERRQ(ierr);
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// set up time discrization
@@ -78,16 +80,14 @@ int main(const int argc, const char *const argv[])
 		opts.lognres, opts.logfile+".tlog",
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
-		opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
-		opts.preconditioner
+		opts.linmaxiterstart, opts.linmaxiterend
 	};
 	
 	const SteadySolverConfig starttconf {
 		opts.lognres, opts.logfile+"-init.tlog",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
-		opts.linmaxiterstart, opts.linmaxiterend, opts.linsolver, opts.restart_vecs,
-		opts.preconditioner
+		opts.linmaxiterstart, opts.linmaxiterend
 	};
 
 	SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
@@ -122,6 +122,7 @@ int main(const int argc, const char *const argv[])
 	// computation
 	
 	if(opts.usestarter != 0) {
+		
 		// solve the starter problem to get the initial solution
 		ierr = starttime->solve(u); CHKERRQ(ierr);
 	}
@@ -161,7 +162,7 @@ int main(const int argc, const char *const argv[])
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
 
-	cout << "\n--------------- End --------------------- \n\n";
+	std::cout << "\n--------------- End --------------------- \n\n";
 	ierr = PetscFinalize(); CHKERRQ(ierr);
 	return ierr;
 }

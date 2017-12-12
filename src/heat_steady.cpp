@@ -1,4 +1,6 @@
-#include <blockmatrices.hpp>
+#include <iostream>
+#include <fstream>
+#include "alinalg.hpp"
 #include "aoutput.hpp"
 #include "aodesolver.hpp"
 
@@ -8,6 +10,12 @@ using namespace acfd;
 
 int main(int argc, char* argv[])
 {
+	StatusCode ierr = 0;
+	const char help[] = "Finite volume solver for the heat equation.\n\
+		Arguments needed: FVENS control file and PETSc options file with -options_file,\n";
+
+	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
+
 	if(argc < 2)
 	{
 		cout << "Please give a control file name.\n";
@@ -23,7 +31,7 @@ int main(int argc, char* argv[])
 	short inittype, usestarter;
 	short nbuildsweeps, napplysweeps;
 	char mattype;
-	bool lognres, residualsmoothing = false;
+	bool lognres;
 
 	control >> dum; control >> meshfile;
 	control >> dum; control >> outf;
@@ -62,7 +70,7 @@ int main(int argc, char* argv[])
 		std::string residualsmoothingstr;
 		control >> dum; control >> residualsmoothingstr;
 		if(residualsmoothingstr == "YES")
-			residualsmoothing = true;
+			std::cout << "! Residual smoothing is not supported.\n";
 	}
 	control.close();
 
@@ -110,27 +118,27 @@ int main(int argc, char* argv[])
 
 	Array2d<a_real> outputarr, dummy;
 	
-	// solution vector	
-	MVector u(m.gnelem(),1);
-
-	blasted::AbstractMatrix<a_real,a_int> * M;
-	switch(mattype) {
-		case 'd':
-			M = new blasted::DLUMatrix<1>(&m,nbuildsweeps,napplysweeps);
-			break;
-		case 'c':
-			M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
-			break;
-		default:
-			M = new blasted::BSRMatrix<a_real,a_int,1>(nbuildsweeps,napplysweeps);
-	}
+	std::cout << "\n***\n";
 	
+	// solution vector
+	Vec u;
+
+	// Initialize Jacobian for implicit schemes
+	Mat M;
+	ierr = setupSystemMatrix<1>(&m, &M); CHKERRQ(ierr);
+	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
+
+	// initialize solver
+	KSP ksp;
+	ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
+	ierr = KSPSetUp(ksp); CHKERRQ(ierr);
+	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+
 	const SteadySolverConfig tconf {
 		lognres, logfile,
 		initcfl, endcfl, rampstart, rampend,
 		tolerance, maxiter,
-		lintol, linmaxiterstart, linmaxiterend, linsolver, restart_vecs,
-		prec
+		linmaxiterstart, linmaxiterend
 	};
 
 	SteadySolver<1> *time = nullptr;
@@ -138,18 +146,16 @@ int main(int argc, char* argv[])
 	
 	if(timesteptype == "IMPLICIT") 
 	{
-		time = new SteadyBackwardEulerSolver<1>(prob, tconf, M);
+		time = new SteadyBackwardEulerSolver<1>(prob, tconf, ksp);
 
 		startprob->initializeUnknowns(u);
-		
-		setupMatrixStorage<1>(&m, mattype, M);
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyBackwardEulerSolver<1>(startprob, tconf, M);
+			starttime = new SteadyBackwardEulerSolver<1>(startprob, tconf, ksp);
 
 			// solve the starter problem to get the initial solution
-			starttime->solve(u);
+			ierr = starttime->solve(u); CHKERRQ(ierr);
 
 			delete starttime;
 		}
@@ -157,22 +163,19 @@ int main(int argc, char* argv[])
 		/* Solve the main problem using either the initial solution
 		 * set by initializeUnknowns or the one computed by the starter problem.
 		 */
-		time->solve(u);
+		ierr = time->solve(u); CHKERRQ(ierr);
 	}
 	else {
-		if(residualsmoothing)
-			setupLaplacianSmoothingMatrix<NVARS>(&m, M);
-
-		time = new SteadyForwardEulerSolver<1>(prob, tconf, residualsmoothing, M);
+		time = new SteadyForwardEulerSolver<1>(prob, u, tconf);
 		
 		startprob->initializeUnknowns(u);
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyForwardEulerSolver<1>(startprob, tconf, residualsmoothing, M);
+			starttime = new SteadyForwardEulerSolver<1>(startprob, u, tconf);
 
 			// solve the starter problem to get the initial solution
-			starttime->solve(u);
+			ierr = starttime->solve(u); CHKERRQ(ierr);
 
 			delete starttime;
 		}
@@ -180,11 +183,13 @@ int main(int argc, char* argv[])
 		/* Solve the main problem using either the initial solution
 		 * set by initializeUnknowns or the one computed by the starter problem.
 		 */
-		time->solve(u);
+		ierr = time->solve(u); CHKERRQ(ierr);
 	}
 
 	// postprocess
-	
+
+	const a_real *uarr;
+	ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
 	for(int iel = 0; iel < m.gnelem(); iel++)
 	{
 		a_real rc[2]; rc[0] = 0; rc[1] = 0;
@@ -194,24 +199,28 @@ int main(int argc, char* argv[])
 		}
 		rc[0] /= m.gnnode(iel); rc[1] /= m.gnnode(iel);
 		a_real trueval = uexact(rc);
-		err += (u(iel,0)-trueval)*(u(iel,0)-trueval)*m.garea(iel);
+		err += (uarr[iel]-trueval)*(uarr[iel]-trueval)*m.garea(iel);
 	}
-
-	amat::Array2d<a_real> dumv;
-	prob->postprocess_point(u, outputarr, dumv);
-
-	delete prob;
-	delete startprob;
-	delete time;
-	delete M;
+	ierr = VecRestoreArrayRead(u, &uarr); CHKERRQ(ierr);
 
 	err = sqrt(err);
 	double h = 1.0/sqrt(m.gnelem());
 	cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << endl;
-	
-	string scaname[1] = {"some-quantity"}; string vecname;
-	writeScalarsVectorToVtu_PointData(outf, m, outputarr, scaname, dummy, vecname);
 
+	//amat::Array2d<a_real> dumv;
+	//prob->postprocess_point(u, outputarr, dumv);
+	//string scaname[1] = {"some-quantity"}; string vecname;
+	//writeScalarsVectorToVtu_PointData(outf, m, outputarr, scaname, dummy, vecname);
+
+	delete prob;
+	delete startprob;
+	delete time;
+
+	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = VecDestroy(&u); CHKERRQ(ierr);
+	ierr = MatDestroy(&M); CHKERRQ(ierr);
+	
 	cout << "\n--------------- End --------------------- \n\n";
-	return 0;
+	ierr = PetscFinalize(); CHKERRQ(ierr);
+	return ierr;
 }

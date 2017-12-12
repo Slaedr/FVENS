@@ -1,8 +1,10 @@
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 
 # libraries to be compiled
+
 add_library(fvens_base aodesolver.cpp alinalg.cpp aspatial.cpp afactory.cpp 
 	areconstruction.cpp agradientschemes.cpp anumericalflux.cpp aoutput.cpp amesh2dh.cpp aphysics.cpp
-	autilities.cpp)
+	autilities.cpp aarray2d.cpp)
 target_link_libraries(fvens_base ${PETSC_LIB})
 
 # for the final executable(s)

@@ -9,8 +9,8 @@
 
 #include <string>
 #include <array>
-#include "../autilities.hpp"
-#include "../aspatial.hpp"
+#include "../src/autilities.hpp"
+#include "../src/aspatial.hpp"
 
 namespace acfd {
 

@@ -8,7 +8,7 @@
  * No consts
  * #defines work but get replaced
  */
-
+#include <iostream>
 #include "anumericalflux.hpp"
 
 namespace acfd {

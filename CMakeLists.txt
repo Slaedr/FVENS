@@ -78,10 +78,10 @@ include_directories($ENV{BLASTED_DIR}/include)
 set(BLASTED_LIB "$ENV{BLASTED_DIR}/build/lib/libblasted_petsc.a")
 
 # PETSc
-	find_library(PETSC_LIB NAMES petsc PATHS $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib)
-	include_directories($ENV{PETSC_DIR}/include $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/include)
-	message(STATUS "Building with PETSc found at ${PETSC_LIB}")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
+find_library(PETSC_LIB NAMES petsc PATHS $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib)
+include_directories($ENV{PETSC_DIR}/include $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/include)
+message(STATUS "Building with PETSc found at ${PETSC_LIB}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
 
 # ---------------------------------------------------------------------------- #
 

@@ -1,5 +1,6 @@
 #include <string>
-#include "../autilities.hpp"
+#include <iostream>
+#include "../src/autilities.hpp"
 #include "testflowspatial.hpp"
 
 using namespace acfd;
@@ -28,7 +29,7 @@ int main(const int argc, const char *const argv[])
 	m.compute_areas();
 	m.compute_face_data();
 		
-	FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
+	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	FlowNumericsConfig nconf = extract_spatial_numerics_config(opts);
 
 	if(testchoice == "wall_boundaries") 

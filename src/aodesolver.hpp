@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <tuple>
+#include <petscksp.h>
 #include "aspatial.hpp"
 
 namespace acfd {

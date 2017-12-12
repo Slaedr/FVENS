@@ -345,16 +345,6 @@ public:
 };
 
 inline
-IdealGasPhysics::IdealGasPhysics(const a_real _g, const a_real M_inf, 
-		const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
-	: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
-{
-	std::cout << " IdealGasPhysics: Physical parameters:\n";
-	std::cout << "  Adiabatic index = " <<g << ", M_infty = " <<Minf << ", T_infty = " << Tinf
-		<< "\n   Re_infty = " << Reinf << ", Pr = " << Pr << std::endl;
-}
-
-inline
 void IdealGasPhysics::getDirectionalFlux(const a_real *const uc, const a_real *const n,
 		const a_real vn, const a_real p, a_real *const __restrict flux) const
 {

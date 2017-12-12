@@ -1,3 +1,9 @@
+/** \file areconstruction.cpp
+ * \brief Implementation of solution reconstruction schemes (limiters)
+ * \author Aditya Kashi
+ */
+
+#include <iostream>
 #include "areconstruction.hpp"
 
 namespace acfd {

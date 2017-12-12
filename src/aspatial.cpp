@@ -18,8 +18,10 @@
  *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "aspatial.hpp"
+#include <iostream>
+#include <iomanip>
 #include "afactory.hpp"
+#include "aspatial.hpp"
 
 namespace acfd {
 
@@ -148,10 +150,10 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 }
 
 template <int nvars>
-StatusCode Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u, 
-	const MVector& v, const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-	MVector& __restrict aux,
-	MVector& __restrict prod)
+StatusCode Spatial<nvars>::compute_jac_vec(const Vec resu, const Vec u, 
+	const Vec v, const bool add_time_deriv, const std::vector<a_real>& dtm,
+	Vec __restrict aux,
+	Vec __restrict prod)
 {
 	StatusCode ierr = 0;
 
@@ -184,12 +186,12 @@ StatusCode Spatial<nvars>::compute_jac_vec(const MVector& resu, const MVector& u
 
 // Computes a([M du/dt +] dR/du) v + b w and stores in prod
 template <int nvars>
-StatusCode Spatial<nvars>::compute_jac_gemv(const a_real a, const MVector& resu, 
-		const MVector& u, const MVector& v,
-		const bool add_time_deriv, const amat::Array2d<a_real>& dtm,
-		const a_real b, const MVector& w,
-		MVector& __restrict aux,
-		MVector& __restrict prod)
+StatusCode Spatial<nvars>::compute_jac_gemv(const a_real a, const Vec resu, 
+		const Vec u, const Vec v,
+		const bool add_time_deriv, const std::vector<a_real>& dtm,
+		const a_real b, const Vec w,
+		Vec __restrict aux,
+		Vec __restrict prod)
 {
 	StatusCode ierr = 0;
 	/*const a_int N = m->gnelem()*nvars;
@@ -271,7 +273,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) con
 	VecGetArray(u, &uloc);
 	PetscInt locsize;
 	VecGetLocalSize(u, &locsize);
-	assert(locsize % NVARS == 0 && std::printf("  ASSERTS ARE ON.\n"));
+	assert(locsize % NVARS == 0);
 	locsize /= NVARS;
 	
 	//initial values are equal to boundary values
@@ -620,7 +622,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int iface, 
-		const MVector& u, const amat::Array2d<a_real>& ug,
+		const a_real *const ucell_l, const a_real *const ucell_r, const amat::Array2d<a_real>& ug,
 		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
 		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 		a_real *const __restrict vflux) const
@@ -639,7 +641,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	
 	for(int i = 0; i < NVARS; i++) 
 	{
-		ucl[i] = u(lelem,i);
+		ucl[i] = ucell_l[i];
 		
 		for(int j = 0; j < NDIM; j++) {
 			gradl[j][i] = 0; 
@@ -694,7 +696,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	}
 	else {
 		for(int i = 0; i < NVARS; i++) {
-			ucr[i] = u(relem,i);
+			ucr[i] = ucell_r[i];
 		}
 
 		if(secondOrderRequested)
@@ -1035,7 +1037,7 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const 
 template<bool secondOrderRequested, bool constVisc>
 StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec, 
 		Vec __restrict rvec, 
-		const bool gettimesteps, Vec __restrict dtmvec) const
+		const bool gettimesteps, std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
 	amat::Array2d<a_real> integ, ug, uleft, uright;	
@@ -1045,19 +1047,19 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	uright.resize(m->gnaface(), NVARS);
 	std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>> > grads;
 
-	PetscInt locnelem, dtsz; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % NVARS == 0);
 	locnelem /= NVARS;
 	assert(locnelem == m->gnelem());
-	ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	assert(locnelem == dtsz);
+	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
+	//assert(locnelem == dtsz);
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
-	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+	//ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
 
 #pragma omp parallel default(shared)
 	{
@@ -1100,7 +1102,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 
 #pragma omp for
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
-				physics.getPrimitiveFromConserved(&u(iel,0), &up(iel,0));
+				physics.getPrimitiveFromConserved(&uarr[iel*NVARS], &up(iel,0));
 		}
 
 		// reconstruct
@@ -1175,20 +1177,23 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 			{
 				// get viscous fluxes
 				a_real vflux[NVARS];
-				computeViscousFlux(ied, u, ug, grads, uleft, uright, vflux);
+				const a_real *const urt = (ied < m->gnbface()) ? nullptr : &uarr[relem*NVARS];
+				computeViscousFlux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright, 
+						vflux);
 
 				for(int ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] += vflux[ivar]*len;
 			}
 
+			/// We assemble the negative of the residual ( M du/dt + r(u) = 0).
 			for(int ivar = 0; ivar < NVARS; ivar++) {
 #pragma omp atomic
-				residual(lelem,ivar) += fluxes[ivar];
+				residual(lelem,ivar) -= fluxes[ivar];
 			}
 			if(relem < m->gnelem()) {
 				for(int ivar = 0; ivar < NVARS; ivar++) {
 #pragma omp atomic
-					residual(relem,ivar) -= fluxes[ivar];
+					residual(relem,ivar) += fluxes[ivar];
 				}
 			}
 			
@@ -1245,7 +1250,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	
 	VecRestoreArrayRead(uvec, &uarr);
 	VecRestoreArray(rvec, &rarr);
-	VecRestoreArray(dtmvec, &dtm);
+	//VecRestoreArray(dtmvec, &dtm);
 	return ierr;
 }
 
@@ -1254,15 +1259,14 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 {
 	StatusCode ierr = 0;
 
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	PetscInt locnelem; const PetscScalar *uarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % NVARS == 0);
 	locnelem /= NVARS;
 	assert(locnelem == m->gnelem());
 
-	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+	//Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1278,13 +1282,14 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 		Matrix<a_real,NVARS,NVARS,RowMajor> left;
 		Matrix<a_real,NVARS,NVARS,RowMajor> right;
 		
-		compute_boundary_Jacobian(iface, &u(lelem,0), uface, &drdl(0,0));	
+		compute_boundary_Jacobian(iface, &uarr[lelem*NVARS], uface, &drdl(0,0));	
 		
-		jflux->get_jacobian(&u(lelem,0), uface, n, &left(0,0), &right(0,0));
+		jflux->get_jacobian(&uarr[lelem*NVARS], uface, n, &left(0,0), &right(0,0));
 
 		if(pconfig.viscous_sim) {
-			computeViscousFluxApproximateJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
-			//computeViscousFluxJacobian(iface,&u(lelem,0),uface, &left(0,0), &right(0,0));
+			computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], uface, 
+					&left(0,0), &right(0,0));
+			//computeViscousFluxJacobian(iface,&u[lelem*NVARS],uface, &left(0,0), &right(0,0));
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
@@ -1298,51 +1303,51 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 
 #pragma omp critical
 		{
-			MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
 		}
 	}
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		a_int intface = iface-m->gnbface();
-		a_int lelem = m->gintfac(iface,0);
-		a_int relem = m->gintfac(iface,1);
+		//const a_int intface = iface-m->gnbface();
+		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);
 		a_real n[NDIM];
 		n[0] = m->ggallfa(iface,0);
 		n[1] = m->ggallfa(iface,1);
-		a_real len = m->ggallfa(iface,2);
+		const a_real len = m->ggallfa(iface,2);
 		Matrix<a_real,NVARS,NVARS,RowMajor> L;
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
 		// NOTE: the values of L and U get REPLACED here, not added to
-		jflux->get_jacobian(&u(lelem,0), &u(relem,0), n, &L(0,0), &U(0,0));
+		jflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
 
 		if(pconfig.viscous_sim) {
-			computeViscousFluxApproximateJacobian(iface, &u(lelem,0), &u(relem,0), 
+			computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
 					&L(0,0), &U(0,0));
-			//computeViscousFluxJacobian(iface, &u(lelem,0), &u(relem,0), &L(0,0), &U(0,0));
+			//computeViscousFluxJacobian(iface, &u[lelem,0], &u[relem,0], &L(0,0), &U(0,0));
 		}
 
 		L *= len; U *= len;
 #pragma omp critical
 		{
-			MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
 		}
 #pragma omp critical
 		{
-			MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
 		}
 
 		// negative L and U contribute to diagonal blocks
 		L *= -1.0; U *= -1.0;
 #pragma omp critical
 		{
-			MatSetValuesBLocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
 		}
 #pragma omp critical
 		{
-			MatSetValuesBLocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
 		}
 	}
 
@@ -1578,12 +1583,16 @@ Diffusion<nvars>::~Diffusion()
 { }
 
 template<int nvars>
-StatusCode Diffusion<nvars>::initializeUnknowns(MVector& u)
+StatusCode Diffusion<nvars>::initializeUnknowns(Vec u)
 	const
 {
-	for(a_int i = 0; i < u.rows(); i++)
-		for(a_int j = 0; j < u.cols(); j++)
-			u(i,j) = 0;
+	PetscScalar *uarr;
+	StatusCode ierr = VecGetArray(u, &uarr); CHKERRQ(ierr);
+	for(a_int i = 0; i < m->gnelem(); i++)
+		for(a_int j = 0; j < nvars; j++)
+			uarr[i*nvars+j] = 0;
+	ierr = VecRestoreArray(u, &uarr); CHKERRQ(ierr);
+	return ierr;
 }
 
 // Currently, all boundaries are constant Dirichlet
@@ -1648,23 +1657,20 @@ template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
                                           Vec rvec, 
                                           const bool gettimesteps, 
-										  Vec dtmvec) const
+										  std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
 
-	PetscInt locnelem, dtsz; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
-	ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	assert(locnelem == dtsz);
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
-	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
 
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
@@ -1713,10 +1719,12 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 		for(int ivar = 0; ivar < nvars; ivar++){
 			a_real flux {diffusivity * 
 				(gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len};
+
+			/// NOTE: we assemble the negative of the residual ( M du/dt + r(u) = 0)
 #pragma omp atomic
-			residual(lelem,ivar) -= flux;
+			residual(lelem,ivar) += flux;
 #pragma omp atomic
-			residual(relem,ivar) += flux;
+			residual(relem,ivar) -= flux;
 		}
 	}
 	
@@ -1759,30 +1767,29 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 
 		// subtract source term
 		a_real sourceterm;
-		source(&rc(iel,0), 0, &u(iel,0), &sourceterm);
+		source(&rc(iel,0), 0, &uarr[iel*nvars], &sourceterm);
 		residual(iel,0) -= sourceterm*m->garea(iel);
 	}
 	
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	VecRestoreArray(rvec, &rarr);
+	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 	return ierr;
 }
 
 /** For now, this is the same as the thin-layer Jacobian
  */
 template<int nvars>
-StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec u,
-		AbstractMatrix<a_real,a_int> *const A) const
+StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
+		Mat A) const
 {
 	StatusCode ierr = 0;
 
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr, *dtm;
+	PetscInt locnelem; const PetscScalar *uarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
-	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
 

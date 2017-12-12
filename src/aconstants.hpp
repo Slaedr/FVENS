@@ -91,9 +91,6 @@ namespace acfd
 
 	/// A data type for error codes, mostly for use with PETSc
 	typedef int StatusCode;
-
-	/// The communicator to use
-	MPI_Comm comm = PETSC_COMM_WORLD;
 }
 
 #endif

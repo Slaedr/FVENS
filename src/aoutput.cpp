@@ -2,6 +2,8 @@
  * @brief Implementation of subroutines to write mesh data to various kinds of output formats
  */
 
+#include <iostream>
+#include <fstream>
 #include "aoutput.hpp"
 #include "autilities.hpp"
 
