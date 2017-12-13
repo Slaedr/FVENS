@@ -399,6 +399,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		if(mpirank == 0)
 			convout.close();
 
+	if(mpirank == 0) {
+		std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step 
+			<< ", rel residual " << resi/initres << std::endl;
+	}
 	if(step == config.maxiter)
 		if(mpirank == 0) {
 			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
@@ -407,9 +411,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 	// print timing data
-	double linwtime, linctime;
+	/*double linwtime, linctime;
 	linwtime = linctime = -1;
-	/*linsolv->getRunTimes(linwtime, linctime);
+	linsolv->getRunTimes(linwtime, linctime);
 	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
 	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;*/
 	if(mpirank == 0) {
@@ -419,7 +423,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	}
 
 	// append data to log file
-	int numthreads = 0;
+	/*int numthreads = 0;
 #ifdef _OPENMP
 	numthreads = omp_get_max_threads();
 #endif
@@ -431,7 +435,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			<< std::setw(10) << step
 			<< "\n";
 		outf.close();
-	}
+	}*/
 	
 	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);

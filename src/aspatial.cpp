@@ -1460,7 +1460,7 @@ void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u,
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::postprocess_point(const MVector& u, 
+StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_point(const Vec uvec, 
 		amat::Array2d<a_real>& scalars, 
 		amat::Array2d<a_real>& velocities) const
 {
@@ -1472,6 +1472,11 @@ void FlowFV<secondOrderRequested,constVisc>::postprocess_point(const MVector& u,
 	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
 	up.zeros();
 	areasum.zeros();
+
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -1503,7 +1508,9 @@ void FlowFV<secondOrderRequested,constVisc>::postprocess_point(const MVector& u,
 
 	compute_entropy_cell(u);
 
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	std::cout << "FlowFV: postprocess_point(): Done.\n";
+	return ierr;
 }
 
 template<bool secondOrderRequested, bool constVisc>
@@ -1613,15 +1620,20 @@ void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& inst
 }
 
 template<int nvars>
-void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>& up,
+StatusCode Diffusion<nvars>::postprocess_point(const Vec uvec, amat::Array2d<a_real>& up,
 		amat::Array2d<a_real>& vec) const
 {
 	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
 	
-	amat::Array2d<a_real> areasum(m->gnpoin(),1);
+	std::vector<a_real> areasum(m->gnpoin(),0);
 	up.resize(m->gnpoin(), nvars);
 	up.zeros();
-	areasum.zeros();
+	//areasum.zeros();
+
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -1629,13 +1641,16 @@ void Diffusion<nvars>::postprocess_point(const MVector& u, amat::Array2d<a_real>
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
 				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
-				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
+				areasum[m->ginpoel(ielem,inode)] += m->garea(ielem);
 			}
 	}
 
 	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 		for(int ivar = 0; ivar < nvars; ivar++)
-			up(ipoin,ivar) /= areasum(ipoin);
+			up(ipoin,ivar) /= areasum[ipoin];
+
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	return ierr;
 }
 
 template<int nvars>

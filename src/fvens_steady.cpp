@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <petscksp.h>
 #include "alinalg.hpp"
 #include "autilities.hpp"
@@ -134,17 +135,17 @@ int main(int argc, char *argv[])
 
 	// export output to VTU
 
-	/*Array2d<a_real> scalars;
+	Array2d<a_real> scalars;
 	Array2d<a_real> velocities;
 	prob->postprocess_point(u, scalars, velocities);
 
-	string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
+	std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 	writeScalarsVectorToVtu_PointData(opts.vtu_output_file, 
 			m, scalars, scalarnames, velocities, "velocity");
 
 	// export surface data like pressure coeff etc and volume data as plain text files
 	
-	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	/*IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(&m, prob, &phy, opts.alpha);
 	
 	out.exportSurfaceData(u, opts.lwalls, opts.lothers, opts.surfnameprefix);

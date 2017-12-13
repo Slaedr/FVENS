@@ -97,7 +97,7 @@ public:
 	virtual StatusCode initializeUnknowns(Vec u) const = 0;
 	
 	/// Compute nodal quantities to export
-	virtual void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+	virtual StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vector) const = 0;
 
 	/// Exposes access to the mesh context
@@ -214,7 +214,7 @@ public:
 	 * Density, Mach number, pressure and temperature are the exported scalars,
 	 * and velocity is exported as well.
 	 */
-	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+	StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities) const;
 
 	/// Compute norm of cell-centered entropy production
@@ -343,7 +343,7 @@ public:
 	/// Compute nodal quantities to export
 	/** \param vec Dummy argument, not used
 	 */
-	void postprocess_point(const MVector& u, amat::Array2d<a_real>& scalars, 
+	StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& vec) const;
 	
 	virtual StatusCode compute_residual(const Vec u, Vec residual, 
