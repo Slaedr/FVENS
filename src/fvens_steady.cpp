@@ -133,6 +133,11 @@ int main(int argc, char *argv[])
 	
 	std::cout << "***\n";
 
+	delete starttime;
+	delete time;
+	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = MatDestroy(&M); CHKERRQ(ierr);
+
 	// export output to VTU
 
 	Array2d<a_real> scalars;
@@ -145,23 +150,25 @@ int main(int argc, char *argv[])
 
 	// export surface data like pressure coeff etc and volume data as plain text files
 	
-	/*IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	MVector umat; umat.resize(m.gnelem(),NVARS);
+	const PetscScalar *uarr;
+	ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
+	for(a_int i = 0; i < m.gnelem(); i++)
+		for(int j = 0; j < NVARS; j++)
+			umat(i,j) = uarr[i*NVARS+j];
+	ierr = VecRestoreArrayRead(u, &uarr);
+	ierr = VecDestroy(&u); CHKERRQ(ierr);
+	
+	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(&m, prob, &phy, opts.alpha);
 	
-	out.exportSurfaceData(u, opts.lwalls, opts.lothers, opts.surfnameprefix);
+	out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
 	
 	if(opts.vol_output_reqd == "YES")
-		out.exportVolumeData(u, opts.volnameprefix);*/
-
-	delete starttime;
-	delete time;
+		out.exportVolumeData(umat, opts.volnameprefix);
 
 	delete prob;
 	delete startprob;
-
-	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-	ierr = VecDestroy(&u); CHKERRQ(ierr);
-	ierr = MatDestroy(&M); CHKERRQ(ierr);
 
 	std::cout << "\n--------------- End --------------------- \n\n";
 	ierr = PetscFinalize(); CHKERRQ(ierr);

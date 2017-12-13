@@ -1,0 +1,11 @@
+#-ksp_converged_reason
+-options_left
+-log_view
+
+-mat_type baij
+
+-ksp_type fgmres
+-ksp_rtol 1e-2
+-ksp_max_it 60
+-pc_type sor
+-pc_sor_symmetric
