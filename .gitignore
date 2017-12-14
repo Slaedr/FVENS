@@ -5,6 +5,7 @@ build/**
 
 *.vtu
 *.control
+*.petscrc
 *.log
 *.err
 *.out
