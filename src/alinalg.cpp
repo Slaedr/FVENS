@@ -44,11 +44,11 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
-StatusCode setupVectors(const Mat A, Vec *const u, Vec *const r)
+/*StatusCode setupVectors(const Mat A, Vec *const u, Vec *const r)
 {
 	StatusCode ierr = 0;
 	ierr = MatCreateVecs(A, u, r); CHKERRQ(ierr);
 	return ierr;
-}
+}*/
 
 }

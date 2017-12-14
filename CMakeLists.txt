@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
 
 # The environment variable EIGEN_DIR needs to be set to the path of the Eigen top-level directory.
-# The environment variable BLASTED_DIR needs to set to the root of the BLASTed linear algebra library.
+# The env variables PETSC_DIR and PETSC_ARCH need to be set.
+# The environment variable BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
+# THe env variable BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
 
 # Pass -DNOOMP=1 to compile without OpenMP
+# Pass -DWITHBLASTED=1 to compile with BLASTed preconditioning support
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DSSE=1 to compile with SSE 4.2 instructions; ignored when compiling for KNC.
 # Pass -DAVX=1 to compile with AVX instructions.
@@ -74,8 +77,11 @@ endif()
 include_directories($ENV{EIGEN_DIR})
 
 # BLASTed
-include_directories($ENV{BLASTED_DIR}/include)
-set(BLASTED_LIB "$ENV{BLASTED_DIR}/build/lib/libblasted_petsc.a")
+if(WITHBLASTED)
+	include_directories($ENV{BLASTED_DIR}/include)
+	set(BLASTED_LIB "$ENV{BLASTED_BIN_DIR}/lib/libblasted_petsc.a")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_BLASTED=1")
+endif()
 
 # PETSc
 find_library(PETSC_LIB NAMES petsc PATHS $ENV{PETSC_DIR}/$ENV{PETSC_ARCH}/lib)

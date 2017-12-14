@@ -18,8 +18,8 @@
  *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include "afactory.hpp"
-#include <blockmatrices.hpp>
 
 namespace acfd {
 

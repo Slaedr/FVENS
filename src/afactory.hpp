@@ -28,7 +28,6 @@
 #include "agradientschemes.hpp"
 #include "areconstruction.hpp"
 #include "aspatial.hpp"
-#include <linearoperator.hpp>
 
 namespace acfd {
 
