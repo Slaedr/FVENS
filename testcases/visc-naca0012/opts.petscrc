@@ -7,5 +7,5 @@
 -ksp_type fgmres
 -ksp_rtol 1e-1
 -ksp_max_it 30
--pc_type sor
+-pc_type ilu
 -pc_sor_symmetric

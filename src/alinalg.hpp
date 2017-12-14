@@ -26,8 +26,5 @@ namespace acfd {
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
 
-/// Create 2 vectors compatible with a square sparse matrix
-StatusCode setupVectors(const Mat A, Vec *const u, Vec *const r);
-
 }
 #endif
