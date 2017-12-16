@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 2.8)
 # THe env variable BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
 
 # Pass -DNOOMP=1 to compile without OpenMP
-# Pass -DWITHBLASTED=1 to compile with BLASTed preconditioning support
+# Pass -DWITH_BLASTED=1 to compile with BLASTed preconditioning support
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DSSE=1 to compile with SSE 4.2 instructions; ignored when compiling for KNC.
 # Pass -DAVX=1 to compile with AVX instructions.
@@ -77,10 +77,11 @@ endif()
 include_directories($ENV{EIGEN_DIR})
 
 # BLASTed
-if(WITHBLASTED)
+if(WITH_BLASTED)
 	include_directories($ENV{BLASTED_DIR}/include)
-	set(BLASTED_LIB "$ENV{BLASTED_BIN_DIR}/lib/libblasted_petsc.a")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_BLASTED=1")
+	set(BLASTED_LIB "$ENV{BLASTED_BIN_DIR}/lib/libblasted_petsc.so")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_BLASTED=1")
+	message(STATUS "Building with BLASTed: ${BLASTED_LIB}")
 endif()
 
 # PETSc

@@ -7,6 +7,10 @@
 #include "aodesolver.hpp"
 #include "afactory.hpp"
 
+#ifdef USE_BLASTED
+#include <blasted_petsc.h>
+#endif
+
 using namespace amat;
 using namespace acfd;
 
@@ -117,6 +121,16 @@ int main(int argc, char *argv[])
 	
 	// Ask the spatial discretization context to initialize flow variables
 	startprob->initializeUnknowns(u);
+
+	// setup BLASTed preconditioning if requested
+#ifdef USE_BLASTED
+	// first assemble the matrix once for proper setup
+	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
+	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+	Blasted_data bctx;
+	ierr = setup_localpreconditioner_blasted(ksp,&bctx); CHKERRQ(ierr);
+#endif
 	
 	std::cout << "\n***\n";
 
