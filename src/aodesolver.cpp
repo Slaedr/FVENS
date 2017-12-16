@@ -337,7 +337,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			{
 				MatSetValuesBlocked(M, 1, &iel, 1, &iel, db.data(), ADD_VALUES);
 			}
-			//M->updateDiagBlock(iel*nvars, db.data(), nvars);
 		}
 
 		MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY);
@@ -348,7 +347,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 		// setup and solve linear system for the update du
 		
-		//linsolv->setParams(config.lintol, curlinmaxiter);
 		ierr = KSPSolve(solver, rvec, duvec); CHKERRQ(ierr);
 		int linstepsneeded;
 		ierr = KSPGetIterationNumber(solver, &linstepsneeded); CHKERRQ(ierr);
@@ -484,7 +482,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, locnelem, nvars);
+	Eigen::Map<MVector> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
 
@@ -516,7 +514,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			}
 
 			// update residual
-			space->compute_residual(uvec, rvec, dtm);
+			space->compute_residual(uvec, rvec, true, dtm);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)
@@ -527,7 +525,6 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			{
 				for(int i = 0; i < nvars; i++)
 				{
-					//u(iel,i) -= cfl*dtmin * 1.0/m->garea(iel)*residual(iel,i);
 					ustage(iel,i) = tvdcoeffs(istage,0)*u(iel,i)
 						          + tvdcoeffs(istage,1)*ustage(iel,i)
 								  - tvdcoeffs(istage,2) * dtmin*cfl/m->garea(iel)*residual(iel,i);
@@ -580,5 +577,7 @@ template class SteadyForwardEulerSolver<NVARS>;
 template class SteadyBackwardEulerSolver<NVARS>;
 template class SteadyForwardEulerSolver<1>;
 template class SteadyBackwardEulerSolver<1>;
+
+template class TVDRKSolver<NVARS>;
 
 }	// end namespace
