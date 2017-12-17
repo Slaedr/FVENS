@@ -6,6 +6,8 @@
 #include <iostream>
 #include "testflowspatial.hpp"
 
+#define FLUX_TOL 10*ZERO_TOL
+
 namespace acfd {
 
 int TestFlowFV::testWalls(const a_real *const u) const
@@ -26,12 +28,12 @@ int TestFlowFV::testWalls(const a_real *const u) const
 		
 		if(m->gintfacbtags(iface,0) == pconfig.adiabaticwall_id)
 		{
-			if(std::fabs(flux[0]) > ZERO_TOL) {
+			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;
 				std::cerr << "! Normal mass flux at adiabatic wall is nonzero!\n";
 			}
 
-			if(std::fabs(flux[NVARS-1]) > ZERO_TOL) {
+			if(std::fabs(flux[NVARS-1]) > FLUX_TOL) {
 				ierr = 1;
 				std::cerr << "! Normal energy flux at adiabatic wall is nonzero!\n";
 			}
@@ -51,12 +53,12 @@ int TestFlowFV::testWalls(const a_real *const u) const
 		
 		if(m->gintfacbtags(iface,0) == pconfig.slipwall_id)
 		{
-			if(std::fabs(flux[0]) > ZERO_TOL) {
+			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;
 				std::cerr << "! Normal mass flux at slip wall is nonzero!\n";
 			}
 
-			if(std::fabs(flux[NVARS-1]) > ZERO_TOL) {
+			if(std::fabs(flux[NVARS-1]) > 10*FLUX_TOL) {
 				ierr = 1;
 				std::cerr << "! Normal energy flux at slip wall is nonzero!\n";
 			}
