@@ -489,7 +489,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 
 	int step = 0;
 	a_real time = 0;   //< Physical time elapsed
-	a_real dtmin;      //< Time step
+	a_real dtmin=0;      //< Time step
 
 	// Stage solution vector
 	MVector ustage(m->gnelem(),nvars);
