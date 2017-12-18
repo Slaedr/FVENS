@@ -437,7 +437,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	}
 
 	// append data to log file
-	/*int numthreads = 0;
+	int numthreads = 0;
 #ifdef _OPENMP
 	numthreads = omp_get_max_threads();
 #endif
@@ -449,7 +449,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			<< std::setw(10) << step
 			<< "\n";
 		outf.close();
-	}*/
+	}
 	
 	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
