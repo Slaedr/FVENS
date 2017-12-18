@@ -31,6 +31,7 @@
 #endif
 
 #include <petscksp.h>
+#include <petsctime.h>
 
 namespace acfd {
 
@@ -271,14 +272,17 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		if(mpirank == 0)
 			convout.open(config.logfile+".conv", std::ofstream::app);
 	
-	struct timeval time1, time2;
+	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;*/
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	PetscLogDouble initialwtime;
+	PetscTime(&initialwtime);
 	
 	int avglinsteps = 0;
 
 	walltime = cputime = 0;
+	double linwtime = 0, linctime = 0;
 
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
@@ -346,8 +350,18 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		ierr = MatSetOption(M, MAT_NEW_NONZERO_LOCATIONS, PETSC_FALSE); CHKERRQ(ierr);
 
 		// setup and solve linear system for the update du
-		
+	
+		PetscLogDouble thislinwtime;
+		PetscTime(&thislinwtime);
+		double thislinctime = (double)clock() / (double)CLOCKS_PER_SEC;
+
 		ierr = KSPSolve(solver, rvec, duvec); CHKERRQ(ierr);
+
+		PetscLogDouble thisfinwtime; PetscTime(&thisfinwtime);
+		double thisfinctime = (double)clock() / (double)CLOCKS_PER_SEC;
+		linwtime += (thisfinwtime-thislinwtime); 
+		linctime += (thisfinctime-thislinctime);
+
 		int linstepsneeded;
 		ierr = KSPGetIterationNumber(solver, &linstepsneeded); CHKERRQ(ierr);
 		avglinsteps += linstepsneeded;
@@ -387,8 +401,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 				convout << step << " " << std::setw(10)  << resi/initres << '\n';
 	}
 
-	gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
+	/*gettimeofday(&time2, NULL);
+	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;*/
+	PetscLogDouble finalwtime;
+	PetscTime(&finalwtime);
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 	avglinsteps /= step;
@@ -411,13 +427,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	// print timing data
 	/*double linwtime, linctime;
 	linwtime = linctime = -1;
-	linsolv->getRunTimes(linwtime, linctime);
-	std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
-	std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;*/
+	linsolv->getRunTimes(linwtime, linctime);*/
 	if(mpirank == 0) {
 		std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
 		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-		std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n\n";
+		std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n";
+		std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
+		std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
 	}
 
 	// append data to log file
