@@ -38,6 +38,8 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 	ierr = MatSeqAIJSetPreallocation(*A, 0, &dnnz[0]); CHKERRQ(ierr);
 	ierr = MatMPIAIJSetPreallocation(*A, 0, &dnnz[0], nvars, NULL); CHKERRQ(ierr);
 
+	ierr = MatSetOption(*A, MAT_USE_HASH_TABLE, PETSC_TRUE); CHKERRQ(ierr);
+
 	return ierr;
 }
 

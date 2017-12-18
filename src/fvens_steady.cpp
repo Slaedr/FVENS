@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
 	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-	Blasted_data bctx;
+	Blasted_data bctx = newBlastedDataContext();
 	ierr = setup_localpreconditioner_blasted(ksp,&bctx); CHKERRQ(ierr);
 #endif
 	
