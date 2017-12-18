@@ -443,6 +443,16 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 #endif
 	if(mpirank == 0) {
 		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
+
+		// if the file is empty, write header
+		outf.seekp(0, std::ios::end);
+		if(outf.tellp() == 0)
+			outf << std::setw(10) << "# num-cells "
+				<< std::setw(6) << "threads " << std::setw(10) << "wall-time " 
+				<< std::setw(10) << "cpu-time " << std::setw(10) << "avg-lin-iters "
+				<< std::setw(10) << " time-steps\n";
+
+		// write current info
 		outf << std::setw(10) << m->gnelem() << " "
 			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
 			<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "
