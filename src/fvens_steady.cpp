@@ -1,6 +1,8 @@
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <petscksp.h>
+#include <omp.h>
 #include "alinalg.hpp"
 #include "autilities.hpp"
 #include "aoutput.hpp"
@@ -21,6 +23,8 @@ int main(int argc, char *argv[])
 		Arguments needed: FVENS control file and PETSc options file with -options_file,\n";
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
+	int mpirank;
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
 	// Read control file
 	
@@ -183,6 +187,35 @@ int main(int argc, char *argv[])
 
 	delete prob;
 	delete startprob;
+
+#ifdef USE_BLASTED
+	// write out time taken by BLASTed preconditioner
+	if(mpirank == 0) {
+		const double linwtime = bctx.factorwalltime + bctx.applywalltime;
+		const double linctime = bctx.factorcputime + bctx.applycputime;
+		int numthreads = 1;
+#ifdef _OPENMP
+		numthreads = omp_get_max_threads();
+#endif
+		std::ofstream outf; outf.open(opts.logfile+"-precon.tlog", std::ofstream::app);
+		// if the file is empty, write header
+		outf.seekp(0, std::ios::end);
+		if(outf.tellp() == 0) {
+			outf << "# Time taken by preconditioning operations only:\n";
+			outf << std::setw(10) << "# num-cells "
+				<< std::setw(6) << "threads " << std::setw(10) << "wall-time " 
+				<< std::setw(10) << "cpu-time " << std::setw(10) << "avg-lin-iters "
+				<< std::setw(10) << " time-steps\n";
+		}
+
+		// write current info
+		outf << std::setw(10) << m.gnelem() << " "
+			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
+			<< std::setw(10) << linctime
+			<< "\n";
+		outf.close();
+	}
+#endif
 
 	std::cout << "\n--------------- End --------------------- \n\n";
 	ierr = PetscFinalize(); CHKERRQ(ierr);

@@ -437,7 +437,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	}
 
 	// append data to log file
-	int numthreads = 0;
+	int numthreads = 1;
 #ifdef _OPENMP
 	numthreads = omp_get_max_threads();
 #endif
