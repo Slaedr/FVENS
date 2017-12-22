@@ -8,6 +8,7 @@
 
 #include "aconstants.hpp"
 #include "amesh2dh.hpp"
+#include "aspatial.hpp"
 
 #include <petscmat.h>
 
@@ -25,6 +26,28 @@ namespace acfd {
  */
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
+
+template <int nvars>
+class MatrixFreeSpatialJacobian
+{
+public:
+	/// Set up a matrix-free Jacobian from a spatial discretization context
+	/// and the finite difference step
+	MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, const a_real epsilon);
+
+	/// Compute a Jacobian-vector product
+	StatusCode apply(const Vec x, Vec y) const;
+
+protected:
+	/// Spatial discretization context
+	const Spatial<nvars>* spatial;
+
+	/// step length for finite difference Jacobian
+	const a_real eps;
+
+	/// Temporary storage
+	mutable Vec aux;
+};
 
 }
 #endif

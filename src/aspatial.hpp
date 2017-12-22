@@ -61,30 +61,6 @@ public:
 	/// Computes the Jacobian matrix of the residual
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 
-	/// Computes the Frechet derivative of the residual along a given direction 
-	/// using finite difference
-	/** \param[in] resu The residual vector at the state at which the derivative is to be computed
-	 * \param[in] u The state at which the derivative is to be computed
-	 * \param[in] v The direction in which the derivative is to be computed
-	 * \param[in] add_time_deriv Whether or not time-derivative term is to be added
-	 * \param[in] dtm Vector of local time steps for time derivative term
-	 * \param aux Storage for intermediate state
-	 * \param[out] prod The vector containing the directional derivative
-	 */
-	virtual StatusCode compute_jac_vec(const Vec resu, const Vec u, 
-			const Vec v,
-			const bool add_time_deriv, const std::vector<a_real>& dtm,
-			Vec __restrict aux,
-			Vec __restrict prod);
-	
-	/// Computes a([M du/dt +] dR/du) v + b w and stores in prod
-	virtual StatusCode compute_jac_gemv(const a_real a, const Vec resu, const Vec u, 
-			const Vec v,
-			const bool add_time_deriv, const std::vector<a_real>& dtm,
-			const a_real b, const Vec w,
-			Vec __restrict aux,
-			Vec __restrict prod);
-
 	/// Computes gradients of field variables and stores them in the argument
 	virtual void getGradients(const MVector& u,
 		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
@@ -122,9 +98,6 @@ protected:
 
 	/// computes ghost cell centers assuming symmetry about the face
 	void compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg);
-
-	/// step length for finite difference Jacobian
-	const a_real eps;
 };
 
 /// The collection of physical data needed to initialize flow spatial discretizations
@@ -420,7 +393,6 @@ protected:
 	
 	const GradientScheme<nvars> *const gradcomp;
 };
-
 
 }	// end namespace
 #endif

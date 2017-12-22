@@ -23,36 +23,46 @@ void open_file_toWrite(const std::string file, std::ofstream& fout);
 /// Data read from a control file for flow problems
 struct FlowParserOptions
 {
-	std::string meshfile, vtu_output_file, logfile, simtype, init_soln_file,
-		 invflux, invfluxjac, gradientmethod, limiter,
-		 linsolver, preconditioner, timesteptype,
-		 constvisc, surfnameprefix, volnameprefix, vol_output_reqd;
+	std::string meshfile, vtu_output_file, 
+		logfile,                           ///< File to log timing data in
+		simtype,                           ///< Type of flow to simulate - EULER, NAVIERSTOKES
+		init_soln_file,                    ///< File to read initial solution from (not implemented)
+		invflux, invfluxjac,               ///< Inviscid numerical flux
+		gradientmethod, limiter,           ///< Reconstruction type
+		timesteptype,                      ///< Explicit or implicit time stepping
+		constvisc,                         ///< NO for Sutherland viscosity
+		surfnameprefix, volnameprefix, 
+		vol_output_reqd;
 	
-	a_real initcfl, endcfl, tolerance, lintol, 
-		firstinitcfl, firstendcfl, firsttolerance,
-		Minf, alpha, Reinf, Tinf, Pr, gamma, twalltemp, twallvel,
-		tpwalltemp, tpwallpressure, tpwallvel, adiawallvel;
+	a_real initcfl, endcfl, 
+		tolerance, 
+		firstinitcfl, firstendcfl, 
+		firsttolerance,
+		Minf, alpha, Reinf, Tinf, 
+		Pr, gamma, 
+		twalltemp, twallvel,
+		adiawallvel,
+		tpwalltemp, tpwallpressure, tpwallvel;
 	
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, 
-		firstmaxiter, firstrampstart, firstrampend,
-		restart_vecs, farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker,
+	int maxiter, 
+		rampstart, rampend, 
+		firstmaxiter, 
+		firstrampstart, firstrampend,
+		farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker,
 		isothermalpressurewall_marker, adiabaticwall_marker, 
-		extrap_marker, periodic_marker, periodic_axis, num_out_walls, num_out_others;
+		extrap_marker, 
+		periodic_marker, 
+		periodic_axis, 
+		num_out_walls, 
+		num_out_others;
 	
 	short soln_init_type, 
 		  usestarter;
 	
-	unsigned short nbuildsweeps, 
-				   napplysweeps;
-	
-	bool use_matrix_free, 
-		 lognres, 
+	bool lognres, 
 		 useconstvisc, 
 		 viscsim,
-		 order2, 
-		 residualsmoothing;
-	
-	char mattype;
+		 order2;
 	
 	std::vector<int> lwalls, 
 		lothers;

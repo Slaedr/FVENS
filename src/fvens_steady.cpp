@@ -64,7 +64,8 @@ int main(int argc, char *argv[])
 	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 	
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<NVARS> *const startprob = create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
+	const Spatial<NVARS> *const startprob 
+		= create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
 	
 	std::cout << "\n***\n";
 	
@@ -80,7 +81,6 @@ int main(int argc, char *argv[])
 	KSP ksp;
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
-	//ierr = KSPSetUp(ksp); CHKERRQ(ierr);
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// set up time discrization
@@ -89,23 +89,18 @@ int main(int argc, char *argv[])
 		opts.lognres, opts.logfile+".tlog",
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
-		opts.linmaxiterstart, opts.linmaxiterend
 	};
 	
 	const SteadySolverConfig starttconf {
 		opts.lognres, opts.logfile+"-init.tlog",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
-		opts.linmaxiterstart, opts.linmaxiterend
 	};
 
 	SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
 
 	if(opts.timesteptype == "IMPLICIT") 
 	{
-		if(opts.use_matrix_free)
-			std::cout << "!! Matrix-free not implemented yet! Using matrix-storage instead.\n";
-		
 		if(opts.usestarter != 0)
 			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, ksp);
 

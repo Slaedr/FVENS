@@ -32,11 +32,9 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	FlowParserOptions opts;
 
 	// set some default values
-	opts.use_matrix_free = false;
 	opts.useconstvisc = false;
 	opts.viscsim = false;
 	opts.order2 = true;
-	opts.residualsmoothing = false;
 	opts.Reinf=0; opts.Tinf=0; opts.Pr=0; 
 	opts.twalltemp=0; opts.twallvel = 0;
 	opts.tpwalltemp=0; opts.tpwallpressure=0; opts.tpwallvel=0; 
@@ -177,33 +175,6 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	if(opts.timesteptype == "IMPLICIT") {
 		control >> dum;
 		control >> dum; control >> opts.invfluxjac;
-
-		std::string usemf;
-		control >> dum; control >> usemf;
-		if(usemf == "YES")
-			opts.use_matrix_free = true;
-		else
-			opts.use_matrix_free = false;
-
-		control >> dum; control >> opts.mattype;
-		control >> dum; control >> opts.linsolver;
-		control >> dum; control >> opts.lintol;
-		control >> dum; control >> opts.linmaxiterstart;
-		control >> dum; control >> opts.linmaxiterend;
-		control >> dum; control >> opts.restart_vecs;
-		control >> dum; control >> opts.preconditioner;
-		control >> dum; control >> opts.nbuildsweeps >> opts.napplysweeps;
-	}
-	else {
-		control >> dum;
-		std::string residualsmoothingstr;
-		control >> dum; control >> residualsmoothingstr;
-		control >> dum; control >> opts.nbuildsweeps >> opts.napplysweeps;
-		
-		if(residualsmoothingstr == "YES")
-			opts.residualsmoothing = true;
-
-		opts.invfluxjac = opts.invflux;
 	}
 	control.close();
 

@@ -46,4 +46,25 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
+template<int nvars>
+MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, 
+		const a_real epsilon)
+	: spatial{space}, eps{epsilon}
+{
+	// TODO: Setup aux vector
+}
+
+template<int nvars>
+StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
+{
+	StatusCode ierr = 0;
+
+	// TODO
+	
+	return ierr;
+}
+
+template class MatrixFreeSpatialJacobian<NVARS>;
+template class MatrixFreeSpatialJacobian<1>;
+
 }

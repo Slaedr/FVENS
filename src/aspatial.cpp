@@ -28,7 +28,7 @@ namespace acfd {
 /** \todo TODO: Replace midpoint-reflected ghost cells with face-reflected ones.
  */
 template<int nvars>
-Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh), eps{sqrt(ZERO_TOL)/10.0}
+Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 {
 	rc.resize(m->gnelem()+m->gnbface(),m->gndim());
 	gr = new amat::Array2d<a_real>[m->gnaface()];
@@ -149,7 +149,7 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 	}
 }
 
-template <int nvars>
+/*template <int nvars>
 StatusCode Spatial<nvars>::compute_jac_vec(const Vec resu, const Vec u, 
 	const Vec v, const bool add_time_deriv, const std::vector<a_real>& dtm,
 	Vec __restrict aux,
@@ -157,7 +157,7 @@ StatusCode Spatial<nvars>::compute_jac_vec(const Vec resu, const Vec u,
 {
 	StatusCode ierr = 0;
 
-	/*const a_int N = m->gnelem()*nvars;
+	const a_int N = m->gnelem()*nvars;
 	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
 	
@@ -179,7 +179,7 @@ StatusCode Spatial<nvars>::compute_jac_vec(const Vec resu, const Vec u,
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < nvars; ivar++)
 				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
-	}*/
+	}
 
 	return ierr;
 }
@@ -194,7 +194,7 @@ StatusCode Spatial<nvars>::compute_jac_gemv(const a_real a, const Vec resu,
 		Vec __restrict prod)
 {
 	StatusCode ierr = 0;
-	/*const a_int N = m->gnelem()*nvars;
+	const a_int N = m->gnelem()*nvars;
 	a_real vnorm = dot(N, v.data(),v.data());
 	vnorm = sqrt(vnorm);
 	
@@ -216,10 +216,10 @@ StatusCode Spatial<nvars>::compute_jac_gemv(const a_real a, const Vec resu,
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < nvars; ivar++)
 				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
-	}*/
+	}
 
 	return ierr;
-}
+}*/
 
 template<bool secondOrderRequested, bool constVisc>
 FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
