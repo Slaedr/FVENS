@@ -48,10 +48,18 @@ template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, 
-		const a_real epsilon)
+		const a_real epsilon, const Vec system_vector)
 	: spatial{space}, eps{epsilon}
 {
-	// TODO: Setup aux vector
+	StatusCode ierr = VecDuplicate(system_vector, &aux);
+	if(ierr)
+		std::cout << "MatrixFreeSpatialJacobian: Error creating aux vector!\n";
+}
+
+template<int nvars>
+MatrixFreeSpatialJacobian<nvars>::~MatrixFreeSpatialJacobian()
+{
+	VecDestroy(&aux);
 }
 
 template<int nvars>
@@ -66,5 +74,8 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 
 template class MatrixFreeSpatialJacobian<NVARS>;
 template class MatrixFreeSpatialJacobian<1>;
+
+template<int nvars>
+StatusCode setupMatrixFreeJacobian(MatrixFreeSpatialJacobian *const mfjac, Mat A)
 
 }

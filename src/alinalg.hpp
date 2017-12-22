@@ -33,7 +33,10 @@ class MatrixFreeSpatialJacobian
 public:
 	/// Set up a matrix-free Jacobian from a spatial discretization context
 	/// and the finite difference step
-	MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, const a_real epsilon);
+	MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, const a_real epsilon,
+			const Vec system_vector);
+
+	~MatrixFreeSpatialJacobian();
 
 	/// Compute a Jacobian-vector product
 	StatusCode apply(const Vec x, Vec y) const;
