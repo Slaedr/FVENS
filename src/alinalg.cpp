@@ -7,6 +7,12 @@
 
 namespace acfd {
 
+template<int nvars>
+StatusCode setupMatrixFreeJacobian(MatrixFreeSpatialJacobian *const mfjac, Mat A)
+{
+	// TODO: setup matrix-free Jacobian
+}
+
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 {
@@ -48,18 +54,22 @@ template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, 
-		const a_real epsilon, const Vec system_vector)
+		const a_real epsilon)
 	: spatial{space}, eps{epsilon}
+{ }
+
+template<int nvars>
+StatusCode MatrixFreeSpatialJacobian<nvars>::setup_work_storage(const Vec system_vector)
 {
-	StatusCode ierr = VecDuplicate(system_vector, &aux);
-	if(ierr)
-		std::cout << "MatrixFreeSpatialJacobian: Error creating aux vector!\n";
+	StatusCode ierr = VecDuplicate(system_vector, &aux); CHKERRQ(ierr);
+	return ierr;
 }
 
 template<int nvars>
-MatrixFreeSpatialJacobian<nvars>::~MatrixFreeSpatialJacobian()
+StatusCode MatrixFreeSpatialJacobian<nvars>::destroy_work_storage()
 {
-	VecDestroy(&aux);
+	StatusCode ierr = VecDestroy(&aux); CHKERRQ(ierr);
+	return ierr;
 }
 
 template<int nvars>
@@ -75,7 +85,15 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 template class MatrixFreeSpatialJacobian<NVARS>;
 template class MatrixFreeSpatialJacobian<1>;
 
-template<int nvars>
-StatusCode setupMatrixFreeJacobian(MatrixFreeSpatialJacobian *const mfjac, Mat A)
+template <int nvars>
+StatusCode setup_matrixfree_jacobian(MatrixFreeSpatialJacobian<nvars> *const mfj, Mat A)
+{
+	// TODO
+}
+
+template StatusCode setup_matrixfree_jacobian<NVARS>(MatrixFreeSpatialJacobian<NVARS> *const mfj, 
+		Mat A);
+template StatusCode setup_matrixfree_jacobian<1>(MatrixFreeSpatialJacobian<1> *const mfj, 
+		Mat A);
 
 }
