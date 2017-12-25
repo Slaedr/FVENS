@@ -37,7 +37,7 @@ public:
 	MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, const a_real epsilon);
 
 	/// Allocate storage for work vectors using a pre-allocated vec as a template
-	StatusCode setup_aux_storage(const Vec system_vector);
+	StatusCode setup_work_storage(const Vec system_vector);
 
 	/// Release storage from work vectors
 	StatusCode destroy_work_storage();

@@ -71,11 +71,11 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-50.0
----final-CFL(500)
-500.0
+1000.0
+---final-CFL
+1000.0
 ---ramp-start-step-and-end-step(50-200)
-50 150
+30 100
 ---Tolerance
 1e-7
 ---Max-pseudotime-iterations

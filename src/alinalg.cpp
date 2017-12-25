@@ -8,12 +8,6 @@
 
 namespace acfd {
 
-template<int nvars>
-StatusCode setupMatrixFreeJacobian(MatrixFreeSpatialJacobian *const mfjac, Mat A)
-{
-	// TODO: setup matrix-free Jacobian
-}
-
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 {
@@ -108,7 +102,9 @@ template class MatrixFreeSpatialJacobian<1>;
 template <int nvars>
 StatusCode setup_matrixfree_jacobian(MatrixFreeSpatialJacobian<nvars> *const mfj, Mat A)
 {
+	StatusCode ierr = 0;
 	// TODO
+	return ierr;
 }
 
 template StatusCode setup_matrixfree_jacobian<NVARS>(MatrixFreeSpatialJacobian<NVARS> *const mfj, 

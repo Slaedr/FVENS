@@ -105,7 +105,8 @@ void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc,
 	}
 	
 	const a_real p = getPressure(uc[NVARS-1] - 0.5*rho2vmag2/uc[0]);
-	a_real dp[NVARS];
+	a_real dp[NVARS]; 
+	zeros(dp, NVARS);
 	getJacobianPressureWrtConserved(uc, rho2vmag2, dp);
 
 	getJacobianTemperature(uc[0], p, dp, &jac[3*NVARS]);

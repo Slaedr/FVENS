@@ -84,7 +84,7 @@ namespace acfd
 	using FArray = Eigen::Array<a_real,rows,cols,ColMajor>;
 
 	/// Fill a raw array of reals with zeros
-	inline void zeros(a_real *const a, const a_int n) {
+	inline void zeros(a_real *const __restrict a, const a_int n) {
 		for(int i = 0; i < n; i++)
 			a[i] = 0;
 	}

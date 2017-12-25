@@ -115,7 +115,7 @@ public:
 			a_real *const v,
 			a_real& vn,
 			a_real& p, a_real& H ) const
-		__attribute__((always_inline));
+		__attribute((always_inline));
 
 	/// Computes derivatives of variables computed in getVarsFromConserved
 	/** \param[in] uc Vector of conserved variables
@@ -144,7 +144,8 @@ public:
 	/** Note that the derivative is added to the second argument - the latter is not zeroed
 	 * or anything.
 	 */
-	void getJacobianPressureWrtConserved(const a_real *const uc, a_real *const __restrict dp) const;
+	void getJacobianPressureWrtConserved(const a_real *const uc, a_real *const __restrict dp) const
+		__attribute((always_inline));
 
 	/// Gives the pressure more efficiently using an additional input - the momemtum magnitude
 	void getJacobianPressureWrtConserved(const a_real *const uc, const a_real rho2vmag2,
