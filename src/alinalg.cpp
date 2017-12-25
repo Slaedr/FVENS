@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <limits>
 
 #define PETSCOPTION_STR_LEN 30
 
@@ -73,11 +74,30 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::destroy_work_storage()
 }
 
 template<int nvars>
+void MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state) {
+	u = u_state;
+	res = r_state;
+}
+
+template<int nvars>
 StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 {
 	StatusCode ierr = 0;
+	std::vector<a_real> dummy;
 
-	// TODO
+	PetscScalar xnorm = 0;
+	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
+#ifdef DEBUG
+	if(xnorm < 10*std::numeric_limits<a_real>::epsilon)
+		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP, 
+				"Norm of offset is too small for finite difference Jacobian!");
+#endif
+	xnorm = eps/xnorm;
+	ierr = VecAXPBY(aux, xnorm, 0.0, x); CHKERRQ(ierr);
+	ierr = VecAXPY(aux, 1.0, u); CHKERRQ(ierr);
+	ierr = spatial->compute_residual(aux, y, false, dummy); CHKERRQ(ierr);
+	ierr = VecAXPY(y, -1.0, res); CHKERRQ(ierr);
+	ierr = VecScale(y, xnorm); CHKERRQ(ierr);
 	
 	return ierr;
 }

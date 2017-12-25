@@ -42,6 +42,9 @@ public:
 	/// Release storage from work vectors
 	StatusCode destroy_work_storage();
 
+	/// Set the state u at which the Jacobian is computed and the corresponding residual r(u)
+	void set_state(const Vec u_state, const Vec r_state);
+
 	/// Compute a Jacobian-vector product
 	StatusCode apply(const Vec x, Vec y) const;
 
@@ -51,6 +54,12 @@ protected:
 
 	/// step length for finite difference Jacobian
 	const a_real eps;
+
+	/// The state at which to compute the Jacobian
+	Vec u;
+
+	/// The residual of the state \ref uvec at which to compute the Jacobian
+	Vec res;
 
 	/// Temporary storage
 	mutable Vec aux;
