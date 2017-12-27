@@ -48,15 +48,24 @@ template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const
 template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
 template<int nvars>
-MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, 
-		const a_real epsilon)
-	: spatial{space}, eps{epsilon}
-{ }
+MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<nvars> *const space)
+	: spatial{space}, eps{1e-7}
+{ 
+	PetscBool set = PETSC_FALSE;
+	PetscOptionsGetReal(NULL, NULL, "-matrix_free_difference_step", &eps, &set);
+	std::cout << " MatrixFreeSpatialJacobian: Using finite difference step " << eps << '\n';
+}
 
 template<int nvars>
-StatusCode MatrixFreeSpatialJacobian<nvars>::setup_work_storage(const Vec system_vector)
+void MatrixFreeSpatialJacobian<nvars>::set_spatial(const Spatial<nvars> *const space) {
+	spatial = space;
+	return 0;
+}
+
+template<int nvars>
+StatusCode MatrixFreeSpatialJacobian<nvars>::setup_work_storage(const Mat system_matrix)
 {
-	StatusCode ierr = VecDuplicate(system_vector, &aux); CHKERRQ(ierr);
+	StatusCode ierr = MatCreateVecs(system_matrix, NULL, &aux); CHKERRQ(ierr);
 	return ierr;
 }
 
@@ -99,11 +108,45 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 template class MatrixFreeSpatialJacobian<NVARS>;
 template class MatrixFreeSpatialJacobian<1>;
 
+/* PETSc wrapper functions */
+
+/// The function called by PETSc to carry out a Jacobian-vector product
+template <int nvars>
+StatusCode matrixfree_apply(Mat A, Vec x, Vec y)
+{
+	StatusCode ierr = 0;
+	MatrixFreeSpatialJacobian<nvars> *mfmat;
+	ierr = MatShellGetContext(A, (void*)&mfmat); CHKERRQ(ierr);
+	ierr = mfmat->apply(x,y); CHKERRQ(ierr);
+	return ierr;
+}
+
+template StatusCode matrixfree_apply<NVARS>(Mat A, Vec x, Vec y);
+template StatusCode matrixfree_apply<1>(Mat A, Vec x, Vec y);
+
+template <int nvars>
+StatusCode matrixfree_destroy(Mat A)
+{
+	StatusCode ierr = 0;
+	MatrixFreeSpatialJacobian<nvars> *mfmat;
+	ierr = MatShellGetContext(A, (void*)&mfmat); CHKERRQ(ierr);
+	ierr = mfmat->destroy_work_storage(); CHKERRQ(ierr);
+	return ierr;
+}
+
+template StatusCode matrixfree_destroy<NVARS>(Mat A);
+template StatusCode matrixfree_destroy<1>(Mat A);
+
+/* Setup function */
+
 template <int nvars>
 StatusCode setup_matrixfree_jacobian(MatrixFreeSpatialJacobian<nvars> *const mfj, Mat A)
 {
 	StatusCode ierr = 0;
-	// TODO
+	ierr = mfj->setup_work_storage(A); CHKERRQ(ierr);
+	ierr = MatShellSetContext(A, (void*)mfj); CHKERRQ(ierr);
+	ierr = MatShellSetOperation(A, MATOP_MULT, &matrixfree_apply<nvars>); CHKERRQ(ierr);
+	ierr = MatShellSetOperation(A, MATOP_DESTROY, &matrixfree_destroy<nvars>); CHKERRQ(ierr);
 	return ierr;
 }
 

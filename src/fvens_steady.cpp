@@ -77,6 +77,10 @@ int main(int argc, char *argv[])
 	ierr = setupSystemMatrix<NVARS>(&m, &M); CHKERRQ(ierr);
 	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
 
+	// setup matrix-free facility
+	MatrixFreeSpatialJacobian<NVARS> mfjac;
+	ierr = setup_matrixfree_jacobian(&mfjac, M); CHKERRQ(ierr);
+
 	// initialize solver
 	KSP ksp;
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
@@ -136,10 +140,14 @@ int main(int argc, char *argv[])
 	// computation
 	
 	if(opts.usestarter != 0) {
-		
+	
+		mfjac.set_spatial(startprob);
+
 		// solve the starter problem to get the initial solution
 		ierr = starttime->solve(u); CHKERRQ(ierr);
 	}
+
+	mfjac.set_spatial(prob);
 
 	// Solve the main problem
 	ierr = time->solve(u); CHKERRQ(ierr);

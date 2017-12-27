@@ -32,12 +32,14 @@ template <int nvars>
 class MatrixFreeSpatialJacobian
 {
 public:
-	/// Set up a matrix-free Jacobian from a spatial discretization context
-	/// and the finite difference step
-	MatrixFreeSpatialJacobian(const Spatial<nvars> *const space, const a_real epsilon);
+	/// Query the Petsc options database for a custom option for setting step length
+	MatrixFreeSpatialJacobian();
 
-	/// Allocate storage for work vectors using a pre-allocated vec as a template
-	StatusCode setup_work_storage(const Vec system_vector);
+	/// Set the spatial dscretization whose Jacobian is needed
+	void set_spatial(const Spatial<nvars> *const space);
+
+	/// Allocate storage for work vectors using the (possibly matrix-free) Mat as a template
+	StatusCode setup_work_storage(const Mat system_matrix);
 
 	/// Release storage from work vectors
 	StatusCode destroy_work_storage();
@@ -53,7 +55,7 @@ protected:
 	const Spatial<nvars>* spatial;
 
 	/// step length for finite difference Jacobian
-	const a_real eps;
+	a_real eps;
 
 	/// The state at which to compute the Jacobian
 	Vec u;
