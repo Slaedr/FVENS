@@ -17,7 +17,7 @@ namespace acfd {
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context
  * \param[in|out] A The matrix to pre-allocate for
- *	 
+ *
  * We assume there's only 1 neighboring cell that's not in this subdomain
  * \todo TODO: Once a partitioned mesh is used, set the preallocation properly.
  *
@@ -28,11 +28,16 @@ template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
 
 /// Matrix-free Jacobian of the flux
+/** The normalized step length epsilon for the finite-difference Jacobian is set to a default value,
+ * but it also queried from the PETSc options database.
+ */
 template <int nvars>
 class MatrixFreeSpatialJacobian
 {
 public:
-	/// Query the Petsc options database for a custom option for setting step length
+	/// Query the Petsc options database for a custom option for setting the step length epsilon
+	/** The finite difference step length epsilon is given a default value.
+	 */
 	MatrixFreeSpatialJacobian();
 
 	/// Set the spatial dscretization whose Jacobian is needed
@@ -68,13 +73,23 @@ protected:
 };
 
 /// Setup a matrix-free Mat for the Jacobian
-/** 
+/**
  * \param mfj A constructed MatrixFreeSpatialJacobian object
- * \param A The Mat to setup We assume \ref setupSystemMatrix has already been called on the Mat 
+ * \param A The Mat to setup We assume \ref setupSystemMatrix has already been called on the Mat
  *   to set the size etc.
  */
 template <int nvars>
 StatusCode setup_matrixfree_jacobian(MatrixFreeSpatialJacobian<nvars> *const mfj, Mat A);
+
+/// Returns true iff the argument is a matrix-free PETSc Mat, ie., a Mat shell
+inline bool isMatrixFree(Mat M) {
+	MatType mattype;
+	MatGetType(M, &mattype);
+	if(!strcmp(mattype,"shell"))
+		return true;
+	else
+		return false;
+}
 
 }
 #endif

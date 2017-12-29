@@ -253,12 +253,19 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 	Mat M;
 	ierr = KSPGetOperators(solver, &M, NULL); CHKERRQ(ierr);
+	//bool ismatrixfree = isMatrixFree(M);
 
 	a_real curCFL; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 
+	/* Our usage of Eigen Maps in the manner below assumes that VecGetArray returns a pointer to
+	 * the primary underlying storage in PETSc Vec. This usually happens, but not for
+	 * CUDA, CUSP or ViennaCL vecs.
+	 * To be safe, we should use VecGetArray and construct the map immediately before
+	 * the usage of the map.
+	 */
 	PetscScalar *duarr, *rarr, *uarr;
 	ierr = VecGetArray(duvec, &duarr); CHKERRQ(ierr);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
@@ -293,13 +300,12 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 				residual(iel,i) = 0;
 			}
 		}
-
-		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		
 		// update residual and local time steps
 		ierr = space->compute_residual(uvec, rvec, true, dtm); CHKERRQ(ierr);
 
-		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);;
+		ierr = MatZeroEntries(M); CHKERRQ(ierr);
+		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
 		
 		// compute ramped quantities
 		if(step < config.rampstart) {

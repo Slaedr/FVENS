@@ -1,7 +1,7 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical convective fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. 
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical convective fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. 
 
 Currently, only steady-state problems are supported. Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. A number of linear solvers and preconditioners are available.
 
@@ -24,7 +24,7 @@ and for a release build with SSE 4.2 vectorization
 
 		cmake /path/to/src -DCMAKE_BUILD_TYPE=Release -DSSE=1
 
-`-DNOOMP=1` should be appended if OpenMP is not available. `-DSSE=1` can be replaced by `-DAVX=1`. Finally,
+`-DNOOMP=1` should be appended if OpenMP is not available. `-DSSE=1` can be replaced by `-DAVX=1`. See the header of the top-level CMakeLists.txt for a list of all build options.  Finally,
 
 		make -j<N>
 

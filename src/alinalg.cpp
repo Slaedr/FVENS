@@ -14,12 +14,13 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 	StatusCode ierr = 0;
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
 	ierr = MatSetType(*A, MATMPIBAIJ); CHKERRQ(ierr);
-	ierr = MatSetFromOptions(*A); CHKERRQ(ierr);
 
-	ierr = MatSetSizes(*A, PETSC_DECIDE, PETSC_DECIDE, m->gnelem()*nvars, m->gnelem()*nvars); 
+	ierr = MatSetSizes(*A, PETSC_DECIDE, PETSC_DECIDE, m->gnelem()*nvars, m->gnelem()*nvars);
 	CHKERRQ(ierr);
 	ierr = MatSetBlockSize(*A, nvars); CHKERRQ(ierr);
-	
+
+	ierr = MatSetFromOptions(*A); CHKERRQ(ierr);
+
 	std::vector<PetscInt> dnnz(m->gnelem());
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -35,9 +36,11 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 			dnnz[iel*nvars+i] = (m->gnfael(iel)+1)*nvars;
 		}
 	}
-	
+
 	ierr = MatSeqAIJSetPreallocation(*A, 0, &dnnz[0]); CHKERRQ(ierr);
 	ierr = MatMPIAIJSetPreallocation(*A, 0, &dnnz[0], nvars, NULL); CHKERRQ(ierr);
+
+	ierr = MatSetUp(*A); CHKERRQ(ierr);
 
 	ierr = MatSetOption(*A, MAT_USE_HASH_TABLE, PETSC_TRUE); CHKERRQ(ierr);
 
@@ -48,24 +51,23 @@ template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const
 template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
 template<int nvars>
-MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<nvars> *const space)
-	: spatial{space}, eps{1e-7}
-{ 
+MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()
+	: eps{1e-7}
+{
 	PetscBool set = PETSC_FALSE;
 	PetscOptionsGetReal(NULL, NULL, "-matrix_free_difference_step", &eps, &set);
-	std::cout << " MatrixFreeSpatialJacobian: Using finite difference step " << eps << '\n';
 }
 
 template<int nvars>
 void MatrixFreeSpatialJacobian<nvars>::set_spatial(const Spatial<nvars> *const space) {
 	spatial = space;
-	return 0;
 }
 
 template<int nvars>
 StatusCode MatrixFreeSpatialJacobian<nvars>::setup_work_storage(const Mat system_matrix)
 {
 	StatusCode ierr = MatCreateVecs(system_matrix, NULL, &aux); CHKERRQ(ierr);
+	std::cout << " MatrixFreeSpatialJacobian: Using finite difference step " << eps << '\n';
 	return ierr;
 }
 
@@ -92,7 +94,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
 #ifdef DEBUG
 	if(xnorm < 10*std::numeric_limits<a_real>::epsilon)
-		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP, 
+		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP,
 				"Norm of offset is too small for finite difference Jacobian!");
 #endif
 	xnorm = eps/xnorm;
@@ -101,7 +103,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	ierr = spatial->compute_residual(aux, y, false, dummy); CHKERRQ(ierr);
 	ierr = VecAXPY(y, -1.0, res); CHKERRQ(ierr);
 	ierr = VecScale(y, xnorm); CHKERRQ(ierr);
-	
+
 	return ierr;
 }
 
@@ -145,14 +147,15 @@ StatusCode setup_matrixfree_jacobian(MatrixFreeSpatialJacobian<nvars> *const mfj
 	StatusCode ierr = 0;
 	ierr = mfj->setup_work_storage(A); CHKERRQ(ierr);
 	ierr = MatShellSetContext(A, (void*)mfj); CHKERRQ(ierr);
-	ierr = MatShellSetOperation(A, MATOP_MULT, &matrixfree_apply<nvars>); CHKERRQ(ierr);
-	ierr = MatShellSetOperation(A, MATOP_DESTROY, &matrixfree_destroy<nvars>); CHKERRQ(ierr);
+	ierr = MatShellSetOperation(A, MATOP_MULT, (void(*)(void))&matrixfree_apply<nvars>); CHKERRQ(ierr);
+	ierr = MatShellSetOperation(A, MATOP_DESTROY, (void(*)(void))&matrixfree_destroy<nvars>);
+	CHKERRQ(ierr);
 	return ierr;
 }
 
-template StatusCode setup_matrixfree_jacobian<NVARS>(MatrixFreeSpatialJacobian<NVARS> *const mfj, 
+template StatusCode setup_matrixfree_jacobian<NVARS>(MatrixFreeSpatialJacobian<NVARS> *const mfj,
 		Mat A);
-template StatusCode setup_matrixfree_jacobian<1>(MatrixFreeSpatialJacobian<1> *const mfj, 
+template StatusCode setup_matrixfree_jacobian<1>(MatrixFreeSpatialJacobian<1> *const mfj,
 		Mat A);
 
 }

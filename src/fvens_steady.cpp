@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
 	// Read control file
-	
+
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 
 	// Set up mesh
@@ -42,33 +42,33 @@ int main(int argc, char *argv[])
 	std::cout << "\n***\n";
 
 	// set up problem
-	
+
 	// physical configuration
-	const FlowPhysicsConfig pconf { 
+	const FlowPhysicsConfig pconf {
 		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
 		opts.viscsim, opts.useconstvisc,
 		opts.isothermalwall_marker, opts.adiabaticwall_marker, opts.isothermalpressurewall_marker,
-		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker, 
+		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
 		opts.extrap_marker, opts.periodic_marker,
 		opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel
 	};
 
 	// numerics for main solver
-	const FlowNumericsConfig nconfmain {opts.invflux, opts.invfluxjac, 
+	const FlowNumericsConfig nconfmain {opts.invflux, opts.invfluxjac,
 		opts.gradientmethod, opts.limiter, opts.order2};
 
 	// simpler numerics for startup
 	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
-	
+
 	std::cout << "Setting up main spatial scheme.\n";
 	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
-	
+
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<NVARS> *const startprob 
+	const Spatial<NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
-	
+
 	std::cout << "\n***\n";
-	
+
 	// solution vector
 	Vec u;
 
@@ -79,7 +79,12 @@ int main(int argc, char *argv[])
 
 	// setup matrix-free facility
 	MatrixFreeSpatialJacobian<NVARS> mfjac;
-	ierr = setup_matrixfree_jacobian(&mfjac, M); CHKERRQ(ierr);
+	MatType mattype;
+	ierr = MatGetType(M, &mattype); CHKERRQ(ierr);
+	if(!strcmp(mattype,"mffd") || !strcmp(mattype,"shell")) {
+		ierr = setup_matrixfree_jacobian(&mfjac, M);
+		CHKERRQ(ierr);
+	}
 
 	// initialize solver
 	KSP ksp;
@@ -88,13 +93,13 @@ int main(int argc, char *argv[])
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// set up time discrization
-	
+
 	const SteadySolverConfig maintconf {
 		opts.lognres, opts.logfile+".tlog",
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
 	};
-	
+
 	const SteadySolverConfig starttconf {
 		opts.lognres, opts.logfile+"-init.tlog",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
@@ -103,7 +108,7 @@ int main(int argc, char *argv[])
 
 	SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
 
-	if(opts.timesteptype == "IMPLICIT") 
+	if(opts.timesteptype == "IMPLICIT")
 	{
 		if(opts.usestarter != 0)
 			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, ksp);
@@ -112,7 +117,7 @@ int main(int argc, char *argv[])
 
 		std::cout << "Set up backward Euler temporal scheme.\n";
 	}
-	else 
+	else
 	{
 		if(opts.usestarter != 0)
 			starttime = new SteadyForwardEulerSolver<4>(startprob, u, starttconf);
@@ -121,7 +126,7 @@ int main(int argc, char *argv[])
 
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}
-	
+
 	// Ask the spatial discretization context to initialize flow variables
 	startprob->initializeUnknowns(u);
 
@@ -134,13 +139,13 @@ int main(int argc, char *argv[])
 	Blasted_data bctx = newBlastedDataContext();
 	ierr = setup_localpreconditioner_blasted(ksp,&bctx); CHKERRQ(ierr);
 #endif
-	
+
 	std::cout << "\n***\n";
 
 	// computation
-	
+
 	if(opts.usestarter != 0) {
-	
+
 		mfjac.set_spatial(startprob);
 
 		// solve the starter problem to get the initial solution
@@ -151,7 +156,7 @@ int main(int argc, char *argv[])
 
 	// Solve the main problem
 	ierr = time->solve(u); CHKERRQ(ierr);
-	
+
 	std::cout << "***\n";
 
 	delete starttime;
@@ -166,11 +171,11 @@ int main(int argc, char *argv[])
 	prob->postprocess_point(u, scalars, velocities);
 
 	std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
-	writeScalarsVectorToVtu_PointData(opts.vtu_output_file, 
+	writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
 			m, scalars, scalarnames, velocities, "velocity");
 
 	// export surface data like pressure coeff etc and volume data as plain text files
-	
+
 	MVector umat; umat.resize(m.gnelem(),NVARS);
 	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
@@ -179,12 +184,12 @@ int main(int argc, char *argv[])
 			umat(i,j) = uarr[i*NVARS+j];
 	ierr = VecRestoreArrayRead(u, &uarr);
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
-	
+
 	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(&m, prob, &phy, opts.alpha);
-	
+
 	out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
-	
+
 	if(opts.vol_output_reqd == "YES")
 		out.exportVolumeData(umat, opts.volnameprefix);
 
@@ -206,14 +211,14 @@ int main(int argc, char *argv[])
 		if(outf.tellp() == 0) {
 			outf << "# Time taken by preconditioning operations only:\n";
 			outf << std::setw(10) << "# num-cells "
-				<< std::setw(6) << "threads " << std::setw(10) << "wall-time " 
+				<< std::setw(6) << "threads " << std::setw(10) << "wall-time "
 				<< std::setw(10) << "cpu-time " << std::setw(10) << "avg-lin-iters "
 				<< std::setw(10) << " time-steps\n";
 		}
 
 		// write current info
 		outf << std::setw(10) << m.gnelem() << " "
-			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
+			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " "
 			<< std::setw(10) << linctime
 			<< "\n";
 		outf.close();

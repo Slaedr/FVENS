@@ -52,7 +52,8 @@ inline a_real minmod(a_real a, a_real b)
  * \brief Stores a dense row-major matrix.
  * 
  * Notes:
- * If A is a column-major matrix, A[i][j] == A[j * nrows + i] where i is the row-index and j is the column index.
+ * If A is a column-major matrix, A[i][j] == A[j * nrows + i] 
+ * where i is the row-index and j is the column index.
  */
 template <class T>
 class Array2d
@@ -231,7 +232,7 @@ public:
 		return avg;
 	}
 
-	// sums the square of all elements in the matrix and returns the square root of this sum
+	// Returns the vector 2-norm
 	T l2norm() const		
 	{
 		T tot = 0;
@@ -243,74 +244,7 @@ public:
 		return tot;
 	}
 
-	/// function to return a sub-matrix of this matrix
-	/*Array2d<T> sub(a_int startr, a_int startc, a_int offr, a_int offc) const
-	{
-		Array2d<T> B(offr, offc);
-		for(a_int i = 0; i < offr; i++)
-			for(a_int j = 0; j < offc; j++)
-				B(i,j) = elems[(startr+i)*ncols + startc + j];
-		return B;
-	}
-
-	/// Function that returns a given column of the matrix as a row-major matrix
-	Array2d<T> col(a_int j) const
-	{
-		Array2d<T> b(nrows, 1);
-		for(a_int i = 0; i < nrows; i++)
-			b(i,0) = elems[i*ncols + j];
-		return b;
-	}
-
-	Array2d<T> row(a_int i) const
-	{
-		Array2d<T> b(1, ncols);
-		for(a_int j = 0; j < ncols; j++)
-			b(0,j) = elems[i*ncols + j];
-		return b;
-	}
-
-	/// Function for replacing a column of the matrix with a vector. NOTE: No check for whether b is really a vector - which it must be.
-	void replacecol(a_int j, const Array2d<T>& b)
-	{
-#ifdef DEBUG
-		if(b.cols() != 1 || b.rows() != nrows) { std::cout << "\nSize error in replacecol"; return; }
-#endif
-		for(a_int i = 0; i < nrows; i++)
-			elems[i*ncols + j] = b.elems[i];
-	}
-
-	/// Function for replacing a row
-	void replacerow(a_int i, const Array2d<T>& b)
-	{
-#ifdef DEBUG
-		if(b.cols() != ncols || b.rows() != 1) { std::cout << "\nSize error in replacerow"; return; }
-#endif
-		for(a_int j = 0; j < ncols; j++)
-			elems[i*ncols + j] = b.elems[j];
-	}
-
-	/// Returns the transpose
-	Array2d<T> trans() const
-	{
-		Array2d<T> t(ncols, nrows);
-		for(a_int i = 0; i < ncols; i++)
-			for(a_int j = 0; j < nrows; j++)
-				t(i,j) = get(j,i);
-		return t;
-	}
-
-	/// Multiply a matrix by a scalar. Note: only expressions of type A*3 work, not 3*A
-	Array2d<T> operator*(T num)
-	{
-		Array2d<T> A(nrows,ncols);
-		a_int i;
-
-		for(i = 0; i < A.size; i++)
-			A.elems[i] = elems[i] * num;
-		return A;
-	}
-
+	/*
 	/// Returns sum of products of respective elements of flattened arrays 
 	/// containing matrix elements of this and A
 	T dot_product(const Array2d<T>& A)
