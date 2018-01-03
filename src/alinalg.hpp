@@ -49,8 +49,12 @@ public:
 	/// Release storage from work vectors
 	StatusCode destroy_work_storage();
 
-	/// Set the state u at which the Jacobian is computed and the corresponding residual r(u)
-	void set_state(const Vec u_state, const Vec r_state);
+	/// Set the state u at which the Jacobian is computed, the corresponding residual r(u) and 
+	/// the diagonal vector of the mass matrix for each cell
+	/** Note that the residual vector supplied is assumed to be the negative of what is needed,
+	 * exactly what Spatial::compute_residual gives.
+	 */
+	void set_state(const Vec u_state, const Vec r_state, const std::vector<a_real> *const mdts);
 
 	/// Compute a Jacobian-vector product
 	StatusCode apply(const Vec x, Vec y) const;
@@ -68,6 +72,9 @@ protected:
 	/// The residual of the state \ref uvec at which to compute the Jacobian
 	Vec res;
 
+	/// Time steps for each cell
+	const std::vector<a_real> *mdt;
+
 	/// Temporary storage
 	mutable Vec aux;
 };
@@ -79,17 +86,11 @@ protected:
  *   to set the size etc.
  */
 template <int nvars>
-StatusCode setup_matrixfree_jacobian(MatrixFreeSpatialJacobian<nvars> *const mfj, Mat A);
+StatusCode setup_matrixfree_jacobian(const UMesh2dh *const m,
+		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A);
 
-/// Returns true iff the argument is a matrix-free PETSc Mat, ie., a Mat shell
-inline bool isMatrixFree(Mat M) {
-	MatType mattype;
-	MatGetType(M, &mattype);
-	if(!strcmp(mattype,"shell"))
-		return true;
-	else
-		return false;
-}
+/// Returns true iff the argument is a matrix-free PETSc Mat
+bool isMatrixFree(Mat);
 
 }
 #endif

@@ -50,7 +50,10 @@ public:
 	virtual ~Spatial();
 	
 	/// Computes the residual and local time steps
-	/** \param[in] u The state at which the residual is to be computed
+	/** By convention, we need to compute the negative of the nonlinear function whose root
+	 * we want to find. For pseudo time-stepping, the output should be -r(u), where the ODE is
+	 * M du/dt + r(u) = 0.
+	 * \param[in] u The state at which the residual is to be computed
 	 * \param[in|out] residual The residual is added to this
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
@@ -58,7 +61,9 @@ public:
 	virtual StatusCode compute_residual(const Vec u, Vec residual, 
 			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
 	
-	/// Computes the Jacobian matrix of the residual
+	/// Computes the Jacobian matrix of the residual r(u)
+	/** It is supposed to compute dr/du when we want to solve [M du/dt +] r(u) = 0.
+	 */
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 
 	/// Computes gradients of field variables and stores them in the argument
@@ -166,12 +171,17 @@ public:
 	StatusCode initializeUnknowns(Vec u) const;
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
-	/** This invokes flux calculation after zeroing the residuals and also computes local time steps.
+	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is 
+	 * [M du/dt +] r(u) = 0. 
+	 * Invokes flux calculation and adds the fluxes to the residual vector,
+	 * and also computes local time steps.
 	 */
 	StatusCode compute_residual(const Vec u, Vec residual, 
 			const bool gettimesteps, std::vector<a_real>& dtm) const;
 
 	/// Computes the residual Jacobian as a PETSc martrix
+	/** Computes the Jacobian of r(u), where the 
+	 */
 	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 	/// Computes gradients of converved variables

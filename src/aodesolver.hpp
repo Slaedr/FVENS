@@ -28,8 +28,8 @@ struct SteadySolverConfig {
 };
 
 /// Base class for steady-state simulations in pseudo-time
-/** Note that the unknowns u and residuals R correspond to the following ODE:
- * \f$ \frac{du}{dt} + R(u) = 0 \f$. Note that the residual is on the LHS.
+/** Note that the unknowns u and residuals r correspond to the following ODE:
+ * \f$ \frac{du}{dt} - r(u) = 0 \f$.
  */
 template <int nvars>
 class SteadySolver
@@ -130,9 +130,9 @@ public:
 protected:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
-	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::cputime;
 	using SteadySolver<nvars>::walltime;
+	using SteadySolver<nvars>::rvec;       ///< Residual vector
 
 	Vec duvec;                             ///< Nonlinear update vector
 	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell

@@ -18,7 +18,6 @@
  *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "aodesolver.hpp"
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -32,6 +31,9 @@
 
 #include <petscksp.h>
 #include <petsctime.h>
+
+#include "aodesolver.hpp"
+#include "alinalg.hpp"
 
 namespace acfd {
 
@@ -219,10 +221,10 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 	const UMesh2dh *const m = space->mesh();
 	dtm.resize(m->gnelem(), 0);
 	Mat M; int ierr;
-	ierr = KSPGetOperators(solver, &M, NULL);
+	ierr = KSPGetOperators(solver, NULL, &M);
 	ierr = MatCreateVecs(M, &duvec, &rvec);
 	if(ierr)
-		std::cout << "! SteadyBackwardEulerSolver: Could not create residual or update vector!\n";
+		throw "! SteadyBackwardEulerSolver: Could not create residual or update vector!";
 }
 
 template <int nvars>
@@ -251,11 +253,20 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	StatusCode ierr = 0;
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
-	Mat M;
-	ierr = KSPGetOperators(solver, &M, NULL); CHKERRQ(ierr);
-	//bool ismatrixfree = isMatrixFree(M);
 
-	a_real curCFL; int curlinmaxiter;
+	// get the system and preconditioning matrices
+	Mat M, A;
+	ierr = KSPGetOperators(solver, &A, &M); CHKERRQ(ierr);
+	bool ismatrixfree = isMatrixFree(A);
+	MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
+	if(ismatrixfree) {
+		ierr = MatShellGetContext(A, (void**)&mfA); CHKERRQ(ierr);
+		// uvec, rvec and dtm keep getting updated, but pointers to them can be set just once
+		mfA->set_state(uvec,rvec,&dtm);
+
+	}
+
+	a_real curCFL=0; int curlinmaxiter;
 	int step = 0;
 	a_real resi = 1.0;
 	a_real initres = 1.0;
@@ -290,7 +301,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 	walltime = cputime = 0;
 	double linwtime = 0, linctime = 0;
-
+		
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 #pragma omp parallel for default(shared)
@@ -332,16 +343,19 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			curlinmaxiter = config.linmaxiterend;
 		}
 
-		// add pseudo-time terms to diagonal blocks
+		// add pseudo-time terms to diagonal blocks; also, after the following loop,
+		// dtm is the diagonal vector of the mass matrix but having only one entry for each cell.
 
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
+			dtm[iel] = m->garea(iel) / (curCFL*dtm[iel]);
+
 			Matrix<a_real,nvars,nvars,RowMajor> db 
 				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
 
 			for(int i = 0; i < nvars; i++)
-				db(i,i) = m->garea(iel) / (curCFL*dtm[iel]);
+				db(i,i) = dtm[iel];
 	
 #pragma omp critical
 			{
@@ -431,9 +445,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 	// print timing data
-	/*double linwtime, linctime;
-	linwtime = linctime = -1;
-	linsolv->getRunTimes(linwtime, linctime);*/
 	if(mpirank == 0) {
 		std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
 		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;

@@ -69,6 +69,11 @@ int main(int argc, char *argv[])
 
 	std::cout << "\n***\n";
 
+	/* NOTE: Since the "startup" solver (meant to generate an initial solution) and the "main" solver
+	 * have the same number of unknowns and use first-order Jacobians, we have just one set of
+	 * solution vector, Jacobian matrix, preconditioning matrix and KSP solver.
+	 */
+
 	// solution vector
 	Vec u;
 
@@ -77,19 +82,28 @@ int main(int argc, char *argv[])
 	ierr = setupSystemMatrix<NVARS>(&m, &M); CHKERRQ(ierr);
 	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
 
-	// setup matrix-free facility
+	// setup matrix-free Jacobian if requested
+	Mat A;
 	MatrixFreeSpatialJacobian<NVARS> mfjac;
-	MatType mattype;
-	ierr = MatGetType(M, &mattype); CHKERRQ(ierr);
-	if(!strcmp(mattype,"mffd") || !strcmp(mattype,"shell")) {
-		ierr = setup_matrixfree_jacobian(&mfjac, M);
+	PetscBool mf_flg = PETSC_FALSE;
+	ierr = PetscOptionsHasName(NULL, NULL, "-matrix_free_jacobian", &mf_flg); CHKERRQ(ierr);
+	if(mf_flg) {
+		std::cout << " Allocating matrix-free Jac\n";
+		ierr = setup_matrixfree_jacobian<NVARS>(&m, &mfjac, &A); 
 		CHKERRQ(ierr);
 	}
 
 	// initialize solver
 	KSP ksp;
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-	ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
+	if(mf_flg) {
+		ierr = KSPSetOperators(ksp, A, M); 
+		CHKERRQ(ierr);
+	}
+	else {
+		ierr = KSPSetOperators(ksp, M, M); 
+		CHKERRQ(ierr);
+	}
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// set up time discrization
@@ -163,6 +177,10 @@ int main(int argc, char *argv[])
 	delete time;
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
+	if(mf_flg) {
+		ierr = MatDestroy(&A); 
+		CHKERRQ(ierr);
+	}
 
 	// export output to VTU
 
