@@ -127,6 +127,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 				"Norm of offset is too small for finite difference Jacobian!");
 #endif
 	xnorm = eps/xnorm;
+
 	// aux <- eps/xnorm * x
 	ierr = VecAXPBY(aux, xnorm, 0.0, x); CHKERRQ(ierr);
 	// aux <- u + eps/xnorm * x
