@@ -23,7 +23,7 @@ void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, con
 		a_real *const __restrict flux) const
 {
 	const a_real vn = dimDotProduct(&u[1],n)/u[0];
-	const a_real p = (g-1.0)*(u[NVARS-1] - 0.5*dimDotProduct(&u[1],&u[1])/u[0]);
+	const a_real p = getPressure(u[NVARS-1] - 0.5*dimDotProduct(&u[1],&u[1])/u[0]);
 	getDirectionalFlux(u, n, vn, p, flux);
 }
 

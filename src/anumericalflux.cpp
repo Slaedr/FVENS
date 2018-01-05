@@ -43,10 +43,12 @@ void LocalLaxFriedrichsFlux::get_flux(const a_real *const ul,
 	const a_real eig = 
 		std::fabs(vni)+ci > std::fabs(vnj)+cj ? std::fabs(vni)+ci : std::fabs(vnj)+cj;
 	
-	flux[0] = 0.5*( ul[0]*vni + ur[0]*vnj - eig*(ur[0]-ul[0]) );
-	flux[1] = 0.5*( vni*ul[1]+pi*n[0] + vnj*ur[1]+pj*n[0] - eig*(ur[1]-ul[1]) );
-	flux[2] = 0.5*( vni*ul[2]+pi*n[1] + vnj*ur[2]+pj*n[1] - eig*(ur[2]-ul[2]) );
-	flux[3] = 0.5*( vni*(ul[3]+pi) + vnj*(ur[3]+pj) - eig*(ur[3] - ul[3]) );
+	physics->getDirectionalFluxFromConserved(ul,n,flux);
+	a_real fluxr[NVARS];
+	physics->getDirectionalFluxFromConserved(ur,n,fluxr);
+	for(int i = 0; i < NVARS; i++) {
+		flux[i] = 0.5*( flux[i] + fluxr[i] - eig*(ur[i]-ul[i]) );
+	}
 }
 
 /** Jacobian with frozen spectral radius
@@ -93,7 +95,7 @@ void LocalLaxFriedrichsFlux::get_jacobian(const a_real *const ul, const a_real *
 		}
 }
 
-// full linearization, inspite of the name; no better than frozen version
+// full linearization; no better than frozen version
 void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul, 
 		const a_real *const ur,
 		const a_real* const n, 
