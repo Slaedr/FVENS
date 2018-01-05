@@ -10,94 +10,16 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <cmath>
+#include <cstdlib>
 
 namespace amat {
-
-template <typename T>
-Array2d<T>::Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}
-{ }
-
-// Full-arg constructor
-template <typename T>
-Array2d<T>::Array2d(a_int nr, a_int nc)
-{
-	if(nc==0)
-	{
-		std::cout << "\nError: Number of columns is zero. Setting it to 1.";
-		nc=1;
-	}
-	if(nr==0)
-	{
-		std::cout << "\nError: Number of rows is zero. Setting it to 1.";
-		nr=1;
-	}
-	nrows = nr; ncols = nc;
-	size = nrows*ncols;
-	elems = new T[nrows*ncols];
-}
-
-template <typename T>
-Array2d<T>::Array2d(const Array2d<T>& other)
-{
-	nrows = other.nrows;
-	ncols = other.ncols;
-	size = nrows*ncols;
-	elems = new T[nrows*ncols];
-	for(a_int i = 0; i < nrows*ncols; i++)
-	{
-		elems[i] = other.elems[i];
-	}
-}
-
-template <typename T>
-Array2d<T>::~Array2d()
-{
-	delete [] elems;
-}
-
-template <typename T>
-Array2d<T>& Array2d<T>::operator=(const Array2d<T>& rhs)
-{
-#ifdef DEBUG
-	if(this==&rhs) return *this;		// check for self-assignment
-#endif
-	nrows = rhs.nrows;
-	ncols = rhs.ncols;
-	size = nrows*ncols;
-	delete [] elems;
-	elems = new T[nrows*ncols];
-	for(a_int i = 0; i < nrows*ncols; i++)
-	{
-		elems[i] = rhs.elems[i];
-	}
-	return *this;
-}
 
 /// Separate setup function in case no-arg constructor has to be used
 /** \deprecated Please use resize() instead.
  */
 template <typename T>
 void Array2d<T>::setup(const a_int nr, const a_int nc)
-{
-	if(nc==0)
-	{
-		std::cout << "Array2d: setup(): ! Error: Number of columns is zero!\n";
-		return;
-	}
-	if(nr==0)
-	{
-		std::cout << "Array2d(): setup(): ! Error: Number of rows is zero!\n";
-		return;
-	}
-	nrows = nr; ncols = nc;
-	size = nrows*ncols;
-	delete [] elems;
-	elems = new T[nrows*ncols];
-}
-
-/// Sets a new size for the array, deletes the contents and allocates new memory
-template <typename T>
-void Array2d<T>::resize(const a_int nr, const a_int nc)
 {
 	if(nc==0)
 	{
@@ -136,30 +58,11 @@ void Array2d<T>::setupraw(a_int nr, a_int nc)
 	elems = new T[nrows*ncols];
 }
 
-/// Fill the matrix with zeros.
-template <typename T>
-void Array2d<T>::zeros()
-{
-	for(a_int i = 0; i < size; i++)
-		elems[i] = (T)(0.0);
-}
-
 template <typename T>
 void Array2d<T>::ones()
 {
 	for(a_int i = 0; i < size; i++)
 		elems[i] = 1;
-}
-
-template <typename T>
-void Array2d<T>::identity()
-{
-	T one = (T)(1);
-	T zero = (T)(0);
-	for(a_int i = 0; i < nrows; i++)
-		for(a_int j = 0; j < ncols; j++)
-			if(i==j) operator()(i,j) = one;
-			else operator()(i,j) = zero;
 }
 
 template <typename T>
