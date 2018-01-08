@@ -146,7 +146,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			{
 				for(int i = 0; i < nvars; i++)
 				{
-					u(iel,i) -= config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
+					u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
 				}
 			}
 

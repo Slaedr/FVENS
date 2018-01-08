@@ -94,7 +94,3 @@ EXPLICIT
 ---max-time-steps-for-initialization
 50000
 ########################################################################
----Implicit-residual-smoothing?
-NO
----preconditioner-build-and-application-sweeps
-1 1

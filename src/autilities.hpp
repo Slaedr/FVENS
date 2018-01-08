@@ -31,8 +31,9 @@ struct FlowParserOptions
 		gradientmethod, limiter,           ///< Reconstruction type
 		timesteptype,                      ///< Explicit or implicit time stepping
 		constvisc,                         ///< NO for Sutherland viscosity
-		surfnameprefix, volnameprefix, 
-		vol_output_reqd;
+		surfnameprefix, volnameprefix,     ///< Filename prefixes for output files
+		vol_output_reqd;                   ///< Whether volume output is required in a text file
+		                                   ///<  in addition to the main VTU output
 	
 	a_real initcfl, endcfl, 
 		tolerance, 

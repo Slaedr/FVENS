@@ -76,21 +76,3 @@ IMPLICIT
 ########################################################################
 -inviscid-flux-Jacobian-for-preconditioner-and-or-solver
 HLL
--Use-matrix-free-(YES-for-matrix-free)
-NO
--Matrix-type
-b
--linear-solver
-RICHARDSON
--Linear-solver-tolerance
-1e-2
--Linear-solver-max-iterations-initial
-30
--Linear-solver-max-iterations-end
-80
--Number-of-Krylov-subspace-vectors
-20
--preconditioner
-SGS
--preconditioner-build-sweeps
-1 1

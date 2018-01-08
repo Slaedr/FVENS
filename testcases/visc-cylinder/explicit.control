@@ -94,8 +94,3 @@ EXPLICIT
 ---max-time-steps-for-initialization
 7000
 ########################################################################
----Smoothing?
-NO
----Sweeps
-1 1
-

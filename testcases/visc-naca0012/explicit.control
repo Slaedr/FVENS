@@ -29,9 +29,9 @@ NO
 ---Slip-wall-marker
 -1
 ---Farfield-marker
-4
----Inflow-outflow-marker
 -1
+---Inflow-outflow-marker
+4
 ---Extrapolation-marker
 -1
 ---Periodic-marker
@@ -47,7 +47,7 @@ NO
 ---Isothermal-isobaric-wall-Marker
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
-							  223.15                      1.0                           1.0
+							  293.15                      1.0                           1.0
 ---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
 1
 ---List-of-wall-boundaries-at-which-surface-output-is-needed
@@ -59,8 +59,8 @@ NO
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
----Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLLC
+---Inviscid-flux(LLF,VANLEER,HLL,HLLC,ROE)
+ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -94,7 +94,3 @@ EXPLICIT
 ---max-time-steps-for-initialization
 7000
 ########################################################################
----Implicit-laplacian-smoothing?
-NO
----Async-sweeps
-1 1

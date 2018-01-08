@@ -73,8 +73,3 @@ EXPLICIT
 1e-2
 ---max-time-steps-for-initialization
 5000
-########################################################################
--Use-implicit-residual-averaging?
-NO
----preconditioner-build-and-application-sweeps
-1 1

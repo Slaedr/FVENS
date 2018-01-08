@@ -96,7 +96,3 @@ EXPLICIT
 ---max-time-steps-for-initialization
 20000
 ########################################################################
----Use-laplacian-smoothing?
-NO
----Preconditioner-async-sweeps-for-Laplacian-smoothing
-1 1

@@ -74,7 +74,3 @@ EXPLICIT
 -max-time-steps-for-initialization
 20000
 ########################################################################
----Residual-smoothing
-NO
----Async-sweeps-for-residual-smoothing
-1 1

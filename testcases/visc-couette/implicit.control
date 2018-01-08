@@ -96,21 +96,3 @@ IMPLICIT
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 LLF
----Use-matrix-free-(YES,NO)
-NO
----Matrix-type(c=CSR,b=BSR,d=DLU)
-b
----linear-solver(RICHARDSON,BCGSTB,GMRES)
-RICHARDSON
----Linear-solver-tolerance
-1e-2
----Linear-solver-max-iterations-initial
-20
----Linear-solver-max-iterations-end
-80
----Krylov-vectors
-30
----preconditioner(J=Jacobi,SGS,ILU0)
-SGS
----preconditioner-build-and-application-sweeps
-1 1
