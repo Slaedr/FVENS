@@ -114,6 +114,8 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	StatusCode ierr = 0;
 	std::vector<a_real> dummy;
 	const UMesh2dh *const m = spatial->mesh();
+	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
+
 	const a_real *xr;
 	a_real *yr;
 	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
