@@ -44,10 +44,10 @@ A tags file is built when the code is built (if ctags is available), which makes
 
 Running
 -------
-The executables should be called with the path to a control file as input. Set OMP_NUM_THREADS to the number of threads you want to use.
+The executables should be called with the paths to a control file (required) and a PETSc options file (optional) as input. Set OMP_NUM_THREADS to the number of threads you want to use.
 
 		export OMP_NUM_THREADS=4
-		./fvens_steady /path/to/testcases/2dcylinder/implicit.control
+		./fvens_steady /path/to/testcases/2dcylinder/implicit.control -options_file /path/to/testcases/2dcylinder/opts.petscrc
 
 Make sure to set the paths of input and output files appropriately (see the next section below). When running cases with implicit time stepping, remember to either use only one thread, or increase the number of asynchronous preconditioning sweeps (the last option in the control files) to 3 or 4 when using matrix storage type 'b' (recommended).
 
@@ -55,10 +55,15 @@ Control files
 -------------
 Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called. The structure of the control files is currently very rigid; it is recommended to copy one of the existing cases' control file and modify it.
 
+PETSc options for FVENS
+-----------------------
+1. -matrix_free_jacobian (no argument): If mentioned, matrix finite-difference system matrix will be used, but the first-order approximate Jacobian will still be stored for the preconditioner.
+2. -matrix_free_difference_step (float argument): The finite difference difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
+3. -fvens_log_file (string argument): Prefix (path + base file name) of the file into which to write timing logs (.tlog extension), and if requested, nonlinear residual histories (.conv extension). Note that this option, if specified, overrides the corresponding option in the control file.
+
 Known Issues
 ------------
 - The HLLC flux implementation has roundoff error greater than machine epsilon.
-- GMRES solver does not work.
 
 ---
 
