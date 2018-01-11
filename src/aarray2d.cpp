@@ -39,19 +39,11 @@ void Array2d<T>::setup(const a_int nr, const a_int nc)
 
 /// Setup without deleting earlier allocation: use in case of Array2d<t>* (pointer to Array2d<t>)
 template <typename T>
-void Array2d<T>::setupraw(a_int nr, a_int nc)
+void Array2d<T>::setupraw(const a_int nr, const a_int nc)
 {
-	//std::cout << "\nEntered setupraw";
-	if(nc==0)
-	{
-		std::cout << "\nError: Number of columns is zero. Setting it to 1.";
-		nc=1;
-	}
-	if(nr==0)
-	{
-		std::cout << "\nError: Number of rows is zero. Setting it to 1.";
-		nr=1;
-	}
+	assert(nc>0);
+	assert(nr>0);
+		
 	nrows = nr; ncols = nc;
 	size = nrows*ncols;
 	delete [] elems;

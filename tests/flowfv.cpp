@@ -11,13 +11,15 @@ using namespace acfd;
  * - 'wall_boundaries': Tests whether certain components of the numerical inviscid flux
  *     are zero for the 3 types of solid walls - adiabatic, isothermal and slip.
  */
-int main(const int argc, const char *const argv[])
+int main(int argc, char *argv[])
 {
 	if(argc < 3) {
 		std::cout << "Not enough command-line arguments!\n";
 		return -2;
 	}
-
+	
+	int ierr = PetscInitialize(&argc, &argv, NULL, NULL); CHKERRQ(ierr);
+	
 	int finerr = 0;
 	
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
@@ -64,5 +66,6 @@ int main(const int argc, const char *const argv[])
 		finerr = finerr || err;
 	}
 
+	ierr = PetscFinalize(); CHKERRQ(ierr);
 	return finerr;
 }
