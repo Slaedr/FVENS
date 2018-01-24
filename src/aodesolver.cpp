@@ -406,13 +406,15 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		if(step == 0)
 			initres = resi;
 
-		if(step % 10 == 0)
+		if(step % 10 == 0) {
+			//const a_real updmag = du.norm();
 			if(mpirank == 0) {
 				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
-					<< ", rel residual " << resi/initres << std::endl;
+					<< ", rel res " << resi/initres << ", abs res = " << resi /*<< ", update " << updmag*/ << std::endl;
 				std::cout << "      CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter 
 					<< ", iters used = " << linstepsneeded << std::endl;
 			}
+		}
 
 		step++;
 			

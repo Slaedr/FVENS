@@ -699,6 +699,8 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar]);
 }
 
+/** \todo Check correctness.
+ */
 void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
 {

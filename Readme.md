@@ -63,7 +63,8 @@ PETSc options for FVENS
 
 Known Issues
 ------------
-- The HLLC flux implementation has roundoff error greater than machine epsilon.
+- Roe flux linearization needs to be checked.
+- The HLLC flux implementation has roundoff error somewhat greater than machine epsilon, but probably not a problem.
 
 ---
 
