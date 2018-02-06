@@ -21,4 +21,6 @@ if(WITH_BLASTED)
 	target_link_libraries(heat_steady ${BLASTED_LIB})
 endif()
 
+add_subdirectory(utilities)
+
 

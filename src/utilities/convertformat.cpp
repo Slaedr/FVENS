@@ -1,3 +1,5 @@
+#include <iostream>
+#include <string>
 #include "../amesh2dh.hpp"
 #include "../aoutput.hpp"
 
@@ -7,29 +9,16 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	if(argc < 2) {
-		cout << "Need a control file!" << endl;
+	if(argc < 4) {
+		cout << "Need: 1. Input mesh file, 2. Output mesh file 3. Output format.\n" << endl;
 	}
 	string confilename(argv[1]);
-	ifstream conf(confilename);
-	string dum, inmesh, informat, outmesh, outformat;
-	conf >> dum; conf >> inmesh;
-	conf >> dum; conf >> informat;
-	conf >> dum; conf >> outmesh;
-	conf >> dum; conf >> outformat;
-	conf.close();
+	string inmesh = argv[1], outmesh = argv[2], outformat = argv[3];
 
-	cout << "Input file is of type " << informat << ". Writing as " << outformat << ".\n";
+	//cout << "Input file is of type " << informat << ". Writing as " << outformat << ".\n";
 
 	UMesh2dh m;
-	if(informat == "domn")
-		m.readDomn(inmesh);
-	else if(informat == "msh")
-		m.readGmsh2(inmesh,2);
-	else {
-		cout << "Invalid format. Exiting." << endl;
-		return -1;
-	}
+	m.readMesh(inmesh);
 
 	if(outformat == "msh")	
 		m.writeGmsh2(outmesh);
