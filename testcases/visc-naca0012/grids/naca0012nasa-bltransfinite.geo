@@ -1,5 +1,5 @@
 // params
-refine = 1;
+refine = 2;
 // ---
 
 radiusFF = 20;
@@ -9,12 +9,12 @@ meshSizeLead = meshSizeWing/5.0;
 meshSizeTrail = meshSizeWing/5.0;
 meshSizeFF = radiusFF*meshSizeWing;
 
-nTangPoin = 20*refine;
+nTangPoin = 30*refine;
 nNormPoin = 20*refine;
 tangProg = 0.1;
 normProg = 1.1;
 
-nsplinepoints = 20*refine;
+nsplinepoints = 40*refine;
 
 // Shape of airfoil
 Macro topsurface
@@ -66,19 +66,25 @@ Spline(1) = bsplinePoints[]; Transfinite Line{1} = nTangPoin Using Bump tangProg
 Spline(2) = tsplinePoints[]; Transfinite Line{2} = nTangPoin Using Bump tangProg;
 
 // Points for structured portion
-strht = 0.12;
-strht2 = 0.09;
-Point(100) = {0.6, strht, 0.0, meshSizeWing};
-Point(101) = {0.6, -strht,0.0, meshSizeWing};
+strht2 = 0.025;
+blthickness = 0.02;
+teangle = 3.14/12;
+Point(1000) = {0.6, 3*blthickness,  0.0, meshSizeWing};
+Point(1010) = {0.6, -3*blthickness, 0.0, meshSizeWing};
+Point(1011) = {0.263, 0.07, 0.0, meshSizeWing};
+Point(1012) = {0.263, -0.07, 0.0, meshSizeWing};
+Point(1013) = {0.095, 0.055, 0.0, meshSizeWing};
+Point(1014) = {0.095, -0.055, 0.0, meshSizeWing};
 
-Point(102) = {0.5, 0.0, 0.0, meshSizeWing};
+Point(1020) = {0.5, 0.0, 0.0, meshSizeWing};
 
-Point(103) = {-0.1,0.0, 0.0, meshSizeLead};
-Point(104) = {1.1, 0.0, 0.0, meshSizeTrail};
-Point(105) = {0.01, strht2, 0.0, meshSizeWing};
-Point(106) = {0.01,-strht2, 0.0, meshSizeWing};
-Point(107) = {-0.09,0.04,0,0,meshSizeLead};
-Point(108) = {-0.09,-0.04,0,0,meshSizeLead};
+Point(1030) = {-0.3*blthickness,0.0, 0.0, meshSizeLead};
+Point(1040) = {1+Sin(teangle)*blthickness, Cos(teangle)*blthickness, 0.0, meshSizeTrail};
+Point(1041) = {1+Sin(teangle)*blthickness, -Cos(teangle)*blthickness, 0.0, meshSizeTrail};
+Point(1050) = {0.01, strht2, 0.0, meshSizeWing};
+Point(1060) = {0.01,-strht2, 0.0, meshSizeWing};
+//Point(1070) = {-0.1,0.06,0,0,meshSizeLead};
+//Point(1080) = {-0.1,-0.06,0,0,meshSizeLead};
 
 //Farfield
 Point(10000) = {0,0,0,radiusFF};
@@ -91,28 +97,33 @@ Circle(5) = {10001,10000,10002};
 Circle(6) = {10002,10000,10003};
 Circle(7) = {10003,10000,10004};
 Circle(8) = {10004,10000,10001};
-Line(9) = {10001, 104};
-Line(10) = {103, 10003};
+//Line(9) = {10001, 1040};
+//Line(10) = {1030, 10003};
 
 //topbord[0] = 104; topbord[1] = 100; topbord[2] = 105; topbord[3] = 107; topbord[4] = 103;
-topbord[] = {104, 100, 105, /*107,*/ 103};
-botbord[] = {103, /*108,*/ 106, 101, 104};
+topbord[] = {1040, 1000, 1011, 1013, 1050, 1030};
+botbord[] = {1030, 1060, 1014, 1012, 1010, 1041};
 Spline(20) = topbord[]; Transfinite Line{20} = nTangPoin Using Bump tangProg;
 Spline(21) = botbord[]; Transfinite Line{21} = nTangPoin Using Bump tangProg;
-Line(22) = {0, 104}; Transfinite Line{22} = nNormPoin Using Progression normProg;
-Line(23) = {origin, 103}; Transfinite Line{23} = nNormPoin Using Progression normProg;
+Line(22) = {0, 1040}; Transfinite Line{22} = nNormPoin Using Progression normProg;
+Line(24) = {0,1041}; Transfinite Line{24} = nNormPoin Using Progression normProg;
+Line(23) = {origin, 1030}; Transfinite Line{23} = nNormPoin Using Progression normProg;
 
-Line Loop(6) = {5,6,-10,-20,-9};
-Line Loop(7) = {7,8,9,-21,10};
+//Line Loop(6) = {5,6,-10,-20,-9};
+//Line Loop(7) = {7,8,9,-21,10};
+Line Loop(6) = {5, 6, 7, 8};
+Line Loop(7) = {1,2};
 
 Line Loop(8) = {20, -23, 2, 22};
-Line Loop(9) = {-23, -1, 22, -21};
+Line Loop(9) = {-23, -1, 24, -21};
 
-Plane Surface(10) = {6};
-Plane Surface(11) = {7};
+//Plane Surface(10) = {6};
+//Plane Surface(11) = {7};
+Plane Surface(10) = {6,8,9};
 Plane Surface(21) = {8}; Transfinite Surface{21}; Recombine Surface{21};
 Plane Surface(22) = {9}; Transfinite Surface{22}; Recombine Surface{22};
-Physical Surface(1) = {10,11,21,22};
+//Physical Surface(1) = {10,11,21,22};
+Physical Surface(1) = {10,21,22};
 
 // Adiabatic wall
 Physical Line(2) = {1,2};

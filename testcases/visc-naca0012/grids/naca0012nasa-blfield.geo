@@ -1,5 +1,5 @@
 // params
-refine = 2;
+refine = 1;
 // ---
 
 radiusFF = 20;
@@ -99,23 +99,23 @@ Field[1].AnisoMax = 90;
 Field[1].EdgesList = {1,2};
 Field[1].FanNodesList = {0};
 Field[1].Quads = 1;
-Field[1].hfar = meshSizeFF;
+Field[1].hfar = meshSizeWing;
 Field[1].hwall_n = meshSizeWing/20.0;
 Field[1].ratio = 1.5;
 Field[1].thickness = 0.1;
 
-Field[2] = Box;
+/*Field[2] = Box;
 Field[2].VIn = meshSizeTrail;
 Field[2].VOut = meshSizeWing*5;
 Field[2].XMax = 1.5;
 Field[2].XMin = 0.85;
 Field[2].YMax = 0.2;
-Field[2].YMin = -0.2;
+Field[2].YMin = -0.2;*/
 
-Field[3] = Min;
-Field[3].FieldsList = {1,2};
+//Field[3] = Min;
+//Field[3].FieldsList = {1,2};
 
-Background Field = 3;
+Background Field = 1;
 
 //Mesh.SubdivisionAlgorithm=1;	// ensures all quads, I think
 

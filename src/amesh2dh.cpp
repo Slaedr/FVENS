@@ -780,14 +780,27 @@ void UMesh2dh::writeGmsh2(const std::string mfile)
 	}
 	outf << "$EndNodes\n";
 
-	//std::cout << "boundary faces\n";
+	// number of tags should be at least 2
+	int nbtagout=nbtag, ndtagout=ndtag;
+	if(nbtagout < 2) nbtagout = 2;
+	if(ndtagout < 2) ndtagout = 2;
+	const int default_tag = 1;
+
 	outf << "$Elements\n" << nelem+nface << '\n';
+
 	// boundary faces first
 	for(int iface = 0; iface < nface; iface++)
 	{
-		outf << iface+1 << " " << face_type << " " << nbtag;
-		for(int i = nnofa; i < nnofa+nbtag; i++)
-			outf << " " << bface(iface,i);			// write tags
+		outf << iface+1 << " " << face_type << " " << nbtagout;
+		for(int i = nnofa; i < nnofa+nbtag; i++)    // write tags
+			outf << " " << bface(iface,i);          
+		for(int i = 0; i < nbtagout-nbtag; i++)     // write extra tags if needed
+			if(nbtag == 0)
+				outf << " " << default_tag;
+			else
+				// different physical tags must have different elementary tags
+				outf << " " << default_tag+bface(iface,nnofa+nbtag-1);
+
 		for(int i = 0; i < nnofa; i++)
 			outf << " " << bface(iface,i)+1;		// write nodes
 		outf << '\n';
@@ -805,9 +818,15 @@ void UMesh2dh::writeGmsh2(const std::string mfile)
 			elm_type = 16;
 		else if(nnode[iel]==9)
 			elm_type = 10;
-		outf << nface+iel+1 << " " << elm_type << " " << ndtag;
+		outf << nface+iel+1 << " " << elm_type << " " << ndtagout;
 		for(int i = 0; i < ndtag; i++)
 			outf << " " << vol_regions(iel,i);
+		for(int i = 0; i < ndtagout - ndtag; i++)      // write at least 2 tags
+			if(ndtag == 0)
+				outf << " " << default_tag;
+			else
+				// different physical tags must have different elementary tags
+				outf << " " << default_tag + vol_regions(iel,ndtag-1);
 		for(int i = 0; i < nnode[iel]; i++)
 			outf << " " << inpoel(iel,i)+1;
 		outf << '\n';
