@@ -63,6 +63,7 @@ PETSc options for FVENS
 
 Known Issues
 ------------
+- Viscous cases with complex flow features (like vortices) will not converge with implicit time-stepping unless the matrix-free solver option is used.
 - Roe flux linearization needs to be checked.
 - The HLLC flux implementation has roundoff error somewhat greater than machine epsilon, but probably not a problem.
 

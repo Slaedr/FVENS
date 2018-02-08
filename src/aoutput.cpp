@@ -3,6 +3,7 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include "aoutput.hpp"
 #include "autilities.hpp"
@@ -264,6 +265,8 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
 	std::ofstream out;
 	open_file_toWrite(fname, out);
+	
+	out << std::setprecision(10);
 
 	int nscalars = x.cols();
 
@@ -388,6 +391,8 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
 	std::ofstream out;
 	open_file_toWrite(fname, out);
+	
+	out << std::setprecision(10);
 
 	int nscalars = x.cols();
 
@@ -512,6 +517,8 @@ void writeMeshToVtu(std::string fname, acfd::UMesh2dh& m)
 {
 	std::cout << "Writing vtu output...\n";
 	std::ofstream out(fname);
+	
+	out << std::setprecision(10);
 
 	out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
 	out << "<UnstructuredGrid>\n";
