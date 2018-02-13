@@ -1287,9 +1287,9 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 		jflux->get_jacobian(&uarr[lelem*NVARS], uface, n, &left(0,0), &right(0,0));
 
 		if(pconfig.viscous_sim) {
-			computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], uface, 
-					&left(0,0), &right(0,0));
-			//computeViscousFluxJacobian(iface,&u[lelem*NVARS],uface, &left(0,0), &right(0,0));
+			//computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], uface, 
+			//		&left(0,0), &right(0,0));
+			computeViscousFluxJacobian(iface,&uarr[lelem*NVARS],uface, &left(0,0), &right(0,0));
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
@@ -1324,9 +1324,10 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 		jflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
 
 		if(pconfig.viscous_sim) {
-			computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
+			//computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
+			//		&L(0,0), &U(0,0));
+			computeViscousFluxJacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
 					&L(0,0), &U(0,0));
-			//computeViscousFluxJacobian(iface, &u[lelem,0], &u[relem,0], &L(0,0), &U(0,0));
 		}
 
 		L *= len; U *= len;
