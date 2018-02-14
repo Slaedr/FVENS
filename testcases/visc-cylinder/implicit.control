@@ -1,7 +1,7 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-cylinder/grids/sqcylquad3.msh
+../testcases/visc-cylinder/grids/2dcylinderhybrid4.msh
 ---Output-file
-../data/vcyl4.vtu
+../data/vcyl.vtu
 ---Log-file-for-runtimes
 log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
@@ -39,7 +39,7 @@ NO
 ---Isothermal-wall-Marker
 		-1
 ---Isothermal-wall:         Temperature (K)             Tang. velocity (normalized)
-		                     273.15                        0.0
+		                     293.15                        0.0
 ---Adiabatic-wall-Marker
 		2
 ---Adiabatic-wall:           Tang. velocity (normalized)
@@ -47,10 +47,20 @@ NO
 ---Isothermal-isobaric-wall-Marker
 		-1
 ---Isothermal-isobaric-wall: Temperature (K)            Tang. velocity (normalized)    Pressure(normalized)
-							  273.15                      1.0                           1.0
+							  293.15                      1.0                           1.0
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+0
+---Prefix-for-name-of-surface-output-file
+../data/vcyl-ls
+---Is-volume-output-of-cell-centred-variables-required?
+NO
 ######################################################################
----Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-HLL
+---Inviscid-flux(LLF,VANLEER,HLL,AUSM,AUSMPLUS,HLLC,ROE)
+HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -60,25 +70,29 @@ YES
 ######################################################################
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
----initial-CFL
-200.0
----final-CFL
-200.0
----ramp-start-step-and-end-step
-400 500
+---initial-CFL(50)
+100.0
+---final-CFL(100)
+5000.0
+---ramp-start-step-and-end-step(50-200)
+30 70
 ---Tolerance
-1e-5
+1e-6
 ---Max-pseudotime-iterations
-5000
+1000
 #######################################################################
 ---use-first-order-initial-condition
 1
----CFL-for-initialization-run
-5.0
+---initial-CFL
+50.0
+---final-CFL
+1000.0
+---ramp-start-step-and-end-step
+20 70
 ---tolerance-for-initialization
-1e-2
+1e-1
 ---max-time-steps-for-initialization
 400
 ########################################################################
----inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLL
+---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL,HLLC,ROE)
+HLLC

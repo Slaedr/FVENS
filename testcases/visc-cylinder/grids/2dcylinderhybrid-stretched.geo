@@ -1,23 +1,25 @@
 // flow past cylinder
 
 // refinement factor
-refine = 1;
+refine = 4;
 
 // actual boundary
-srad = 0.5;
+srad = 1.0;
 // for partition
-prad = 0.75;
+prad = 1.5*srad;
 // far field
-ffs = 20.0;
+ffs = 30.0*srad;
 // mesh size at far field
-hf = 3.0/refine;
+hf = 5.0/refine;
 
 // number of points along the inner circle
-n1 = 10*refine;
+n1 = 6*refine;
 // number points in normal direction from circle
 n2 = 10*refine;
-// ratio (r) for geometric progression of transfinite points
-rc = 1.1;
+// ratio (r) for geometric progression of transfinite points in normal direction
+rc = 1.15;
+// ratio for geometric progression in tangential direction
+trc = 1.1;
 
 //center
 Point(1) = {   0,   0,  0, 0.1};
@@ -27,20 +29,20 @@ Point(2) = { srad,   0,  0, 0.1};
 Point(3) = {   0, srad,  0, 0.1};
 Point(4) = {-srad,   0,  0, 0.1};
 Point(5) = {   0,-srad,  0, 0.1};
-Circle(1) = {2,1,3}; Transfinite Line {1} = n1;
-Circle(2) = {3,1,4}; Transfinite Line {2} = n1;
-Circle(3) = {4,1,5}; Transfinite Line {3} = n1;
-Circle(4) = {5,1,2}; Transfinite Line {4} = n1;
+Circle(1) = {2,1,3}; Transfinite Line {1} = n1 Using Progression trc;
+Circle(2) = {3,1,4}; Transfinite Line {2} = n1 Using Progression 1.0/trc;
+Circle(3) = {4,1,5}; Transfinite Line {3} = n1 Using Progression trc;
+Circle(4) = {5,1,2}; Transfinite Line {4} = n1 Using Progression 1.0/trc;
 
 //Circle-2
 Point(12) = { prad,   0,  0, 0.1};
 Point(13) = {   0, prad,  0, 0.1};
 Point(14) = {-prad,   0,  0, 0.1};
 Point(15) = {   0,-prad,  0, 0.1};
-Circle(11) = {12,1,13}; Transfinite Line {11} = n1;
-Circle(12) = {13,1,14}; Transfinite Line {12} = n1;
-Circle(13) = {14,1,15}; Transfinite Line {13} = n1;
-Circle(14) = {15,1,12}; Transfinite Line {14} = n1;
+Circle(11) = {12,1,13}; Transfinite Line {11} = n1 Using Progression trc;
+Circle(12) = {13,1,14}; Transfinite Line {12} = n1 Using Progression 1.0/trc;
+Circle(13) = {14,1,15}; Transfinite Line {13} = n1 Using Progression trc;
+Circle(14) = {15,1,12}; Transfinite Line {14} = n1 Using Progression 1.0/trc;
 
 // lines joining inner circle (1) points to outer circle (2) points
 Line(5) = {2,12}; Transfinite Line {5} = n2 Using Progression rc;

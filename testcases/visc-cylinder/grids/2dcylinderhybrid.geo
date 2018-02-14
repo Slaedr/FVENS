@@ -1,23 +1,23 @@
 // flow past cylinder
 
 // refinement factor
-refine = 4.5;
+refine = 4;
 
 // actual boundary
-srad = 0.5;
+srad = 1.0;
 // for partition
-prad = 0.75;
+prad = 3/2.0 * srad;
 // far field
 ffs = 20.0;
 // mesh size at far field
 hf = 3.0/refine;
 
 // number of points along the inner circle
-n1 = 6*refine;
+n1 = 10*refine;
 // number points in normal direction from circle
 n2 = 10*refine;
 // ratio (r) for geometric progression of transfinite points
-rc = 1.2;
+rc = 1.1;
 
 //center
 Point(1) = {   0,   0,  0, 0.1};
