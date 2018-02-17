@@ -243,7 +243,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	std::cout << "\n--------------- End --------------------- \n\n";
+	std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);
+	std::cout << "\n--------------- End --------------------- \n\n";
 	return ierr;
 }
