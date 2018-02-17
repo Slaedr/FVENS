@@ -1,7 +1,7 @@
 // flow past cylinder
 
 // refinement factor
-refine = 4;
+refine = 7;
 
 // actual boundary
 srad = 1.0;
@@ -17,9 +17,9 @@ n1 = 6*refine;
 // number points in normal direction from circle
 n2 = 10*refine;
 // ratio (r) for geometric progression of transfinite points in normal direction
-rc = 1.15;
+rc = 1.12;
 // ratio for geometric progression in tangential direction
-trc = 1.1;
+trc = 1.075;
 
 //center
 Point(1) = {   0,   0,  0, 0.1};
