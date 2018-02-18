@@ -1,0 +1,38 @@
+#-ksp_converged_reason
+-options_left
+#-log_view
+
+-mat_type aij
+#-matrix_free_jacobian
+#-matrix_free_difference_step 1e-7
+
+-ksp_type fgmres
+-ksp_rtol 1e-1
+-ksp_max_it 40
+
+-pc_type gamg
+-pc_gamg_type agg
+-pc_gamg_agg_nsmooths 0
+-pc_gamg_threshold 0.5
+-pc_gamg_reuse_interpolation true
+
+-pc_mg_type multiplicative
+-pc_mg_cycle_type v
+-pc_mg_levels 3
+-pc_mg_smoothdown 2
+-pc_mg_smoothup 2
+
+-mg_levels_ksp_type richardson
+-mg_levels_ksp_max_it 2
+-mg_levels_pc_type bjacobi
+-mg_levels_sub_pc_type sor
+-mg_levels_sub_pc_sor_symmetric
+
+-mg_coarse_ksp_type richardson
+-mg_coarse_ksp_max_it 10
+-mg_coarse_pc_type bjacobi
+-mg_coarse_sub_pc_type sor
+-mg_coarse_sub_pc_sor_symmetric
+
+#-blasted_pc_type ilu0
+#-blasted_async_sweeps 3,3

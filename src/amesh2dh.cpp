@@ -887,7 +887,7 @@ void UMesh2dh::detect_negative_jacobians(std::ofstream& out)
 void UMesh2dh::compute_areas()
 {
 	area.setup(nelem,1);
-	for(int i = 0; i < nelem; i++)
+	for(a_int i = 0; i < nelem; i++)
 	{
 		if(nnode[i] == 3)
 			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
@@ -904,6 +904,19 @@ void UMesh2dh::compute_areas()
 				- gcoords(ginpoel(i,3),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,2),0)
 				- gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1) 
 				- gcoords(ginpoel(i,3),0)*gcoords(ginpoel(i,2),1));
+		}
+	}
+}
+	
+void UMesh2dh::compute_cell_centres(std::vector<a_real>& centres) const
+{
+	for(a_int i = 0; i < nelem; i++)
+	{
+		for(int idim = 0; idim < NDIM; idim++) {
+			centres[i*NDIM+idim] = 0;
+			for(int j = 0; j < nnode[i]; j++)
+				centres[i*NDIM+idim] += coords(inpoel(i,j),idim);
+			centres[i*NDIM+idim] /= nnode[i];
 		}
 	}
 }

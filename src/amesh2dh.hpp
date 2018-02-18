@@ -164,6 +164,11 @@ public:
 	
 	/// Computes areas of linear triangles and quads
 	void compute_areas();
+
+	/// Computes locations of cell centres
+	/** The array is logically of size nelem x NDIM.
+	 */
+	void compute_cell_centres(std::vector<a_real>& centres) const;
 	
 	/** Computes data structures for 
 	 * elements surrounding point (esup), 

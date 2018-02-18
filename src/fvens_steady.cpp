@@ -106,6 +106,13 @@ int main(int argc, char *argv[])
 	}
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
+	// Give the PC the coordinates of the cell-centres, in case needed
+	/*std::vector<a_real> cellcentres(m.gnelem()*NDIM);
+	m.compute_cell_centres(cellcentres);
+	PC pc;
+	ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+	PCSetCoordinates(pc, NDIM, m.gnelem(), &cellcentres[0]); CHKERRQ(ierr);*/
+
 	// set up time discrization
 
 	const SteadySolverConfig maintconf {
@@ -165,6 +172,19 @@ int main(int argc, char *argv[])
 		// solve the starter problem to get the initial solution
 		ierr = starttime->solve(u); CHKERRQ(ierr);
 	}
+
+	// Reset the KSP - could be advantageous for some types of algebraic solvers
+	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
+	if(mf_flg) {
+		ierr = KSPSetOperators(ksp, A, M); 
+		CHKERRQ(ierr);
+	}
+	else {
+		ierr = KSPSetOperators(ksp, M, M); 
+		CHKERRQ(ierr);
+	}
+	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	mfjac.set_spatial(prob);
 

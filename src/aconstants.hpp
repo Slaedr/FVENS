@@ -7,19 +7,8 @@
 
 #define ACONSTANTS_H 1
 
-/*
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <cmath>
-#include <string>
-#include <iomanip>
-#include <functional>
-#include <time.h>
-#include <sys/time.h>
-
 // for floating point exceptions
-#ifdef DEBUG
+/*#ifdef DEBUG
 #include <fenv.h>
 #endif
 */
