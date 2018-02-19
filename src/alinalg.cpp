@@ -70,6 +70,94 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
+/// Recursive function to setup the BLASTed preconditioner wherever possible
+StatusCode getParentKSPForBLASTed(KSP ksp, Blasted_data& bctx)
+{
+	StatusCode ierr = 0;
+	PC pc;
+	ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+	PetscBool isbjacobi, isasm, isshell, ismg, isgamg, isksp;
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCBJACOBI,&isbjacobi); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCASM,&isasm); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCSHELL,&isshell); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCMG,&ismg); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCGAMG,&isgamg); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCKSP,&isksp); CHKERRQ(ierr);
+
+	if(isbjacobi || isasm)
+	{
+		PetscInt nlocalblocks, firstlocalblock;
+		ierr = KSPSetUp(ksp); CHKERRQ(ierr); 
+		ierr = PCSetUp(pc); CHKERRQ(ierr);
+		KSP *subksp;
+		if(isbjacobi) {
+			ierr = PCBJacobiGetSubKSP(pc, &nlocalblocks, &firstlocalblock, &subksp); CHKERRQ(ierr);
+		}
+		else {
+			ierr = PCASMGetSubKSP(pc, &nlocalblocks, &firstlocalblock, &subksp); CHKERRQ(ierr);
+		}
+		if(nlocalblocks != 1)
+			SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, 
+					"Only one subdomain per rank is supported.");
+		ierr = getParentKSPForBLASTed(subksp[0], bctx); CHKERRQ(ierr);
+	}
+	else if(ismg || isgamg) {
+		ierr = KSPSetUp(ksp); CHKERRQ(ierr); 
+		ierr = PCSetUp(pc); CHKERRQ(ierr);
+		PetscInt nlevels;
+		ierr = PCMGGetLevels(pc, &nlevels); CHKERRQ(ierr);
+		for(int ilvl = 0; ilvl < nlevels; ilvl++) {
+			KSP smootherctx;
+			ierr = PCMGGetSmoother(pc, ilvl , &smootherctx); CHKERRQ(ierr);
+			ierr = getParentKSPForBLASTed(smootherctx, bctx); CHKERRQ(ierr);
+		}
+		KSP coarsesolver;
+		ierr = PCMGGetCoarseSolve(pc, &coarsesolver); CHKERRQ(ierr);
+		ierr = getParentKSPForBLASTed(coarsesolver, bctx); CHKERRQ(ierr);
+	}
+	else if(isksp) {
+		ierr = KSPSetUp(ksp); CHKERRQ(ierr); 
+		ierr = PCSetUp(pc); CHKERRQ(ierr);
+		KSP subksp;
+		ierr = PCKSPGetKSP(pc, &subksp); CHKERRQ(ierr);
+		ierr = getParentKSPForBLASTed(subksp, bctx); CHKERRQ(ierr);
+	}
+	else if(isshell) {
+		// base case 1
+		// if the PC is shell, this is the relevant KSP to pass to BLASTed for setup
+		std::cout << "getParentKSPForBLASTed(): Found valid parent KSP for BLASTed.\n";
+		ierr = setup_localpreconditioner_blasted(ksp, &bctx); CHKERRQ(ierr);
+	}
+	else {
+		// base case 2
+		return ierr;
+	}
+
+	return ierr;
+}
+
+template <int nvars>
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx)
+{
+	StatusCode ierr = 0;
+	Mat M, A;
+	ierr = KSPGetOperators(ksp, &A, &M); CHKERRQ(ierr);
+
+	// first assemble the matrix once for proper setup
+	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
+	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+
+	ierr = getParentKSPForBLASTed(ksp,bctx); CHKERRQ(ierr);
+
+	return ierr;
+}
+
+template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<NVARS> *const startprob, 
+		Blasted_data& bctx);
+template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<1> *const startprob, 
+		Blasted_data& bctx);
+
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()
 	: eps{1e-7}

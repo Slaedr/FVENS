@@ -12,6 +12,10 @@
 
 #include <petscmat.h>
 
+#ifdef USE_BLASTED
+#include <blasted_petsc.h>
+#endif
+
 namespace acfd {
 
 /// Sets up storage preallocation for sparse matrix formats
@@ -26,6 +30,12 @@ namespace acfd {
  */
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
+
+/// Sets BLASTed preconditioners
+/** Only one subdomain per rank is supported in case of domain decomposition global preconditioners.
+ */
+template <int nvars>
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx);
 
 /// Matrix-free Jacobian of the flux
 /** The normalized step length epsilon for the finite-difference Jacobian is set to a default value,

@@ -153,12 +153,8 @@ int main(int argc, char *argv[])
 
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
-	// first assemble the matrix once for proper setup
-	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
-	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	Blasted_data bctx = newBlastedDataContext();
-	ierr = setup_localpreconditioner_blasted(ksp,&bctx); CHKERRQ(ierr);
+	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 #endif
 
 	std::cout << "\n***\n";
@@ -185,6 +181,11 @@ int main(int argc, char *argv[])
 		CHKERRQ(ierr);
 	}
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+#ifdef USE_BLASTED
+	// this will reset the timing
+	bctx = newBlastedDataContext();
+	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+#endif
 
 	mfjac.set_spatial(prob);
 
