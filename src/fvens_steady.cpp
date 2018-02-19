@@ -134,16 +134,12 @@ int main(int argc, char *argv[])
 		if(opts.usestarter != 0)
 			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, ksp);
 
-		time = new SteadyBackwardEulerSolver<4>(prob, maintconf, ksp);
-
-		std::cout << "Set up backward Euler temporal scheme.\n";
+		std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
 	}
 	else
 	{
 		if(opts.usestarter != 0)
 			starttime = new SteadyForwardEulerSolver<4>(startprob, u, starttconf);
-
-		time = new SteadyForwardEulerSolver<4>(prob, u, maintconf);
 
 		std::cout << "Set up explicit forward Euler temporal scheme.\n";
 	}
@@ -171,6 +167,7 @@ int main(int argc, char *argv[])
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ksp = NULL;
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = KSPSetOperators(ksp, A, M); 
@@ -186,6 +183,18 @@ int main(int argc, char *argv[])
 	bctx = newBlastedDataContext();
 	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 #endif
+
+	// setup nonlinear ODE solver for main solve
+	if(opts.timesteptype == "IMPLICIT")
+	{
+		time = new SteadyBackwardEulerSolver<4>(prob, maintconf, ksp);
+		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
+	}
+	else
+	{
+		time = new SteadyForwardEulerSolver<4>(prob, u, maintconf);
+		std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
+	}
 
 	mfjac.set_spatial(prob);
 

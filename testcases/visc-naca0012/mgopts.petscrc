@@ -6,8 +6,8 @@
 #-matrix_free_jacobian
 #-matrix_free_difference_step 1e-7
 
--ksp_type fgmres
--ksp_rtol 1e-1
+-ksp_type gmres
+-ksp_rtol 5e-2
 -ksp_max_it 40
 
 -pc_type gamg
