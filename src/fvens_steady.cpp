@@ -167,7 +167,6 @@ int main(int argc, char *argv[])
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-	ksp = NULL;
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = KSPSetOperators(ksp, A, M); 

@@ -138,6 +138,14 @@ protected:
 	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell
 
 	KSP solver;                            ///< The solver context
+
+	/// Linear CFL ramping 
+	a_real linearRamp(const a_real cstart, const a_real cend, const int itstart, const int itend,
+			const int itcur) const;
+
+	/// A kind of exponential ramping, designed to be dependent on the residual ratio as base
+	a_real expResidualRamp(const a_real cflmin, const a_real cflmax, const a_real prevcfl,
+			const a_real resratio, const a_real param);
 };
 
 /// Base class for unsteady simulations

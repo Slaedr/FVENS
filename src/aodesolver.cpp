@@ -237,6 +237,40 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 	if(ierr)
 		std::cout << "! SteadyBackwardEulerSolver: Could not destroy update vector!\n";
 }
+	
+template <int nvars>
+a_real SteadyBackwardEulerSolver<nvars>::linearRamp(const a_real cstart, const a_real cend, 
+		const int itstart, const int itend, const int itcur) const
+{
+	a_real curCFL;
+	if(itcur < itstart) {
+		curCFL = cstart;
+	}
+	else if(itcur < itend) {
+		if(itend-itstart <= 0) {
+			curCFL = cend;
+		}
+		else {
+			const a_real slopec = (cend-cstart)/(itend-itstart);
+			curCFL = cstart + slopec*(itcur-itstart);
+		}
+	}
+	else {
+		curCFL = cend;
+	}
+	return curCFL;
+}
+
+template <int nvars>
+a_real SteadyBackwardEulerSolver<nvars>::expResidualRamp(const a_real cflmin, const a_real cflmax, 
+		const a_real prevcfl, const a_real resratio, const a_real param)
+{
+	const a_real newcfl = prevcfl * std::pow(resratio, param);
+
+	if(newcfl < cflmin) return cflmin;
+	else if(newcfl > cflmax) return cflmax;
+	else return newcfl;
+}
 
 /** The scaling of linear iterations is currently ignored; the constant set by -ksp_max_it is used
  * for all time steps.
@@ -266,9 +300,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 	}
 
-	a_real curCFL=0; int curlinmaxiter;
+	a_real curCFL=0;
 	int step = 0;
-	a_real resi = 1.0;
+	a_real resi = 1.0, resiold = 1.0;
 	a_real initres = 1.0;
 
 	/* Our usage of Eigen Maps in the manner below assumes that VecGetArray returns a pointer to
@@ -318,30 +352,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
 		
-		// compute ramped quantities
-		if(step < config.rampstart) {
-			curCFL = config.cflinit;
-			curlinmaxiter = config.linmaxiterstart;
-		}
-		else if(step < config.rampend) {
-			if(config.rampend-config.rampstart <= 0) {
-				curCFL = config.cflfin;
-				curlinmaxiter = config.linmaxiterend;
-			}
-			else {
-				const a_real slopec = (config.cflfin-config.cflinit)
-					                    /(config.rampend-config.rampstart);
-				curCFL = config.cflinit + slopec*(step-config.rampstart);
-				
-				const a_real slopei = a_real(config.linmaxiterend-config.linmaxiterstart)
-					                    /(config.rampend-config.rampstart);
-				curlinmaxiter = int(config.linmaxiterstart + slopei*(step-config.rampstart));
-			}
-		}
-		else {
-			curCFL = config.cflfin;
-			curlinmaxiter = config.linmaxiterend;
-		}
+		//curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
+		//(void)resiold;
+		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.5);
 
 		// add pseudo-time terms to diagonal blocks; also, after the following loop,
 		// dtm is the diagonal vector of the mass matrix but having only one entry for each cell.
@@ -401,6 +414,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		}
 
+		resiold = resi;
 		resi = sqrt(resnorm2);
 
 		if(step == 0)
@@ -410,8 +424,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			//const a_real updmag = du.norm();
 			if(mpirank == 0) {
 				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
-					<< ", rel res " << resi/initres << ", abs res = " << resi /*<< ", update " << updmag*/ << std::endl;
-				std::cout << "      CFL = " << curCFL << ", Lin max iters = " << curlinmaxiter 
+					<< ", rel res " << resi/initres << ", abs res = " << resi << std::endl;
+				std::cout << "      CFL = " << curCFL 
 					<< ", iters used = " << linstepsneeded << std::endl;
 			}
 		}

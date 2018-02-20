@@ -7,6 +7,7 @@
 #-matrix_free_difference_step 1e-7
 
 -ksp_type gmres
+#-ksp_pc_side right
 -ksp_rtol 5e-2
 -ksp_max_it 40
 
@@ -34,5 +35,5 @@
 -mg_coarse_sub_pc_type sor
 -mg_coarse_sub_pc_sor_symmetric
 
-#-blasted_pc_type ilu0
+#-blasted_pc_type sgs
 #-blasted_async_sweeps 3,3
