@@ -4,7 +4,7 @@
 
 -mat_type aij
 
--ksp_type gmres
+-ksp_type cg
 -ksp_rtol 1e-2
 -ksp_max_it 30
 -pc_type sor

@@ -92,6 +92,9 @@ protected:
 	const UMesh2dh *const m;
 
 	/// Cell centers of both real cells and ghost cells
+	/** The first nelem rows correspond to real cells, 
+	 * the next nelem+nbface rows are ghost cell centres, indexed by nelem+iface for face iface.
+	 */
 	amat::Array2d<a_real> rc;
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
@@ -117,7 +120,7 @@ protected:
 		const a_real gradl[NDIM][nvars], const a_real gradr[NDIM][nvars], a_real grad[NDIM][nvars])
 		const;
 
-	/// Computes the Jacobian of the thin-layer face gradient w.r.t. the left and right states
+	/// Computes the thin-layer face gradient and its Jacobian w.r.t. the left and right states
 	/** The Jacobians are computed w.r.t. whatever variables 
 	 * the derivatives dul and dur are computed with respect to.
 	 * \param iface The \ref intfac index of the face at which the gradient Jacobian is to be computed
@@ -404,7 +407,7 @@ public:
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 				> source,                              ///< Function defining the source term
-			std::string grad_scheme                    ///< A string identifying the gradient
+			const std::string grad_scheme              ///< A string identifying the gradient
 			                                           ///< scheme to use
 			);
 	

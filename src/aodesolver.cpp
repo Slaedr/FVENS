@@ -265,18 +265,16 @@ a_real SteadyBackwardEulerSolver<nvars>::linearRamp(const a_real cstart, const a
 
 template <int nvars>
 a_real SteadyBackwardEulerSolver<nvars>::expResidualRamp(const a_real cflmin, const a_real cflmax, 
-		const a_real prevcfl, const a_real resratio, const a_real param)
+		const a_real prevcfl, const a_real resratio, const a_real paramup, const a_real paramdown)
 {
-	const a_real newcfl = prevcfl * std::pow(resratio, param);
+	const a_real newcfl = resratio > 1.0 ? prevcfl * std::pow(resratio, paramup)
+	                                     : prevcfl * std::pow(resratio, paramdown);
 
 	if(newcfl < cflmin) return cflmin;
 	else if(newcfl > cflmax) return cflmax;
 	else return newcfl;
 }
 
-/** The scaling of linear iterations is currently ignored; the constant set by -ksp_max_it is used
- * for all time steps.
- */
 template <int nvars>
 StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 {
@@ -354,9 +352,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
 		
-		//curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
-		//(void)resiold;
-		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.5);
+		curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
+		(void)resiold;
+		//curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.25);
 
 		// add pseudo-time terms to diagonal blocks; also, after the following loop,
 		// dtm is the diagonal vector of the mass matrix but having only one entry for each cell.

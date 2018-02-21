@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 {
 	StatusCode ierr = 0;
 	const char help[] = "Finite volume solver for Euler or Navier-Stokes equations.\n\
-		Arguments needed: FVENS control file and PETSc options file with -options_file,\n";
+		Arguments needed: FVENS control file and PETSc options file with -options_file.\n";
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
 	int mpirank;
@@ -124,17 +124,18 @@ int main(int argc, char *argv[])
 
 	if(opts.timesteptype == "IMPLICIT")
 	{
-		if(opts.usestarter != 0)
-			starttime = new SteadyBackwardEulerSolver<4>(startprob, starttconf, ksp);
+		if(opts.usestarter != 0) {
+			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
+			std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
+		}
 
-		std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
 	}
 	else
 	{
-		if(opts.usestarter != 0)
-			starttime = new SteadyForwardEulerSolver<4>(startprob, u, starttconf);
-
-		std::cout << "Set up explicit forward Euler temporal scheme.\n";
+		if(opts.usestarter != 0) {
+			starttime = new SteadyForwardEulerSolver<NVARS>(startprob, u, starttconf);
+			std::cout << "Set up explicit forward Euler temporal scheme for startup solve.\n";
+		}
 	}
 
 	// Ask the spatial discretization context to initialize flow variables
@@ -143,7 +144,9 @@ int main(int argc, char *argv[])
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
 	Blasted_data bctx = newBlastedDataContext();
-	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+	if(opts.timesteptype == "IMPLICIT") {
+		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+	}
 #endif
 
 	std::cout << "\n***\n";
@@ -173,7 +176,9 @@ int main(int argc, char *argv[])
 #ifdef USE_BLASTED
 	// this will reset the timing
 	bctx = newBlastedDataContext();
-	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+	if(opts.timesteptype == "IMPLICIT") {
+		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+	}
 #endif
 
 	// setup nonlinear ODE solver for main solve

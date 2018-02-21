@@ -15,12 +15,6 @@ if(WITH_BLASTED)
 	target_link_libraries(fvens_steady ${BLASTED_LIB})
 endif()
 
-add_executable(heat_steady heat_steady.cpp)
-target_link_libraries(heat_steady fvens_base)
-if(WITH_BLASTED)
-	target_link_libraries(heat_steady ${BLASTED_LIB})
-endif()
-
 add_subdirectory(utilities)
 
 
