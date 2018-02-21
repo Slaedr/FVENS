@@ -1806,66 +1806,82 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	Eigen::Map<const MVector> u(uarr, m->gnelem(), nvars);
 
+#pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
 		//a_int intface = iface-m->gnbface();
-		a_int lelem = m->gintfac(iface,0);
-		a_int relem = m->gintfac(iface,1);
-		a_real len = m->ggallfa(iface,2);
+		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);
+		const a_real len = m->ggallfa(iface,2);
 
-		a_real dr[NDIM], dist=0, sn=0;
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-		}
-		dist = sqrt(dist);
-		for(int i = 0; i < NDIM; i++) {
-			sn += dr[i]/dist * m->ggallfa(iface,i);
+		a_real du[nvars*nvars];
+		for(int i = 0; i < nvars; i++) {
+			for(int j = 0; j < nvars; j++)
+				du[i*nvars+j] = 0;
+			du[i*nvars+i] = 1.0;
 		}
 
-		a_real ll[nvars*nvars];
-		for(int ivar = 0; ivar < nvars; ivar++) {
-			for(int jvar = 0; jvar < nvars; jvar++)
-				ll[ivar*nvars+jvar] = 0;
-			
-			ll[ivar*nvars+ivar] = -diffusivity * sn*len/dist;
+		a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
+
+		// Compute the face gradient Jacobian; we don't actually need the gradient, however..
+		getFaceGradientAndJacobian_thinLayer(iface, &uarr[lelem*nvars], &uarr[relem*nvars],
+				du, du, grad, dgradl, dgradr);
+
+		a_real dfluxl[nvars*nvars];
+		zeros(dfluxl, nvars*nvars);	
+		for(int ivar = 0; ivar < nvars; ivar++)
+		{
+			// compute nu*(d(-grad u)/du_l . n) * l
+			for(int idim = 0; idim < NDIM; idim++)
+				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->ggallfa(iface,idim);
+			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
 		}
 
-		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, ll, ADD_VALUES); CHKERRQ(ierr);
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, ll, ADD_VALUES); CHKERRQ(ierr);
+#pragma omp critical
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, dfluxl, ADD_VALUES);
+#pragma omp critical
+		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, dfluxl, ADD_VALUES);
 		
 		for(int ivar = 0; ivar < nvars; ivar++)
-			ll[ivar*nvars+ivar] *= -1;
+			dfluxl[ivar*nvars+ivar] *= -1;
 
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, ll, ADD_VALUES); CHKERRQ(ierr);
-		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, ll, ADD_VALUES); CHKERRQ(ierr);
+#pragma omp critical
+		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, dfluxl, ADD_VALUES);
+#pragma omp critical
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, dfluxl, ADD_VALUES);
 	}
 	
+#pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		a_int lelem = m->gintfac(iface,0);
-		a_int relem = m->gintfac(iface,1);
-		a_real len = m->ggallfa(iface,2);
-
-		a_real dr[NDIM], dist=0, sn=0;
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-		}
-		dist = sqrt(dist);
-		for(int i = 0; i < NDIM; i++) {
-			sn += dr[i]/dist * m->ggallfa(iface,i);
+		const a_int lelem = m->gintfac(iface,0);
+		const a_real len = m->ggallfa(iface,2);
+		
+		a_real du[nvars*nvars];
+		for(int i = 0; i < nvars; i++) {
+			for(int j = 0; j < nvars; j++)
+				du[i*nvars+j] = 0;
+			du[i*nvars+i] = 1.0;
 		}
 
-		a_real ll[nvars*nvars];
-		for(int ivar = 0; ivar < nvars; ivar++) {
-			for(int jvar = 0; jvar < nvars; jvar++)
-				ll[ivar*nvars+jvar] = 0;
-			
-			ll[ivar*nvars+ivar] = diffusivity * sn*len/dist;
-		}
+		a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
 
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, ll, ADD_VALUES); CHKERRQ(ierr);
+		// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
+		getFaceGradientAndJacobian_thinLayer(iface, &uarr[lelem*nvars], &uarr[lelem*nvars],
+				du, du, grad, dgradl, dgradr);
+
+		a_real dfluxl[nvars*nvars];
+		zeros(dfluxl, nvars*nvars);	
+		for(int ivar = 0; ivar < nvars; ivar++)
+		{
+			// compute nu*(d(-grad u)/du_l . n) * l
+			for(int idim = 0; idim < NDIM; idim++)
+				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->ggallfa(iface,idim);
+			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
+		}
+		
+#pragma omp critical
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, dfluxl, ADD_VALUES);
 	}
 	
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);

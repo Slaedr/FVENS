@@ -5,7 +5,6 @@
 #include "../src/aodesolver.hpp"
 
 #undef NDEBUG
-#define DEBUG
 
 using namespace amat;
 using namespace std;
