@@ -106,13 +106,6 @@ int main(int argc, char *argv[])
 	}
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
-	// Give the PC the coordinates of the cell-centres, in case needed
-	/*std::vector<a_real> cellcentres(m.gnelem()*NDIM);
-	m.compute_cell_centres(cellcentres);
-	PC pc;
-	ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
-	PCSetCoordinates(pc, NDIM, m.gnelem(), &cellcentres[0]); CHKERRQ(ierr);*/
-
 	// set up time discrization
 
 	const SteadySolverConfig maintconf {

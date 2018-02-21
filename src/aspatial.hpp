@@ -103,6 +103,37 @@ protected:
 
 	/// computes ghost cell centers assuming symmetry about the face
 	void compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg);
+
+	/// Computes a unique face gradient from cell-centred gradients using the modified average method
+	/** \param iface The \ref intfac index of the face at which the gradient is to be computed
+	 * \param ucl The left cell-centred state
+	 * \param ucr The right cell-centred state
+	 * \param gradl Left cell-centred gradients
+	 * \param gradr Right cell-centred gradients
+	 * \param[out] grad Face gradients
+	 */
+	void getFaceGradient_modifiedAverage(const a_int iface,
+		const a_real *const ucl, const a_real *const ucr,
+		const a_real gradl[NDIM][nvars], const a_real gradr[NDIM][nvars], a_real grad[NDIM][nvars])
+		const;
+
+	/// Computes the Jacobian of the thin-layer face gradient w.r.t. the left and right states
+	/** The Jacobians are computed w.r.t. whatever variables 
+	 * the derivatives dul and dur are computed with respect to.
+	 * \param iface The \ref intfac index of the face at which the gradient Jacobian is to be computed
+	 * \param ucl The left state
+	 * \param ucr The right state
+	 * \param dul The Jacobian of the left state w.r.t. the cell-centred conserved variables
+	 * \param dur The Jacobian of the right state w.r.t. the cell-centred conserved variables
+	 * \param[out] grad Face gradients
+	 * \param[out] dgradl Jacobian of left cell-centred gradients
+	 * \param[out] dgradr Jacobian of right cell-centred gradients
+	 */
+	void getFaceGradientAndJacobian_thinLayer(const a_int iface,
+		const a_real *const ucl, const a_real *const ucr,
+		const a_real *const dul, const a_real *const dur,
+		a_real grad[NDIM][nvars], a_real dgradl[NDIM][nvars][nvars], a_real dgradr[NDIM][nvars][nvars])
+		const;
 };
 
 /// The collection of physical data needed to initialize flow spatial discretizations
@@ -352,9 +383,11 @@ protected:
 					> source;
 
 	std::vector<a_real> h;			///< Size of cells
-	
+
+	/// Dirichlet BC for a boundary face ied
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const;
 	
+	/// Dirichlet BC for all boundaries
 	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
 			amat::Array2d<a_real>& bounstates) const;
 };
@@ -393,6 +426,8 @@ protected:
 	using Spatial<nvars>::m;
 	using Spatial<nvars>::rc;
 	using Spatial<nvars>::gr;
+	using Spatial<nvars>::getFaceGradient_modifiedAverage;
+	using Spatial<nvars>::getFaceGradientAndJacobian_thinLayer;
 	using Diffusion<nvars>::diffusivity;
 	using Diffusion<nvars>::bval;
 	using Diffusion<nvars>::source;

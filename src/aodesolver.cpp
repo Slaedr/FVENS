@@ -126,6 +126,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
+	std::cout << " Constant CFL = " << config.cflinit << std::endl;
+
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 #pragma omp parallel for simd default(shared)

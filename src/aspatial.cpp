@@ -149,77 +149,78 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 	}
 }
 
-/*template <int nvars>
-StatusCode Spatial<nvars>::compute_jac_vec(const Vec resu, const Vec u, 
-	const Vec v, const bool add_time_deriv, const std::vector<a_real>& dtm,
-	Vec __restrict aux,
-	Vec __restrict prod)
+template <int nvars>
+void Spatial<nvars>::getFaceGradient_modifiedAverage(const a_int iface,
+		const a_real *const ucl, const a_real *const ucr,
+		const a_real gradl[NDIM][nvars], const a_real gradr[NDIM][nvars], a_real grad[NDIM][nvars])
+	const
 {
-	StatusCode ierr = 0;
+	a_real dr[NDIM], dist=0;
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
 
-	const a_int N = m->gnelem()*nvars;
-	a_real vnorm = dot(N, v.data(),v.data());
-	vnorm = sqrt(vnorm);
-	
-	// compute the perturbed state and store in aux
-	axpbypcz(N, 0.0,aux.data(), 1.0,u.data(), eps/vnorm,v.data());
-	
-	// compute residual at the perturbed state and store in the output variable prod
-	amat::Array2d<a_real> _dtm;		// dummy
-	compute_residual(aux, prod, false, _dtm);
-	
-	// compute the Jacobian vector product
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++)
-		prod.data()[i] = (prod.data()[i] - resu.data()[i]) / (eps/vnorm);
-
-	// add time term to the output vector if necessary
-	if(add_time_deriv) {
-#pragma omp parallel for simd default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-			for(int ivar = 0; ivar < nvars; ivar++)
-				prod(iel,ivar) += m->garea(iel)/dtm(iel)*v(iel,ivar);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+	}
+	dist = std::sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] /= dist;
 	}
 
-	return ierr;
+	for(int i = 0; i < nvars; i++) 
+	{
+		a_real davg[NDIM];
+		
+		for(int j = 0; j < NDIM; j++)
+			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
+
+		const a_real corr = (ucr[i]-ucl[i])/dist;
+		
+		const a_real ddr = dimDotProduct(davg,dr);
+
+		for(int j = 0; j < NDIM; j++)
+		{
+			grad[j][i] = davg[j] - ddr*dr[j] + corr*dr[j];
+		}
+	}
 }
 
-// Computes a([M du/dt +] dR/du) v + b w and stores in prod
 template <int nvars>
-StatusCode Spatial<nvars>::compute_jac_gemv(const a_real a, const Vec resu, 
-		const Vec u, const Vec v,
-		const bool add_time_deriv, const std::vector<a_real>& dtm,
-		const a_real b, const Vec w,
-		Vec __restrict aux,
-		Vec __restrict prod)
+void Spatial<nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
+		const a_real *const ucl, const a_real *const ucr,
+		const a_real *const dul, const a_real *const dur,
+		a_real grad[NDIM][nvars], a_real dgradl[NDIM][nvars][nvars], a_real dgradr[NDIM][nvars][nvars])
+	const
 {
-	StatusCode ierr = 0;
-	const a_int N = m->gnelem()*nvars;
-	a_real vnorm = dot(N, v.data(),v.data());
-	vnorm = sqrt(vnorm);
-	
-	// compute the perturbed state and store in aux
-	axpbypcz(N, 0.0,aux.data(), 1.0,u.data(), eps/vnorm,v.data());
-	
-	// compute residual at the perturbed state and store in the output variable prod
-	amat::Array2d<a_real> _dtm;		// dummy
-	compute_residual(aux, prod, false, _dtm);
-	
-	// compute the Jacobian vector product and vector add
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++)
-		prod.data()[i] = a*(prod.data()[i] - resu.data()[i]) / (eps/vnorm) + b*w.data()[i];
+	a_real dr[NDIM], dist=0;
 
-	// add time term to the output vector if necessary
-	if(add_time_deriv) {
-#pragma omp parallel for simd default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-			for(int ivar = 0; ivar < nvars; ivar++)
-				prod(iel,ivar) += a*m->garea(iel)/dtm(iel)*v(iel,ivar);
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] = rc(relem,i)-rc(lelem,i);
+		dist += dr[i]*dr[i];
+	}
+	dist = sqrt(dist);
+	for(int i = 0; i < NDIM; i++) {
+		dr[i] /= dist;
 	}
 
-	return ierr;
-}*/
+	for(int i = 0; i < nvars; i++) 
+	{
+		const a_real corr = (ucr[i]-ucl[i])/dist;        //< The thin layer gradient magnitude
+		
+		for(int j = 0; j < NDIM; j++)
+		{
+			grad[j][i] = corr*dr[j];
+			
+			for(int k = 0; k < nvars; k++) {
+				dgradl[j][i][k] = -dul[i*nvars+k]/dist * dr[j];
+				dgradr[j][i][k] = dur[i*nvars+k]/dist * dr[j];
+			}
+		}
+	}
+}
 
 template<bool secondOrderRequested, bool constVisc>
 FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
@@ -1684,9 +1685,9 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
+	Eigen::Map<const MVector> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
+	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
 
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
@@ -1695,7 +1696,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
-		a_int ielem = m->gintfac(ied,0);
+		const a_int ielem = m->gintfac(ied,0);
 		for(int ivar = 0; ivar < nvars; ivar++)
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
@@ -1708,35 +1709,31 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		a_int lelem = m->gintfac(iface,0);
-		a_int relem = m->gintfac(iface,1);
-		a_real len = m->ggallfa(iface,2);
-		a_real dr[NDIM], dist=0, sn=0, gradterm[nvars];
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
+		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);
+		const a_real len = m->ggallfa(iface,2);
+		
+		a_real ul[nvars], ur[nvars], gradl[NDIM][nvars], gradr[NDIM][nvars], gradf[NDIM][nvars];
+		for(int ivar = 0; ivar < nvars; ivar++) {
+			ul[ivar] = u(lelem,ivar);
+			ur[ivar] = u(relem,ivar);
+			for(int idim = 0; idim < NDIM; idim++) {
+				gradl[idim][ivar] = grads[lelem](idim,ivar);
+				gradr[idim][ivar] = grads[relem](idim,ivar);
+			}
 		}
-		dist = sqrt(dist);
-		for(int i = 0; i < NDIM; i++) {
-			sn += dr[i]/dist * m->ggallfa(iface,i);
-		}
+	
+		getFaceGradient_modifiedAverage(iface, ul, ur, gradl, gradr, gradf);
 
-		// compute modified gradient
-		for(int ivar = 0; ivar < nvars; ivar++) 
+		for(int ivar = 0; ivar < nvars; ivar++)
 		{
-			gradterm[ivar] = 0;
+			// compute nu*(-grad u . n) * l
+			a_real flux = 0;
 			for(int idim = 0; idim < NDIM; idim++)
-				gradterm[ivar] += 0.5*(grads[lelem](idim,ivar)+grads[relem](idim,ivar)) 
-			 		* (m->ggallfa(iface,idim) - sn*dr[idim]/dist);
-			 /*+ 0.5*(grads[lelem](1,ivar)+grads[relem](1,ivar)) 
-			 	* (m->ggallfa(iface,1) - sn*dr[1]/dist);*/
-		}
+				flux += gradf[idim][ivar]*m->ggallfa(iface,idim);
+			flux *= (-diffusivity*len);
 
-		for(int ivar = 0; ivar < nvars; ivar++){
-			a_real flux {diffusivity * 
-				(gradterm[ivar] + (u(relem,ivar)-u(lelem,ivar))/dist * sn) * len};
-
-			/// NOTE: we assemble the negative of the residual ( M du/dt + r(u) = 0)
+			/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
 			residual(lelem,ivar) += flux;
 #pragma omp atomic
@@ -1747,33 +1744,31 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	for(int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
 		const a_real len = m->ggallfa(iface,2);
-		a_real dr[NDIM], dist=0, sn=0, gradterm[nvars];
-		for(int i = 0; i < NDIM; i++) {
-			dr[i] = rc(relem,i)-rc(lelem,i);
-			dist += dr[i]*dr[i];
-		}
-		dist = sqrt(dist);
-		for(int i = 0; i < NDIM; i++) {
-			sn += dr[i]/dist * m->ggallfa(iface,i);
-		}
 		
-		// compute modified gradient
+		a_real ul[nvars], ur[nvars], gradl[NDIM][nvars], gradr[NDIM][nvars], gradf[NDIM][nvars];
+		for(int ivar = 0; ivar < nvars; ivar++) {
+			ul[ivar] = u(lelem,ivar);
+			ur[ivar] = ug(iface,ivar);
+			for(int idim = 0; idim < NDIM; idim++) {
+				gradl[idim][ivar] = grads[lelem](idim,ivar);
+				gradr[idim][ivar] = grads[lelem](idim,ivar);
+			}
+		}
+	
+		getFaceGradient_modifiedAverage(iface, ul, ur, gradl, gradr, gradf);
+
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
-			/*gradterm[ivar] = grads[lelem](0,ivar) * (m->ggallfa(iface,0) - sn*dr[0]/dist)
-							+grads[lelem](1,ivar) * (m->ggallfa(iface,1) - sn*dr[1]/dist);*/
-			gradterm[ivar] = 0;
+			// compute nu*(-grad u . n) * l
+			a_real flux = 0;
 			for(int idim = 0; idim < NDIM; idim++)
-				gradterm[ivar] += grads[lelem](idim,ivar) 
-					* (m->ggallfa(iface,idim) - sn*dr[idim]/dist);
-		}
+				flux += gradf[idim][ivar]*m->ggallfa(iface,idim);
+			flux *= (-diffusivity*len);
 
-		for(int ivar = 0; ivar < nvars; ivar++){
+			/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
-			residual(lelem,ivar) -= diffusivity * 
-				( (ug(iface,ivar)-u(lelem,ivar))/dist*sn + gradterm[ivar]) * len;
+			residual(lelem,ivar) += flux;
 		}
 	}
 
@@ -1784,7 +1779,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 		// subtract source term
 		a_real sourceterm;
 		source(&rc(iel,0), 0, &uarr[iel*nvars], &sourceterm);
-		residual(iel,0) -= sourceterm*m->garea(iel);
+		residual(iel,0) += sourceterm*m->garea(iel);
 	}
 	
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
@@ -1807,7 +1802,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), nvars);
 
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{

@@ -25,12 +25,10 @@ int main(int argc, char* argv[])
 	// Read control file
 	ifstream control(argv[1]);
 
-	string dum, meshfile, outf, logfile, visflux, reconst, linsolver, timesteptype, prec, lognresstr;
-	double initcfl, endcfl, tolerance, lintol, firstcfl, firsttolerance, diffcoeff, bvalue;
-	int maxiter, linmaxiterstart, linmaxiterend, rampstart, rampend, firstmaxiter, restart_vecs;
+	string dum, meshfile, outf, logfile, visflux, reconst, timesteptype, lognresstr;
+	double initcfl, endcfl, tolerance, firstinitcfl, firstendcfl, firsttolerance, diffcoeff, bvalue;
+	int maxiter, rampstart, rampend, firstmaxiter, firstrampstart, firstrampend;
 	short inittype, usestarter;
-	short nbuildsweeps, napplysweeps;
-	char mattype;
 	bool lognres;
 
 	control >> dum; control >> meshfile;
@@ -43,41 +41,23 @@ int main(int argc, char* argv[])
 	control >> dum; control >> visflux;
 	control >> dum; control >> reconst;
 	control >> dum; control >> timesteptype;
-	control >> dum; control >> initcfl;
-	control >> dum; control >> endcfl;
-	control >> dum; control >> rampstart;
-	control >> dum; control >> rampend;
+	control >> dum; control >> initcfl >> endcfl;
+	control >> dum; control >> rampstart >> rampend;
 	control >> dum; control >> tolerance;
 	control >> dum; control >> maxiter;
 	control >> dum; control >> usestarter;
-	control >> dum; control >> firstcfl;
+	control >> dum; control >> firstinitcfl >> firstendcfl;
+	control >> dum; control >> firstrampstart >> firstrampend;
 	control >> dum; control >> firsttolerance;
 	control >> dum; control >> firstmaxiter;
-	if(timesteptype == "IMPLICIT") {
-		control >> dum;
-		control >> dum; control >> mattype;
-		control >> dum; control >> linsolver;
-		control >> dum; control >> lintol;
-		control >> dum; control >> linmaxiterstart;
-		control >> dum; control >> linmaxiterend;
-		control >> dum; control >> restart_vecs;
-		control >> dum; control >> prec;
-		control >> dum; control >> nbuildsweeps;
-		control >> dum; control >> napplysweeps;
-	}
-	else {
-		control >> dum;
-		std::string residualsmoothingstr;
-		control >> dum; control >> residualsmoothingstr;
-		if(residualsmoothingstr == "YES")
-			std::cout << "! Residual smoothing is not supported.\n";
-	}
 	control.close();
 
 	if(lognresstr == "YES")
 		lognres = true;
 	else
 		lognres = false;
+
+	std::cout << "Diffusion coeff = " << diffcoeff << ", boundary value = " << bvalue << std::endl;
 	
 	// rhs and exact soln
 	
@@ -109,15 +89,14 @@ int main(int argc, char* argv[])
 	Diffusion<1>* startprob = nullptr;
 	if(visflux == "MODIFIEDAVERAGE") {
 		prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
-		startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, "NONE");
+		if(usestarter != 0)
+			startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, "NONE");
 	}
 	else {
 		std::cout << " ! Viscous scheme not available!\n";
 		std::abort();
 	}
 
-	Array2d<a_real> outputarr, dummy;
-	
 	std::cout << "\n***\n";
 	
 	// solution vector
@@ -127,18 +106,24 @@ int main(int argc, char* argv[])
 	Mat M;
 	ierr = setupSystemMatrix<1>(&m, &M); CHKERRQ(ierr);
 	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
+	prob->initializeUnknowns(u);
 
 	// initialize solver
 	KSP ksp;
+	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
-	ierr = KSPSetUp(ksp); CHKERRQ(ierr);
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	const SteadySolverConfig tconf {
 		lognres, logfile,
 		initcfl, endcfl, rampstart, rampend,
-		tolerance, maxiter,
-		linmaxiterstart, linmaxiterend
+		tolerance, maxiter
+	};
+	
+	const SteadySolverConfig startconf {
+		lognres, logfile,
+		firstinitcfl, firstendcfl, firstrampstart, firstrampend,
+		firsttolerance, firstmaxiter
 	};
 
 	SteadySolver<1> *time = nullptr;
@@ -148,11 +133,10 @@ int main(int argc, char* argv[])
 	{
 		time = new SteadyBackwardEulerSolver<1>(prob, tconf, ksp);
 
-		startprob->initializeUnknowns(u);
-
 		if(usestarter != 0)
 		{
-			starttime = new SteadyBackwardEulerSolver<1>(startprob, tconf, ksp);
+			std::cout << "Starting initialization solve..\n";
+			starttime = new SteadyBackwardEulerSolver<1>(startprob, startconf, ksp);
 
 			// solve the starter problem to get the initial solution
 			ierr = starttime->solve(u); CHKERRQ(ierr);
@@ -163,16 +147,15 @@ int main(int argc, char* argv[])
 		/* Solve the main problem using either the initial solution
 		 * set by initializeUnknowns or the one computed by the starter problem.
 		 */
+		std::cout << "Starting main solve..\n";
 		ierr = time->solve(u); CHKERRQ(ierr);
 	}
 	else {
 		time = new SteadyForwardEulerSolver<1>(prob, u, tconf);
-		
-		startprob->initializeUnknowns(u);
 
 		if(usestarter != 0)
 		{
-			starttime = new SteadyForwardEulerSolver<1>(startprob, u, tconf);
+			starttime = new SteadyForwardEulerSolver<1>(startprob, u, startconf);
 
 			// solve the starter problem to get the initial solution
 			ierr = starttime->solve(u); CHKERRQ(ierr);
@@ -207,13 +190,14 @@ int main(int argc, char* argv[])
 	double h = 1.0/sqrt(m.gnelem());
 	cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << endl;
 
-	//amat::Array2d<a_real> dumv;
-	//prob->postprocess_point(u, outputarr, dumv);
-	//string scaname[1] = {"some-quantity"}; string vecname;
-	//writeScalarsVectorToVtu_PointData(outf, m, outputarr, scaname, dummy, vecname);
+	Array2d<a_real> outputarr, dummy;
+	prob->postprocess_point(u, outputarr, dummy);
+	string scaname[1] = {"some-quantity"}; string vecname;
+	writeScalarsVectorToVtu_PointData(outf, m, outputarr, scaname, dummy, vecname);
 
 	delete prob;
-	delete startprob;
+	if(usestarter != 0)
+		delete startprob;
 	delete time;
 
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
