@@ -145,6 +145,12 @@ public:
 	 * \deprecated Please use Gmsh format instead.
 	*/
 	void readDomn(const std::string mfile);
+
+	/// Re-orders calls according to some permutation vector
+	/** \warning If reordering is needed, this function must be called immediately after reading
+	 * the mesh.
+	 */
+	void reorder_cells(const PetscInt *const permvec);
 	
 	/** Stores (in array bpointsb) for each boundary point: the associated global point number 
 	 * and the two bfaces associated with it.

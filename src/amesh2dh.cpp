@@ -651,6 +651,22 @@ void UMesh2dh::readSU2(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
+void UMesh2dh::reorder_cells(const PetscInt *const permvec)
+{
+	// reorder inpoel, nnode, nfael, vol_regions
+	const amat::Array2d<a_int> tempelems = inpoel;
+	const std::vector<int> tempnnode = nnode;
+	const std::vector<int> tempnfael = nfael;
+	
+	for(a_int i = 0; i < nelem; i++)
+	{
+		for(int j = 0; j < inpoel.cols(); j++)
+			inpoel(i,j) = tempelems(permvec[i],j);
+		nnode[i] = tempnnode[permvec[i]];
+		nfael[i] = tempnfael[permvec[i]];
+	}
+}
+
 /**	Stores (in array bpointsb) for each boundary point: the associated global point number and 
  * the two bfaces associated with it.
  * Also calculates bfacebp, which is like inpoel for boundary faces - 

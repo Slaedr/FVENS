@@ -67,12 +67,9 @@ public:
 
 	/// Deep copy
 	Array2d(const Array2d<T>& other)
+		: nrows{other.nrows}, ncols{other.ncols}, size{other.size},
+		elems{new T[nrows*ncols]}
 	{
-		nrows = other.nrows;
-		ncols = other.ncols;
-		size = nrows*ncols;
-		delete [] elems;
-		elems = new T[nrows*ncols];
 		for(a_int i = 0; i < nrows*ncols; i++)
 		{
 			elems[i] = other.elems[i];
