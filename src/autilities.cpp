@@ -217,14 +217,17 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2d
 	Mat A;
 	CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
 	CHKERRQ(MatSetType(A, MATSEQAIJ));
+	CHKERRQ(MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m.gnelem(), m.gnelem()));
 	CHKERRQ(setJacobianPreallocation<1>(&m, A));
 
 	Vec u;
-	CHKERRQ(VecCreate(PETSC_COMM_SELF, &u));
-	CHKERRQ(VecSetSizes(u, m.gnelem(), m.gnelem()));
+	CHKERRQ(VecCreateSeq(PETSC_COMM_SELF, m.gnelem(), &u));
+	//CHKERRQ(VecSetSizes(u, m.gnelem(), m.gnelem()));
 	CHKERRQ(VecSet(u,1.0));
 
 	CHKERRQ(sd.compute_jacobian(u, A));
+	CHKERRQ(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
+	CHKERRQ(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
 
 	IS rperm, cperm;
 	const PetscInt *rinds, *cinds;
@@ -249,10 +252,12 @@ StatusCode preprocessMesh(UMesh2dh& m)
 	PetscBool flag = PETSC_FALSE;
 	CHKERRQ(PetscOptionsGetString(NULL, NULL, "-mesh_reorder", ordstr, PETSCOPTION_STR_LEN, &flag));
 	if(flag == PETSC_FALSE) {
-		std::cout << "No reordering requested.\n";
+		std::cout << "preprocessMesh: No reordering requested.\n";
 	}
 	else {
+		std::cout << "preprocessMesh: Reording cells in " << ordstr << " ordering.\n";
 		m.compute_topological();
+		m.compute_face_data();
 
 		DiffusionMA<1> sd(&m, 1.0, 0.0, 
 			[](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)

@@ -739,35 +739,8 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	 * This is the only finite-volume part of this function, rest is physics and chain rule.
 	 */
 	
-	a_real dr[NDIM], dist=0, n[NDIM];
-
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] = rc(relem,i)-rc(lelem,i);
-		dist += dr[i]*dr[i];
-		n[i] = m->ggallfa(iface,i);
-	}
-	dist = sqrt(dist);
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] /= dist;
-	}
-
 	a_real grad[NDIM][NVARS];
-	for(int i = 0; i < NVARS; i++) 
-	{
-		a_real davg[NDIM];
-		
-		for(int j = 0; j < NDIM; j++)
-			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
-
-		const a_real corr = (ucr[i]-ucl[i])/dist;
-		
-		const a_real ddr = dimDotProduct(davg,dr);
-
-		for(int j = 0; j < NDIM; j++)
-		{
-			grad[j][i] = davg[j] - ddr*dr[j] + corr*dr[j];
-		}
-	}
+	getFaceGradient_modifiedAverage(iface, ucl, ucr, gradl, gradr, grad);
 
 	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
 	 * primitive-2 face gradients and conserved face variables.
@@ -796,7 +769,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	{
 		vflux[i+1] = 0;
 		for(int j = 0; j < NDIM; j++)
-			vflux[i+1] -= stress[i][j]*n[j];
+			vflux[i+1] -= stress[i][j] * m->ggallfa(iface,j);
 	}
 
 	// for the energy dissipation, compute avg velocities first
@@ -814,7 +787,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 		
 		comp += kdiff*grad[i][NVARS-1];         // dissipation by heat flux
 
-		vflux[NVARS-1] -= comp*n[i];
+		vflux[NVARS-1] -= comp * m->ggallfa(iface,i);
 	}
 
 	/* vflux is assigned all negative quantities, as should be the case when the residual is
@@ -842,21 +815,6 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 	physics.getJacobianPrimitive2WrtConserved(ul, dupl);
 	physics.getJacobianPrimitive2WrtConserved(ur, dupr);
 	
-	a_real dr[NDIM], dist=0, n[NDIM];
-
-	const a_int lelem = m->gintfac(iface,0);
-	const a_int relem = m->gintfac(iface,1);
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] = rc(relem,i)-rc(lelem,i);
-		dist += dr[i]*dr[i];
-		n[i] = m->ggallfa(iface,i);
-	}
-	
-	dist = sqrt(dist);
-	for(int i = 0; i < NDIM; i++) {
-		dr[i] /= dist;
-	}
-
 	// gradient, in each direction, of each variable
 	a_real grad[NDIM][NVARS];
 
@@ -870,20 +828,7 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 	 */
 	a_real dgradr[NDIM][NVARS][NVARS];
 
-	for(int i = 0; i < NVARS; i++) 
-	{
-		const a_real corr = (upr[i]-upl[i])/dist;        //< The thin layer gradient magnitude
-		
-		for(int j = 0; j < NDIM; j++)
-		{
-			grad[j][i] = corr*dr[j];
-			
-			for(int k = 0; k < NVARS; k++) {
-				dgradl[j][i][k] = -dupl[i*NVARS+k]/dist * dr[j];
-				dgradr[j][i][k] = dupr[i*NVARS+k]/dist * dr[j];
-			}
-		}
-	}
+	getFaceGradientAndJacobian_thinLayer(iface, upl, upr, dupl, dupr, grad, dgradl, dgradr);
 
 	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
 	 * primitive-2 face gradients and conserved face variables.
@@ -936,11 +881,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 		vflux[i+1] = 0;
 		for(int j = 0; j < NDIM; j++)
 		{
-			vflux[i+1] -= stress[i][j]*n[j];
+			vflux[i+1] -= stress[i][j] * m->ggallfa(iface,j);
 
 			for(int k = 0; k < NVARS; k++) {
-				dvfi[(i+1)*NVARS+k] += dstressl[i][j][k]*n[j];
-				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k]*n[j];
+				dvfi[(i+1)*NVARS+k] += dstressl[i][j][k] * m->ggallfa(iface,j);
+				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k] * m->ggallfa(iface,j);
 			}
 		}
 	}
@@ -990,11 +935,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 			dcompr[k] += dkdr[k]*grad[i][NVARS-1] + kdiff*dgradr[i][NVARS-1][k];
 		}
 
-		vflux[NVARS-1] -= comp*n[i];
+		vflux[NVARS-1] -= comp * m->ggallfa(iface,i);
 
 		for(int k = 0; k < NVARS; k++) {
-			dvfi[(NVARS-1)*NVARS+k] += dcompl[k]*n[i];
-			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k]*n[i];
+			dvfi[(NVARS-1)*NVARS+k] += dcompl[k] * m->ggallfa(iface,i);
+			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k] * m->ggallfa(iface,i);
 		}
 	}
 }

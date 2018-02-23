@@ -79,8 +79,9 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);
 FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts);
 
 /// Computes various entity lists required for mesh traversal, also reorders the cells if requested
-/** Does not compute periodic boundary maps; this must be done separately. 
- * \ref UMesh2dh::compute_periodic_map
+/** This can, and should, be called immediately after [reading](UMesh2dh::readMesh) the mesh.
+ * Does not compute [periodic boundary maps](UMesh2dh::compute_periodic_map); 
+ * this must be done separately. 
  */
 StatusCode preprocessMesh(UMesh2dh& m);
 

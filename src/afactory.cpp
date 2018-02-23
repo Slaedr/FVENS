@@ -91,11 +91,11 @@ GradientScheme<nvars>* create_mutable_gradientscheme(
 	else if(type == "GREENGAUSS")
 	{
 		gradcomp = new GreenGaussGradients<nvars>(m, rc);
-		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used." << std::endl;
+		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used.\n";
 	}
 	else {
 		gradcomp = new ZeroGradients<nvars>(m, rc);
-		std::cout << " GradientSchemeFactory: No gradient computation!" << std::endl;
+		std::cout << " GradientSchemeFactory: No gradient computation.\n";
 	}
 
 	return gradcomp;

@@ -3,6 +3,7 @@
 #include "../src/alinalg.hpp"
 #include "../src/aoutput.hpp"
 #include "../src/aodesolver.hpp"
+#include "../src/autilities.hpp"
 
 #undef NDEBUG
 
@@ -88,10 +89,7 @@ int main(int argc, char* argv[])
 
 		UMesh2dh m;
 		m.readMesh(meshfile);
-		m.compute_topological();
-		m.compute_areas();
-		m.compute_face_data();
-		//m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
+		CHKERRQ(preprocessMesh(m));
 
 		// set up problem
 		

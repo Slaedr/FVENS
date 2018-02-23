@@ -327,7 +327,6 @@ void UMesh2dh::readGmsh2(const std::string mfile)
 		while(ch != '\n');
 
 	infile >> npoin;
-	std::cout << "UMesh2d: readGmsh2(): No. of points = " << npoin << std::endl;
 	coords.resize(npoin,NDIM);
 
 	// read coords of points
