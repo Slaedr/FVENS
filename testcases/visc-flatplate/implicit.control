@@ -73,15 +73,15 @@ YES
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
 ---initial-CFL
-5.0
+50.0
 ---final-CFL
-250.0
+1000.0
 ---ramp-start-step-and-end-step
-50 200
+50 150
 ---Tolerance
 1e-6
 ---Max-pseudotime-iterations
-10000
+500
 #######################################################################
 ---use-first-order-initial-condition
 1
@@ -90,11 +90,11 @@ IMPLICIT
 ---final-CFL
 2000.0
 ---ramp-start-step-and-end-step
-200 500
+100 300
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-1000
+400
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 ROE

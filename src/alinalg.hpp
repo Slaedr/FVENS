@@ -18,6 +18,14 @@
 
 namespace acfd {
 
+/// Reorders the mesh cells in a given ordering using PETSc
+/** \param m The mesh context
+ * \param ordering The ordering to use - "rcm" is recommended. See the relevant
+ * [page](www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html)
+ * in the PETSc manual for the full list.
+ */
+StatusCode reorderMesh(UMesh2dh& m, const char *const ordering);
+
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context
  * \param[in|out] A The matrix to pre-allocate for
