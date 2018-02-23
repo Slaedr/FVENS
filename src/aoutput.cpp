@@ -97,8 +97,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				a_int lelem = m->gintfac(iface,0);
 				a_real n[NDIM];
 				for(int j = 0; j < NDIM; j++)
-					n[j] = m->ggallfa(iface,j);
-				const a_real len = m->ggallfa(iface,2);
+					n[j] = m->gfacemetric(iface,j);
+				const a_real len = m->gfacemetric(iface,2);
 				totallen += len;
 
 				// coords of face center
@@ -219,8 +219,8 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				a_int lelem = m->gintfac(iface,0);
 				/*a_real n[NDIM];
 				for(int j = 0; j < NDIM; j++)
-					n[j] = m->ggallfa(iface,j);
-				const a_real len = m->ggallfa(iface,2);*/
+					n[j] = m->gfacemetric(iface,j);
+				const a_real len = m->gfacemetric(iface,2);*/
 
 				// coords of face center
 				a_real ijp[NDIM];

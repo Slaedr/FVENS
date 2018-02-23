@@ -19,7 +19,7 @@ int TestFlowFV::testWalls(const a_real *const u) const
 		a_real ug[NVARS];
 		a_real n[NDIM];
 		for(int i = 0; i < NDIM; i++)
-			n[i] = m->ggallfa(iface,i);
+			n[i] = m->gfacemetric(iface,i);
 
 		compute_boundary_state(iface, u, ug);
 

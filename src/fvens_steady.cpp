@@ -34,9 +34,6 @@ int main(int argc, char *argv[])
 
 	UMesh2dh m;
 	m.readMesh(opts.meshfile);
-	/*m.compute_topological();
-	m.compute_areas();
-	m.compute_face_data();*/
 	CHKERRQ(preprocessMesh(m));
 	m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
 

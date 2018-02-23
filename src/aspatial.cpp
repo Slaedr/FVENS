@@ -112,8 +112,8 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
-		const a_real nx = m->ggallfa(ied,0);
-		const a_real ny = m->ggallfa(ied,1);
+		const a_real nx = m->gfacemetric(ied,0);
+		const a_real ny = m->gfacemetric(ied,1);
 
 		const a_real xi = rc(ielem,0);
 		const a_real yi = rc(ielem,1);
@@ -313,9 +313,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		const a_real *const ins, 
 		a_real *const gs        ) const
 {
-	const a_real nx = m->ggallfa(ied,0);
-	const a_real ny = m->ggallfa(ied,1);
-	const a_real n[NDIM] = {m->ggallfa(ied,0), m->ggallfa(ied,1)};
+	const a_real nx = m->gfacemetric(ied,0);
+	const a_real ny = m->gfacemetric(ied,1);
+	const a_real n[NDIM] = {m->gfacemetric(ied,0), m->gfacemetric(ied,1)};
 
 	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
 
@@ -452,7 +452,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 
-	const a_real n[NDIM] = {m->ggallfa(ied,0), m->ggallfa(ied,1)};
+	const a_real n[NDIM] = {m->gfacemetric(ied,0), m->gfacemetric(ied,1)};
 	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
 	const a_real dvni[NVARS] = { 
 		-vni/ins[0],
@@ -769,7 +769,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 	{
 		vflux[i+1] = 0;
 		for(int j = 0; j < NDIM; j++)
-			vflux[i+1] -= stress[i][j] * m->ggallfa(iface,j);
+			vflux[i+1] -= stress[i][j] * m->gfacemetric(iface,j);
 	}
 
 	// for the energy dissipation, compute avg velocities first
@@ -787,7 +787,7 @@ void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int ifac
 		
 		comp += kdiff*grad[i][NVARS-1];         // dissipation by heat flux
 
-		vflux[NVARS-1] -= comp * m->ggallfa(iface,i);
+		vflux[NVARS-1] -= comp * m->gfacemetric(iface,i);
 	}
 
 	/* vflux is assigned all negative quantities, as should be the case when the residual is
@@ -881,11 +881,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 		vflux[i+1] = 0;
 		for(int j = 0; j < NDIM; j++)
 		{
-			vflux[i+1] -= stress[i][j] * m->ggallfa(iface,j);
+			vflux[i+1] -= stress[i][j] * m->gfacemetric(iface,j);
 
 			for(int k = 0; k < NVARS; k++) {
-				dvfi[(i+1)*NVARS+k] += dstressl[i][j][k] * m->ggallfa(iface,j);
-				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k] * m->ggallfa(iface,j);
+				dvfi[(i+1)*NVARS+k] += dstressl[i][j][k] * m->gfacemetric(iface,j);
+				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k] * m->gfacemetric(iface,j);
 			}
 		}
 	}
@@ -935,11 +935,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 			dcompr[k] += dkdr[k]*grad[i][NVARS-1] + kdiff*dgradr[i][NVARS-1][k];
 		}
 
-		vflux[NVARS-1] -= comp * m->ggallfa(iface,i);
+		vflux[NVARS-1] -= comp * m->gfacemetric(iface,i);
 
 		for(int k = 0; k < NVARS; k++) {
-			dvfi[(NVARS-1)*NVARS+k] += dcompl[k] * m->ggallfa(iface,i);
-			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k] * m->ggallfa(iface,i);
+			dvfi[(NVARS-1)*NVARS+k] += dcompl[k] * m->gfacemetric(iface,i);
+			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k] * m->gfacemetric(iface,i);
 		}
 	}
 }
@@ -1106,9 +1106,9 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 		for(a_int ied = 0; ied < m->gnaface(); ied++)
 		{
 			a_real n[NDIM];
-			n[0] = m->ggallfa(ied,0);
-			n[1] = m->ggallfa(ied,1);
-			a_real len = m->ggallfa(ied,2);
+			n[0] = m->gfacemetric(ied,0);
+			n[1] = m->gfacemetric(ied,1);
+			a_real len = m->gfacemetric(ied,2);
 			const int lelem = m->gintfac(ied,0);
 			const int relem = m->gintfac(ied,1);
 			a_real fluxes[NVARS];
@@ -1219,9 +1219,9 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		a_real n[NDIM];
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		const a_real len = m->ggallfa(iface,2);
+		n[0] = m->gfacemetric(iface,0);
+		n[1] = m->gfacemetric(iface,1);
+		const a_real len = m->gfacemetric(iface,2);
 		
 		a_real uface[NVARS];
 		Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
@@ -1260,9 +1260,9 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
 		a_real n[NDIM];
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		const a_real len = m->ggallfa(iface,2);
+		n[0] = m->gfacemetric(iface,0);
+		n[1] = m->gfacemetric(iface,1);
+		const a_real len = m->gfacemetric(iface,2);
 		Matrix<a_real,NVARS,NVARS,RowMajor> L;
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
@@ -1321,9 +1321,9 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u,
 	{
 		a_int lelem = m->gintfac(iface,0);
 		a_real n[NDIM];
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		a_real len = m->ggallfa(iface,2);
+		n[0] = m->gfacemetric(iface,0);
+		n[1] = m->gfacemetric(iface,1);
+		a_real len = m->gfacemetric(iface,2);
 		
 		a_real uface[NVARS];
 		Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
@@ -1358,9 +1358,9 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u,
 		a_int lelem = m->gintfac(iface,0);
 		a_int relem = m->gintfac(iface,1);
 		a_real n[NDIM];
-		n[0] = m->ggallfa(iface,0);
-		n[1] = m->ggallfa(iface,1);
-		a_real len = m->ggallfa(iface,2);
+		n[0] = m->gfacemetric(iface,0);
+		n[1] = m->gfacemetric(iface,1);
+		a_real len = m->gfacemetric(iface,2);
 		Matrix<a_real,NVARS,NVARS,RowMajor> L;
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
@@ -1527,7 +1527,7 @@ Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, 
 		// max face length
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
 			a_int face = m->gelemface(iel,ifael);
-			if(h[iel] < m->ggallfa(face,2)) h[iel] = m->ggallfa(face,2);
+			if(h[iel] < m->gfacemetric(face,2)) h[iel] = m->gfacemetric(face,2);
 		}
 	}
 }
@@ -1656,7 +1656,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
-		const a_real len = m->ggallfa(iface,2);
+		const a_real len = m->gfacemetric(iface,2);
 		
 		a_real gradl[NDIM][nvars], gradr[NDIM][nvars];
 		for(int ivar = 0; ivar < nvars; ivar++) {
@@ -1667,14 +1667,15 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 		}
 	
 		a_real gradf[NDIM][nvars];
-		getFaceGradient_modifiedAverage(iface, &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, gradf);
+		getFaceGradient_modifiedAverage(iface, &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, 
+				gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			// compute nu*(-grad u . n) * l
 			a_real flux = 0;
 			for(int idim = 0; idim < NDIM; idim++)
-				flux += gradf[idim][ivar]*m->ggallfa(iface,idim);
+				flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
 			flux *= (-diffusivity*len);
 
 			/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
@@ -1689,7 +1690,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	for(int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const a_real len = m->ggallfa(iface,2);
+		const a_real len = m->gfacemetric(iface,2);
 		
 		a_real gradl[NDIM][nvars], gradr[NDIM][nvars];
 		for(int ivar = 0; ivar < nvars; ivar++) {
@@ -1707,7 +1708,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 			// compute nu*(-grad u . n) * l
 			a_real flux = 0;
 			for(int idim = 0; idim < NDIM; idim++)
-				flux += gradf[idim][ivar]*m->ggallfa(iface,idim);
+				flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
 			flux *= (-diffusivity*len);
 
 			/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
@@ -1757,7 +1758,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 		//a_int intface = iface-m->gnbface();
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
-		const a_real len = m->ggallfa(iface,2);
+		const a_real len = m->gfacemetric(iface,2);
 
 		a_real du[nvars*nvars];
 		for(int i = 0; i < nvars; i++) {
@@ -1778,7 +1779,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 		{
 			// compute nu*(d(-grad u)/du_l . n) * l
 			for(int idim = 0; idim < NDIM; idim++)
-				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->ggallfa(iface,idim);
+				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
 			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
 		}
 
@@ -1800,7 +1801,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const a_real len = m->ggallfa(iface,2);
+		const a_real len = m->gfacemetric(iface,2);
 		
 		a_real du[nvars*nvars];
 		for(int i = 0; i < nvars; i++) {
@@ -1821,7 +1822,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 		{
 			// compute nu*(d(-grad u)/du_l . n) * l
 			for(int idim = 0; idim < NDIM; idim++)
-				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->ggallfa(iface,idim);
+				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
 			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
 		}
 		

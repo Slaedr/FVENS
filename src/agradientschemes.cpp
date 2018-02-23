@@ -89,10 +89,10 @@ void GreenGaussGradients<nvars>::compute_gradients(
 			
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar]= (u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar]= (u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
 
 				for(int idim = 0; idim < NDIM; idim++)
-					grad[ielem](idim,ivar) += (ut[ivar] * m->ggallfa(iface,idim))*areainv1;
+					grad[ielem](idim,ivar) += (ut[ivar] * m->gfacemetric(iface,idim))*areainv1;
 			}
 		}
 
@@ -122,14 +122,14 @@ void GreenGaussGradients<nvars>::compute_gradients(
 			
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar] = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->ggallfa(iface,2);
+				ut[ivar] = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
 
 				for(int idim = 0; idim < NDIM; idim++)
 				{
 #pragma omp atomic update
-					grad[ielem](idim,ivar) += (ut[ivar] * m->ggallfa(iface,idim))*areainv1;
+					grad[ielem](idim,ivar) += (ut[ivar] * m->gfacemetric(iface,idim))*areainv1;
 #pragma omp atomic update
-					grad[jelem](idim,ivar) -= (ut[ivar] * m->ggallfa(iface,idim))*areainv2;
+					grad[jelem](idim,ivar) -= (ut[ivar] * m->gfacemetric(iface,idim))*areainv2;
 				}
 			}
 		}

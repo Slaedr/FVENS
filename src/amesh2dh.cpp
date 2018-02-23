@@ -62,7 +62,8 @@ UMesh2dh::UMesh2dh(const UMesh2dh& other)
 	bifmap = other.bifmap;
 	ifbmap = other.ifbmap;
 	isBoundaryMaps = other.isBoundaryMaps;
-	//gallfa = other.gallfa;
+	area = other.area;
+	facemetric = other.facemetric;
 	alloc_jacobians = other.alloc_jacobians;
 	jacobians = other.jacobians;
 }
@@ -99,7 +100,8 @@ UMesh2dh& UMesh2dh::operator=(const UMesh2dh& other)
 	bifmap = other.bifmap;
 	ifbmap = other.ifbmap;
 	isBoundaryMaps = other.isBoundaryMaps;
-	//gallfa = other.gallfa;
+	area = other.area;
+	facemetric = other.facemetric;
 	alloc_jacobians = other.alloc_jacobians;
 	jacobians = other.jacobians;
 	return *this;
@@ -1376,15 +1378,15 @@ void UMesh2dh::compute_face_data()
 	int i, j, p1, p2;
 
 	//Now compute normals and lengths (only linear meshes!)
-	gallfa.resize(naface, 3);
+	facemetric.resize(naface, 3);
 	for(i = 0; i < naface; i++)
 	{
-		gallfa(i,0) = coords(intfac(i,3),1) - coords(intfac(i,2),1);
-		gallfa(i,1) = -1.0*(coords(intfac(i,3),0) - coords(intfac(i,2),0));
-		gallfa(i,2) = sqrt(pow(gallfa(i,0),2) + pow(gallfa(i,1),2));
+		facemetric(i,0) = coords(intfac(i,3),1) - coords(intfac(i,2),1);
+		facemetric(i,1) = -1.0*(coords(intfac(i,3),0) - coords(intfac(i,2),0));
+		facemetric(i,2) = sqrt(pow(facemetric(i,0),2) + pow(facemetric(i,1),2));
 		//Normalize the normal vector components
-		gallfa(i,0) /= gallfa(i,2);
-		gallfa(i,1) /= gallfa(i,2);
+		facemetric(i,0) /= facemetric(i,2);
+		facemetric(i,1) /= facemetric(i,2);
 	}
 
 	//Populate boundary flags in intfacbtags

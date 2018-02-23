@@ -78,8 +78,8 @@ public:
 	/// Returns the measure of a cell
 	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
 
-	/// Returns the components of the unit normal or the length of a face \sa gallfa
-	a_real ggallfa(const a_int iface, const int index) const { return gallfa.get(iface,index); }
+	/// Returns the components of the unit normal or the length of a face \sa facemetric
+	a_real gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
 	/// Returns paired faces in case of periodic boundaries \sa periodicmap
 	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
@@ -332,7 +332,7 @@ private:
 	 * the third component is the length.
 	 * The unit normal points towards the cell with greater index.
 	 */
-	amat::Array2d<a_real> gallfa;
+	amat::Array2d<a_real> facemetric;
 };
 
 
