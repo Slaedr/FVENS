@@ -4,17 +4,7 @@
 #include <cstring>
 #include <limits>
 
-#define PETSCOPTION_STR_LEN 30
-
 namespace acfd {
-
-StatusCode reorderMesh(UMesh2dh& m, const char *const ordering)
-{
-	StatusCode ierr = 0;
-
-	// The implementation must change for the multi-process case
-
-}
 
 template <int nvars>
 static StatusCode setJacobianSizes(const UMesh2dh *const m, Mat A) 
@@ -27,8 +17,10 @@ static StatusCode setJacobianSizes(const UMesh2dh *const m, Mat A)
 }
 
 template <int nvars>
-static StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A) 
+StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A) 
 {
+	// The implementation must be changed for the multi-process case
+	
 	StatusCode ierr = 0;
 
 	// set block preallocation

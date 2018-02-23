@@ -78,6 +78,25 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);
 /// Extracts the spatial discretization's settings from the parsed control file data
 FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts);
 
+/// Computes various entity lists required for mesh traversal, also reorders the cells if requested
+/** Does not compute periodic boundary maps; this must be done separately. 
+ * \ref UMesh2dh::compute_periodic_map
+ */
+StatusCode preprocessMesh(UMesh2dh& m);
+
+/// Reorders the mesh cells in a given ordering using PETSc
+/** Symmetric premutations only.
+ * \warning It is the caller's responsibility to recompute things that are affected by the reordering,
+ * such as \ref UMesh2dh::compute_topological.
+ *
+ * \param ordering The ordering to use - "rcm" is recommended. See the relevant
+ * [page](www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html)
+ * in the PETSc manual for the full list.
+ * \param sd Spatial discretization to be used to generate a Jacobian matrix
+ * \param m The mesh context
+ */
+StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh& m);
+
 }
 
 #endif

@@ -1,5 +1,5 @@
 /** @file alinalg.hpp
- * @brief Linear algebra subroutines
+ * @brief Setup and handling of some linear algebra objects 
  * @author Aditya Kashi
  */
 
@@ -12,19 +12,13 @@
 
 #include <petscmat.h>
 
+#define PETSCOPTION_STR_LEN 30
+
 #ifdef USE_BLASTED
 #include <blasted_petsc.h>
 #endif
 
 namespace acfd {
-
-/// Reorders the mesh cells in a given ordering using PETSc
-/** \param m The mesh context
- * \param ordering The ordering to use - "rcm" is recommended. See the relevant
- * [page](www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html)
- * in the PETSc manual for the full list.
- */
-StatusCode reorderMesh(UMesh2dh& m, const char *const ordering);
 
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context
@@ -38,6 +32,10 @@ StatusCode reorderMesh(UMesh2dh& m, const char *const ordering);
  */
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
+
+/// Computes the amount of memory to be reserved for the Jacobian matrix
+template <int nvars>
+StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A);
 
 /// Sets BLASTed preconditioners
 /** Only one subdomain per rank is supported in case of domain decomposition global preconditioners.

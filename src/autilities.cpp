@@ -1,6 +1,7 @@
 #include "autilities.hpp"
+#include "alinalg.hpp"
 #include <iostream>
-#include <petscsys.h>
+#include <petscmat.h>
 
 namespace acfd {
 
@@ -207,6 +208,65 @@ FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts
 	const FlowNumericsConfig nconf {opts.invflux, opts.invfluxjac, 
 		opts.gradientmethod, opts.limiter, opts.order2};
 	return nconf;
+}
+
+StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh& m)
+{
+	// The implementation must be changed for the multi-process case
+	
+	Mat A;
+	CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
+	CHKERRQ(MatSetType(A, MATSEQAIJ));
+	CHKERRQ(setJacobianPreallocation<1>(&m, A));
+
+	Vec u;
+	CHKERRQ(VecCreate(PETSC_COMM_SELF, &u));
+	CHKERRQ(VecSetSizes(u, m.gnelem(), m.gnelem()));
+	CHKERRQ(VecSet(u,1.0));
+
+	CHKERRQ(sd.compute_jacobian(u, A));
+
+	IS rperm, cperm;
+	const PetscInt *rinds, *cinds;
+	CHKERRQ(MatGetOrdering(A, ordering, &rperm, &cperm));
+	CHKERRQ(ISGetIndices(rperm, &rinds));
+	CHKERRQ(ISGetIndices(cperm, &cinds));
+	// check for symmetric permutation
+	for(a_int i = 0; i < m.gnelem(); i++)
+		assert(rinds[i] == cinds[i]);
+
+	m.reorder_cells(rinds);
+	
+	CHKERRQ(ISRestoreIndices(rperm, &rinds));
+	CHKERRQ(MatDestroy(&A));
+	CHKERRQ(VecDestroy(&u));
+	return 0;
+}
+
+StatusCode preprocessMesh(UMesh2dh& m)
+{
+	char ordstr[PETSCOPTION_STR_LEN];
+	PetscBool flag = PETSC_FALSE;
+	CHKERRQ(PetscOptionsGetString(NULL, NULL, "-mesh_reorder", ordstr, PETSCOPTION_STR_LEN, &flag));
+	if(flag == PETSC_FALSE) {
+		std::cout << "No reordering requested.\n";
+	}
+	else {
+		m.compute_topological();
+
+		DiffusionMA<1> sd(&m, 1.0, 0.0, 
+			[](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
+			{ sourceterm[0] = 0; }, 
+		"NONE");
+
+		CHKERRQ(reorderMesh(ordstr, sd, m));
+	}
+		
+	m.compute_topological();
+	m.compute_areas();
+	m.compute_face_data();
+
+	return 0;
 }
 
 }
