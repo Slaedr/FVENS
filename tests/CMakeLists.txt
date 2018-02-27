@@ -19,9 +19,10 @@ endif()
 
 # Tests
 
+add_test(NAME Mesh_Topology_ElemSurrElem COMMAND exec_testmesh esup ${CMAKE_CURRENT_SOURCE_DIR}/input/2dcylinderhybrid.msh)
 add_test(NAME Mesh_Periodic COMMAND exec_testmesh periodic ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 add_test(NAME MeshUtils_LevelSchedule WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testmesh levelschedule input/squarecoarse.msh input/squarecoarselevels.dat)
-add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testmesh levelscheduleInternal heat/grids/squareunsquad1.msh)
+add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testmesh levelscheduleInternal input/2dcylinderhybrid.msh)
 
 add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflowspatial input/test.cfg wall_boundaries)
 

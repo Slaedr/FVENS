@@ -46,10 +46,17 @@ public:
 		return bface.get(facenum, locindex);
 	}
 
-	a_int gesup(a_int i) const { return esup.get(i); }
-	a_int gesup_p(a_int i) const { return esup_p.get(i); }
-	a_int gpsup(a_int i) const { return psup.get(i); }
-	a_int gpsup_p(a_int i) const { return psup_p.get(i); }
+	/// Returns elements surrounding points; to be used with \ref gesup_p
+	a_int gesup(const a_int i) const { return esup.get(i); }
+
+	/// Returns the index for \ref gesup to access the list of elems surrounding point i
+	a_int gesup_p(const a_int i) const { return esup_p.get(i); }
+
+	/// Returns points surrounding points; to be used with \ref gpsup_p
+	a_int gpsup(const a_int i) const { return psup.get(i); }
+
+	/// Returns the index for \ref gpsup to access the list of points surrounding point i
+	a_int gpsup_p(const a_int i) const { return psup_p.get(i); }
 
 	/// Returns the element adjacent to a given element corresponding to the given local face
 	/** Note that the local face number `j' would be the one between local node j and 

@@ -9,11 +9,29 @@
 
 using namespace acfd;
 
-int test_periodic_map(const std::string mfile, const int bcm, const int axis)
+int test_topology_internalconsistency_esup(const UMesh2dh& m)
 {
-	UMesh2dh m;
-	m.readMesh(mfile);
-	m.compute_topological();
+	for(a_int ipoin = 0; ipoin < m.gnpoin(); ipoin++)
+	{
+		for(int ielind = m.gesup_p(ipoin); ielind < m.gesup_p(ipoin+1); ielind++)
+		{
+			const a_int iel = m.gesup(ielind);
+			if(iel >= m.gnelem()) 
+				continue;
+			
+			bool found = false;
+			for(int jp = 0; jp < m.gnnode(iel); jp++)
+				if(m.ginpoel(iel,jp) == ipoin)
+					found = true;
+			
+			TASSERT(found);
+		}
+	}
+	return 0;
+}
+
+int test_periodic_map(UMesh2dh& m, const int bcm, const int axis)
+{
 	m.compute_face_data();
 	m.compute_periodic_map(bcm,axis);
 
@@ -40,11 +58,8 @@ int test_periodic_map(const std::string mfile, const int bcm, const int axis)
 	return ierr;
 }
 
-int test_levelscheduling(const std::string mfile, const std::string levelsfile)
+int test_levelscheduling(const UMesh2dh& m, const std::string levelsfile)
 {
-	UMesh2dh m;
-	m.readMesh(mfile);
-	m.compute_topological();
 	std::vector<a_int> levels = levelSchedule(m);
 	const int nlevels = (int)(levels.size()-1);
 
@@ -75,11 +90,8 @@ int test_levelscheduling(const std::string mfile, const std::string levelsfile)
 	return 0;
 }
 
-int test_levelscheduling_internalconsistency(const std::string mfile)
+int test_levelscheduling_internalconsistency(const UMesh2dh& m)
 {
-	UMesh2dh m;
-	m.readMesh(mfile);
-	m.compute_topological();
 	std::vector<a_int> levels = levelSchedule(m);
 	const int nlevels = (int)(levels.size()-1);
 	
@@ -115,9 +127,16 @@ int main(int argc, char *argv[])
 
 	std::string whichtest = argv[1];
 	int err = 0;
+	
+	UMesh2dh m;
+	m.readMesh(argv[2]);
+	m.compute_topological();
 
-	if(whichtest == "periodic") {
-		err = test_periodic_map(argv[2], 4, 0);
+	if(whichtest == "esup") {
+		err = test_topology_internalconsistency_esup(m);
+	}
+	else if(whichtest == "periodic") {
+		err = test_periodic_map(m, 4, 0);
 		if(err) std::cerr << " Periodic map test failed!\n";
 	}
 	else if(whichtest == "levelschedule") {
@@ -125,10 +144,10 @@ int main(int argc, char *argv[])
 			std::cout << "Not enough command-line arguments!\n";
 			return -2;
 		}
-		err = test_levelscheduling(argv[2], argv[3]);
+		err = test_levelscheduling(m, argv[3]);
 	}
 	else if(whichtest == "levelscheduleInternal") {
-		err = test_levelscheduling_internalconsistency(argv[2]);
+		err = test_levelscheduling_internalconsistency(m);
 	}
 	else
 		throw "Invalid test";
