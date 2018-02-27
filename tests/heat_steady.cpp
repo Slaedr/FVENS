@@ -4,6 +4,7 @@
 #include "../src/aoutput.hpp"
 #include "../src/aodesolver.hpp"
 #include "../src/autilities.hpp"
+#include "../src/ameshutils.hpp"
 
 #undef NDEBUG
 

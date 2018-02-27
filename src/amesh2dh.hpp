@@ -6,6 +6,7 @@
 #ifndef AMESH2DH_H
 #define AMESH2DH_H
 
+#include <vector>
 #include "aconstants.hpp"
 #include "aarray2d.hpp"
 
