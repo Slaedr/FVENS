@@ -24,7 +24,7 @@ static inline a_real linearExtrapolate(
 	return uface;
 }
 
-SolutionReconstruction::SolutionReconstruction (const UMesh2dh* mesh, 
+SolutionReconstruction::SolutionReconstruction (const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real>& c_centres, 
 		const amat::Array2d<a_real>* gauss_r)
 	: m{mesh}, ri{c_centres}, gr{gauss_r}, ng{gr[0].rows()}
@@ -33,7 +33,7 @@ SolutionReconstruction::SolutionReconstruction (const UMesh2dh* mesh,
 SolutionReconstruction::~SolutionReconstruction()
 { }
 
-LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh* mesh,
+LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh *const mesh,
 		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, c_centres, gauss_r)
 { }
@@ -76,7 +76,7 @@ void LinearUnlimitedReconstruction::compute_face_values(
 	}
 }
 
-WENOReconstruction::WENOReconstruction(const UMesh2dh* mesh,
+WENOReconstruction::WENOReconstruction(const UMesh2dh *const mesh,
 		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, c_centres, gauss_r),
 	  gamma{4.0}, lambda{1.0e3}, epsilon{1.0e-5}
@@ -156,7 +156,7 @@ void WENOReconstruction::compute_face_values(const MVector& u,
 	}
 }
 
-MUSCLReconstruction::MUSCLReconstruction(const UMesh2dh* mesh,
+MUSCLReconstruction::MUSCLReconstruction(const UMesh2dh *const mesh,
 		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
 { }
@@ -186,7 +186,7 @@ a_real MUSCLReconstruction::musclReconstructRight(const a_real ui, const a_real 
 	return uj - phi/4.0*( (1.0-k*phi)*deltap + (1.0+k*phi)*(uj - ui) );
 }
 
-MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh* mesh,
+MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh *const mesh,
 		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
 	: MUSCLReconstruction(mesh, r_centres, gauss_r)
 { }
@@ -254,7 +254,7 @@ void MUSCLVanAlbada::compute_face_values(const MVector& u,
 	}
 }
 
-BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh* mesh, 
+BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, r_centres, gauss_r)
 {
@@ -317,7 +317,7 @@ void BarthJespersenLimiter::compute_face_values(const MVector& u,
 	}
 }
 
-VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh* mesh, 
+VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
 		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r,
 		a_real k_param=2.0)
 	: SolutionReconstruction(mesh, r_centres, gauss_r), K{k_param}

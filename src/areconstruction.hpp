@@ -25,7 +25,7 @@ protected:
 	const int ng;                               ///< Number of Gauss points
 
 public:
-    SolutionReconstruction (const UMesh2dh* mesh,         ///< Mesh context
+    SolutionReconstruction (const UMesh2dh *const  mesh,  ///< Mesh context
 			const amat::Array2d<a_real>& c_centres,       ///< Cell centres
 			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
 
@@ -45,7 +45,7 @@ class LinearUnlimitedReconstruction : public SolutionReconstruction
 {
 public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
-	LinearUnlimitedReconstruction(const UMesh2dh* mesh,
+	LinearUnlimitedReconstruction(const UMesh2dh *const mesh,
 			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
@@ -68,7 +68,7 @@ class WENOReconstruction : public SolutionReconstruction
 	const a_real lambda;
 	const a_real epsilon;
 public:
-    WENOReconstruction(const UMesh2dh* mesh,
+    WENOReconstruction(const UMesh2dh *const mesh,
 			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
 
@@ -84,7 +84,7 @@ public:
 class MUSCLReconstruction : public SolutionReconstruction
 {
 public:
-    MUSCLReconstruction(const UMesh2dh* mesh,
+    MUSCLReconstruction(const UMesh2dh *const mesh,
 			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
@@ -130,7 +130,7 @@ protected:
 class MUSCLVanAlbada : public MUSCLReconstruction
 {
 public:
-    MUSCLVanAlbada(const UMesh2dh* mesh,
+    MUSCLVanAlbada(const UMesh2dh *const mesh,
 			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
@@ -144,7 +144,7 @@ public:
 class BarthJespersenLimiter : public SolutionReconstruction
 {
 public:
-    BarthJespersenLimiter(const UMesh2dh* mesh, 
+    BarthJespersenLimiter(const UMesh2dh *const mesh, 
 			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r);
     
@@ -168,7 +168,7 @@ public:
 	 *             higher values improve convergence at the expense of some oscillations
 	 *             in the solution.
 	 */
-    VenkatakrishnanLimiter(const UMesh2dh* mesh, 
+    VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
 			const amat::Array2d<a_real>& c_centres, 
 			const amat::Array2d<a_real>* gauss_r, a_real k_param);
     

@@ -24,7 +24,7 @@ public:
 	 */
 
 	/// Returns coordinates of a mesh node
-	double gcoords(const a_int pointno, const int dim) const
+	a_real gcoords(const a_int pointno, const int dim) const
 	{
 		return coords.get(pointno,dim);
 	}
