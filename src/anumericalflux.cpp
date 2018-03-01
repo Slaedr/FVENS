@@ -699,7 +699,7 @@ void RoeFlux::get_flux(const a_real *const ul, const a_real *const ur,
 		flux[ivar] = 0.5*(fi[ivar]+fj[ivar] - adu[ivar]);
 }
 
-/** \todo Check correctness.
+/** \todo Works, but check correctness.
  */
 void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur, 
 		const a_real* const n, a_real *const __restrict dfdl, a_real *const __restrict dfdr) const
@@ -1493,6 +1493,8 @@ void HLLCFlux::getStarStateAndJacobian(const a_real u[NVARS], const a_real n[NDI
 		- ((ss-vn)*u[3]-p*vn+pstar*sm)*(dssj[3]-dsmj[3]) )/((ss-sm)*(ss-sm));
 }
 
+/** \todo See if the implementation can be tweaked to reduce round-off errors.
+ */
 void HLLCFlux::get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 		a_real *const __restrict flux) const
 {
