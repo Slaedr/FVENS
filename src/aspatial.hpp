@@ -181,8 +181,8 @@ struct FlowNumericsConfig
  * have been called on the mesh object prior to initialzing an object of this class.
  */
 template <
-	bool secondOrderRequested,        ///< Whether to computes gradients to get a 2nd order solution
-	bool constVisc                    ///< Whether to use constant viscosity (true) or Sutherland
+	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
+	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
 >
 class FlowFV : public Spatial<NVARS>
 {

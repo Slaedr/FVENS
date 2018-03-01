@@ -47,10 +47,10 @@ void UMesh2dh::readMesh(const std::string mfile)
 		readGmsh2(mfile);
 }
 
-/** (Deprecated) Reads Professor Luo's mesh file, which I call the 'domn' format.
+/** (Deprecated) Reads the RDGFlo 'domn' format.
    NOTE: Make sure nnofa is mentioned after ndim and ntype in the mesh file. 
    ntype makes no sense for us now.
-   Can only be used for linear mesh having all cells of the same shape.
+   Can only be used for a linear mesh having all cells of the same shape.
 */
 void UMesh2dh::readDomn(const std::string mfile)
 {
@@ -684,7 +684,7 @@ void UMesh2dh::compute_boundary_points()
 	}
 }
 
-void UMesh2dh::printmeshstats()
+void UMesh2dh::printmeshstats() const
 {
 	std::cout << "UMesh2dh: No. of points: " << npoin << ", no. of elements: " << nelem 
 		<< ", no. of boundary faces " << nface 

@@ -12,7 +12,7 @@
 
 namespace acfd {
 
-/// General hybrid unstructured mesh class supporting triangular and quadrangular elements
+/// Hybrid unstructured mesh class supporting triangular and quadrangular elements
 class UMesh2dh
 {
 public:
@@ -154,10 +154,10 @@ public:
 	 */
 	void readMesh(const std::string mfile);
 
-	/// Reads mesh from Gmsh 2 format file
+	/// Reads a mesh from a Gmsh 2 format file
 	void readGmsh2(const std::string mfile);
 
-	/// Reads hybrid grids in the SU2 format
+	/// Reads a grid in the SU2 format
 	void readSU2(const std::string mfile);
 
 	/// Reads a file in the 2D version of the Plot3D structured format
@@ -168,7 +168,7 @@ public:
 
 	/** \brief Reads 'domn' format
 	 * 
-	 * \note NOTE: Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
+	 * \note Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
 	 * \deprecated Please use Gmsh format instead.
 	*/
 	void readDomn(const std::string mfile);
@@ -184,7 +184,7 @@ public:
 	 */
 	void compute_boundary_points();
 
-	void printmeshstats();
+	void printmeshstats() const;
 	
 	/// Writes out the mesh in the Gmsh 2.0 format
 	void writeGmsh2(const std::string mfile);
@@ -193,7 +193,7 @@ public:
 	void compute_areas();
 
 	/// Computes locations of cell centres
-	/** The array is logically of size nelem x NDIM.
+	/** \param[out] centres Should be logically of size nelem x NDIM.
 	 */
 	void compute_cell_centres(std::vector<a_real>& centres) const;
 
