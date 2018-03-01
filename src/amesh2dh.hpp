@@ -18,12 +18,10 @@ class UMesh2dh
 public:
 	UMesh2dh();
 
-	UMesh2dh(const UMesh2dh& other);
-	UMesh2dh& operator=(const UMesh2dh& other);
-
 	~UMesh2dh();
 		
-	/* Functions to get mesh data. */
+	/* Functions to get mesh data are defined right here so as to enable inlining.
+	 */
 
 	/// Returns coordinates of a mesh node
 	double gcoords(const a_int pointno, const int dim) const
@@ -101,16 +99,34 @@ public:
 	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
+	/// Returns the total number of nodes in the mesh
 	a_int gnpoin() const { return npoin; }
+
+	/// Returns the total number of elements (cells) in the mesh
 	a_int gnelem() const { return nelem; }
+
+	/// Returns the total number of boundary faces in the mesh
 	a_int gnface() const { return nface; }
+
+	/// Returns the total number of boundary faces; practically synonymous with \ref gnface
 	a_int gnbface() const { return nbface; }
+
+	/// Returns the number of nodes in an element
 	int gnnode(const int ielem) const { return nnode[ielem]; }
-	int gndim() const { return NDIM; }
+
+	/// Returns the total number of faces, both boundary and internal ('Get Number of All FACEs')
 	a_int gnaface() const {return naface; }
+
+	/// Returns the number of bounding in an element
 	int gnfael(const int ielem) const { return nfael[ielem]; }
+
+	/// Returns the number of nodes per face
 	int gnnofa() const { return nnofa; }
+
+	/// Returns the number of boundary tags available for boundary faces
 	int gnbtag() const{ return nbtag; }
+	
+	/// Returns the number of domain tags available for elements
 	int gndtag() const { return ndtag; }
 
 	/// Set coordinates of a certain point
@@ -118,15 +134,14 @@ public:
 	 */
 	void scoords(const a_int pointno, const int dim, const a_real value)
 	{
+		assert(pointno < npoin);
+		assert(dim < NDIM);
 		coords(pointno,dim) = value;
 	}
-	
-	void modify_bface_marker(int iface, int pos, int number)
-	{ bface(iface, pos) = number; }
 
 	/// Reads a mesh file
-	/** The file should be in either the Gmsh 2.0 format, the 2D structured Plot3D file
-	 * or the rDGFLO Domn format. The file extensions should be
+	/** The file should be in either the Gmsh 2.0 format, the SU2 format,
+	 * the 2D structured Plot3D file or the rDGFLO Domn format. The file extensions should be
 	 * - msh for Gmsh 2.0
 	 * - su2 for SU2 format
 	 * - p2d for 2D structured Plot3D
@@ -134,18 +149,22 @@ public:
 	 *
 	 * \note For an SU2 mesh file, string marker names must be replaced with integers
 	 * before this function is called on it.
+	 *
+	 * \warning The Plot2d read function is incomplete; do not use.
 	 */
 	void readMesh(const std::string mfile);
-
-	/// Reads a file in the 2D version of the Plot3D structured format
-	void readPlot2d(const std::string mfile, const int bci0, const int bcimx, 
-			const int bcj0, const int bcjmx);
 
 	/// Reads mesh from Gmsh 2 format file
 	void readGmsh2(const std::string mfile);
 
 	/// Reads hybrid grids in the SU2 format
 	void readSU2(const std::string mfile);
+
+	/// Reads a file in the 2D version of the Plot3D structured format
+	/** \todo Complete and test.
+	 */
+	void readPlot2d(const std::string mfile, const int bci0, const int bcimx, 
+			const int bcj0, const int bcjmx);
 
 	/** \brief Reads 'domn' format
 	 * 
@@ -169,12 +188,6 @@ public:
 	
 	/// Writes out the mesh in the Gmsh 2.0 format
 	void writeGmsh2(const std::string mfile);
-
-	/// Computes the Jacobian for linear triangles
-	void compute_jacobians();
-
-	/// Writes out a list of elements with negative Jacobians; works only for linear triangles
-	void detect_negative_jacobians(std::ofstream& out);
 	
 	/// Computes areas of linear triangles and quads
 	void compute_areas();
@@ -183,7 +196,8 @@ public:
 	/** The array is logically of size nelem x NDIM.
 	 */
 	void compute_cell_centres(std::vector<a_real>& centres) const;
-	
+
+	/// Computes some connectivity structures among mesh entities
 	/** Computes data structures for 
 	 * elements surrounding point (esup), 
 	 * points surrounding point (psup), 
@@ -191,8 +205,6 @@ public:
 	 * elements surrounding faces along with points in faces (intfac),
 	 * element-face connectivity array elemface (for each facet of each element, 
 	 * it stores the intfac face number)
-	 * a list of boundary points with correspong global point numbers and containing boundary faces
-	 * (according to intfac) (bpoints).
 	 */
 	void compute_topological();
 	
@@ -250,8 +262,8 @@ private:
 	int maxnfael;                   ///< Maximum number of faces per element for any element
 	int nnofa;                      ///< number of nodes in a face
 	a_int naface;                   ///< total number of (internal and boundary) faces
-	a_int nbface;                   ///< number of boundary faces as calculated
-	a_int nbpoin;                   ///< number of boundary points
+	a_int nbface;                   ///< number of boundary faces as calculated \sa compute_topological
+	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
 	int nbtag;                      ///< number of tags for each boundary face
 	int ndtag;                      ///< number of tags for each element
 	
@@ -263,8 +275,9 @@ private:
 	
 	/// Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
 	amat::Array2d<a_int > bface;	
-	
-	amat::Array2d<int> vol_regions;                ///< to hold volume region markers, if any
+
+	/// Holds volume region markers, if any
+	amat::Array2d<int> vol_regions;
 	
 	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
 	amat::Array2d<a_real > flag_bpoin;	
@@ -272,7 +285,7 @@ private:
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int > esup_p;
 	
-	/// List of elements surrounding points. 
+	/// List of elements surrounding each point
 	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p).
 	 */
 	amat::Array2d<a_int > esup;
@@ -328,9 +341,6 @@ private:
 	amat::Array2d<int > bpointsb;
 	/// Stores boundary-points numbers (defined by bpointsb) of the two points making up a bface
 	amat::Array2d<int > bfacebp;
-	/// Flag indicating whether space has been allocated for jacobians
-	bool alloc_jacobians;			
-	amat::Array2d<a_real> jacobians;	///< Contains jacobians of each (linear triangular) element
 
 	/// Contains area of each element (either triangle or quad)
 	amat::Array2d<a_real> area;	

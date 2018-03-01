@@ -26,86 +26,9 @@
 
 namespace acfd {
 
-UMesh2dh::UMesh2dh() { 
-	alloc_jacobians = false;
-}
-
-UMesh2dh::UMesh2dh(const UMesh2dh& other)
-{
-	npoin = other.npoin;
-	nelem = other.nelem;
-	nface = other.nface;
-	nnode = other.nnode;
-	naface = other.naface;
-	nbface = other.nbface;
-	nfael = other.nfael;
-	maxnnode = other.maxnnode;
-	maxnfael = other.maxnfael;
-	nnofa = other.nnofa;
-	nbtag = other.nbtag;
-	ndtag = other.ndtag;
-	nbpoin = other.nbpoin;
-	coords = other.coords;
-	inpoel = other.inpoel;
-	bface = other.bface;
-	vol_regions = other.vol_regions;
-	esup = other.esup;
-	esup_p = other.esup_p;
-	psup = other.psup;
-	psup_p = other.psup_p;
-	esuel = other.esuel;
-	intfac = other.intfac;
-	intfacbtags = other.intfacbtags;
-	bpoints = other.bpoints;
-	bpointsb = other.bpointsb;
-	bfacebp = other.bfacebp;
-	bifmap = other.bifmap;
-	ifbmap = other.ifbmap;
-	isBoundaryMaps = other.isBoundaryMaps;
-	area = other.area;
-	facemetric = other.facemetric;
-	alloc_jacobians = other.alloc_jacobians;
-	jacobians = other.jacobians;
-}
-
-UMesh2dh& UMesh2dh::operator=(const UMesh2dh& other)
-{
-	npoin = other.npoin;
-	nelem = other.nelem;
-	nface = other.nface;
-	nnode = other.nnode;
-	naface = other.naface;
-	nbface = other.nbface;
-	nfael = other.nfael;
-	maxnnode = other.maxnnode;
-	maxnfael = other.maxnfael;
-	nnofa = other.nnofa;
-	nbtag = other.nbtag;
-	ndtag = other.ndtag;
-	nbpoin = other.nbpoin;
-	coords = other.coords;
-	inpoel = other.inpoel;
-	bface = other.bface;
-	vol_regions = other.vol_regions;
-	esup = other.esup;
-	esup_p = other.esup_p;
-	psup = other.psup;
-	psup_p = other.psup_p;
-	esuel = other.esuel;
-	intfac = other.intfac;
-	intfacbtags = other.intfacbtags;
-	bpoints = other.bpoints;
-	bpointsb = other.bpointsb;
-	bfacebp = other.bfacebp;
-	bifmap = other.bifmap;
-	ifbmap = other.ifbmap;
-	isBoundaryMaps = other.isBoundaryMaps;
-	area = other.area;
-	facemetric = other.facemetric;
-	alloc_jacobians = other.alloc_jacobians;
-	jacobians = other.jacobians;
-	return *this;
-}
+UMesh2dh::UMesh2dh() 
+	: isBoundaryMaps{false}
+{  }
 
 UMesh2dh::~UMesh2dh()
 {
@@ -853,53 +776,6 @@ void UMesh2dh::writeGmsh2(const std::string mfile)
 	outf.close();
 }
 
-/** \brief Computes area of linear triangular elements. So it can't be used for hybrid meshes.
- * 
- * \deprecated Does not work for quadrilateral meshes
-*/
-void UMesh2dh::compute_jacobians()
-{
-	if(maxnnode == 3 || maxnnode == 4)
-	{
-		if (alloc_jacobians == false)
-		{
-			jacobians.resize(nelem, 1);
-			alloc_jacobians = true;
-		}
-
-		for(int i = 0; i < gnelem(); i++)
-		{
-			jacobians(i,0) = gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
-				- gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)
-				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) 
-				- gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1);
-
-		}
-	}
-	else {
-		std::cout << "UMesh2d: compute_jacobians(): ! Mesh is not linear.";
-		std::cout << " Cannot compute jacobians." << std::endl;
-	}
-}
-
-/** \deprecated Does not work for quadrilaterals
- */
-void UMesh2dh::detect_negative_jacobians(std::ofstream& out)
-{
-	bool flagj = false;
-	int nneg = 0;
-	for(int i = 0; i < nelem; i++)
-	{
-		if(jacobians(i,0) <= 1e-15) {
-			out << i << " " << jacobians(i,0) << '\n';
-			flagj = true;
-			nneg++;
-		}
-	}
-	if(flagj == true) std::cout << "UMesh2d: detect_negative_jacobians(): There exist " 
-		<< nneg << " element(s) with negative jacobian!!\n";
-}
-
 // Computes areas of linear triangles and quads
 void UMesh2dh::compute_areas()
 {
@@ -1290,7 +1166,7 @@ void UMesh2dh::compute_topological()
 		}
 	}
 
-	/// Finally, calculates bpoints.
+	/*// Finally, calculates bpoints.
 
 	//first get number of bpoints
 	nbpoin = 0;
@@ -1308,7 +1184,7 @@ void UMesh2dh::compute_topological()
 		<< nbpoin << std::endl;
 
 	//Allocate bpoints
-	/*bpoints.resize(nbpoin,3);		
+	bpoints.resize(nbpoin,3);		
 	// We need 1 field for global point number 
 	// and in 2D linear meshes, we need 2 more for surrounding faces
 	for(int i = 0; i < nbpoin; i++)
@@ -1578,7 +1454,7 @@ void UMesh2dh::compute_intfacbtags()
 {
 	/// Populate intfacbtags with boundary markers of corresponding bfaces
 
-	intfacbtags.resize(nbpoin,nbtag);
+	intfacbtags.resize(nface,nbtag);
 
 	if(isBoundaryMaps == false)
 	{

@@ -25,12 +25,15 @@
 
 namespace acfd {
 
-/** \todo TODO: Replace midpoint-reflected ghost cells with face-reflected ones.
+/** Currently, the ghost cell coordinates are computed as reflections about the face centre.
+ * \todo TODO: Replace midpoint-reflected ghost cells with face-reflected ones.
+ * \sa compute_ghost_cell_coords_about_midpoint
+ * \sa compute_ghost_cell_coords_about_face
  */
 template<int nvars>
 Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 {
-	rc.resize(m->gnelem()+m->gnbface(),m->gndim());
+	rc.resize(m->gnelem()+m->gnbface(), NDIM);
 	gr = new amat::Array2d<a_real>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 		gr[i].resize(NGAUSS, NDIM);
@@ -39,7 +42,7 @@ Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
 	
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		for(int idim = 0; idim < m->gndim(); idim++)
+		for(int idim = 0; idim < NDIM; idim++)
 		{
 			rc(ielem,idim) = 0;
 			for(int inode = 0; inode < m->gnnode(ielem); inode++)
