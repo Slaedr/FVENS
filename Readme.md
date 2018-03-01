@@ -64,7 +64,7 @@ PETSc options for FVENS
 
 ---
 
-Copyright (C) 2016, 2017 Aditya Kashi. See LICENSE.md for terms of redistribution with/without modification and those of linking.
+Copyright (C) 2016 - 2018, Aditya Kashi. See LICENSE.md for terms of redistribution with/without modification and those of linking.
 
         This program is free software: you can redistribute it and/or modify
         it under the terms of the GNU General Public License as published by
