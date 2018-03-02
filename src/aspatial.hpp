@@ -222,8 +222,8 @@ public:
 	void getGradients(const MVector& u,
 		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const;
 
-	/// Compute cell-centred quantities to export
-	void postprocess_cell(const MVector& u, amat::Array2d<a_real>& scalars, 
+	/// Compute cell-centred quantities to export \deprecated Use postprocess_point instead.
+	StatusCode postprocess_cell(const Vec u, amat::Array2d<a_real>& scalars, 
 			amat::Array2d<a_real>& velocities) const;
 	
 	/// Compute nodal quantities to export
@@ -237,7 +237,7 @@ public:
 	/// Compute norm of cell-centered entropy production
 	/** Call aftr computing pressure etc \sa postprocess_cell
 	 */
-	a_real compute_entropy_cell(const MVector& u) const;
+	a_real compute_entropy_cell(const Vec u) const;
 
 protected:
 	/// Problem specification

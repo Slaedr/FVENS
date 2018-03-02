@@ -39,7 +39,7 @@ EULER
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
----Inviscid-flux(LLF,VANLEER,HLL,HLLC,ROE)
+---Inviscid-flux(LLF,VANLEER,HLL,AUSM,HLLC,ROE)
 HLLC
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
@@ -61,7 +61,7 @@ IMPLICIT
 ---Max-pseudotime-iterations
 5000
 #######################################################################
----use-first-order-initial-condition
+---use-first-order-initial-condition?(0=no,1=yes)
 1
 ---initial-CFL
 25.0
@@ -74,5 +74,5 @@ IMPLICIT
 ---max-time-steps-for-initialization
 500
 ########################################################################
----inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
+---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL,ROE,HLLC)
 HLLC

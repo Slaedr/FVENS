@@ -17,6 +17,12 @@ if(WITH_BLASTED)
 	target_link_libraries(exec_testdiffusion ${BLASTED_LIB})
 endif()
 
+add_executable(exec_testflow flow_conv.cpp)
+target_link_libraries(exec_testflow fvens_base ${PETSC_LIB})
+if(WITH_BLASTED)
+	target_link_libraries(exec_testflow ${BLASTED_LIB})
+endif()
+
 # Tests
 
 add_test(NAME Mesh_Topology_ElemSurrElem COMMAND exec_testmesh esup ${CMAKE_CURRENT_SOURCE_DIR}/input/2dcylinderhybrid.msh)
@@ -35,3 +41,6 @@ add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_
 
 add_test(NAME SpatialDiffusion_LeastSquares_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testdiffusion heat/implls_quad.control -options_file heat/opts.petscrc)
 add_test(NAME SpatialDiffusion_LeastSquares_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testdiffusion heat/implls_tri.control -options_file heat/opts.petscrc)
+
+add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow flow/inv-cyl-ls-hllc_tri.control -options_file flow/opts.petscrc)
+add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow flow/inv-cyl-gg-hllc_tri.control -options_file flow/opts.petscrc)

@@ -1416,7 +1416,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_point(const Vec u
 {
 	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
 	scalars.resize(m->gnpoin(),4);
-	velocities.resize(m->gnpoin(),2);
+	velocities.resize(m->gnpoin(),NDIM);
 	
 	amat::Array2d<a_real> areasum(m->gnpoin(),1);
 	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
@@ -1445,18 +1445,18 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_point(const Vec u
 	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 	{
 		scalars(ipoin,0) = up(ipoin,0);
-		velocities(ipoin,0) = up(ipoin,1)/up(ipoin,0);
-		velocities(ipoin,1) = up(ipoin,2)/up(ipoin,0);
-		//velocities(ipoin,0) = dudx(ipoin,1);
-		//velocities(ipoin,1) = dudy(ipoin,1);
-		a_real vmag2 = pow(velocities(ipoin,0), 2) + pow(velocities(ipoin,1), 2);
+
+		for(int idim = 0; idim < NDIM; idim++)
+			velocities(ipoin,idim) = up(ipoin,idim+1)/up(ipoin,0);
+		const a_real vmag2 = dimDotProduct(&velocities(ipoin,0),&velocities(ipoin,0));
+
 		scalars(ipoin,2) = physics.getPressureFromConserved(&up(ipoin,0));
 		a_real c = physics.getSoundSpeedFromConserved(&up(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c;
 		scalars(ipoin,3) = physics.getTemperatureFromConserved(&up(ipoin,0));
 	}
 
-	compute_entropy_cell(u);
+	compute_entropy_cell(uvec);
 
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	std::cout << "FlowFV: postprocess_point(): Done.\n";
@@ -1464,13 +1464,18 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_point(const Vec u
 }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::postprocess_cell(const MVector& u, 
+StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_cell(const Vec uvec, 
 		amat::Array2d<a_real>& scalars, 
 		amat::Array2d<a_real>& velocities) const
 {
 	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.resize(m->gnelem(), 3);
-	velocities.resize(m->gnelem(), 2);
+	velocities.resize(m->gnelem(), NDIM);
+	
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
 
 	for(a_int iel = 0; iel < m->gnelem(); iel++) {
 		scalars(iel,0) = u(iel,0);
@@ -1481,24 +1486,31 @@ void FlowFV<secondOrderRequested,constVisc>::postprocess_cell(const MVector& u,
 		velocities(iel,0) = u(iel,1)/u(iel,0);
 		velocities(iel,1) = u(iel,2)/u(iel,0);
 		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
-		scalars(iel,2) = physics.getPressureFromConserved(&u(iel,0));
-		a_real c = physics.getSoundSpeedFromConserved(&u(iel,0));
+		scalars(iel,2) = physics.getPressureFromConserved(&uarr[iel*NVARS]);
+		a_real c = physics.getSoundSpeedFromConserved(&uarr[iel*NVARS]);
 		scalars(iel,1) = sqrt(vmag2)/c;
 	}
-	compute_entropy_cell(u);
+	compute_entropy_cell(uvec);
+	
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	std::cout << "FlowFV: postprocess_cell(): Done.\n";
+	return ierr;
 }
 
 template<bool secondOrderRequested, bool constVisc>
-a_real FlowFV<secondOrderRequested,constVisc>::compute_entropy_cell(const MVector& u) const
+a_real FlowFV<secondOrderRequested,constVisc>::compute_entropy_cell(const Vec uvec) const
 {
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr);
+
 	a_real sinf = physics.getEntropyFromConserved(&uinf[0]);
 
 	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		s_err(iel) = (physics.getEntropyFromConserved(&u(iel,0)) - sinf) / sinf;
+		s_err(iel) = (physics.getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
 		error += s_err(iel)*s_err(iel)*m->garea(iel);
 	}
 	error = sqrt(error);
@@ -1508,6 +1520,8 @@ a_real FlowFV<secondOrderRequested,constVisc>::compute_entropy_cell(const MVecto
 	std::cout << "FlowFV:   " << log10(h) << "  " 
 		<< std::setprecision(10) << log10(error) << std::endl;
 
+	ierr = VecRestoreArrayRead(uvec, &uarr);
+	(void)ierr;
 	return error;
 }
 
