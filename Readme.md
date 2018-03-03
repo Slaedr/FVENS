@@ -1,9 +1,29 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes MUSCL (variable extrapolation) reconstruction using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical convective fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. 
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes.
 
-Currently, only steady-state problems are supported. Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps.
+Currently, only steady-state problems are supported. Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. 'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal.
+
+Features
+--------
+- Modular, using C++ inheritence
+- Almost everything implemented here is parallelized with OpenMP - this means multiple CPU cores can be utilized
+- Supports 2D hybrid grids containing both triangles and quadrangles
+- Several different inviscid numerical flux options available
+- Two different gradient computation schemes
+- Several reconstruction schemes using different limiters
+- A matrix-free implicit solver implementation is available; however, it uses an approximate stored Jacobian for preconditioning
+
+Limitations
+-----------
+- Limited automated testing as of now
+- Two spatial dimensions only at present
+- Not many types of boundary conditions are currently implemented - only the simplest or most common ones
+- No support for distributed parallelism (no MPI)
+- No adaptive mesh refinement
+- Cell-centred discretization; this is sometimes a disadvantage with regard to reconstruction, especially in 3D
+- Uses PETSc for implicit solution, so the linear solver itself is not thread-parallel as of now
 
 Building
 --------
