@@ -1,0 +1,9 @@
+# Theoretically, CDsf = 0.001423765 = 1.423765e-3
+#  (from Csf data on finest grid, Cdsf should be 0.001444692)
+
+#log h    log diff Cdsf
+#==================================
+
+-1.67725  -4.260704616
+-1.97828  -4.672334613
+-2.27931  -5.093395628

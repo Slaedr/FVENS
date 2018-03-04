@@ -49,8 +49,10 @@ void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
 	fout.close();
 }
 
+/** \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
+ */
 void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm, 
-		std::vector<int> obcm, std::string basename) const
+		std::vector<int> obcm, const std::string basename) const
 {
 	// Get conserved variables' gradients
 	std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>> grad;
@@ -142,7 +144,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				 */
 
 				// non-dim viscosity / Re_inf
-				a_real muhat = phy->getViscosityCoeffFromConserved(&u(lelem,0));
+				const a_real muhat = phy->getViscosityCoeffFromConserved(&u(lelem,0));
 
 				// velocity gradient tensor
 				a_real gradu[NDIM][NDIM];

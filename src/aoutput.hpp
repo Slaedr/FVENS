@@ -30,7 +30,7 @@ public:
 	 * \param[in] basename The base name for the files that will be written.
 	 */
 	virtual void exportSurfaceData(const MVector& u, const std::vector<int> wbcm,
-			const std::vector<int> obcm, std::string basename) const = 0;
+			const std::vector<int> obcm, const std::string basename) const = 0;
 
 protected:
 	const UMesh2dh *const m;
@@ -59,7 +59,7 @@ public:
 	 * \sa Output::exportSurfaceData
 	 */
 	void exportSurfaceData(const MVector& u, const std::vector<int> wbcm,
-			const std::vector<int> obcm, std::string basename) const;
+			const std::vector<int> obcm, const std::string basename) const;
 
 protected:
 	using Output<NVARS>::m;
