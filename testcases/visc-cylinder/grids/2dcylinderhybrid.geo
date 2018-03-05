@@ -1,7 +1,7 @@
 // flow past cylinder
 
 // refinement factor
-refine = 4;
+refine = 1;
 
 // actual boundary
 srad = 1.0;
