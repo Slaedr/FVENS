@@ -10,7 +10,7 @@
 #include "amesh2dh.hpp"
 #include "aspatial.hpp"
 
-#include <petscmat.h>
+#include <petscksp.h>
 
 #define PETSCOPTION_STR_LEN 30
 
@@ -37,11 +37,13 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
 template <int nvars>
 StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A);
 
+#ifdef USE_BLASTED
 /// Sets BLASTed preconditioners
 /** Only one subdomain per rank is supported in case of domain decomposition global preconditioners.
  */
 template <int nvars>
 StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx);
+#endif
 
 /// Matrix-free Jacobian of the flux
 /** The normalized step length epsilon for the finite-difference Jacobian is set to a default value,

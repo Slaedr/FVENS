@@ -70,6 +70,7 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
 
+#ifdef USE_BLASTED
 /// Recursive function to setup the BLASTed preconditioner wherever possible
 StatusCode getParentKSPForBLASTed(KSP ksp, Blasted_data& bctx)
 {
@@ -157,6 +158,7 @@ template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<NVARS> *const st
 		Blasted_data& bctx);
 template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<1> *const startprob, 
 		Blasted_data& bctx);
+#endif
 
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()

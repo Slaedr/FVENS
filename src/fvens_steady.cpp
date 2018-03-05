@@ -228,6 +228,7 @@ int main(int argc, char *argv[])
 		for(int j = 0; j < NVARS; j++)
 			umat(i,j) = uarr[i*NVARS+j];
 	ierr = VecRestoreArrayRead(u, &uarr);
+
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
 
 	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
