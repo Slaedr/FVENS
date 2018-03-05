@@ -52,6 +52,17 @@ public:
 	 */
 	void exportVolumeData(const MVector& u, const std::string volfile) const;
 
+	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on surfaces
+	/** \param[in] u The multi-vector containing conserved variables
+	 * \param[in] grad Gradients of converved variables at cell-centres
+	 * \param[in] iwbcm The marker of the boundaries on which the computation is to be done
+	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
+	 *                   Cp and Csf, in that order
+	 */
+	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector& u,
+			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grad,
+			const int iwbcm, MVector& output) const;
+
 	/// Export surface data
 	/** We compute pressure and skin-friction coefficients for wall boundaries, and
 	 * normalized x- and y-velocities along other boundaries.
