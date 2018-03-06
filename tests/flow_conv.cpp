@@ -267,27 +267,8 @@ int main(int argc, char *argv[])
 			passed = 1;
 	}
 
-	// export surface data like pressure coeff etc and volume data as plain text files
-
-	/*MVector umat; umat.resize(m.gnelem(),NVARS);
-	const PetscScalar *uarr;
-	ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
-	for(a_int i = 0; i < m.gnelem(); i++)
-		for(int j = 0; j < NVARS; j++)
-			umat(i,j) = uarr[i*NVARS+j];
-	ierr = VecRestoreArrayRead(u, &uarr);
-	ierr = VecDestroy(&u); CHKERRQ(ierr);
-
-	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
-	FlowOutput out(&m, prob, &phy, opts.alpha);
-
-	out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
-
-	if(opts.vol_output_reqd == "YES")
-		out.exportVolumeData(umat, opts.volnameprefix);*/
-
 	std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);
 	std::cout << "\n--------------- End --------------------- \n\n";
-	return ierr && !passed;
+	return !passed;
 }

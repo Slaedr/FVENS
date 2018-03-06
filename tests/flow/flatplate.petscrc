@@ -1,0 +1,17 @@
+-number_of_meshes 3
+-test_type CDSF
+-exact_solution_file flow/exact_clcd_flatplate.dat
+
+#-ksp_converged_reason
+-options_left
+#-log_view
+
+-mesh_reorder rcm
+
+-mat_type baij
+
+-ksp_type fgmres
+-ksp_rtol 1e-1
+-ksp_max_it 30
+-pc_type ilu
+#-pc_sor_symmetric

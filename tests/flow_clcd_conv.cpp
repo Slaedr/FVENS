@@ -65,11 +65,14 @@ int main(int argc, char *argv[])
 	std::ifstream fexact;
 	fexact.open(exf);
 	if(!fexact) {
-		std::cout << "! Could not open file "<< exf <<" !\n";
-		std::abort();
+		//std::cout << "! Could not open file "<< exf <<" !\n";
+		//std::abort();
+		throw std::runtime_error("! Could not open exact soln file!");
 	}
 	fexact >> ex_CL >> ex_CDp >> ex_CDsf;
 	fexact.close();
+	std::cout << "Exact values of CL, CDp and CDsf are " << ex_CL << " " << ex_CDp << " " << ex_CDsf
+		<< std::endl;
 
 	// Read control file
 
@@ -275,24 +278,35 @@ int main(int argc, char *argv[])
 		prob->getGradients(umat, grad);
 
 		// get Cl, Cdp and Cdsf of the first wall boundary marker only
-		std::tuple<a_int,a_int,a_int> fnls = out.computeSurfaceData(umat, grad, opts.lwalls[0], output);
+		std::tuple<a_real,a_real,a_real> fnls 
+			{ out.computeSurfaceData(umat, grad, opts.lwalls[0], output)};
+		std::cout << "CL Cdp CDsf = " << std::get<0>(fnls) << " " << std::get<1>(fnls) << " " <<
+			std::get<2>(fnls) << std::endl;
 		
 		lh[imesh] = log10(1.0/sqrt(m.gnelem()));   // 2D only
-		clerrors[imesh] = log10(std::abs(std::get<0>(fnls)-ex_CL));
-		cdperrors[imesh] = log10(std::abs(std::get<1>(fnls)-ex_CDp));
-		cdsferrors[imesh] = log10(std::abs(std::get<2>(fnls)-ex_CDsf));
+		clerrors[imesh] = log10(std::abs( std::abs(std::get<0>(fnls))-ex_CL ));
+		cdperrors[imesh] = log10(std::abs( std::abs(std::get<1>(fnls))-ex_CDp ));
+		cdsferrors[imesh] = log10(std::abs( std::abs(std::get<2>(fnls))-ex_CDsf ));
 		if(imesh > 0) {
 			clslopes[imesh-1] = (clerrors[imesh]-clerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
 			cdpslopes[imesh-1] = (cdperrors[imesh]-cdperrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
 			cdsfslopes[imesh-1] = (cdsferrors[imesh]-cdsferrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
 		}
 
+		if(imesh > 0) {
+			std::cout << ">> Orders = \n" ;
+			std::cout << "CL:   " << clslopes[imesh-1] << std::endl;
+			std::cout << "CDp:   " << cdpslopes[imesh-1] << std::endl;
+			std::cout << "CDsf:  " << cdsfslopes[imesh-1] << std::endl;
+		}
+		std::cout << std::endl;
+
 		delete prob;
 		delete startprob;
 		ierr = VecDestroy(&u); CHKERRQ(ierr);
 	}
 	
-	std::cout << ">> Orders = \n" ;
+	std::cout << "> Orders = \n" ;
 	for(int i = 0; i < nmesh-1; i++)
 		std::cout << "CL:   " << clslopes[i] << std::endl;
 	for(int i = 0; i < nmesh-1; i++)
@@ -313,7 +327,7 @@ int main(int argc, char *argv[])
 	}
 	else if(test_type == "CDSF") 
 	{
-		if(cdpslopes[nmesh-2] <= 2.0 && cdpslopes[nmesh-2] >= 1.0)
+		if(cdsfslopes[nmesh-2] <= 1.5 && cdsfslopes[nmesh-2] >= 0.95)
 			passed = 1;
 	}
 	else {
@@ -324,5 +338,5 @@ int main(int argc, char *argv[])
 	std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);
 	std::cout << "\n--------------- End --------------------- \n\n";
-	return ierr && !passed;
+	return !passed;
 }

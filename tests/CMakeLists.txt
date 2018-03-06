@@ -48,5 +48,7 @@ add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_
 add_test(NAME SpatialDiffusion_LeastSquares_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testdiffusion heat/implls_quad.control -options_file heat/opts.petscrc)
 add_test(NAME SpatialDiffusion_LeastSquares_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testdiffusion heat/implls_tri.control -options_file heat/opts.petscrc)
 
-add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow flow/inv-cyl-ls-hllc_tri.control -options_file flow/opts.petscrc)
-add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow flow/inv-cyl-gg-hllc_tri.control -options_file flow/opts.petscrc)
+add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow flow/inv-cyl-ls-hllc_tri.control -options_file flow/inv_cyl.petscrc)
+add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow flow/inv-cyl-gg-hllc_tri.control -options_file flow/inv_cyl.petscrc)
+
+add_test(NAME SpatialFlow_NavierStokes_FlatPlate_LeastSquares_Roe_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testflow_clcd flow/flatplate.control -options_file flow/flatplate.petscrc)
