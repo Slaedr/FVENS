@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <fstream>
 #include <omp.h>
 #include <petscksp.h>
 
@@ -37,6 +38,39 @@ int main(int argc, char *argv[])
 		throw "Need number of meshes!";
 	}
 
+	// get test type - CL, CDP or CDSF
+	set = PETSC_FALSE;
+	constexpr size_t p_strlen = 10;
+	char tt[p_strlen];
+	ierr = PetscOptionsGetString(NULL, NULL, "-test_type", tt, p_strlen, &set); CHKERRQ(ierr);
+	if(!set) {
+		ierr = -1;
+		throw "Need test type!";
+	}
+	const std::string test_type = tt;
+
+	// get the locaiton of the file containing the exact CL, CDp and CDsf
+	set = PETSC_FALSE;
+	constexpr size_t p_filelen = 100;
+	char exf[p_filelen];
+	ierr = PetscOptionsGetString(NULL, NULL, "-exact_solution_file", exf, p_filelen, &set); 
+	CHKERRQ(ierr);
+	if(!set) {
+		ierr = -1;
+		throw "Need exact CL, CDp and CDsf!";
+	}
+
+	// read exact calues
+	a_real ex_CL, ex_CDp, ex_CDsf;
+	std::ifstream fexact;
+	fexact.open(exf);
+	if(!fexact) {
+		std::cout << "! Could not open file "<< exf <<" !\n";
+		std::abort();
+	}
+	fexact >> ex_CL >> ex_CDp >> ex_CDsf;
+	fexact.close();
+
 	// Read control file
 
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
@@ -70,7 +104,8 @@ int main(int argc, char *argv[])
 		opts.firsttolerance, opts.firstmaxiter,
 	};
 
-	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
+	std::vector<double> lh(nmesh), clerrors(nmesh), cdperrors(nmesh), cdsferrors(nmesh),
+		clslopes(nmesh-1), cdpslopes(nmesh-1), cdsfslopes(nmesh-1);
 
 	for(int imesh = 0; imesh < nmesh; imesh++) {
 		
@@ -211,32 +246,6 @@ int main(int argc, char *argv[])
 		ierr = time->solve(u); CHKERRQ(ierr);
 
 		std::cout << "***\n";
-		
-		a_real err;
-		// get the correct kind of FlowFV - but there's got to be a better way to do this
-		if(opts.order2 && opts.useconstvisc) {
-			const FlowFV<true,true>* fprob = reinterpret_cast<const FlowFV<true,true>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		else if(opts.order2 && !opts.useconstvisc) {
-			const FlowFV<true,false>* fprob = reinterpret_cast<const FlowFV<true,false>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		else if(!opts.order2 && opts.useconstvisc) {
-			const FlowFV<false,true>* fprob = reinterpret_cast<const FlowFV<false,true>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		else {
-			const FlowFV<false,false>* fprob = reinterpret_cast<const FlowFV<false,false>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		const double h = 1.0/sqrt(m.gnelem());
-		std::cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << std::endl;
-		lh[imesh] = log10(h);
-		lerrors[imesh] = log10(err);
-		if(imesh > 0)
-			slopes[imesh-1] = (lerrors[imesh]-lerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
-
 
 		delete starttime;
 		delete time;
@@ -247,44 +256,70 @@ int main(int argc, char *argv[])
 			CHKERRQ(ierr);
 		}
 
+		// Output
+	
+		MVector umat; umat.resize(m.gnelem(),NVARS);
+		const PetscScalar *uarr;
+		ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
+		for(a_int i = 0; i < m.gnelem(); i++)
+			for(int j = 0; j < NVARS; j++)
+				umat(i,j) = uarr[i*NVARS+j];
+		ierr = VecRestoreArrayRead(u, &uarr);
+
+		IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+		FlowOutput out(&m, prob, &phy, opts.alpha);
+	
+		MVector output; output.resize(m.gnelem(),NDIM+2);
+		std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>> grad;
+		grad.resize(m.gnelem());
+		prob->getGradients(umat, grad);
+
+		// get Cl, Cdp and Cdsf of the first wall boundary marker only
+		std::tuple<a_int,a_int,a_int> fnls = out.computeSurfaceData(umat, grad, opts.lwalls[0], output);
+		
+		lh[imesh] = log10(1.0/sqrt(m.gnelem()));   // 2D only
+		clerrors[imesh] = log10(std::abs(std::get<0>(fnls)-ex_CL));
+		cdperrors[imesh] = log10(std::abs(std::get<1>(fnls)-ex_CDp));
+		cdsferrors[imesh] = log10(std::abs(std::get<2>(fnls)-ex_CDsf));
+		if(imesh > 0) {
+			clslopes[imesh-1] = (clerrors[imesh]-clerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
+			cdpslopes[imesh-1] = (cdperrors[imesh]-cdperrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
+			cdsfslopes[imesh-1] = (cdsferrors[imesh]-cdsferrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
+		}
+
 		delete prob;
 		delete startprob;
+		ierr = VecDestroy(&u); CHKERRQ(ierr);
 	}
 	
-	std::cout << ">> Spatial orders = \n" ;
+	std::cout << ">> Orders = \n" ;
 	for(int i = 0; i < nmesh-1; i++)
-		std::cout << "   " << slopes[i] << std::endl;
+		std::cout << "CL:   " << clslopes[i] << std::endl;
+	for(int i = 0; i < nmesh-1; i++)
+		std::cout << "CDp:   " << cdpslopes[i] << std::endl;
+	for(int i = 0; i < nmesh-1; i++)
+		std::cout << "CDsf:  " << cdsfslopes[i] << std::endl;
 	
 	int passed = 0;
-	if(opts.gradientmethod == "LEASTSQUARES") 
+	if(test_type == "CL") 
 	{
-		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.6)
+		if(clslopes[nmesh-2] <= 2.5 && clslopes[nmesh-2] >= 1.9)
 			passed = 1;
 	}
-	else if(opts.gradientmethod == "GREENGAUSS") 
+	else if(test_type == "CDP") 
 	{
-		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.7)
+		if(cdpslopes[nmesh-2] <= 2.5 && cdpslopes[nmesh-2] >= 1.9)
 			passed = 1;
 	}
-
-	// export surface data like pressure coeff etc and volume data as plain text files
-
-	/*MVector umat; umat.resize(m.gnelem(),NVARS);
-	const PetscScalar *uarr;
-	ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
-	for(a_int i = 0; i < m.gnelem(); i++)
-		for(int j = 0; j < NVARS; j++)
-			umat(i,j) = uarr[i*NVARS+j];
-	ierr = VecRestoreArrayRead(u, &uarr);
-	ierr = VecDestroy(&u); CHKERRQ(ierr);
-
-	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
-	FlowOutput out(&m, prob, &phy, opts.alpha);
-
-	out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
-
-	if(opts.vol_output_reqd == "YES")
-		out.exportVolumeData(umat, opts.volnameprefix);*/
+	else if(test_type == "CDSF") 
+	{
+		if(cdpslopes[nmesh-2] <= 2.0 && cdpslopes[nmesh-2] >= 1.0)
+			passed = 1;
+	}
+	else {
+		std::cout << "Unrecognized test!\n";
+		std::abort();
+	}
 
 	std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);

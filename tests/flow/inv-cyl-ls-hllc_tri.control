@@ -53,13 +53,13 @@ IMPLICIT
 ---initial-CFL
 250.0
 ---final-CFL
-1000.0
+500.0
 ---ramp-start-step-and-end-step
 20 80
 ---Tolerance
 1e-6
 ---Max-pseudotime-iterations
-5000
+500
 #######################################################################
 ---use-first-order-initial-condition
 1

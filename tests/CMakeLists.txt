@@ -23,6 +23,12 @@ if(WITH_BLASTED)
 	target_link_libraries(exec_testflow ${BLASTED_LIB})
 endif()
 
+add_executable(exec_testflow_clcd flow_clcd_conv.cpp)
+target_link_libraries(exec_testflow_clcd fvens_base ${PETSC_LIB})
+if(WITH_BLASTED)
+	target_link_libraries(exec_testflow_clcd ${BLASTED_LIB})
+endif()
+
 # Tests
 
 add_test(NAME Mesh_Topology_ElemSurrElem COMMAND exec_testmesh esup ${CMAKE_CURRENT_SOURCE_DIR}/input/2dcylinderhybrid.msh)
