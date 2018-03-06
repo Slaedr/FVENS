@@ -320,9 +320,8 @@ public:
 	 * \param[in] grad Gradients of primitve variables
 	 * \param[in,out] stress Components of the stress tensor on output
 	 */
-	__attribute((always_inline))
 	void getStressTensor(const a_real mu, const a_real grad[NDIM][NVARS], 
-			a_real stress[NDIM][NDIM]) const;
+			a_real stress[NDIM][NDIM]) const __attribute((always_inline));
 
 	/// Computes Jacobian of stress tensor using Jacobian of gradients of primitive variables
 	/** Assigns the computed Jacobian to the output array components so prior contents are lost.
