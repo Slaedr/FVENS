@@ -47,6 +47,8 @@ StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A)
 	return ierr;
 }
 
+template StatusCode setJacobianPreallocation<1>(const UMesh2dh *const m, Mat A);
+
 template <int nvars>
 StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 {
