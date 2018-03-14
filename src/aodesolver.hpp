@@ -120,7 +120,7 @@ public:
 
 	/// Runs the time-stepping loop
 	/** Appends a line of timing-related data to a log file as follows.
-	 *  num-cells num-threads  wall-time  CPU-time   avg-linear-solver-iterations 
+	 *  num-cells num-threads  wall-time  CPU-time  total-lin-iterations  avg-linear-solver-iterations 
 	 *      number-of-time-steps  <\n>
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.

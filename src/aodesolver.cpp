@@ -189,8 +189,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	if(mpirank == 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
 		std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
-		std::cout << "                                   CPU time = " << cputime 
-			<< ", wall time = " << walltime << std::endl << std::endl;
+		std::cout << "                                   Wall time = " << walltime 
+			<< ", CPU time = " << cputime << std::endl << std::endl;
 	}
 
 	// append data to log file
@@ -482,14 +482,15 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		if(outf.tellp() == 0)
 			outf << std::setw(10) << "# num-cells "
 				<< std::setw(6) << "threads " << std::setw(10) << "wall-time " 
-				<< std::setw(10) << "cpu-time " << std::setw(10) << "avg-lin-iters "
+				<< std::setw(10) << "cpu-time " 
+				<< std::setw(10) << "total-lin-iters " << std::setw(10) << "avg-lin-iters "
 				<< std::setw(10) << " time-steps\n";
 
 		// write current info
 		outf << std::setw(10) << m->gnelem() << " "
 			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
-			<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps << " "
-			<< std::setw(10) << step
+			<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps*step << " "
+			<< std::setw(10) << avglinsteps << " " << std::setw(10) << step
 			<< "\n";
 		outf.close();
 	}
