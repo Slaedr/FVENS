@@ -10,7 +10,6 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <petscksp.h>
 
 #include "../src/autilities.hpp"
 
@@ -18,10 +17,13 @@ namespace benchmark {
 
 using namespace acfd;
 
-StatusCode parse_petsc_cmd_options();
-
+/// Find the dependence of the speed-up from a certain thread-count on the number of async sweeps
 StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthreads,
 		const std::vector<int>& sweep_seq, std::ofstream& outfile);
+
+StatusCode run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
+		const SteadySolverConfig& maintconf, const int nswps,
+		KSP ksp, Vec u, Mat A, Mat M, Blasted_data& bctx);
 
 }
 

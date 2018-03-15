@@ -40,6 +40,11 @@ StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A);
 #ifdef USE_BLASTED
 /// Sets BLASTed preconditioners
 /** Only one subdomain per rank is supported in case of domain decomposition global preconditioners.
+ * \param ksp The top-level KSP
+ * \param u A solution vector used to assemble the Jacobian matrix once, needed for initialization
+ *   of some PETSc preconditioners - the actual values don't matter.
+ * \param startprob A spatial discretization context to compute the Jacobian with
+ * \param[in,out] bctx The BLASTed context
  */
 template <int nvars>
 StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx);

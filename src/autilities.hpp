@@ -12,6 +12,9 @@
 #include "aspatial.hpp"
 #include "aodesolver.hpp"
 
+/// Throw an error from an error code
+#define FVENS_THROW(ierr,str) if(ierr != 0) throw str
+
 namespace acfd {
 
 /// Opens a file for reading but aborts in case of an error
@@ -77,6 +80,19 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);
 
 /// Extracts the spatial discretization's settings from the parsed control file data
 FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts);
+
+/// Extracts an integer corresponding to the argument from the default PETSc options database 
+/** Throws a string exception if the option was not set or if it could not be extracted.
+ * \param optionname The name of the option to get the value of; needs to include the preceding '-'
+ */
+int parsePetscCmd_int(const std::string optionname);
+
+/// Extracts a string corresponding to the argument from the default PETSc options database 
+/** Throws a string exception if the option was not set or if it could not be extracted.
+ * \param optionname The name of the option to get the value of; needs to include the preceding '-'
+ * \param len The max number of characters expected in the string value
+ */
+std::string parsePetscCmd_string(const std::string optionname, const int len);
 
 }
 

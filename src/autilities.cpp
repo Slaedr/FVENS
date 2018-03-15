@@ -208,4 +208,28 @@ FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts
 	return nconf;
 }
 
+int parsePetscCmd_int(const std::string optionname)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	int output = 0;
+	ierr = PetscOptionsGetInt(NULL, NULL, optionname.data(), output, &set);
+	FVENS_THROW(ierr, std::string("Could not get int ")+ optionname);
+	FVENS_THROW(!set, std::string("Int ") + optionname + str::string(" not set"));
+	return num_threads;
+}
+
+std::string parsePetscCmd_string(const std::string optionname, const size_t p_strlen)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	char* tt = new char[p_strlen+1];
+	ierr = PetscOptionsGetString(NULL, NULL, optionname.data(), tt, p_strlen, &set);
+	FVENS_THROW(ierr, std::string("Could not get string ") + std::string(optionname));
+	FVENS_THROW(!set, std::string("String ") + optionname + std::string(" not set"));
+	const std::string stropt = tt;
+	delete [] tt;
+	return stropt;
+}
+
 }

@@ -27,6 +27,18 @@ struct SteadySolverConfig {
 	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
 };
 
+/// A collection of variables used for benchmarking purposes
+struct TimingData {
+	a_int nelem;                 ///< Size of the problem - the number of cells
+	int numthreads;              ///< Number of threads used to solve the problem
+	double lin_walltime;         ///< Wall-clock time taken by all the linear solves
+	double lin_cputime;          ///< CPU time taken by all the linear solves
+	double ode_walltime;         ///< Wall-clock time taken by the whole nonlinear ODE solve
+	double ode_cputime;          ///< CPU time taken by the whole nonlinear ODE solve
+	int avg_lin_iters;           ///< Average number of linear iters needed per time step
+	int num_timesteps;           ///< Number of time steps needed for the ODE solve
+};
+
 /// Base class for steady-state simulations in pseudo-time
 /** Note that the unknowns u and residuals r correspond to the following ODE:
  * \f$ \frac{du}{dt} - r(u) = 0 \f$.
@@ -39,19 +51,12 @@ public:
 	 * \param[in] spatial Spatial discretization context
 	 * \param[in] conf Reference to temporal discretization configuration settings
 	 */
-	SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
-		: space{spatial}, config{conf}, cputime{0.0}, walltime{0.0}
-	{ }
-
-	/*const Vec residuals() const {
-		return residual;
-	}*/
+	SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf);
 
 	/// Get timing data
-	std::tuple<double,double> getRunTimes() const {
-		return std::make_tuple(walltime, cputime);
-	}
+	TimingData getTimingData() const;
 
+	/// Solve the nonlinear steady-state problem
 	virtual StatusCode solve(Vec u) = 0;
 
 	virtual ~SteadySolver() {}
@@ -59,9 +64,8 @@ public:
 protected:
 	const Spatial<nvars> *const space;
 	const SteadySolverConfig& config;
-	double cputime;
-	double walltime;
 	Vec rvec;
+	TimingData tdata;
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -96,8 +100,7 @@ private:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
 	using SteadySolver<nvars>::rvec;
-	using SteadySolver<nvars>::cputime;
-	using SteadySolver<nvars>::walltime;
+	using SteadySolver<nvars>::tdata;
 
 	std::vector<a_real> dtm;				///< Stores allowable local time step for each cell
 };
@@ -118,8 +121,10 @@ public:
 	
 	~SteadyBackwardEulerSolver();
 
-	/// Runs the time-stepping loop
-	/** Appends a line of timing-related data to a log file as follows.
+	/// Runs the time-stepping loop with backward Euler time-stepping
+	/** Stores timing data in a \ref TimingData object that can be retreived by \ref getTimingData. 
+	 *
+	 * Appends a line of timing-related data to a log file as follows.
 	 *  num-cells num-threads  wall-time  CPU-time  total-lin-iterations  avg-linear-solver-iterations 
 	 *      number-of-time-steps  <\n>
 	 * \param[in,out] u The solution vector containing the initial solution and which
@@ -130,8 +135,7 @@ public:
 protected:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
-	using SteadySolver<nvars>::cputime;
-	using SteadySolver<nvars>::walltime;
+	using SteadySolver<nvars>::tdata;
 	using SteadySolver<nvars>::rvec;       ///< Residual vector
 
 	Vec duvec;                             ///< Nonlinear update vector

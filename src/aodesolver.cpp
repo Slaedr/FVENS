@@ -62,6 +62,17 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 	return tvdrk;
 }
 
+template <int nvars>
+SteadySolver<nvars>::SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
+	: space{spatial}, config{conf}, tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0}
+{ }
+
+template <int nvars>
+TimingData SteadySolver<nvars>::getTimingData() const {
+	return tdata;
+}
+
+
 template<int nvars>
 SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 		const Spatial<nvars> *const spatial, const Vec uvec,
@@ -182,27 +193,28 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	gettimeofday(&time2, NULL);
 	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
+	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
 
 	if(step == config.maxiter && mpirank == 0)
 		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
 	if(mpirank == 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
 		std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
-		std::cout << "                                   Wall time = " << walltime 
-			<< ", CPU time = " << cputime << std::endl << std::endl;
+		std::cout << "                                   Wall time = " << tdata.ode_walltime 
+			<< ", CPU time = " << tdata.ode_cputime << std::endl << std::endl;
 	}
 
-	// append data to log file
-	if(mpirank==0) {
-		int numthreads = 0;
 #ifdef _OPENMP
-		numthreads = omp_get_max_threads();
+	tdata.numthreads = omp_get_max_threads();
 #endif
+
+	// append data to log file
+	/*if(mpirank==0) {
+		int numthreads = 0;
 		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
 		outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
 		outf.close();
-	}
+	}*/
 	
 	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
@@ -308,7 +320,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	/* Our usage of Eigen Maps in the manner below assumes that VecGetArray returns a pointer to
 	 * the primary underlying storage in PETSc Vec. This usually happens, but not for
 	 * CUDA, CUSP or ViennaCL vecs.
-	 * To be safe, we should use VecGetArray and construct the map immediately before
+	 * To be safe, we should use VecGetArray and only construct the map immediately before
 	 * the usage of the map.
 	 */
 	PetscScalar *duarr, *rarr, *uarr;
@@ -331,9 +343,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	PetscLogDouble initialwtime;
 	PetscTime(&initialwtime);
 	
-	int avglinsteps = 0;
-
-	walltime = cputime = 0;
 	double linwtime = 0, linctime = 0;
 		
 	while(resi/initres > config.tol && step < config.maxiter)
@@ -397,7 +406,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 		int linstepsneeded;
 		ierr = KSPGetIterationNumber(solver, &linstepsneeded); CHKERRQ(ierr);
-		avglinsteps += linstepsneeded;
+		tdata.avg_lin_iters += linstepsneeded;
 		
 		a_real resnorm2 = 0;
 
@@ -442,8 +451,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	PetscLogDouble finalwtime;
 	PetscTime(&finalwtime);
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
-	avglinsteps /= step;
+	tdata.ode_walltime += (finalwtime-initialwtime); 
+	tdata.ode_cputime += (finalctime-initialctime);
+	tdata.avg_lin_iters /= step;
+	tdata.num_timesteps = step;
 
 	if(config.lognres)
 		if(mpirank == 0)
@@ -456,25 +467,24 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	if(step == config.maxiter)
 		if(mpirank == 0) {
 			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
-			std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step 
-				<< ", rel residual " << resi/initres << std::endl;
 		}
 
 	// print timing data
 	if(mpirank == 0) {
-		std::cout << "\t\tAverage number of linear solver iterations = " << avglinsteps << std::endl;
+		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters << std::endl;
 		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-		std::cout << " \t\tWall time = " << walltime << ", CPU time = " << cputime << "\n";
+		std::cout << " \t\tWall time = " << tdata.ode_walltime << ", CPU time = " 
+			<< tdata.ode_cputime << "\n";
 		std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
 		std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
 	}
 
-	// append data to log file
-	int numthreads = 1;
 #ifdef _OPENMP
-	numthreads = omp_get_max_threads();
+	tdata.numthreads = omp_get_max_threads();
 #endif
-	if(mpirank == 0) {
+	tdata.lin_walltime = linwtime; 
+	tdata.lin_cputime = linctime;
+	/*if(mpirank == 0) {
 		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
 
 		// if the file is empty, write header
@@ -489,11 +499,11 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		// write current info
 		outf << std::setw(10) << m->gnelem() << " "
 			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " " 
-			<< std::setw(10) << linctime << " " << std::setw(10) << avglinsteps*step << " "
-			<< std::setw(10) << avglinsteps << " " << std::setw(10) << step
+			<< std::setw(10) << linctime << " " << std::setw(10) << tdata.avg_lin_iters*step << " "
+			<< std::setw(10) << tdata.avg_lin_iters << " " << std::setw(10) << step
 			<< "\n";
 		outf.close();
-	}
+	}*/
 	
 	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
