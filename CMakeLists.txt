@@ -129,3 +129,7 @@ endif(CTAGS_PATH)
 # Tests
 enable_testing()
 add_subdirectory(tests)
+
+# Benchmarking
+add_subdirectory(benchmarking)
+
