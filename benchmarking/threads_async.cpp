@@ -1,26 +1,31 @@
 /** \file threads_async.cpp
  * \brief Carries out benchmarking tests related to thread-parallel asynchronous preconditioning
+ *
+ * Command-line or PETSc options file parameters:
+ * * -test_type ["speedup_sweeps": Study speed-up obtained from different numbers of async sweeps with
+ *     a fixed number of threads.]
+ * * -threads_sequence [integer array] The number of threads to use for the testing; only the first
+ *     entry of this array is considered for the 'speedup_sweeps' test.
+ * * -async_sweep_sequence [integer array] The number of asynchronous sweeps to run test(s) with; when
+ *     the building and application of the preconditioner are both asynchronous, the number of
+ *     build sweeps equals the number of application sweeps.
+ *
  * \author Aditya Kashi
  * \date 2018-03
  */
 
 #include <iostream>
-#include <iomanip>
+#include <fstream>
 #include <string>
-#include <omp.h>
-#include <petscksp.h>
+#include <petscsys.h>
 
-#include "../src/alinalg.hpp"
 #include "../src/autilities.hpp"
-#include "../src/aoutput.hpp"
-#include "../src/aodesolver.hpp"
-#include "../src/afactory.hpp"
-#include "../src/ameshutils.hpp"
+#include "threads_async_tests.hpp"
 
-#include <blasted_petsc.h>
-
-using namespace amat;
 using namespace acfd;
+using namespace benchmark;
+
+#define ARR_LEN 10
 
 int main(int argc, char *argv[])
 {
@@ -30,40 +35,24 @@ int main(int argc, char *argv[])
 		Arguments needed: FVENS control file,\n optionally PETSc options file with -options_file.\n";
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
-	int mpirank;
-	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
+	
+	// Read control file
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 
+	std::ofstream outf;
+	open_file_toWrite(opts.logfile, outf);
 
-#ifdef USE_BLASTED
-	// write out time taken by BLASTed preconditioner
-	if(mpirank == 0) {
-		const double linwtime = bctx.factorwalltime + bctx.applywalltime;
-		const double linctime = bctx.factorcputime + bctx.applycputime;
-		int numthreads = 1;
-#ifdef _OPENMP
-		numthreads = omp_get_max_threads();
-#endif
-		std::ofstream outf; outf.open(opts.logfile+"-precon.tlog", std::ofstream::app);
-		// if the file is empty, write header
-		outf.seekp(0, std::ios::end);
-		if(outf.tellp() == 0) {
-			outf << "# Time taken by preconditioning operations only:\n";
-			outf << std::setw(10) << "# num-cells "
-				<< std::setw(6) << "threads " << std::setw(10) << "wall-time "
-				<< std::setw(10) << "cpu-time " << std::setw(10) << "avg-lin-iters "
-				<< std::setw(10) << " time-steps\n";
-		}
+	const std::string testtype = parsePetscCmd_string("-test_type", 20);
 
-		// write current info
-		outf << std::setw(10) << m.gnelem() << " "
-			<< std::setw(6) << numthreads << " " << std::setw(10) << linwtime << " "
-			<< std::setw(10) << linctime
-			<< "\n";
-		outf.close();
+	if(testtype == "speedup_sweeps")
+	{
+		const std::vector<int> threadseq = parsePetscCmd_intArray("-test_num_threads", ARR_LEN);
+		const std::vector<int> sweepseq  = parsePetscCmd_intArray("-async_sweep_sequence", ARR_LEN);
+		ierr = test_speedup_sweeps(opts, threadseq[0], sweepseq, outf);
+		CHKERRQ(ierr);
 	}
-#endif
 
-	std::cout << '\n';
+	outf.close();
 	ierr = PetscFinalize(); CHKERRQ(ierr);
 	std::cout << "\n--------------- End --------------------- \n\n";
 	return ierr;

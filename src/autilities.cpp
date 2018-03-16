@@ -3,10 +3,11 @@
 
 namespace acfd {
 
-Petsc_exception(const std::string& msg) 
+Petsc_exception::Petsc_exception(const std::string& msg) 
 	: std::runtime_error(std::string("PETSc error: ")+msg)
 { }
-Petsc_exception(const char *const msg) 
+
+Petsc_exception::Petsc_exception(const char *const msg) 
 	: std::runtime_error(std::string("PETSc error: ") + std::string(msg))
 { }
 
@@ -24,8 +25,7 @@ void open_file_toWrite(const std::string file, std::ofstream& fout)
 {
 	fout.open(file);
 	if(!fout) {
-		std::cout << "! Could not open file "<< file <<" !\n";
-		//std::abort();
+		throw std::runtime_error("Could not open file " + file);
 	}
 }
 
@@ -221,10 +221,10 @@ int parsePetscCmd_int(const std::string optionname)
 	StatusCode ierr = 0;
 	PetscBool set = PETSC_FALSE;
 	int output = 0;
-	ierr = PetscOptionsGetInt(NULL, NULL, optionname.data(), output, &set);
-	FVENS_THROW(ierr, std::string("Could not get int ")+ optionname);
-	FVENS_THROW(!set, std::string("Int ") + optionname + str::string(" not set"));
-	return num_threads;
+	ierr = PetscOptionsGetInt(NULL, NULL, optionname.c_str(), &output, &set);
+	petsc_throw(ierr, std::string("Could not get int ")+ optionname);
+	fvens_throw(!set, std::string("Int ") + optionname + std::string(" not set"));
+	return output;
 }
 
 std::string parsePetscCmd_string(const std::string optionname, const size_t p_strlen)
@@ -233,11 +233,25 @@ std::string parsePetscCmd_string(const std::string optionname, const size_t p_st
 	PetscBool set = PETSC_FALSE;
 	char* tt = new char[p_strlen+1];
 	ierr = PetscOptionsGetString(NULL, NULL, optionname.data(), tt, p_strlen, &set);
-	FVENS_THROW(ierr, std::string("Could not get string ") + std::string(optionname));
-	FVENS_THROW(!set, std::string("String ") + optionname + std::string(" not set"));
+	petsc_throw(ierr, std::string("Could not get string ") + std::string(optionname));
+	fvens_throw(!set, std::string("String ") + optionname + std::string(" not set"));
 	const std::string stropt = tt;
 	delete [] tt;
 	return stropt;
+}
+
+std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int maxlen)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	std::vector<int> arr(maxlen);
+	int len = maxlen;
+
+	ierr = PetscOptionsGetIntArray(NULL, NULL, optionname.c_str(), &arr[0], &len, &set);
+
+	petsc_throw(ierr, std::string("Could not get array ") + std::string(optionname));
+	fvens_throw(!set, std::string("Array ") + optionname + std::string(" not set"));
+	return arr;
 }
 
 }

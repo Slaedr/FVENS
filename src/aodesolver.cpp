@@ -643,6 +643,9 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	return ierr;
 }
 
+template class SteadySolver<NVARS>;
+template class SteadySolver<1>;
+
 template class SteadyForwardEulerSolver<NVARS>;
 template class SteadyBackwardEulerSolver<NVARS>;
 template class SteadyForwardEulerSolver<1>;

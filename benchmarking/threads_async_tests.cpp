@@ -25,13 +25,10 @@ namespace benchmark {
 
 using namespace acfd;
 
-StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthreads,
-		const std::vector<int>& sweep_seq, std::ofstream& outfile)
+StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numthreads,
+		const std::vector<int>& sweep_seq, std::ofstream& outf)
 {
 	StatusCode ierr = 0;
-	
-	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 
 	// Set up mesh
 	UMesh2dh m;
@@ -43,7 +40,7 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 	// physical configuration
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
-	const FlowNumericsConfig nconfmain = extract_spatial_numerica_config(opts);
+	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 	// simpler numerics for startup
 	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
 
@@ -127,26 +124,28 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 
 	// Benchmarking runs
 
+	int mpirank;
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 	if(mpirank == 0) {
-		outf << std::setw(10) << "# num-cells = " << m.gnelem() << "\n# ";
+		outf << "# Preconditioner wall times #\n# num-cells = " << m.gnelem() << "\n";
 	}
 
 	omp_set_num_threads(1);
 
-	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, ksp, u, A, M, bctx);
+	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, ksp, u, A, M, mfjac, mf_flg, bctx);
 
 	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
 	const int w = 10;
 	
 	if(mpirank == 0) {
-		outf << " Base preconditioner wall time = " << prec_basewtime << "\n# ";
+		outf << "# Base preconditioner wall time = " << prec_basewtime << "\n# ";
 		outf << std::setw(w) << "threads"
 			<< std::setw(w) << "sweeps " << std::setw(w) << "rel-wall-time " 
 			<< std::setw(w) << "cpu-time " 
 			<< std::setw(w) << "total-lin-iters " << std::setw(w) << "avg-lin-iters "
 			<< std::setw(w) << " time-steps\n";
 
-		outf << std::setw(w) << 1 << std::setw(w) << 1 << std::setw(w) << 1.0
+		outf << "# " << std::setw(w) << 1 << std::setw(w) << 1 << std::setw(w) << 1.0
 			<< std::setw(w) << bctx.factorcputime + bctx.applycputime
 			<< std::setw(w) << tdata.avg_lin_iters*tdata.num_timesteps
 			<< std::setw(w) << tdata.avg_lin_iters << std::setw(w) << tdata.num_timesteps << '\n';
@@ -157,7 +156,8 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 	// Carry out multi-thread run
 	for (const int nswp : sweep_seq)
 	{
-		TimingData tdata = run_sweeps(startprob, prob, maintconf, nswp, ksp, u, A, M, bctx);
+		TimingData tdata = run_sweeps(startprob, prob, maintconf, nswp, ksp, u, A, M, mfjac, mf_flg,
+				bctx);
 
 		if(mpirank == 0) {
 			outf << std::setw(w) << numthreads << std::setw(w) << nswp 
@@ -172,14 +172,23 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 	delete starttime;
 	delete prob;
 	delete startprob;
+	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = MatDestroy(&M); CHKERRQ(ierr);
+	if(mf_flg) {
+		ierr = MatDestroy(&A); 
+		CHKERRQ(ierr);
+	}
 	
 	return ierr;
 }
 
 TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nswps,
-		KSP ksp, Vec u, Mat A, Mat M, Blasted_data& bctx)
+		KSP ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
+		Blasted_data& bctx)
 {
+	StatusCode ierr = 0;
+
 	// add options
 	std::string value = std::to_string(nswps) + "," + std::to_string(nswps);
 	ierr = PetscOptionsSetValue(NULL, "-blasted_async_sweeps", value.c_str());
@@ -187,6 +196,7 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 
 	// Check
 	int checksweeps[2];
+	int nmax = 2;
 	PetscBool set = PETSC_FALSE;
 	ierr = PetscOptionsGetIntArray(NULL,NULL,"-blasted_async_sweeps",checksweeps,&nmax,&set);
 	fvens_throw(checksweeps[0] != nswps || checksweeps[1] != nswps, 

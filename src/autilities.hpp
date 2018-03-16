@@ -89,7 +89,12 @@ int parsePetscCmd_int(const std::string optionname);
  * \param optionname The name of the option to get the value of; needs to include the preceding '-'
  * \param len The max number of characters expected in the string value
  */
-std::string parsePetscCmd_string(const std::string optionname, const int len);
+std::string parsePetscCmd_string(const std::string optionname, const size_t len);
+
+/// Extracts the arguments of an int array option from the default PETSc options database
+/** \param maxlen Maximum number of entries expected in the array
+ */
+std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int maxlen);
 
 /// An exception to throw for errors from PETSc; takes a custom message
 class Petsc_exception : public std::runtime_error
@@ -103,7 +108,7 @@ public:
 /** \param ierr An expression which, if true, triggers the exception
  * \param str A short string message describing the error
  */
-void fvens_throw(const int ierr, const std::string str) {
+inline void fvens_throw(const int ierr, const std::string str) {
 	if(ierr != 0) 
 		throw std::runtime_error(str);
 }
@@ -112,7 +117,7 @@ void fvens_throw(const int ierr, const std::string str) {
 /** \param ierr An expression which, if true, triggers the exception
  * \param str A short string message describing the error
  */
-void petsc_throw(const int ierr, const std::string str) {
+inline void petsc_throw(const int ierr, const std::string str) {
 	if(ierr != 0) 
 		throw acfd::Petsc_exception(str);
 }
