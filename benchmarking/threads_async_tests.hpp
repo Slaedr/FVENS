@@ -21,6 +21,11 @@ using namespace acfd;
 StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthreads,
 		const std::vector<int>& sweep_seq, std::ofstream& outfile);
 
+/// Run a timing test with a specific number of sweeps with a specific number of threads
+/** 
+ * \param bctx BLASTed data context which is re-constructed and thus initialized to zero before use,
+ *   and contains timing data of the preconditioner on exit.
+ */
 StatusCode run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nswps,
 		KSP ksp, Vec u, Mat A, Mat M, Blasted_data& bctx);

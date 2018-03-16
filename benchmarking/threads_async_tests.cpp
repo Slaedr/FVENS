@@ -128,22 +128,28 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 	// Benchmarking runs
 
 	if(mpirank == 0) {
-		outf << std::setw(10) << "# num-cells = " << m.gnelem() << "\n# "
-			<< std::setw(6) << "sweeps " << std::setw(10) << "wall-time " 
-			<< std::setw(10) << "cpu-time " 
-			<< std::setw(10) << "total-lin-iters " << std::setw(10) << "avg-lin-iters "
-			<< std::setw(10) << " time-steps\n";
+		outf << std::setw(10) << "# num-cells = " << m.gnelem() << "\n# ";
 	}
 
 	omp_set_num_threads(1);
 
-	TimingData tdata = run_sweeps(startprob, prob, maintconf, sweep_seq, ksp, u, A, M, bctx);
+	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, ksp, u, A, M, bctx);
+
+	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
+	const int w = 10;
 	
 	if(mpirank == 0) {
-			outf << std::setw(6) << "sweeps " << std::setw(10) << "wall-time " 
-			<< std::setw(10) << "cpu-time " 
-			<< std::setw(10) << "total-lin-iters " << std::setw(10) << "avg-lin-iters "
-			<< std::setw(10) << " time-steps\n";
+		outf << " Base preconditioner wall time = " << prec_basewtime << "\n# ";
+		outf << std::setw(w) << "threads"
+			<< std::setw(w) << "sweeps " << std::setw(w) << "rel-wall-time " 
+			<< std::setw(w) << "cpu-time " 
+			<< std::setw(w) << "total-lin-iters " << std::setw(w) << "avg-lin-iters "
+			<< std::setw(w) << " time-steps\n";
+
+		outf << std::setw(w) << 1 << std::setw(w) << 1 << std::setw(w) << 1.0
+			<< std::setw(w) << bctx.factorcputime + bctx.applycputime
+			<< std::setw(w) << tdata.avg_lin_iters*tdata.num_timesteps
+			<< std::setw(w) << tdata.avg_lin_iters << std::setw(w) << tdata.num_timesteps << '\n';
 	}
 
 	omp_set_num_threads(numthreads);
@@ -152,6 +158,14 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 	for (const int nswp : sweep_seq)
 	{
 		TimingData tdata = run_sweeps(startprob, prob, maintconf, nswp, ksp, u, A, M, bctx);
+
+		if(mpirank == 0) {
+			outf << std::setw(w) << numthreads << std::setw(w) << nswp 
+				<< std::setw(w) << prec_basewtime/(bctx.factorwalltime + bctx.applywalltime)
+				<< std::setw(w) << bctx.factorcputime + bctx.applycputime
+				<< std::setw(w) << tdata.avg_lin_iters*tdata.num_timesteps
+				<< std::setw(w) << tdata.avg_lin_iters << std::setw(w) << tdata.num_timesteps << '\n';
+		}
 	}
 
 	delete time;
