@@ -12,9 +12,6 @@
 #include "aspatial.hpp"
 #include "aodesolver.hpp"
 
-/// Throw an error from an error code
-#define FVENS_THROW(ierr,str) if(ierr != 0) throw str
-
 namespace acfd {
 
 /// Opens a file for reading but aborts in case of an error
@@ -93,6 +90,32 @@ int parsePetscCmd_int(const std::string optionname);
  * \param len The max number of characters expected in the string value
  */
 std::string parsePetscCmd_string(const std::string optionname, const int len);
+
+/// An exception to throw for errors from PETSc; takes a custom message
+class Petsc_exception : public std::runtime_error
+{
+public:
+	Petsc_exception(const std::string& msg);
+	Petsc_exception(const char *const msg);
+};
+
+/// Throw an error from an error code
+/** \param ierr An expression which, if true, triggers the exception
+ * \param str A short string message describing the error
+ */
+void fvens_throw(const int ierr, const std::string str) {
+	if(ierr != 0) 
+		throw std::runtime_error(str);
+}
+
+/// Throw an error from an error code related to PETSc
+/** \param ierr An expression which, if true, triggers the exception
+ * \param str A short string message describing the error
+ */
+void petsc_throw(const int ierr, const std::string str) {
+	if(ierr != 0) 
+		throw acfd::Petsc_exception(str);
+}
 
 }
 

@@ -125,13 +125,30 @@ StatusCode test_speedup_sweeps(const FlowParseOptions& opts, const int numthread
 		ierr = starttime->solve(u); CHKERRQ(ierr);
 	}
 
+	// Benchmarking runs
+
+	if(mpirank == 0) {
+		outf << std::setw(10) << "# num-cells = " << m.gnelem() << "\n# "
+			<< std::setw(6) << "sweeps " << std::setw(10) << "wall-time " 
+			<< std::setw(10) << "cpu-time " 
+			<< std::setw(10) << "total-lin-iters " << std::setw(10) << "avg-lin-iters "
+			<< std::setw(10) << " time-steps\n";
+	}
+
 	omp_set_num_threads(1);
 
 	TimingData tdata = run_sweeps(startprob, prob, maintconf, sweep_seq, ksp, u, A, M, bctx);
+	
+	if(mpirank == 0) {
+			outf << std::setw(6) << "sweeps " << std::setw(10) << "wall-time " 
+			<< std::setw(10) << "cpu-time " 
+			<< std::setw(10) << "total-lin-iters " << std::setw(10) << "avg-lin-iters "
+			<< std::setw(10) << " time-steps\n";
+	}
 
 	omp_set_num_threads(numthreads);
 	
-	// Carry out multi--thread run
+	// Carry out multi-thread run
 	for (const int nswp : sweep_seq)
 	{
 		TimingData tdata = run_sweeps(startprob, prob, maintconf, nswp, ksp, u, A, M, bctx);
@@ -152,24 +169,31 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 	// add options
 	std::string value = std::to_string(nswps) + "," + std::to_string(nswps);
 	ierr = PetscOptionsSetValue(NULL, "-blasted_async_sweeps", value.c_str());
-	FVENS_THROW(ierr, "run_sweeps: Couldn't set PETSc option for sweeps");
+	petsc_throw(ierr, "run_sweeps: Couldn't set PETSc option for sweeps");
+
+	// Check
+	int checksweeps[2];
+	PetscBool set = PETSC_FALSE;
+	ierr = PetscOptionsGetIntArray(NULL,NULL,"-blasted_async_sweeps",checksweeps,&nmax,&set);
+	fvens_throw(checksweeps[0] != nswps || checksweeps[1] != nswps, 
+			"run_sweeps: Async sweeps not set properly!");
 	
 	// Reset the KSP
-	ierr = KSPDestroy(&ksp); FVENS_THROW(ierr, "run_sweeps: Couldn't destroy KSP");
-	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); FVENS_THROW(ierr, "run_sweeps: Couldn't create KSP");
+	ierr = KSPDestroy(&ksp); petsc_throw(ierr, "run_sweeps: Couldn't destroy KSP");
+	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); petsc_throw(ierr, "run_sweeps: Couldn't create KSP");
 	if(mf_flg) {
 		ierr = KSPSetOperators(ksp, A, M); 
-		FVENS_THROW(ierr, "run_sweeps: Couldn't set KSP operators");
+		petsc_throw(ierr, "run_sweeps: Couldn't set KSP operators");
 	}
 	else {
 		ierr = KSPSetOperators(ksp, M, M); 
-		FVENS_THROW(ierr, "run_sweeps: Couldn't set KSP operators");
+		petsc_throw(ierr, "run_sweeps: Couldn't set KSP operators");
 	}
-	ierr = KSPSetFromOptions(ksp); FVENS_THROW(ierr, "run_sweeps: Couldn't set KSP from options");
+	ierr = KSPSetFromOptions(ksp); petsc_throw(ierr, "run_sweeps: Couldn't set KSP from options");
 	
 	bctx = newBlastedDataContext();
 	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx);
-	FVENS_THROW(ierr, "run_sweeps: Couldn't setup BLASTed");
+	fvens_throw(ierr, "run_sweeps: Couldn't setup BLASTed");
 
 	// setup nonlinear ODE solver for main solve
 	SteadyBackwardEulerSolver<NVARS>* time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, ksp);
@@ -178,14 +202,14 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 	mfjac.set_spatial(prob);
 
 	Vec ut;
-	ierr = MatCreateVecs(M, &ut, NULL); FVENS_THROW(ierr, "Line 194: Couldn't create vec");
-	ierr = VecCopy(u, ut); FVENS_THROW(ierr, "run_sweeps: Couldn't copy vec");
+	ierr = MatCreateVecs(M, &ut, NULL); petsc_throw(ierr, "Line 194: Couldn't create vec");
+	ierr = VecCopy(u, ut); petsc_throw(ierr, "run_sweeps: Couldn't copy vec");
 	
-	ierr = time->solve(ut); FVENS_THROW(ierr, "run_sweeps: Couldn't solve ODE");
+	ierr = time->solve(ut); fvens_throw(ierr, "run_sweeps: Couldn't solve ODE");
 	const TimingData tdata = time->getTimingData();
 
 	delete time;
-	ierr = VecDestroy(&ut); FVENS_THROW(ierr, "run_sweeps: Couldn't delete vec");
+	ierr = VecDestroy(&ut); petsc_throw(ierr, "run_sweeps: Couldn't delete vec");
 
 	return tdata;
 }
