@@ -10,7 +10,7 @@ if(len(sys.argv) < 2):
 	print("Error. Please provide input file name.")
 	sys.exit(-1)
 
-symbs = ['bo', 'gs', 'r^', 'cv','b*']
+symbs = ['b.', 'gs', 'r^', 'cv','b*']
 names = ["Cp", "Cf", "other"]
 
 plotaxis = 0

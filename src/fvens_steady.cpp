@@ -42,21 +42,11 @@ int main(int argc, char *argv[])
 	std::cout << "\n***\n";
 
 	// set up problem
-
+	
 	// physical configuration
-	const FlowPhysicsConfig pconf {
-		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
-		opts.viscsim, opts.useconstvisc,
-		opts.isothermalwall_marker, opts.adiabaticwall_marker, opts.isothermalpressurewall_marker,
-		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
-		opts.extrap_marker, opts.periodic_marker,
-		opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel
-	};
-
+	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
-	const FlowNumericsConfig nconfmain {opts.invflux, opts.invfluxjac,
-		opts.gradientmethod, opts.limiter, opts.order2};
-
+	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 	// simpler numerics for startup
 	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
 
