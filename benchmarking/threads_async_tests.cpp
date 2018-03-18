@@ -137,36 +137,39 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 
 	omp_set_num_threads(1);
 
-	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, ksp, u, A, M, mfjac, mf_flg, bctx);
+	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, &ksp, u, A, M, mfjac, mf_flg, bctx);
 
 	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
-	const int w = 10;
+	const int w = 11;
 	
 	if(mpirank == 0) {
-		outf << "# Base preconditioner wall time = " << prec_basewtime << "\n# ";
+		outf << "# Base preconditioner wall time = " << prec_basewtime << "\n#---\n#";
 		outf << std::setw(w) << "threads"
-			<< std::setw(w) << "sweeps " << std::setw(w+5) << "wall-time-speedup " 
-			<< std::setw(w) << "cpu-time " 
-			<< std::setw(w+5) << "total-lin-iters " << std::setw(w+5) << "avg-lin-iters "
-			<< std::setw(w) << " time-steps\n";
+			<< std::setw(w) << "sweeps" << std::setw(w+5) << "wall-speedup" 
+			<< std::setw(w) << "cpu-time" 
+			<< std::setw(w+6) << "total-lin-iters" << std::setw(w+5) << "avg-lin-iters"
+			<< std::setw(w+1) << "time-steps"<< std::setw(w) << "converged?" << "\n#---\n";
 
-		outf << "# " << std::setw(w) << 1 << std::setw(w) << 1 << std::setw(w) << 1.0
-			<< std::setw(w) << bctx.factorcputime + bctx.applycputime
-			<< std::setw(w) << tdata.total_lin_iters
-			<< std::setw(w) << tdata.avg_lin_iters << std::setw(w) << tdata.num_timesteps << '\n';
+		outf << "#" << std::setw(w) << 1 << std::setw(w) << 1 << std::setw(w) << 1.0
+			<< std::setw(w+5) << bctx.factorcputime + bctx.applycputime
+			<< std::setw(w+6) << tdata.total_lin_iters
+			<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
+			<< std::setw(w) << (tdata.converged ? 1 : 0) << "\n#---\n";
 	}
 
 	omp_set_num_threads(numthreads);
 	
 	// Carry out multi-thread run
+	// Note: The run is regarded as converged only if each repetition converged
 	for (const int nswp : sweep_seq)
 	{
-		TimingData tdata = {0,0,0,0,0,0,0,0,0};
+		TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
 		double precwalltime = 0, preccputime = 1;
 
-		for(int irpt = 0; irpt < numrepeat; irpt++) 
+		int irpt;
+		for(irpt = 0; irpt < numrepeat; irpt++) 
 		{
-			TimingData td = run_sweeps(startprob, prob, maintconf, nswp, ksp, u, A, M, mfjac, mf_flg,
+			TimingData td = run_sweeps(startprob, prob, maintconf, nswp, &ksp, u, A, M, mfjac, mf_flg,
 					bctx);
 
 			tdata.nelem = td.nelem;
@@ -177,46 +180,55 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			tdata.ode_cputime +=  td.ode_cputime;
 			tdata.total_lin_iters += td.total_lin_iters;
 			tdata.num_timesteps += td.num_timesteps;
+			tdata.converged = tdata.converged && td.converged;
 			precwalltime += bctx.factorwalltime + bctx.applywalltime;
 			preccputime += bctx.factorcputime + bctx.applycputime;
+
+			if(!td.converged) {
+				irpt++;
+				break;
+			}
 		}
 
-		tdata.lin_walltime /= (double)numrepeat;
-		tdata.lin_cputime /= (double)numrepeat;
-		tdata.ode_walltime /= (double)numrepeat;
-		tdata.ode_cputime /= (double)numrepeat;
-		tdata.num_timesteps /= (double)numrepeat;
-		tdata.total_lin_iters /= (double)numrepeat;
+		tdata.lin_walltime /= (double)irpt;
+		tdata.lin_cputime /= (double)irpt;
+		tdata.ode_walltime /= (double)irpt;
+		tdata.ode_cputime /= (double)irpt;
+		tdata.num_timesteps /= (double)irpt;
+		tdata.total_lin_iters /= (double)irpt;
 		tdata.avg_lin_iters = tdata.total_lin_iters / (double)tdata.num_timesteps;
-		precwalltime /= (double)numrepeat;
-		preccputime /= (double)numrepeat;
+		precwalltime /= (double)irpt;
+		preccputime /= (double)irpt;
 
 		if(mpirank == 0) {
-			outf << std::setw(w) << numthreads << std::setw(w) << nswp 
-				<< std::setw(w) << prec_basewtime/precwalltime
+			outf << ' ' << std::setw(w) << numthreads << std::setw(w) << nswp 
+				<< std::setw(w+5) << prec_basewtime/precwalltime
 				<< std::setw(w) << preccputime
-				<< std::setw(w) << tdata.total_lin_iters
-				<< std::setw(w) << tdata.avg_lin_iters << std::setw(w) << tdata.num_timesteps << '\n';
+				<< std::setw(w+6) << tdata.total_lin_iters
+				<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
+				<< std::setw(w) << (tdata.converged ? 1:0) << '\n';
 		}
+
+		std::cout << "Done sweep " << nswp << ".\n";
 	}
 
 	delete time;
 	delete starttime;
-	delete prob;
-	delete startprob;
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = MatDestroy(&A); 
 		CHKERRQ(ierr);
 	}
+	delete prob;
+	delete startprob;
 	
 	return ierr;
 }
 
 TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nswps,
-		KSP ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
+		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
 		Blasted_data& bctx)
 {
 	StatusCode ierr = 0;
@@ -224,24 +236,25 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 	set_blasted_sweeps(nswps,nswps);
 
 	// Reset the KSP
-	ierr = KSPDestroy(&ksp); petsc_throw(ierr, "run_sweeps: Couldn't destroy KSP");
-	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); petsc_throw(ierr, "run_sweeps: Couldn't create KSP");
+	ierr = KSPDestroy(ksp); petsc_throw(ierr, "run_sweeps: Couldn't destroy KSP");
+	ierr = KSPCreate(PETSC_COMM_WORLD, ksp); petsc_throw(ierr, "run_sweeps: Couldn't create KSP");
 	if(mf_flg) {
-		ierr = KSPSetOperators(ksp, A, M); 
+		ierr = KSPSetOperators(*ksp, A, M); 
 		petsc_throw(ierr, "run_sweeps: Couldn't set KSP operators");
 	}
 	else {
-		ierr = KSPSetOperators(ksp, M, M); 
+		ierr = KSPSetOperators(*ksp, M, M); 
 		petsc_throw(ierr, "run_sweeps: Couldn't set KSP operators");
 	}
-	ierr = KSPSetFromOptions(ksp); petsc_throw(ierr, "run_sweeps: Couldn't set KSP from options");
+	ierr = KSPSetFromOptions(*ksp); petsc_throw(ierr, "run_sweeps: Couldn't set KSP from options");
 	
 	bctx = newBlastedDataContext();
-	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx);
+	ierr = setup_blasted<NVARS>(*ksp,u,startprob,bctx);
 	fvens_throw(ierr, "run_sweeps: Couldn't setup BLASTed");
 
 	// setup nonlinear ODE solver for main solve
-	SteadyBackwardEulerSolver<NVARS>* time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, ksp);
+	SteadyBackwardEulerSolver<NVARS>* time 
+		= new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, *ksp);
 	std::cout << " Set up backward Euler temporal scheme for main solve.\n";
 
 	mfjac.set_spatial(prob);

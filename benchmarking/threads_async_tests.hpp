@@ -19,7 +19,15 @@ namespace benchmark {
 using namespace acfd;
 
 /// Find the dependence of the speed-up from a certain thread-count on the number of async sweeps
-/** \param opts Numerics and physics options for the test-case
+/** Only for implicit solves.
+ * Runs a nonlinear solve first with 1 thread and 1 sweep (for reference) and then with as many threads
+ * as requested, once each for each number of sweeps requested. Each `run' with the requested number of
+ * threads and one of the requested number of sweeps consists of several repetitions, to account for
+ * the asynchronous chaos.
+ * If one repetition of a run does not converge, that run is terminated but its details are written
+ * to the output file, and it moves on to the next requested number of sweeps.
+ *
+ * \param opts Numerics and physics options for the test-case
  * \param numrepeat The number of times to repeat the benchmark and average the results
  * \param numthreads The number of threads to run the case with
  * \param sweep_seq The set of async sweeps to run the case with (1 run for each entry)
@@ -36,7 +44,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
  */
 TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nswps,
-		KSP ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
+		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
 		Blasted_data& bctx);
 
 }

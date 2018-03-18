@@ -64,7 +64,8 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
-	: space{spatial}, config{conf}, tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0}
+	: space{spatial}, config{conf}, 
+	  tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false}
 { }
 
 template <int nvars>
@@ -195,8 +196,12 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
 
-	if(step == config.maxiter && mpirank == 0)
-		std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
+	tdata.converged = true;
+	if(step == config.maxiter) {
+		tdata.converged = false;
+		if(mpirank == 0)
+			std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
+	}
 	if(mpirank == 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
 		std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
@@ -456,10 +461,14 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step 
 			<< ", rel residual " << resi/initres << std::endl;
 	}
-	if(step == config.maxiter)
+
+	tdata.converged = true;
+	if(step == config.maxiter) {
+		tdata.converged = false;
 		if(mpirank == 0) {
 			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
 		}
+	}
 
 	// print timing data
 	if(mpirank == 0) {

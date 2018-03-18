@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	// setup nonlinear ODE solver for main solve
+	// setup nonlinear ODE solver for main solve - MUST be done AFTER KSPCreate
 	if(opts.timesteptype == "IMPLICIT")
 	{
 		time = new SteadyBackwardEulerSolver<4>(prob, maintconf, ksp);
@@ -232,6 +232,7 @@ int main(int argc, char *argv[])
 	delete prob;
 	delete startprob;
 
+#if 0
 #ifdef USE_BLASTED
 	// write out time taken by BLASTed preconditioner
 	if(mpirank == 0) {
@@ -259,6 +260,7 @@ int main(int argc, char *argv[])
 			<< "\n";
 		outf.close();
 	}
+#endif
 #endif
 
 	std::cout << '\n';

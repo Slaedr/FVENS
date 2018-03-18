@@ -38,6 +38,7 @@ struct TimingData {
 	int total_lin_iters;         ///< Total number of linear iters needed for the ODE solve
 	int avg_lin_iters;           ///< Average number of linear iters needed per time step
 	int num_timesteps;           ///< Number of time steps needed for the ODE solve
+	bool converged;              ///< Did the nonlinear solver converge?
 };
 
 /// Base class for steady-state simulations in pseudo-time
