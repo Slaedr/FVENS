@@ -64,7 +64,7 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
-	: space{spatial}, config{conf}, tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0}
+	: space{spatial}, config{conf}, tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0}
 { }
 
 template <int nvars>
@@ -205,16 +205,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	}
 
 #ifdef _OPENMP
-	tdata.numthreads = omp_get_max_threads();
+	tdata.num_threads = omp_get_max_threads();
 #endif
-
-	// append data to log file
-	/*if(mpirank==0) {
-		int numthreads = 0;
-		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
-		outf << "\t" << numthreads << "\t" << walltime << "\t" << cputime << "\n";
-		outf.close();
-	}*/
 	
 	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
@@ -406,7 +398,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 		int linstepsneeded;
 		ierr = KSPGetIterationNumber(solver, &linstepsneeded); CHKERRQ(ierr);
-		tdata.avg_lin_iters += linstepsneeded;
+		tdata.total_lin_iters += linstepsneeded;
 		
 		a_real resnorm2 = 0;
 
@@ -453,7 +445,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); 
 	tdata.ode_cputime += (finalctime-initialctime);
-	tdata.avg_lin_iters /= step;
+	tdata.avg_lin_iters = tdata.total_lin_iters / (double)step;
 	tdata.num_timesteps = step;
 
 	if(config.lognres)
@@ -480,10 +472,11 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	}
 
 #ifdef _OPENMP
-	tdata.numthreads = omp_get_max_threads();
+	tdata.num_threads = omp_get_max_threads();
 #endif
 	tdata.lin_walltime = linwtime; 
 	tdata.lin_cputime = linctime;
+
 	/*if(mpirank == 0) {
 		std::ofstream outf; outf.open(config.logfile, std::ofstream::app);
 

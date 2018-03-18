@@ -2,8 +2,9 @@
  * \brief Carries out benchmarking tests related to thread-parallel asynchronous preconditioning
  *
  * Command-line or PETSc options file parameters:
- * * -test_type ["speedup_sweeps": Study speed-up obtained from different numbers of async sweeps with
- *     a fixed number of threads.]
+ * * -benchmark_type ["speedup_sweeps": Study speed-up obtained from different numbers of async sweeps 
+ *     with a fixed number of threads, "none"]
+ * * -benchmark_num_repeat [integer] Number of times to repeat the benchmark and average the results
  * * -threads_sequence [integer array] The number of threads to use for the testing; only the first
  *     entry of this array is considered for the 'speedup_sweeps' test.
  * * -async_sweep_sequence [integer array] The number of asynchronous sweeps to run test(s) with; when
@@ -42,14 +43,18 @@ int main(int argc, char *argv[])
 	std::ofstream outf;
 	open_file_toWrite(opts.logfile, outf);
 
-	const std::string testtype = parsePetscCmd_string("-test_type", 20);
+	const std::string testtype = parsePetscCmd_string("-benchmark_type", 20);
+	const int bnrepeat = parsePetscCmd_int("-benchmark_num_repeat");
 
 	if(testtype == "speedup_sweeps")
 	{
-		const std::vector<int> threadseq = parsePetscCmd_intArray("-test_num_threads", ARR_LEN);
+		const std::vector<int> threadseq = parsePetscCmd_intArray("-threads_sequence", ARR_LEN);
 		const std::vector<int> sweepseq  = parsePetscCmd_intArray("-async_sweep_sequence", ARR_LEN);
-		ierr = test_speedup_sweeps(opts, threadseq[0], sweepseq, outf);
+		ierr = test_speedup_sweeps(opts, bnrepeat, threadseq[0], sweepseq, outf);
 		CHKERRQ(ierr);
+	}
+	else {
+		std::cout << "No benchmark selected.\n";
 	}
 
 	outf.close();

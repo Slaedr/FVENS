@@ -248,6 +248,7 @@ std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int 
 	int len = maxlen;
 
 	ierr = PetscOptionsGetIntArray(NULL, NULL, optionname.c_str(), &arr[0], &len, &set);
+	arr.resize(len);
 
 	petsc_throw(ierr, std::string("Could not get array ") + std::string(optionname));
 	fvens_throw(!set, std::string("Array ") + optionname + std::string(" not set"));

@@ -30,11 +30,12 @@ struct SteadySolverConfig {
 /// A collection of variables used for benchmarking purposes
 struct TimingData {
 	a_int nelem;                 ///< Size of the problem - the number of cells
-	int numthreads;              ///< Number of threads used to solve the problem
+	int num_threads;             ///< Number of threads used to solve the problem
 	double lin_walltime;         ///< Wall-clock time taken by all the linear solves
 	double lin_cputime;          ///< CPU time taken by all the linear solves
 	double ode_walltime;         ///< Wall-clock time taken by the whole nonlinear ODE solve
 	double ode_cputime;          ///< CPU time taken by the whole nonlinear ODE solve
+	int total_lin_iters;         ///< Total number of linear iters needed for the ODE solve
 	int avg_lin_iters;           ///< Average number of linear iters needed per time step
 	int num_timesteps;           ///< Number of time steps needed for the ODE solve
 };
