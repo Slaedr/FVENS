@@ -46,6 +46,11 @@ int main(int argc, char *argv[])
 	const std::string testtype = parsePetscCmd_string("-benchmark_type", 20);
 	const int bnrepeat = parsePetscCmd_int("-benchmark_num_repeat");
 
+	// write a message to stdout about which preconditioner is being used -
+	//  could be useful for reading the Moab log file
+	std::string prec = parsePetscCmd_string("-blasted_pc_type", 10);
+	std::cout << ">>> Benchmark " << testtype << ", preconditioner " << prec << std::endl;
+
 	if(testtype == "speedup_sweeps")
 	{
 		const std::vector<int> threadseq = parsePetscCmd_intArray("-threads_sequence", ARR_LEN);
