@@ -7,9 +7,11 @@
  * * -benchmark_num_repeat [integer] Number of times to repeat the benchmark and average the results
  * * -threads_sequence [integer array] The number of threads to use for the testing; only the first
  *     entry of this array is considered for the 'speedup_sweeps' test.
- * * -async_sweep_sequence [integer array] The number of asynchronous sweeps to run test(s) with; when
- *     the building and application of the preconditioner are both asynchronous, the number of
- *     build sweeps equals the number of application sweeps.
+ * * -async_sweep_sequence [integer array] The number of asynchronous preconditioner build sweeps 
+ *     to run test(s) with
+ * * -async_sweep_ratio [real number] The ratio of the number of apply sweeps to the number of build
+ *     sweeps; this is multiplied with each entry in the sweep sequence to compute the number of
+ *     apply sweeps to use.
  *
  * \author Aditya Kashi
  * \date 2018-03
@@ -55,7 +57,8 @@ int main(int argc, char *argv[])
 	{
 		const std::vector<int> threadseq = parsePetscCmd_intArray("-threads_sequence", ARR_LEN);
 		const std::vector<int> sweepseq  = parsePetscCmd_intArray("-async_sweep_sequence", ARR_LEN);
-		ierr = test_speedup_sweeps(opts, bnrepeat, threadseq[0], sweepseq, outf);
+		const PetscReal sweepratio  = parseOptionalPetscCmd_real("-async_sweep_ratio",1.0);
+		ierr = test_speedup_sweeps(opts, bnrepeat, threadseq[0], sweepseq, sweepratio, outf);
 		CHKERRQ(ierr);
 	}
 	else {

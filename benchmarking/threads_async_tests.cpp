@@ -29,7 +29,7 @@ using namespace acfd;
 static void set_blasted_sweeps(const int nbswp, const int naswp);
 
 StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat, const int numthreads,
-		const std::vector<int>& sweep_seq, std::ofstream& outf)
+		const std::vector<int>& sweep_seq, const double sweepratio, std::ofstream& outf)
 {
 	StatusCode ierr = 0;
 
@@ -137,7 +137,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 
 	omp_set_num_threads(1);
 
-	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, &ksp, u, A, M, mfjac, mf_flg, bctx);
+	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, 1, &ksp, u, A, M, 
+			mfjac, mf_flg, bctx);
 
 	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
 	const int w = 11;
@@ -145,12 +146,14 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	if(mpirank == 0) {
 		outf << "# Base preconditioner wall time = " << prec_basewtime << "\n#---\n#";
 		outf << std::setw(w) << "threads"
-			<< std::setw(w) << "sweeps" << std::setw(w+5) << "wall-speedup" 
+			<< std::setw(w) << "b&a-sweeps"
+			<< std::setw(w+5) << "wall-speedup" 
 			<< std::setw(w) << "cpu-time" 
 			<< std::setw(w+6) << "total-lin-iters" << std::setw(w+5) << "avg-lin-iters"
 			<< std::setw(w+1) << "time-steps"<< std::setw(w) << "converged?" << "\n#---\n";
 
-		outf << "#" << std::setw(w) << 1 << std::setw(w) << 1 << std::setw(w) << 1.0
+		outf << "#" <<std::setw(w) << 1 
+			<< std::setw(w/2) << 1 << std::setw(w/2) << 1 << std::setw(w) << 1.0
 			<< std::setw(w+5) << bctx.factorcputime + bctx.applycputime
 			<< std::setw(w+6) << tdata.total_lin_iters
 			<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
@@ -165,12 +168,13 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	{
 		TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
 		double precwalltime = 0, preccputime = 1;
+		const int naswp = std::ceil(sweepratio*nswp);
 
 		int irpt;
 		for(irpt = 0; irpt < numrepeat; irpt++) 
 		{
-			TimingData td = run_sweeps(startprob, prob, maintconf, nswp, &ksp, u, A, M, mfjac, mf_flg,
-					bctx);
+			TimingData td = run_sweeps(startprob, prob, maintconf, nswp, naswp, 
+					&ksp, u, A, M, mfjac, mf_flg, bctx);
 
 			tdata.nelem = td.nelem;
 			tdata.num_threads = td.num_threads;
@@ -201,15 +205,14 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 		preccputime /= (double)irpt;
 
 		if(mpirank == 0) {
-			outf << ' ' << std::setw(w) << numthreads << std::setw(w) << nswp 
+			outf << ' ' << std::setw(w) << numthreads 
+				<< std::setw(w/2) << nswp << std::setw(w/2) << naswp
 				<< std::setw(w+5) << prec_basewtime/precwalltime
 				<< std::setw(w) << preccputime
 				<< std::setw(w+6) << tdata.total_lin_iters
 				<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
 				<< std::setw(w) << (tdata.converged ? 1:0) << '\n';
 		}
-
-		std::cout << "Done sweep " << nswp << ".\n";
 	}
 
 	delete time;
@@ -227,13 +230,15 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 }
 
 TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
-		const SteadySolverConfig& maintconf, const int nswps,
+		const SteadySolverConfig& maintconf, const int nbswps, const int naswps,
 		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
 		Blasted_data& bctx)
 {
 	StatusCode ierr = 0;
 
-	set_blasted_sweeps(nswps,nswps);
+	set_blasted_sweeps(nbswps,naswps);
+
+	std::cout << "Using sweeps " << nbswps << "," << naswps << ".\n";
 
 	// Reset the KSP
 	ierr = KSPDestroy(ksp); petsc_throw(ierr, "run_sweeps: Couldn't destroy KSP");

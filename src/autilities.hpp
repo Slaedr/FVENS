@@ -79,10 +79,18 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);
 FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts);
 
 /// Extracts an integer corresponding to the argument from the default PETSc options database 
-/** Throws a string exception if the option was not set or if it could not be extracted.
+/** Throws an exception if the option was not set or if it could not be extracted.
  * \param optionname The name of the option to get the value of; needs to include the preceding '-'
  */
 int parsePetscCmd_int(const std::string optionname);
+
+/// Optionally extracts a real corresponding to the argument from the default PETSc options database 
+/** Throws an exception if the function to read the option fails, but not if it succeeds and reports
+ * that the option was not set.
+ * \param optionname Name of the option to be extracted
+ * \param defval The default value to be assigned in case the option was not passed
+ */
+PetscReal parseOptionalPetscCmd_real(const std::string optionname, const PetscReal defval);
 
 /// Extracts a string corresponding to the argument from the default PETSc options database 
 /** Throws a string exception if the option was not set or if it could not be extracted.

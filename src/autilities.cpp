@@ -216,6 +216,9 @@ FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts
 	return nconf;
 }
 
+/** Ideally, we would have single function template for int and real, but for that we need
+ * `if constexpr' from C++ 17 which not all compilers have yet.
+ */
 int parsePetscCmd_int(const std::string optionname)
 {
 	StatusCode ierr = 0;
@@ -224,6 +227,23 @@ int parsePetscCmd_int(const std::string optionname)
 	ierr = PetscOptionsGetInt(NULL, NULL, optionname.c_str(), &output, &set);
 	petsc_throw(ierr, std::string("Could not get int ")+ optionname);
 	fvens_throw(!set, std::string("Int ") + optionname + std::string(" not set"));
+	return output;
+}
+
+/** Ideally, we would have single function template for int and real, but for that we need
+ * `if constexpr' from C++ 17 which not all compilers have yet.
+ */
+PetscReal parseOptionalPetscCmd_real(const std::string optionname, const PetscReal defval)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	PetscReal output = 0;
+	ierr = PetscOptionsGetReal(NULL, NULL, optionname.c_str(), &output, &set);
+	petsc_throw(ierr, std::string("Could not get real ")+ optionname);
+	if(!set) {
+		std::cout << "PETSc cmd option " << optionname << " not set; using default.\n";
+		output = defval;
+	}
 	return output;
 }
 
@@ -240,6 +260,9 @@ std::string parsePetscCmd_string(const std::string optionname, const size_t p_st
 	return stropt;
 }
 
+/** Ideally, we would have single function template for int and real, but for that we need
+ * `if constexpr' from C++ 17 which not all compilers have yet.
+ */
 std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int maxlen)
 {
 	StatusCode ierr = 0;
