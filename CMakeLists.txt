@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 2.8)
 # The environment variable BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
 # THe env variable BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
 
+# Pass -DBOOST_ROOT=<path-to-Boost-root-directory> if Boost is not present in a default directory
 # Pass -DWITH_BLASTED=1 to compile with BLASTed preconditioning support
 # Pass -DNOOMP=1 to compile without OpenMP
 # Pass -DSSE=1 to compile with SSE 4.2 instructions; ignored when compiling for KNC.
@@ -101,6 +102,11 @@ endif()
 # profiling
 if(PROFILE)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+endif()
+
+# Boost
+if(BOOST_ROOT)
+	include_directories(${BOOST_ROOT})
 endif()
 
 # Eigen
