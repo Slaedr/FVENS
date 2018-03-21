@@ -168,7 +168,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	{
 		TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
 		double precwalltime = 0, preccputime = 1;
-		const int naswp = std::ceil(sweepratio*nswp);
+		const int naswp = std::round(sweepratio*nswp);
 
 		int irpt;
 		for(irpt = 0; irpt < numrepeat; irpt++) 
