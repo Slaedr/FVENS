@@ -14,6 +14,7 @@ cmake_minimum_required(VERSION 2.8)
 # Pass -DKNL=1 to compile for Xeon Phi Knights Landing.
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DPROFILE=1 for profiling.
+# Pass -DNOTAGS=1 to NOT generate tags for navigating code, otherwise, exuberent-ctags is needed.
 
 project (fvens)
 
@@ -147,20 +148,21 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 add_subdirectory(src)
 
 # Tags
+if(NOT NOTAGS)
+	set_source_files_properties(tags PROPERTIES GENERATED true)
+	add_custom_target ( tags
+		COMMAND ctags -R --c++-kinds=+pf --extra=+q . 
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} 
+	  )
 
-set_source_files_properties(tags PROPERTIES GENERATED true)
-add_custom_target ( tags
-    COMMAND ctags -R --c++-kinds=+pf --extra=+q . 
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} 
-  )
-
-find_program(CTAGS_PATH ctags)
-if(CTAGS_PATH)
-    message(STATUS "Found ctags: ${CTAGS_PATH}")
-    add_dependencies (fvens_steady tags)
-else()
-	message(STATUS "ctags not found! Tags will not be generated.")
-endif(CTAGS_PATH)
+	find_program(CTAGS_PATH ctags)
+	if(CTAGS_PATH)
+		message(STATUS "Found ctags: ${CTAGS_PATH}")
+		add_dependencies (fvens_steady tags)
+	else()
+		message(STATUS "ctags not found! Tags will not be generated.")
+	endif(CTAGS_PATH)
+endif()
 
 # Tests
 enable_testing()
