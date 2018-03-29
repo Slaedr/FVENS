@@ -157,7 +157,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			<< std::setw(w+5) << bctx.factorcputime + bctx.applycputime
 			<< std::setw(w+6) << tdata.total_lin_iters
 			<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
-			<< std::setw(w) << (tdata.converged ? 1 : 0) << "\n#---\n";
+			<< std::setw(w) << (tdata.converged ? 1 : 0) << "\n#---\n" << std::flush;
 	}
 
 	omp_set_num_threads(numthreads);
@@ -211,7 +211,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 				<< std::setw(w) << preccputime
 				<< std::setw(w+6) << tdata.total_lin_iters
 				<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
-				<< std::setw(w) << (tdata.converged ? 1:0) << '\n';
+				<< std::setw(w) << (tdata.converged ? 1:0) << '\n' << std::flush;
 		}
 	}
 
