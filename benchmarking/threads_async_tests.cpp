@@ -140,21 +140,26 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, 1, &ksp, u, A, M, 
 			mfjac, mf_flg, bctx);
 
+	const double factor_basewtime = bctx.factorwalltime;
+	const double apply_basewtime = bctx.applywalltime;
 	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
 	const int w = 11;
 	
 	if(mpirank == 0) {
-		outf << "# Base preconditioner wall time = " << prec_basewtime << "\n#---\n#";
+		outf << "# Base preconditioner wall time = " << prec_basewtime << "; factor time = "
+			<< factor_basewtime << ", apply time = "<< apply_basewtime << "\n#---\n#";
 		outf << std::setw(w) << "threads"
 			<< std::setw(w) << "b&a-sweeps"
-			<< std::setw(w+5) << "wall-speedup" 
+			<< std::setw(w+5) << "factor-speedup" << std::setw(w+5) << "apply-speedup" << std::setw(w+5)
+			<< "total-speedup"
 			<< std::setw(w) << "cpu-time" 
 			<< std::setw(w+6) << "total-lin-iters" << std::setw(w+5) << "avg-lin-iters"
 			<< std::setw(w+1) << "time-steps"<< std::setw(w) << "converged?" << "\n#---\n";
 
 		outf << "#" <<std::setw(w) << 1 
-			<< std::setw(w/2) << 1 << std::setw(w/2) << 1 << std::setw(w) << 1.0
-			<< std::setw(w+5) << bctx.factorcputime + bctx.applycputime
+			<< std::setw(w/2) << 1 << std::setw(w/2) << 1 
+			<< std::setw(w+5) << 1.0 << std::setw(w+5) << 1.0 << std::setw(w+5) << 1.0
+			<< std::setw(w) << bctx.factorcputime + bctx.applycputime
 			<< std::setw(w+6) << tdata.total_lin_iters
 			<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
 			<< std::setw(w) << (tdata.converged ? 1 : 0) << "\n#---\n" << std::flush;
@@ -167,7 +172,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	for (const int nswp : sweep_seq)
 	{
 		TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
-		double precwalltime = 0, preccputime = 1;
+		double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
 		const int naswp = std::round(sweepratio*nswp);
 
 		int irpt;
@@ -185,6 +190,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			tdata.total_lin_iters += td.total_lin_iters;
 			tdata.num_timesteps += td.num_timesteps;
 			tdata.converged = tdata.converged && td.converged;
+			factorwalltime += bctx.factorwalltime;
+			applywalltime += bctx.applywalltime;
 			precwalltime += bctx.factorwalltime + bctx.applywalltime;
 			preccputime += bctx.factorcputime + bctx.applycputime;
 
@@ -201,12 +208,16 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 		tdata.num_timesteps /= (double)irpt;
 		tdata.total_lin_iters /= (double)irpt;
 		tdata.avg_lin_iters = tdata.total_lin_iters / (double)tdata.num_timesteps;
+		factorwalltime /= (double)irpt;
+		applywalltime /= (double)irpt;
 		precwalltime /= (double)irpt;
 		preccputime /= (double)irpt;
 
 		if(mpirank == 0) {
 			outf << ' ' << std::setw(w) << numthreads 
 				<< std::setw(w/2) << nswp << std::setw(w/2) << naswp
+				<< std::setw(w+5) << factor_basewtime/factorwalltime
+				<< std::setw(w+5) << apply_basewtime/applywalltime
 				<< std::setw(w+5) << prec_basewtime/precwalltime
 				<< std::setw(w) << preccputime
 				<< std::setw(w+6) << tdata.total_lin_iters
