@@ -34,6 +34,7 @@
 
 #include "aodesolver.hpp"
 #include "alinalg.hpp"
+#include "autilities.hpp"
 
 namespace acfd {
 
@@ -306,8 +307,12 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		ierr = MatShellGetContext(A, (void**)&mfA); CHKERRQ(ierr);
 		// uvec, rvec and dtm keep getting updated, but pointers to them can be set just once
 		mfA->set_state(uvec,rvec,&dtm);
-
 	}
+
+	// get list of iterations at which to recompute AMG interpolation operators, if used
+	std::vector<int> amgrecompute = parseOptionalPetscCmd_intArray("-amg_recompute_interpolation",3);
+
+	bool tocomputeamginterpolation = false;
 
 	a_real curCFL=0;
 	int step = 0;
@@ -350,6 +355,26 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			for(int i = 0; i < nvars; i++) {
 				residual(iel,i) = 0;
 			}
+		}
+
+		std::vector<int>::iterator it = std::find(amgrecompute.begin(), amgrecompute.end(), step+1);
+		if(it != amgrecompute.end()) {
+			if(mpirank == 0) {
+				std::cout << " SteadyBackwardEulerSolver: solve(): Recomputing AMG interpolation if ";
+				std::cout << "required.\n";
+			}
+			tocomputeamginterpolation = true;
+		}
+
+		if(tocomputeamginterpolation) {
+			PC pc;
+			ierr = KSPGetPC(solver, &pc);
+			PCGAMGSetReuseInterpolation(pc, PETSC_FALSE);
+			tocomputeamginterpolation = false;
+		} else {
+			PC pc;
+			ierr = KSPGetPC(solver, &pc);
+			PCGAMGSetReuseInterpolation(pc, PETSC_TRUE);
 		}
 		
 		// update residual and local time steps

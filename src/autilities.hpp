@@ -92,6 +92,12 @@ int parsePetscCmd_int(const std::string optionname);
  */
 PetscReal parseOptionalPetscCmd_real(const std::string optionname, const PetscReal defval);
 
+/// Extracts a boolean corresponding to the argument from the default PETSc options database 
+/** Throws an exception if the option was not set or if it could not be extracted.
+ * \param optionname The name of the option to get the value of; needs to include the preceding '-'
+ */
+bool parsePetscCmd_bool(const std::string optionname);
+
 /// Extracts a string corresponding to the argument from the default PETSc options database 
 /** Throws a string exception if the option was not set or if it could not be extracted.
  * \param optionname The name of the option to get the value of; needs to include the preceding '-'
@@ -103,6 +109,12 @@ std::string parsePetscCmd_string(const std::string optionname, const size_t len)
 /** \param maxlen Maximum number of entries expected in the array
  */
 std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int maxlen);
+
+/// Extracts the arguments of an int array option from the default PETSc options database
+/** Does not throw if the requested option was not found; just returns an empty vector in that case. 
+ * \param maxlen Maximum number of entries expected in the array
+ */
+std::vector<int> parseOptionalPetscCmd_intArray(const std::string optionname, const int maxlen);
 
 /// An exception to throw for errors from PETSc; takes a custom message
 class Petsc_exception : public std::runtime_error

@@ -247,6 +247,18 @@ PetscReal parseOptionalPetscCmd_real(const std::string optionname, const PetscRe
 	return output;
 }
 
+bool parsePetscCmd_bool(const std::string optionname)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	PetscBool output = PETSC_FALSE;
+	ierr = PetscOptionsGetBool(NULL, NULL, optionname.c_str(), &output, &set);
+	petsc_throw(ierr, std::string("Could not get bool ")+ optionname);
+	fvens_throw(!set, std::string("Bool ") + optionname + std::string(" not set"));
+	return (bool)output;
+}
+
+
 std::string parsePetscCmd_string(const std::string optionname, const size_t p_strlen)
 {
 	StatusCode ierr = 0;
@@ -275,6 +287,24 @@ std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int 
 
 	petsc_throw(ierr, std::string("Could not get array ") + std::string(optionname));
 	fvens_throw(!set, std::string("Array ") + optionname + std::string(" not set"));
+	return arr;
+}
+
+std::vector<int> parseOptionalPetscCmd_intArray(const std::string optionname, const int maxlen)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	std::vector<int> arr(maxlen);
+	int len = maxlen;
+
+	ierr = PetscOptionsGetIntArray(NULL, NULL, optionname.c_str(), &arr[0], &len, &set);
+	arr.resize(len);
+
+	petsc_throw(ierr, std::string("Could not get array ") + std::string(optionname));
+	if(!set) {
+		std::cout << "Array " << optionname << " not set.\n";
+		arr.resize(0);
+	}
 	return arr;
 }
 

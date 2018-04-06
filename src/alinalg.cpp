@@ -312,4 +312,65 @@ bool isMatrixFree(Mat M)
 		return false;
 }
 
+/// Recursive function to return the first occurrence if a specific type of PC
+StatusCode getPC(KSP ksp, const char *const type_name, PC* pcfound)
+{
+	StatusCode ierr = 0;
+	PC pc;
+	ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+	PetscBool isbjacobi, isasm, ismg, isgamg, isksp, isrequired;
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCBJACOBI,&isbjacobi); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCASM,&isasm); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCMG,&ismg); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCGAMG,&isgamg); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,PCKSP,&isksp); CHKERRQ(ierr);
+	ierr = PetscObjectTypeCompare((PetscObject)pc,type_name,&isrequired); CHKERRQ(ierr);
+
+	if(isrequired) {
+		// base case
+		*pcfound = pc;
+	}
+	else if(isbjacobi || isasm)
+	{
+		PetscInt nlocalblocks, firstlocalblock;
+		ierr = KSPSetUp(ksp); CHKERRQ(ierr); 
+		ierr = PCSetUp(pc); CHKERRQ(ierr);
+		KSP *subksp;
+		if(isbjacobi) {
+			ierr = PCBJacobiGetSubKSP(pc, &nlocalblocks, &firstlocalblock, &subksp); CHKERRQ(ierr);
+		}
+		else {
+			ierr = PCASMGetSubKSP(pc, &nlocalblocks, &firstlocalblock, &subksp); CHKERRQ(ierr);
+		}
+		if(nlocalblocks != 1)
+			SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, 
+					"Only one subdomain per rank is supported.");
+		ierr = getPC(subksp[0], type_name, pcfound); CHKERRQ(ierr);
+	}
+	else if(ismg || isgamg) {
+		ierr = KSPSetUp(ksp); CHKERRQ(ierr); 
+		ierr = PCSetUp(pc); CHKERRQ(ierr);
+		PetscInt nlevels;
+		ierr = PCMGGetLevels(pc, &nlevels); CHKERRQ(ierr);
+		for(int ilvl = 0; ilvl < nlevels; ilvl++) {
+			KSP smootherctx;
+			ierr = PCMGGetSmoother(pc, ilvl , &smootherctx); CHKERRQ(ierr);
+			ierr = getPC(smootherctx, type_name, pcfound); CHKERRQ(ierr);
+		}
+		KSP coarsesolver;
+		ierr = PCMGGetCoarseSolve(pc, &coarsesolver); CHKERRQ(ierr);
+		ierr = getPC(coarsesolver, type_name, pcfound); CHKERRQ(ierr);
+	}
+	else if(isksp) {
+		ierr = KSPSetUp(ksp); CHKERRQ(ierr); 
+		ierr = PCSetUp(pc); CHKERRQ(ierr);
+		KSP subksp;
+		ierr = PCKSPGetKSP(pc, &subksp); CHKERRQ(ierr);
+		ierr = getPC(subksp, type_name, pcfound); CHKERRQ(ierr);
+	}
+
+	return ierr;
+}
+
+
 }
