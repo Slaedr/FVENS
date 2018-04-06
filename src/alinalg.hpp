@@ -37,19 +37,6 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
 template <int nvars>
 StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A);
 
-#ifdef USE_BLASTED
-/// Sets BLASTed preconditioners
-/** Only one subdomain per rank is supported in case of domain decomposition global preconditioners.
- * \param ksp The top-level KSP
- * \param u A solution vector used to assemble the Jacobian matrix once, needed for initialization
- *   of some PETSc preconditioners - the actual values don't matter.
- * \param startprob A spatial discretization context to compute the Jacobian with
- * \param[in,out] bctx The BLASTed context
- */
-template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx);
-#endif
-
 /// Matrix-free Jacobian of the flux
 /** The normalized step length epsilon for the finite-difference Jacobian is set to a default value,
  * but it also queried from the PETSc options database.
@@ -114,6 +101,21 @@ StatusCode setup_matrixfree_jacobian(const UMesh2dh *const m,
 
 /// Returns true iff the argument is a matrix-free PETSc Mat
 bool isMatrixFree(Mat);
+
+#ifdef USE_BLASTED
+
+/// Sets BLASTed preconditioners
+/** Only one subdomain per rank is supported in case of domain decomposition global preconditioners.
+ * \param ksp The top-level KSP
+ * \param u A solution vector used to assemble the Jacobian matrix once, needed for initialization
+ *   of some PETSc preconditioners - the actual values don't matter.
+ * \param startprob A spatial discretization context to compute the Jacobian with
+ * \param[in,out] bctx The BLASTed context
+ */
+template <int nvars>
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx);
+
+#endif
 
 }
 #endif
