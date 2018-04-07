@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
 		ierr = KSPSetOperators(ksp, M, M); 
 		CHKERRQ(ierr);
 	}
-	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// set up time discrization
 
@@ -110,10 +109,16 @@ int main(int argc, char *argv[])
 		opts.firsttolerance, opts.firstmaxiter,
 	};
 
-	SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
+	const SteadySolverConfig temptconf = {false, opts.logfile, opts.firstinitcfl, opts.firstendcfl,
+		opts.firstrampstart, opts.firstrampend, opts.firsttolerance, 1};
+
+	SteadySolver<NVARS> * temptime=nullptr, * starttime=nullptr, * time=nullptr;
 
 	if(opts.timesteptype == "IMPLICIT")
 	{
+		// Temporal solver context for initial solver setup - needed for PETSc quirks
+		temptime = new SteadyBackwardEulerSolver<NVARS>(startprob, temptconf, ksp);
+
 		if(opts.usestarter != 0) {
 			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
 			std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
@@ -130,6 +135,16 @@ int main(int argc, char *argv[])
 
 	// Ask the spatial discretization context to initialize flow variables
 	startprob->initializeUnknowns(u);
+
+	// One iteration of the initial setup solve
+	/*KSPSetType(ksp, KSPGMRES);
+	KSPSetTolerances(ksp, 1e-1, 1e-5, 1e4, 1);
+	mfjac.set_spatial(startprob);
+	ierr = temptime->solve(u); CHKERRQ(ierr);
+	delete temptime;*/
+	(void)temptime;
+	
+	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED

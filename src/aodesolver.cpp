@@ -487,11 +487,17 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			<< ", rel residual " << resi/initres << std::endl;
 	}
 
-	tdata.converged = true;
-	if(step == config.maxiter) {
-		tdata.converged = false;
+	tdata.converged = false;
+	if(step < config.maxiter && (resi/initres <= config.tol))
+		tdata.converged = true;
+	else if (step >= config.maxiter){
 		if(mpirank == 0) {
 			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
+		}
+	}
+	else {
+		if(mpirank == 0) {
+			std::cout << "! SteadyBackwardEulerSolver: solve(): Blew up!\n";
 		}
 	}
 
