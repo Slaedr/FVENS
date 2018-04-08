@@ -113,7 +113,7 @@ bool isMatrixFree(Mat);
  * \param[in,out] bctx The BLASTed context
  */
 template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data& bctx);
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data_vec& bctx);
 
 #endif
 

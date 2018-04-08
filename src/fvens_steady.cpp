@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
-	Blasted_data bctx = newBlastedDataContext();
+	Blasted_data_vec bctx = newBlastedDataVec();
 	if(opts.timesteptype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
@@ -168,6 +168,7 @@ int main(int argc, char *argv[])
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	destroyBlastedDataVec(bctx);
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = KSPSetOperators(ksp, A, M); 
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
 	// this will reset the timing
-	bctx = newBlastedDataContext();
+	bctx = newBlastedDataVec();
 	if(opts.timesteptype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
