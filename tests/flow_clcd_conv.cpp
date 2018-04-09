@@ -213,7 +213,9 @@ int main(int argc, char *argv[])
 
 		// Reset the KSP - could be advantageous for some types of algebraic solvers
 		ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-		destroyBlastedDataVec(bctx);
+#ifdef USE_BLASTED
+		destroyBlastedDataVec(&bctx);
+#endif
 		ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 		if(mf_flg) {
 			ierr = KSPSetOperators(ksp, A, M); 
@@ -254,6 +256,9 @@ int main(int argc, char *argv[])
 		delete starttime;
 		delete time;
 		ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+#ifdef USE_BLASTED
+		destroyBlastedDataVec(&bctx);
+#endif
 		ierr = MatDestroy(&M); CHKERRQ(ierr);
 		if(mf_flg) {
 			ierr = MatDestroy(&A); 

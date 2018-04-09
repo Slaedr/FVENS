@@ -383,9 +383,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
 		
-		curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
-		(void)resiold;
-		//curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.25);
+		//curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
+		//(void)resiold;
+		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.3);
 
 		// add pseudo-time terms to diagonal blocks; also, after the following loop,
 		// dtm is the diagonal vector of the mass matrix but having only one entry for each cell.
@@ -503,7 +503,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 	// print timing data
 	if(mpirank == 0) {
-		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters << std::endl;
+		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters;
 		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
 		std::cout << " \t\tWall time = " << tdata.ode_walltime << ", CPU time = " 
 			<< tdata.ode_cputime << "\n";

@@ -12,6 +12,7 @@ namespace acfd {
 StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh& m)
 {
 	// The implementation must be changed for the multi-process case
+	StatusCode ierr = 0;
 	
 	Mat A;
 	CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
@@ -39,9 +40,11 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2d
 	m.reorder_cells(rinds);
 	
 	CHKERRQ(ISRestoreIndices(rperm, &rinds));
+	ierr = ISDestroy(&rperm); CHKERRQ(ierr);
+	ierr = ISDestroy(&cperm); CHKERRQ(ierr);
 	CHKERRQ(MatDestroy(&A));
 	CHKERRQ(VecDestroy(&u));
-	return 0;
+	return ierr;
 }
 
 StatusCode preprocessMesh(UMesh2dh& m)

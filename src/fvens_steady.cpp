@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
 	UMesh2dh m;
 	m.readMesh(opts.meshfile);
-	CHKERRQ(preprocessMesh(m));
+	ierr = preprocessMesh(m); CHKERRQ(ierr);
 	m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
 
 	std::cout << "\n***\n";
@@ -112,13 +112,10 @@ int main(int argc, char *argv[])
 	const SteadySolverConfig temptconf = {false, opts.logfile, opts.firstinitcfl, opts.firstendcfl,
 		opts.firstrampstart, opts.firstrampend, opts.firsttolerance, 1};
 
-	SteadySolver<NVARS> * temptime=nullptr, * starttime=nullptr, * time=nullptr;
+	SteadySolver<NVARS> * starttime = nullptr, * time = nullptr;
 
 	if(opts.timesteptype == "IMPLICIT")
 	{
-		// Temporal solver context for initial solver setup - needed for PETSc quirks
-		temptime = new SteadyBackwardEulerSolver<NVARS>(startprob, temptconf, ksp);
-
 		if(opts.usestarter != 0) {
 			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
 			std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
@@ -136,22 +133,14 @@ int main(int argc, char *argv[])
 	// Ask the spatial discretization context to initialize flow variables
 	startprob->initializeUnknowns(u);
 
-	// One iteration of the initial setup solve
-	/*KSPSetType(ksp, KSPGMRES);
-	KSPSetTolerances(ksp, 1e-1, 1e-5, 1e4, 1);
-	mfjac.set_spatial(startprob);
-	ierr = temptime->solve(u); CHKERRQ(ierr);
-	delete temptime;*/
-	(void)temptime;
-	
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
 	Blasted_data_vec bctx = newBlastedDataVec();
-	if(opts.timesteptype == "IMPLICIT") {
+	//if(opts.timesteptype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
-	}
+	//}
 #endif
 
 	std::cout << "\n***\n";
@@ -168,7 +157,9 @@ int main(int argc, char *argv[])
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-	destroyBlastedDataVec(bctx);
+#ifdef USE_BLASTED
+	destroyBlastedDataVec(&bctx);
+#endif
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = KSPSetOperators(ksp, A, M); 
@@ -209,6 +200,9 @@ int main(int argc, char *argv[])
 	delete starttime;
 	delete time;
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+#ifdef USE_BLASTED
+	destroyBlastedDataVec(&bctx);
+#endif
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = MatDestroy(&A); 

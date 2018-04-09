@@ -140,11 +140,12 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, 1, &ksp, u, A, M, 
 			mfjac, mf_flg, bctx);
 
+	computeTotalTimes(&bctx);
 	const double factor_basewtime = bctx.factorwalltime;
 	const double apply_basewtime = bctx.applywalltime;
 	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
+
 	const int w = 11;
-	
 	if(mpirank == 0) {
 		outf << "# Base preconditioner wall time = " << prec_basewtime << "; factor time = "
 			<< factor_basewtime << ", apply time = "<< apply_basewtime << "\n#---\n#";
@@ -180,6 +181,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 		{
 			TimingData td = run_sweeps(startprob, prob, maintconf, nswp, naswp, 
 					&ksp, u, A, M, mfjac, mf_flg, bctx);
+			
+			computeTotalTimes(&bctx);
 
 			tdata.nelem = td.nelem;
 			tdata.num_threads = td.num_threads;
@@ -229,7 +232,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	delete time;
 	delete starttime;
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-	destroyBlastedDataVec(bctx);
+	destroyBlastedDataVec(&bctx);
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = MatDestroy(&A); 
@@ -254,7 +257,7 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 
 	// Reset the KSP
 	ierr = KSPDestroy(ksp); petsc_throw(ierr, "run_sweeps: Couldn't destroy KSP");
-	destroyBlastedDataVec(bctx);
+	destroyBlastedDataVec(&bctx);
 	ierr = KSPCreate(PETSC_COMM_WORLD, ksp); petsc_throw(ierr, "run_sweeps: Couldn't create KSP");
 	if(mf_flg) {
 		ierr = KSPSetOperators(*ksp, A, M); 

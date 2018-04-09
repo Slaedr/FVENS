@@ -59,7 +59,7 @@ IMPLICIT
 ---Tolerance
 1e-6
 ---Max-pseudotime-iterations
-1000
+250
 #######################################################################
 ---use-first-order-initial-condition
 1
@@ -72,7 +72,7 @@ IMPLICIT
 ---tolerance-for-initialization
 1e-2
 ---max-time-steps-for-initialization
-500
+250
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 HLLC
