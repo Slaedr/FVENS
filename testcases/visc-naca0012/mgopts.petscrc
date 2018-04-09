@@ -2,7 +2,7 @@
 -options_left
 #-log_view
 
-#-mesh_reorder rcm
+-mesh_reorder rcm
 
 -mat_type aij
 #-matrix_free_jacobian
@@ -22,16 +22,15 @@
 -pc_mg_type multiplicative
 -pc_mg_cycle_type v
 -pc_mg_levels 3
--pc_mg_smoothdown 3
--pc_mg_smoothup 2
 
 -mg_levels_ksp_type richardson
+-mg_levels_ksp_richardson_scale 1.0
 -mg_levels_ksp_max_it 2
 -mg_levels_pc_type bjacobi
 -mg_levels_sub_pc_type sor
 
--mg_coarse_ksp_type richardson
--mg_coarse_ksp_max_it 12
+-mg_coarse_ksp_type gmres
+-mg_coarse_ksp_max_it 6
 -mg_coarse_pc_type bjacobi
 -mg_coarse_sub_pc_type ilu
 
