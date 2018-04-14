@@ -140,7 +140,7 @@ SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
 	}
 	else if(type == "WENO")
 	{
-		reconst = new WENOReconstruction(m, rc, gr);
+		reconst = new WENOReconstruction(m, rc, gr, param);
 		std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
 	}
 	else if(type == "VANALBADA")

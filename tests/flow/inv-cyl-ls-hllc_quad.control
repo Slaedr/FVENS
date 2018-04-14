@@ -45,6 +45,8 @@ HLLC
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
+---Limiter-parameter
+50.0
 ---Reconstruct-primitive-variables?(YES,NO)
 YES
 ######################################################################

@@ -77,9 +77,9 @@ void LinearUnlimitedReconstruction::compute_face_values(
 }
 
 WENOReconstruction::WENOReconstruction(const UMesh2dh *const mesh,
-		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r)
+		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r, const a_real l)
 	: SolutionReconstruction(mesh, c_centres, gauss_r),
-	  gamma{4.0}, lambda{1.0e3}, epsilon{1.0e-5}
+	  gamma{4.0}, lambda{l}, epsilon{1.0e-5}
 {
 }
 

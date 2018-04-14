@@ -49,10 +49,16 @@ template <int nvars>
 const GradientScheme<nvars>* create_const_gradientscheme(const std::string& type, 
 		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) ;
 
+/// Returns a solution reconstruction context
+/** Solution reconstruction here means computing the values of the conserved variables at faces from
+ * the cell-centred values and cell-centred gradients.
+ * \param param A parameter that controls the behaviour of some limiters.
+ */
 SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
 		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param);
 
+/// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
 const SolutionReconstruction* create_const_reconstruction(const std::string& type,
 		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param);

@@ -41,6 +41,7 @@ struct FlowParserOptions
 		firsttolerance,                         ///< Relative tolerance for starting problem
 		Minf, alpha, Reinf, Tinf,               ///< Free-stream flow properties
 		Pr, gamma,                              ///< Non-dimensional constants Prandtl no., adia. index
+		limiter_param,                          ///< Parameter controlling some limiters
 		twalltemp, twallvel,                    ///< Isothermal wall temperature and tang. velocity
 		adiawallvel,                            ///< Adiabatic wall tangential velocity magnitude
 		tpwalltemp, tpwallpressure, tpwallvel;  ///< Deprecated
@@ -49,24 +50,26 @@ struct FlowParserOptions
 		rampstart, rampend, 
 		firstmaxiter, 
 		firstrampstart, firstrampend,
-		farfield_marker, inout_marker, slipwall_marker, isothermalwall_marker,
-		isothermalpressurewall_marker, adiabaticwall_marker, 
+		farfield_marker, inout_marker, 
+		slipwall_marker, isothermalwall_marker,
+		adiabaticwall_marker,  
+		isothermalpressurewall_marker,          ///< Deprecated
 		extrap_marker, 
 		periodic_marker, 
 		periodic_axis, 
-		num_out_walls, 
-		num_out_others;
+		num_out_walls,                    ///< Number of wall boundary markers where output is needed
+		num_out_others;                   ///< Number of other boundaru markers where output is needed
 	
 	short soln_init_type, 
-		  usestarter;
+		  usestarter;                     ///< Whether to start with a first-order solver initially
 	
 	bool lognres, 
 		 useconstvisc, 
 		 viscsim,
 		 order2;
 	
-	std::vector<int> lwalls, 
-		lothers;
+	std::vector<int> lwalls,         ///< List of wall boundary markers for output
+		lothers;                     ///< List of other boundary markers for output
 };
 
 /// Reads a control file for flow problems
@@ -77,6 +80,10 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);
 
 /// Extracts the spatial discretization's settings from the parsed control file data
 FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts);
+
+/// Extracts some numerical settings for spatial discretization from the control options but
+/// sets others as appropriate for a first-order scheme
+FlowNumericsConfig firstorder_spatial_numerics_config(const FlowParserOptions& opts);
 
 /// Extracts an integer corresponding to the argument from the default PETSc options database 
 /** Throws an exception if the option was not set or if it could not be extracted.

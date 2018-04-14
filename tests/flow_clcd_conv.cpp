@@ -89,11 +89,10 @@ int main(int argc, char *argv[])
 	};
 
 	// numerics for main solver
-	const FlowNumericsConfig nconfmain {opts.invflux, opts.invfluxjac,
-		opts.gradientmethod, opts.limiter, opts.order2};
+	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 
 	// simpler numerics for startup
-	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
+	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
 	
 	const SteadySolverConfig maintconf {
 		opts.lognres, opts.logfile+".tlog",

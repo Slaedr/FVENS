@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	// numerics for main solver
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 	// simpler numerics for startup
-	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
+	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
 
 	std::cout << "Setting up main spatial scheme.\n";
 	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);

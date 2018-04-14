@@ -162,6 +162,7 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 		opts.order2 = false;
 
 	control >> dum; control >> opts.limiter;
+	control >> dum; control >> opts.limiter_param;
 
 	std::string recprim;
 	control >> dum; control >> recprim;
@@ -212,7 +213,14 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts)
 FlowNumericsConfig extract_spatial_numerics_config(const FlowParserOptions& opts)
 {
 	const FlowNumericsConfig nconf {opts.invflux, opts.invfluxjac, 
-		opts.gradientmethod, opts.limiter, opts.order2};
+		opts.gradientmethod, opts.limiter, opts.limiter_param, opts.order2};
+	return nconf;
+}
+
+FlowNumericsConfig firstorder_spatial_numerics_config(const FlowParserOptions& opts)
+{
+	const FlowNumericsConfig nconf {opts.invflux, opts.invfluxjac, 
+		"NONE", "NONE", 1.0 , false};
 	return nconf;
 }
 

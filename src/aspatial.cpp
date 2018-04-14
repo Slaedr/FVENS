@@ -241,8 +241,7 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 
 	gradcomp {create_const_gradientscheme<NVARS>(nconfig.gradientscheme, m, rc)},
 
-	// the last argument in the next line is the Venkatakrishnan parameter
-	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, 6.0)}
+	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)}
 
 {
 	std::cout << " FlowFV: Boundary markers:\n";

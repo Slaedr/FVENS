@@ -64,13 +64,14 @@ public:
  */
 class WENOReconstruction : public SolutionReconstruction
 {
-	const a_real gamma;
-	const a_real lambda;
-	const a_real epsilon;
+	const a_real gamma;               ///< Exponent for oscillation indicator
+	const a_real lambda;              ///< Weight of central stencil relative to biased stencils
+	const a_real epsilon;             ///< Small constant to avoid division by zero
 public:
     WENOReconstruction(const UMesh2dh *const mesh,
 			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
+			const amat::Array2d<a_real>* gauss_r,
+			const a_real central_weight);
 
 	void compute_face_values(const MVector& unknowns, 
 			const amat::Array2d<a_real>& unknow_ghost, 
@@ -165,8 +166,7 @@ class VenkatakrishnanLimiter: public SolutionReconstruction
 
 public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
-	 *             higher values improve convergence at the expense of some oscillations
-	 *             in the solution.
+	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
     VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
 			const amat::Array2d<a_real>& c_centres, 

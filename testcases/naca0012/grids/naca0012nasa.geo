@@ -1,12 +1,12 @@
 // params
-refine = 1;
+refine = 2;
 // ---
 
 radiusFF = 20;
 
 meshSizeWing = 0.2/refine;
 meshSizeLead = meshSizeWing/5.0;
-meshSizeTrail = meshSizeWing/2.0;
+meshSizeTrail = meshSizeWing/10.0;
 meshSizeFF = radiusFF*meshSizeWing;
 
 nsplinepoints = 20*refine;
@@ -29,11 +29,11 @@ For i In {1:nsplinepoints-2}
 	x = (1.0 - i/(nsplinepoints-1.0))^2;
 	Call botsurface;
 	tsplinePoints[i] = newp;
-	If(nsplinepoints-2-i < 2*refine)
-		Point(tsplinePoints[i]) = {x,y,0,meshSizeLead}; 
-	Else
+	//If(nsplinepoints-2-i < 2*refine)
+		//Point(tsplinePoints[i]) = {x,y,0,meshSizeLead}; 
+	//Else
 		Point(tsplinePoints[i]) = {x,y,0,meshSizeWing}; 
-	EndIf
+	//EndIf
 EndFor
 tsplinePoints[nsplinepoints-1] = newp;
 Point(tsplinePoints[nsplinepoints-1]) = {0,0,0,meshSizeLead}; 
@@ -43,11 +43,11 @@ For i In {1:nsplinepoints-2}
 	x = (i/(nsplinepoints-1.0))^2;
 	Call topsurface;
 	bsplinePoints[i] = newp;
-	If(i < 2*refine)
-		Point(bsplinePoints[i]) = {x,y,0,meshSizeLead};
-	Else
+	//If(i < 2*refine)
+		//Point(bsplinePoints[i]) = {x,y,0,meshSizeLead};
+	//Else
 		Point(bsplinePoints[i]) = {x,y,0,meshSizeWing};
-	EndIf
+	//EndIf
 EndFor
 
 bsplinePoints[nsplinepoints-1] = 0;
@@ -55,11 +55,14 @@ bsplinePoints[nsplinepoints-1] = 0;
 Spline(1) = tsplinePoints[];
 Spline(2) = bsplinePoints[];
 
-Point(10000) = {0,0,0,radiusFF};
+Point(10000) = {0,0,0, meshSizeLead};
 Point(10001) = {radiusFF,0,0,meshSizeFF/1.5};
 Point(10002) = {0,radiusFF,0,meshSizeFF};
 Point(10003) = {-radiusFF,0,0,meshSizeFF};
 Point(10004) = {0,-radiusFF,0,meshSizeFF};
+
+//Point(20000) = {1.5,-0.5,0, meshSizeTrail};
+//Point(20001) = {1.5,0.5,0, meshSizeTrail};
 
 Circle(5) = {10001,10000,10002};
 Circle(6) = {10002,10000,10003};
@@ -76,6 +79,11 @@ Physical Line(4) = {5,6,7,8};
 Recombine Surface(10);
 //Mesh.SubdivisionAlgorithm=1;	// ensures all quads, I think
 
+//Field[1] = Distance;
+//Field[1].NodesList = {0};
+//Background Field = 1;
+
+Mesh.CharacteristicLengthFromCurvature = 1;
 //Mesh.Algorithm=6;		// Frontal
 
 Color Black{ Surface{10}; }

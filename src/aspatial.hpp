@@ -172,6 +172,7 @@ struct FlowNumericsConfig
 	std::string conv_numflux_jac;     ///< Conv. numer. flux to use for approximate Jacobian
 	std::string gradientscheme;       ///< Method to use to compute gradients
 	std::string reconstruction;       ///< Method to use to reconstruct the solution
+	a_real limiter_param;             ///< Parameter that is required for some limiters
 	bool order2;                      ///< Whether to compute a second-order solution
 };
 

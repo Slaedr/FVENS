@@ -65,6 +65,8 @@ ROE
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
+---Limiter-parameter
+1e4
 ---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
 YES
 ######################################################################
