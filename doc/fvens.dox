@@ -23,5 +23,7 @@ where \f$ \mathbf{M}_\tau \f$ is the mass matrix for the pseudo-time term. Note 
 
 ODE solvers call routines from linear solver classes such as [RichardsonSolver](\ref acfd::RichardsonSolver). Matrix storage and several preconditioners are interfaced from the [BLASTed](https://github.com/Slaedr/BLASTed) library.
 
+More details about fluid physics used can be found in \ref physicspage.
+
 */
 
