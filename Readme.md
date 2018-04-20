@@ -77,7 +77,7 @@ Examples are present in the various test cases' directories. Note that the locat
 
 PETSc options for FVENS
 -----------------------
-* -mesh_reorder (string argument): If mentioned, the mesh cells will be reordered in the preprocessing stage, into one of the supported [PETSc orderings](www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html).
+* -mesh_reorder (string argument): If mentioned, the mesh cells will be reordered in the preprocessing stage, into one of the supported [PETSc orderings](http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html).
 * -matrix_free_jacobian (no argument): If mentioned, matrix-free finite-difference Jacobian will be used, but the first-order approximate Jacobian will still be stored for the preconditioner.
 * -matrix_free_difference_step (float argument): The finite difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
 * -fvens_log_file (string argument): Prefix (path + base file name) of the file into which to write timing logs (.tlog extension), and if requested, nonlinear residual histories (.conv extension). Note that this option, if specified, overrides the corresponding option in the control file.
