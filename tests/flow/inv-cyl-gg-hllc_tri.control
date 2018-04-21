@@ -68,11 +68,11 @@ IMPLICIT
 ---initial-CFL
 25.0
 ---final-CFL
-500.0
+250.0
 ---ramp-start-step-and-end-step
 20 60
 ---tolerance-for-initialization
-1e-2
+1e-1
 ---max-time-steps-for-initialization
 250
 ########################################################################
