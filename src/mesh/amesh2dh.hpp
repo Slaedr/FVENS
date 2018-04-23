@@ -8,7 +8,7 @@
 
 #include <vector>
 #include "aconstants.hpp"
-#include "aarray2d.hpp"
+#include "utilities/aarray2d.hpp"
 
 namespace acfd {
 

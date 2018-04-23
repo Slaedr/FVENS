@@ -22,7 +22,7 @@
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include "amesh2dh.hpp"
-#include "autilities.hpp"
+#include "utilities/autilities.hpp"
 
 namespace acfd {
 

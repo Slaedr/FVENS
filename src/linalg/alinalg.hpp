@@ -7,8 +7,8 @@
 #define ALINALG_H
 
 #include "aconstants.hpp"
-#include "amesh2dh.hpp"
-#include "aspatial.hpp"
+#include "mesh/amesh2dh.hpp"
+#include "spatial/aspatial.hpp"
 
 #include <petscksp.h>
 

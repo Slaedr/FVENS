@@ -8,7 +8,7 @@
 
 #include "aconstants.hpp"
 #include "aarray2d.hpp"
-#include "amesh2dh.hpp"
+#include "mesh/amesh2dh.hpp"
 
 namespace acfd {
 

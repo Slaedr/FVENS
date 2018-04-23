@@ -9,8 +9,8 @@
 
 #include <fstream>
 #include "aconstants.hpp"
-#include "aspatial.hpp"
-#include "aodesolver.hpp"
+#include "spatial/aspatial.hpp"
+#include "ode/aodesolver.hpp"
 
 namespace acfd {
 

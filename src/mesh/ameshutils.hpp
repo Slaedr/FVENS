@@ -8,7 +8,7 @@
 #define AMESHUTILS_H
 
 #include "amesh2dh.hpp"
-#include "aspatial.hpp"
+#include "spatial/aspatial.hpp"
 
 namespace acfd {
 

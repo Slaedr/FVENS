@@ -4,12 +4,11 @@
 #include <omp.h>
 #include <petscksp.h>
 
-#include "../src/alinalg.hpp"
-#include "../src/autilities.hpp"
-#include "../src/aoutput.hpp"
-#include "../src/aodesolver.hpp"
-#include "../src/afactory.hpp"
-#include "../src/ameshutils.hpp"
+#include "utilities/autilities.hpp"
+#include "utilities/afactory.hpp"
+#include "linalg/alinalg.hpp"
+#include "ode/aodesolver.hpp"
+#include "mesh/ameshutils.hpp"
 
 #ifdef USE_BLASTED
 #include <blasted_petsc.h>

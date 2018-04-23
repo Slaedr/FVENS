@@ -46,7 +46,7 @@ LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
 ---Limiter-parameter
-1e4
+10.0
 ---Reconstruct-primitive-variables?(YES,NO)
 YES
 ######################################################################
@@ -61,7 +61,7 @@ IMPLICIT
 ---Tolerance
 1e-6
 ---Max-pseudotime-iterations
-350
+400
 #######################################################################
 ---use-first-order-initial-condition
 1

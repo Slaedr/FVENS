@@ -20,7 +20,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include "afactory.hpp"
+#include "utilities/afactory.hpp"
 #include "aspatial.hpp"
 
 namespace acfd {

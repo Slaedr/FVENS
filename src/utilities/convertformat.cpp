@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
-#include "../amesh2dh.hpp"
-#include "../aoutput.hpp"
+#include "mesh/amesh2dh.hpp"
+#include "spatial/aoutput.hpp"
 
 using namespace amat;
 using namespace acfd;

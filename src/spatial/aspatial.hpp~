@@ -27,7 +27,7 @@
 
 #include "aarray2d.hpp"
 
-#include "amesh2dh.hpp"
+#include "mesh/amesh2dh.hpp"
 #include "anumericalflux.hpp"
 #include "agradientschemes.hpp"
 #include "areconstruction.hpp"

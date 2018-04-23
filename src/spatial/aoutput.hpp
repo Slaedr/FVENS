@@ -3,10 +3,9 @@
  */
 
 #ifndef AOUTPUT_H
+#define AOUTPUT_H 1
 
 #include "aspatial.hpp"
-
-#define AOUTPUT_H 1
 
 namespace acfd {
 
@@ -15,7 +14,7 @@ template <short nvars>
 class Output
 {
 public:
-	Output(const UMesh2dh *const mesh, const Spatial<nvars> *const fv);
+	Output(const Spatial<nvars> *const fv);
 
 	/// Exports data for the entire domain
 	/** \param[in] u The field variables
@@ -33,18 +32,21 @@ public:
 			const std::vector<int> obcm, const std::string basename) const = 0;
 
 protected:
-	const UMesh2dh *const m;
 	const Spatial<nvars> *const space;
+	const UMesh2dh *const m;
 };
 
 /// Output for flow simulations
+/** \todo We need a function that only returns the tuple of values but does not require an output
+ * argument.
+ */
 class FlowOutput : public Output<NVARS>
 {
 public:
 	/// Sets required data
 	/** \param[in] angleOfAttack The angle of attack in radians
 	 */
-	FlowOutput(const UMesh2dh *const m, const Spatial<NVARS> *const fv,
+	FlowOutput(const Spatial<NVARS> *const fv,
 			const IdealGasPhysics *const physics, const a_real angleOfAttack);
 	
 	/** For each cell, writes out the coordinates of the cell-centre,
@@ -52,10 +54,10 @@ public:
 	 */
 	void exportVolumeData(const MVector& u, const std::string volfile) const;
 
-	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on surfaces
+	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
 	 * \param[in] grad Gradients of converved variables at cell-centres
-	 * \param[in] iwbcm The marker of the boundaries on which the computation is to be done
+	 * \param[in] iwbcm The marker of the boundary on which the computation is to be done
 	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
 	 *                   Cp and Csf, in that order
 	 */
@@ -73,8 +75,8 @@ public:
 			const std::vector<int> obcm, const std::string basename) const;
 
 protected:
-	using Output<NVARS>::m;
 	using Output<NVARS>::space;
+	using Output<NVARS>::m;
 	const IdealGasPhysics *const phy;
 	const a_real av[NDIM];				///< Unit vector in the direction of freestream flow
 };

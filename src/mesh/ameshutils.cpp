@@ -2,10 +2,10 @@
  * \brief Implementation of mesh-related functionality like re-ordering etc.
  */
 
-#include "ameshutils.hpp"
 #include <vector>
 #include <iostream>
-#include "alinalg.hpp"
+#include "ameshutils.hpp"
+#include "linalg/alinalg.hpp"
 
 namespace acfd {
 

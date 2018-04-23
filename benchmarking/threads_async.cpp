@@ -22,7 +22,7 @@
 #include <string>
 #include <petscsys.h>
 
-#include "../src/autilities.hpp"
+#include "utilities/autilities.hpp"
 #include "threads_async_tests.hpp"
 
 using namespace acfd;

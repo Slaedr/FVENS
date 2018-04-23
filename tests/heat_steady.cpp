@@ -1,10 +1,10 @@
 #include <iostream>
 #include <fstream>
-#include "../src/alinalg.hpp"
-#include "../src/aoutput.hpp"
-#include "../src/aodesolver.hpp"
-#include "../src/autilities.hpp"
-#include "../src/ameshutils.hpp"
+#include "linalg/alinalg.hpp"
+#include "spatial/aoutput.hpp"
+#include "ode/aodesolver.hpp"
+#include "utilities/autilities.hpp"
+#include "mesh/ameshutils.hpp"
 
 #undef NDEBUG
 

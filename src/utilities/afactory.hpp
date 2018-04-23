@@ -24,10 +24,10 @@
 #include <string>
 
 #include "aarray2d.hpp"
-#include "anumericalflux.hpp"
-#include "agradientschemes.hpp"
-#include "areconstruction.hpp"
-#include "aspatial.hpp"
+#include "spatial/anumericalflux.hpp"
+#include "spatial/agradientschemes.hpp"
+#include "spatial/areconstruction.hpp"
+#include "spatial/aspatial.hpp"
 
 namespace acfd {
 

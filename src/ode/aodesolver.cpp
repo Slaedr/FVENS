@@ -33,8 +33,8 @@
 #include <petsctime.h>
 
 #include "aodesolver.hpp"
-#include "alinalg.hpp"
-#include "autilities.hpp"
+#include "linalg/alinalg.hpp"
+#include "utilities/autilities.hpp"
 
 namespace acfd {
 

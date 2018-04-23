@@ -6,18 +6,18 @@
 #include <iomanip>
 #include <fstream>
 #include "aoutput.hpp"
-#include "autilities.hpp"
+#include "utilities/autilities.hpp"
 
 namespace acfd {
 
 template <short nvars>
-Output<nvars>::Output(const UMesh2dh *const mesh, const Spatial<nvars> *const fv)
-	: m(mesh), space(fv)
+Output<nvars>::Output(const Spatial<nvars> *const fv)
+	: space(fv), m(space->mesh())
 { }
 
-FlowOutput::FlowOutput(const UMesh2dh *const mesh, const Spatial<NVARS> *const fv,
+FlowOutput::FlowOutput(const Spatial<NVARS> *const fv,
 		const IdealGasPhysics *const physics, const a_real aoa)
-	: Output<NVARS>(mesh, fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
+	: Output<NVARS>(fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
 {
 }
 

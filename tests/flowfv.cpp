@@ -1,6 +1,6 @@
 #include <string>
 #include <iostream>
-#include "../src/autilities.hpp"
+#include "utilities/autilities.hpp"
 #include "testflowspatial.hpp"
 
 using namespace acfd;

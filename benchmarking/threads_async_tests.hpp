@@ -11,8 +11,8 @@
 #include <string>
 #include <fstream>
 
-#include "../src/autilities.hpp"
-#include "../src/alinalg.hpp"
+#include "utilities/autilities.hpp"
+#include "linalg/alinalg.hpp"
 
 namespace benchmark {
 

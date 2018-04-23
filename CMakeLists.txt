@@ -144,6 +144,8 @@ endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 # libraries to be compiled
 add_subdirectory(src)
 

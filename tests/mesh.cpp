@@ -2,8 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "../src/amesh2dh.hpp"
-#include "../src/ameshutils.hpp"
+#include "mesh/amesh2dh.hpp"
+#include "mesh/ameshutils.hpp"
 
 #undef NDEBUG
 
