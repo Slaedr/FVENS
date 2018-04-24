@@ -66,7 +66,7 @@ const SolutionReconstruction* create_const_reconstruction(const std::string& typ
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.
  */
-Spatial<NVARS>* create_mutable_flowSpatialDiscretization(
+FlowFV_base* create_mutable_flowSpatialDiscretization(
 	const UMesh2dh *const m,                       ///< Mesh context
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
@@ -74,7 +74,7 @@ Spatial<NVARS>* create_mutable_flowSpatialDiscretization(
 /// Generates an immutable spatial discretization for slow problems
 /** \sa create_mutable_flowSpatialDiscretization
  */
-const Spatial<NVARS>* create_const_flowSpatialDiscretization(
+const FlowFV_base* create_const_flowSpatialDiscretization(
 	const UMesh2dh *const m,                       ///< Mesh context
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method

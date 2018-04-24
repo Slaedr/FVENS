@@ -176,6 +176,28 @@ struct FlowNumericsConfig
 	bool order2;                      ///< Whether to compute a second-order solution
 };
 
+/// Abstract base class for finite volume discretization of flow problems
+/** This is meant to be a template-parameter-free abstract class encapsulating a spatial discretization
+ * for a flow problem.
+ */
+class FlowFV_base : public Spatial<NVARS>
+{
+public:
+	FlowFV_base(const UMesh2dh *const mesh);
+
+	//virtual ~FlowFV_base();
+
+	/// Sets initial conditions
+	/** \param[in] fromfile True if initial data is to be read from a file
+	 * \param[in] file Name of initial conditions file
+	 * \param[in,out] u Vector to store the initial data in
+	 */
+	virtual StatusCode initializeUnknowns(Vec u) const = 0;
+
+	/// Compute norm of cell-centered entropy production
+	virtual a_real compute_entropy_cell(const Vec u) const = 0;
+};
+
 /// Computes the integrated fluxes and their Jacobians for compressible flow
 /** Note about BCs: normal velocity is assumed zero at all walls.
  * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
@@ -185,7 +207,7 @@ template <
 	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
 	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
 >
-class FlowFV : public Spatial<NVARS>
+class FlowFV : public FlowFV_base
 {
 public:
 	/// Sets data and initializes the numerics
@@ -236,7 +258,7 @@ public:
 			amat::Array2d<a_real>& velocities) const;
 
 	/// Compute norm of cell-centered entropy production
-	/** Call aftr computing pressure etc \sa postprocess_cell
+	/** Call after computing pressure etc \sa postprocess_cell
 	 */
 	a_real compute_entropy_cell(const Vec u) const;
 

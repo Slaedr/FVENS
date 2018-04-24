@@ -1,4 +1,10 @@
-#include "autilities.hpp"
+/** \file aoptionparser.cpp
+ * \brief Parse options from different sources.
+ * \author Aditya Kashi
+ * \date 2017-10
+ */
+
+#include "aoptionparser.hpp"
 #include <iostream>
 
 namespace acfd {

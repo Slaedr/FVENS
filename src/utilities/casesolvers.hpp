@@ -8,11 +8,20 @@
 #define FVENS_CASESOLVERS_H
 
 #include <string>
-#include <tuple>
 #include <petscvec.h>
-#include "utilities/autilities.hpp"
+#include "utilities/aoptionparser.hpp"
 
 namespace acfd {
+
+/// Integrated quantities of interest in the solution of a flow problem
+struct FlowSolutionFunctionals
+{
+	a_real meshSizeParameter;   ///< Not a solution functional but needed for verification studies
+	a_real entropy;             ///< Any measure of entropy difference from the free-stream
+	a_real CL;                  ///< Lift coefficient
+	a_real CDp;                 ///< Coefficient of drag induced by pressure
+	a_real CDsf;                ///< Coefficient of drag caused by skin-friction
+};
 
 /// Solves a steady-state case on one mesh
 /** Writes no output files. \sa steadyCase_output
@@ -37,9 +46,8 @@ int steadyCase(const FlowParserOptions& opts, const std::string mesh_suffix, Vec
  * \param vtu_output_needed If true, writes out a VTU output file to a filename determined by the
  *   control database.
  */
-std::tuple<a_real,a_real,a_real> 
-steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, Vec *const u,
-	const bool vtu_output_needed);
+FlowSolutionFunctionals steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, 
+	Vec *const u, const bool vtu_output_needed);
 
 }
 #endif

@@ -3,7 +3,7 @@
 #include "linalg/alinalg.hpp"
 #include "spatial/aoutput.hpp"
 #include "ode/aodesolver.hpp"
-#include "utilities/autilities.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "mesh/ameshutils.hpp"
 
 #undef NDEBUG

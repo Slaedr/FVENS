@@ -5,7 +5,7 @@
 #include <petscksp.h>
 
 #include "linalg/alinalg.hpp"
-#include "utilities/autilities.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/casesolvers.hpp"
 #include "spatial/aoutput.hpp"
@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	// solution vector
 	Vec u;
 
-	// solve case - constructs (creates) u and stores the solution in it
+	// solve case - constructs (creates) u, computes the solution and stores the solution in it
 	steadyCase_output(opts, "", &u, true);
 
 	ierr = VecDestroy(&u); CHKERRQ(ierr);

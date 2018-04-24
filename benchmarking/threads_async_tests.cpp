@@ -10,7 +10,6 @@
 #include <omp.h>
 #include <petscksp.h>
 
-#include "utilities/autilities.hpp"
 #include "utilities/afactory.hpp"
 #include "linalg/alinalg.hpp"
 #include "ode/aodesolver.hpp"

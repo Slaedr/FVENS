@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <tuple>
 #include <omp.h>
 #include <petscksp.h>
 
@@ -226,13 +227,13 @@ int steadyCase(const FlowParserOptions& opts, const std::string mesh_suffix, Vec
 	return ierr;
 }
 
-std::tuple<a_real,a_real,a_real> 
-steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, Vec *const u,
-		const bool vtu_output_needed)
+FlowSolutionFunctionals steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, 
+		Vec *const u, const bool vtu_output_needed)
 {
 	int ierr = 0;
 	
 	const UMesh2dh m = constructMesh(opts, mesh_suffix);
+	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
 	std::cout << "***\n";
 
 	std::cout << "Setting up main spatial scheme.\n";
@@ -240,10 +241,12 @@ steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, 
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+	const FlowFV_base *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 	ierr = steadyCase_solve(opts, prob, u);
 	fvens_throw(ierr, "Could not solve steady case!");
+
+	const a_real entropy = prob->compute_entropy_cell(*u);
 
 	if(vtu_output_needed) {
 		amat::Array2d<a_real> scalars;
@@ -257,16 +260,23 @@ steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, 
 	
 	MVector umat; umat.resize(m.gnelem(),NVARS);
 	const PetscScalar *uarr;
-	ierr = VecGetArrayRead(*u, &uarr); petsc_throw(ierr, "Petsc VecGetArrayRead error");
+	ierr = VecGetArrayRead(*u, &uarr); 
+	petsc_throw(ierr, "Petsc VecGetArrayRead error");
 	for(a_int i = 0; i < m.gnelem(); i++)
 		for(int j = 0; j < NVARS; j++)
 			umat(i,j) = uarr[i*NVARS+j];
-	ierr = VecRestoreArrayRead(*u, &uarr); petsc_throw(ierr, "Petsc VecRestoreArrayRead error");
+	ierr = VecRestoreArrayRead(*u, &uarr); 
+	petsc_throw(ierr, "Petsc VecRestoreArrayRead error");
 
 	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(prob, &phy, opts.alpha);
 
-	out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
+	try {
+		out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
+	} 
+	catch(std::exception& e) {
+		std::cout << e.what() << std::endl;
+	}
 	
 	MVector output; output.resize(m.gnelem(),NDIM+2);
 	std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>> grad;
@@ -280,7 +290,7 @@ steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, 
 
 	delete prob;
 
-	return fnls;
+	return FlowSolutionFunctionals{h, entropy, std::get<0>(fnls), std::get<1>(fnls), std::get<2>(fnls)};
 }
 
 }

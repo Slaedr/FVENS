@@ -9,7 +9,7 @@
 
 #include <string>
 #include <array>
-#include "utilities/autilities.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "spatial/aspatial.hpp"
 
 namespace acfd {

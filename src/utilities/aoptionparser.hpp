@@ -1,11 +1,11 @@
-/** \file autilities.hpp
- * \brief Some helper functions for mundane tasks.
+/** \file aoptionparser.hpp
+ * \brief Some helper functions for parsing options from different sources.
  * \author Aditya Kashi
  * \date 2017-10
  */
 
-#ifndef AUTILITIES_H
-#define AUTILITIES_H
+#ifndef AOPTIONPARSER_H
+#define AOPTIONPARSER_H
 
 #include <fstream>
 #include "aconstants.hpp"

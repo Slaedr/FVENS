@@ -11,7 +11,7 @@
 #include <string>
 #include <fstream>
 
-#include "utilities/autilities.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "linalg/alinalg.hpp"
 
 namespace benchmark {

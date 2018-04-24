@@ -225,12 +225,18 @@ void Spatial<nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
 	}
 }
 
+FlowFV_base::FlowFV_base(const UMesh2dh *const mesh) : Spatial<NVARS>(mesh)
+{ }
+
+//FlowFV_base::~FlowFV_base()
+//{ }
+
 template<bool secondOrderRequested, bool constVisc>
 FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 		const FlowPhysicsConfig& pconf, 
 		const FlowNumericsConfig& nconf)
 	: 
-	Spatial<NVARS>(mesh), 
+	FlowFV_base(mesh), 
 	pconfig{pconf},
 	nconfig{nconf},
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
