@@ -129,10 +129,10 @@ int steadyCase_solve(const FlowParserOptions& opts, const Spatial<NVARS> *const 
 
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
-	Blasted_data_vec bctx = newBlastedDataVec();
-	//if(opts.timesteptype == "IMPLICIT") {
+	Blasted_data_list bctx = newBlastedDataList();
+	if(opts.timesteptype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,*u,startprob,bctx); CHKERRQ(ierr);
-	//}
+	}
 #endif
 
 	std::cout << "***\n";
@@ -151,7 +151,7 @@ int steadyCase_solve(const FlowParserOptions& opts, const Spatial<NVARS> *const 
 	//  This will also reset the BLASTed timing counters.
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
-	destroyBlastedDataVec(&bctx);
+	destroyBlastedDataList(&bctx);
 #endif
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	if(mf_flg) {
@@ -164,7 +164,7 @@ int steadyCase_solve(const FlowParserOptions& opts, const Spatial<NVARS> *const 
 	}
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
-	bctx = newBlastedDataVec();
+	bctx = newBlastedDataList();
 	if(opts.timesteptype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,*u,startprob,bctx); CHKERRQ(ierr);
 	}
@@ -193,7 +193,7 @@ int steadyCase_solve(const FlowParserOptions& opts, const Spatial<NVARS> *const 
 	delete time;
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
-	destroyBlastedDataVec(&bctx);
+	destroyBlastedDataList(&bctx);
 #endif
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
 	if(mf_flg) {

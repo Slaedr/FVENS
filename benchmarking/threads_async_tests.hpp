@@ -48,7 +48,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nbswps, const int naswps,
 		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
-		Blasted_data_vec& bctx);
+		Blasted_data_list& bctx);
 
 }
 

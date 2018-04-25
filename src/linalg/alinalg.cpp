@@ -285,7 +285,7 @@ StatusCode getPC(KSP ksp, const char *const type_name, PC* pcfound)
 #ifdef USE_BLASTED
 
 template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data_vec& bctx)
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data_list& bctx)
 {
 	StatusCode ierr = 0;
 	Mat M, A;
@@ -302,9 +302,9 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, 
 }
 
 template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<NVARS> *const startprob, 
-		Blasted_data_vec& bctx);
+		Blasted_data_list& bctx);
 template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<1> *const startprob, 
-		Blasted_data_vec& bctx);
+		Blasted_data_list& bctx);
 #endif
 
 

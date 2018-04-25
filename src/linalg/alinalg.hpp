@@ -110,10 +110,10 @@ bool isMatrixFree(Mat);
  * \param u A solution vector used to assemble the Jacobian matrix once, needed for initialization
  *   of some PETSc preconditioners - the actual values don't matter.
  * \param startprob A spatial discretization context to compute the Jacobian with
- * \param[in,out] bctx The BLASTed context
+ * \param[in,out] bctx The BLASTed contexts
  */
 template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data_vec& bctx);
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data_list& bctx);
 
 #endif
 

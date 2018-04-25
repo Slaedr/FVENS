@@ -109,7 +109,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	startprob->initializeUnknowns(u);
 
 	// setup BLASTed preconditioning
-	Blasted_data_vec bctx = newBlastedDataVec();
+	Blasted_data_list bctx = newBlastedDataList();
 	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 
 	std::cout << "\n***\n";
@@ -230,7 +230,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	delete time;
 	delete starttime;
 	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-	destroyBlastedDataVec(&bctx);
+	destroyBlastedDataList(&bctx);
 	ierr = MatDestroy(&M); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = MatDestroy(&A); 
@@ -245,7 +245,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nbswps, const int naswps,
 		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
-		Blasted_data_vec& bctx)
+		Blasted_data_list& bctx)
 {
 	StatusCode ierr = 0;
 
@@ -255,7 +255,7 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 
 	// Reset the KSP
 	ierr = KSPDestroy(ksp); petsc_throw(ierr, "run_sweeps: Couldn't destroy KSP");
-	destroyBlastedDataVec(&bctx);
+	destroyBlastedDataList(&bctx);
 	ierr = KSPCreate(PETSC_COMM_WORLD, ksp); petsc_throw(ierr, "run_sweeps: Couldn't create KSP");
 	if(mf_flg) {
 		ierr = KSPSetOperators(*ksp, A, M); 
@@ -267,7 +267,7 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 	}
 	ierr = KSPSetFromOptions(*ksp); petsc_throw(ierr, "run_sweeps: Couldn't set KSP from options");
 	
-	bctx = newBlastedDataVec();
+	bctx = newBlastedDataList();
 	ierr = setup_blasted<NVARS>(*ksp,u,startprob,bctx);
 	fvens_throw(ierr, "run_sweeps: Couldn't setup BLASTed");
 
