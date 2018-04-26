@@ -291,7 +291,7 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, 
 	Mat M, A;
 	ierr = KSPGetOperators(ksp, &A, &M); CHKERRQ(ierr);
 
-	// first assemble the matrix once for proper setup
+	// first assemble the matrix once because PETSc requires it
 	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
 	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
