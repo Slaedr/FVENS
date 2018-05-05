@@ -13,6 +13,7 @@
 #include "casesolvers.hpp"
 #include "linalg/alinalg.hpp"
 #include "utilities/afactory.hpp"
+#include "utilities/aerrorhandling.hpp"
 #include "spatial/aoutput.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"

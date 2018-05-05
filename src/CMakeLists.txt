@@ -3,6 +3,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 # libraries to be compiled
 
 add_library(fvens_base utilities/aoptionparser.cpp utilities/afactory.cpp utilities/casesolvers.cpp
+	utilities/aerrorhandling.cpp
 	ode/aodesolver.cpp linalg/alinalg.cpp 
 	spatial/aspatial.cpp spatial/areconstruction.cpp spatial/agradientschemes.cpp 
 	spatial/anumericalflux.cpp physics/aphysics.cpp spatial/aoutput.cpp 

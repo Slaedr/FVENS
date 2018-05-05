@@ -296,7 +296,7 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, 
 	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 
-	ierr = setup_blasted_stack(ksp,&bctx,0); CHKERRQ(ierr);
+	ierr = setup_blasted_stack(ksp,&bctx); CHKERRQ(ierr);
 
 	return ierr;
 }

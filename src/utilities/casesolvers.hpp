@@ -31,6 +31,7 @@ struct FlowSolutionFunctionals
  *   before passing to the mesh class to be read.
  * \param u Pointer to an uninitialized PETSc vec used for storing the solution; must be destroyed
  *   explicitly by the caller after it has been used.
+ * \return PETSc error code
  */
 int steadyCase(const FlowParserOptions& opts, const std::string mesh_suffix, Vec *const u);
 

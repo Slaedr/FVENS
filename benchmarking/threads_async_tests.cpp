@@ -11,6 +11,7 @@
 #include <petscksp.h>
 
 #include "utilities/afactory.hpp"
+#include "utilities/aerrorhandling.hpp"
 #include "linalg/alinalg.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"

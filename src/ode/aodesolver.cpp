@@ -35,6 +35,7 @@
 #include "aodesolver.hpp"
 #include "linalg/alinalg.hpp"
 #include "utilities/aoptionparser.hpp"
+#include "utilities/aerrorhandling.hpp"
 
 namespace acfd {
 
@@ -186,6 +187,10 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		if(mpirank==0)
 			if(config.lognres)
 				convout << step << " " << std::setw(10) << resi/initres << '\n';
+
+		// test for nan
+		if(!std::isfinite(resi))
+			throw Numerical_error("Steady forward Euler diverged - residual is Nan or inf!");
 	}
 
 	if(mpirank==0)
@@ -466,6 +471,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		if(config.lognres)
 			if(mpirank == 0)
 				convout << step << " " << std::setw(10)  << resi/initres << '\n';
+
+		// test for nan
+		if(!std::isfinite(resi))
+			throw Numerical_error("Steady backward Euler diverged - residual is Nan or inf!");
 	}
 
 	/*gettimeofday(&time2, NULL);

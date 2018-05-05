@@ -5,18 +5,10 @@
  */
 
 #include "aoptionparser.hpp"
+#include "aerrorhandling.hpp"
 #include <iostream>
 
 namespace acfd {
-
-Petsc_exception::Petsc_exception(const std::string& msg) 
-	: std::runtime_error(std::string("PETSc error: ")+msg)
-{ }
-
-Petsc_exception::Petsc_exception(const char *const msg) 
-	: std::runtime_error(std::string("PETSc error: ") + std::string(msg))
-{ }
-
 
 void open_file_toRead(const std::string file, std::ifstream& fin)
 {

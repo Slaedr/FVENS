@@ -124,11 +124,9 @@ public:
 	~SteadyBackwardEulerSolver();
 
 	/// Runs the time-stepping loop with backward Euler time-stepping
-	/** Stores timing data in a \ref TimingData object that can be retreived by \ref getTimingData. 
-	 *
-	 * Appends a line of timing-related data to a log file as follows.
-	 *  num-cells num-threads  wall-time  CPU-time  total-lin-iterations  avg-linear-solver-iterations 
-	 *      number-of-time-steps  <\n>
+	/** Stores timing data in a \ref TimingData object that can be retreived by \ref getTimingData.
+	 * Throws an instance of \ref Numerical_error if the residual becomes NaN or inf.
+	 * 
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
