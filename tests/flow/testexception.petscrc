@@ -1,0 +1,19 @@
+#-ksp_converged_reason
+-options_left
+#-log_view
+
+-mesh_reorder rcm
+
+-mat_type baij
+#-matrix_free_jacobian
+#-matrix_free_difference_step 1e-7
+
+-ksp_type fgmres
+-ksp_rtol 1e-1
+-ksp_max_it 70
+-pc_type bjacobi
+-sub_pc_type ilu
+#-pc_sor_symmetric
+
+#-blasted_pc_type ilu0
+#-blasted_async_sweeps 5,6
