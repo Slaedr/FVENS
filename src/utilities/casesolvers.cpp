@@ -245,7 +245,7 @@ FlowSolutionFunctionals steadyCase_output(const FlowParserOptions& opts, const s
 	const FlowFV_base *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 	ierr = steadyCase_solve(opts, prob, u);
-	fvens_throw(ierr, "Could not solve steady case!");
+	fvens_throw(ierr, "Could not solve steady case! Error code " + std::to_string(ierr));
 
 	const a_real entropy = prob->compute_entropy_cell(*u);
 
