@@ -1,9 +1,9 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/2dcylinder/grids/2dcylquad
+../testcases/2dcylinder/grids/2dcylquad2.msh
 ---Output-file
-non-existentd-dir/2dcyl.vtu
+../data/2dcyl5.vtu
 ---Log-file-for-runtimes
-non-existent-dir/log.txt
+log.txt
 ---Log-nonlinear-convergence-history(YES,NO)
 NO
 ########PHYSICS######################################################
@@ -35,7 +35,7 @@ EULER
 ---Number-of-'other'-boundaries-at-which-surface-output-is-needed
 0
 ---Prefix-for-name-of-surface-output-file
-non-existentd-dir/2dcyl
+../data/2dcyl
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 ######################################################################
@@ -45,36 +45,36 @@ HLLC
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
----Limiter-parameter
-10.0
+---Limiter-param
+1.0
 ---Reconstruct-primitive-variables?(YES,NO)
 YES
 ######################################################################
 ---time-stepping-type(EXPLICIT,IMPLICIT)
 IMPLICIT
----initial-CFL
+---initial-CFL(250)
 250.0
 ---final-CFL
-1000.0
+2000.0
 ---ramp-start-step-and-end-step
-10 80
+10 60
 ---Tolerance
-1e-6
+1e-2
 ---Max-pseudotime-iterations
-400
+500
 #######################################################################
 ---use-first-order-initial-condition
 1
----initial-CFL
-25.0
+---initial-CFL(50)
+50.0
 ---final-CFL
 500.0
 ---ramp-start-step-and-end-step
-20 60
+10 50
 ---tolerance-for-initialization
-1e-1
+5e-1
 ---max-time-steps-for-initialization
-150
+100
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
 HLLC

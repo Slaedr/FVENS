@@ -11,7 +11,8 @@ add_library(fvens_base utilities/aoptionparser.cpp utilities/afactory.cpp utilit
 target_link_libraries(fvens_base ${PETSC_LIB})
 if(WITH_BLASTED)
 	target_link_libraries(fvens_base ${BLASTED_LIB})
-endif()
+  endif()
+target_link_libraries(fvens_base ${MPI_C_LIBRARIES} ${MPI_C_LINK_FLAGS})
 
 # for the final executable(s)
 

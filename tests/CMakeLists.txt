@@ -69,3 +69,10 @@ add_test(NAME SpatialFlow_Euler_NACA0012_transonic_WENO_LeastSquares_HLLC WORKIN
 	COMMAND e_testflow tests/flow/transonic-naca0012.control -options_file tests/flow/transonic-naca0012.petscrc)
 
 add_test(NAME SpatialFlow_NavierStokes_FlatPlate_LeastSquares_Roe_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND e_testflow_conv_clcd flow/flatplate.control -options_file flow/flatplate.petscrc)
+
+if(WITH_BLASTED)
+  add_test(NAME Benchmark_Euler_Blasted_run
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	COMMAND sh benchtest.sh ${CMAKE_BINARY_DIR}/bench_threads_async flow/small-2dcylinder.control
+	-options_file flow/benchmark.petscrc)
+endif()

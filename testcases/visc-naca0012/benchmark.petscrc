@@ -1,0 +1,24 @@
+#-ksp_converged_reason
+#-log_view
+-options_left
+
+-fvens_log_file visc-naca-speedup_sweeps-log
+
+-benchmark_type speedup_sweeps
+-benchmark_num_repeat 2
+-threads_sequence 4
+-async_build_sweep_sequence 1,1
+-async_apply_sweep_sequence 1,2
+
+-mesh_reorder rcm
+
+-mat_type baij
+
+-ksp_type fgmres
+-ksp_rtol 1e-1
+-ksp_max_it 70
+-pc_type bjacobi
+-sub_pc_type shell
+
+-blasted_pc_type ilu0
+
