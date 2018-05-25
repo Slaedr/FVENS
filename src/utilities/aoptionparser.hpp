@@ -114,6 +114,7 @@ std::string parsePetscCmd_string(const std::string optionname, const size_t len)
 
 /// Extracts the arguments of an int array option from the default PETSc options database
 /** \param maxlen Maximum number of entries expected in the array
+ * \return The vector of array entries; its size is the number of elements read, no more
  */
 std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int maxlen);
 

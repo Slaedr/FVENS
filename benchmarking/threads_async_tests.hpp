@@ -20,22 +20,25 @@ using namespace acfd;
 
 /// Find the dependence of the speed-up from a certain thread-count on the number of async sweeps
 /** Only for implicit solves.
- * Runs a nonlinear solve first with 1 thread and 1 sweep (for reference) and then with as many threads
- * as requested, once each for each number of sweeps requested. Each `run' with the requested number of
- * threads and one of the requested number of sweeps consists of several repetitions, to account for
- * the asynchronous chaos.
+ * Runs a nonlinear solve first with 1 thread and 1 sweep (for reference). Then, for each number of
+ * threads requested, there's one run for each number of sweeps requested.
+ * Each `run' with one of the requested number of threads and one of the requested number of sweeps
+ * consists of several repetitions, to account for the asynchronous chaos.
  * If one repetition of a run does not converge, that run is terminated but its details are written
  * to the output file, and it moves on to the next requested number of sweeps.
  *
  * \param opts Numerics and physics options for the test-case
  * \param numrepeat The number of times to repeat the benchmark and average the results
- * \param numthreads The number of threads to run the case with
- * \param sweep_seq The set of async build sweeps to run the case with (1 run for each entry)
- * \param sweepratio The ratio of apply sweeps to build sweeps, used to decide the former
+ * \param numthreads_seq The sequence of number of threads to run the case with
+ * \param b_swp_seq The set of async build sweeps to run the case with
+ * \param a_swp_seq The set of async apply sweeps to run in tandem with the build sweep array
+ *   There is one run for each pair of corresponding entries in the build and apply arrays.
  * \param outfile Opened stream context to write the averaged results to
  */
-StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat, const int numthreads,
-		const std::vector<int>& sweep_seq, const double sweepratio, std::ofstream& outfile);
+StatusCode test_speedup_sweeps(const FlowParserOptions& opts,
+                               const int numrepeat, const std::vector<int>& numthreads_seq,
+                               const std::vector<int>& b_swp_seq, const std::vector<int>& a_swp_seq,
+                               std::ofstream& outfile);
 
 /// Run a timing test with a specific number of sweeps with a specific number of threads
 /** 

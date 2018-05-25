@@ -24,11 +24,13 @@ namespace benchmark {
 
 using namespace acfd;
 
-/// Set -blasted_async_sweeps in the default Petsc options database and throws if not successful
+/// Set -blasted_async_sweeps in the default Petsc options database and throw if not successful
 static void set_blasted_sweeps(const int nbswp, const int naswp);
 
-StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat, const int numthreads,
-		const std::vector<int>& sweep_seq, const double sweepratio, std::ofstream& outf)
+StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat,
+                               const std::vector<int>& threads_seq,
+                               const std::vector<int>& bswpseq, const std::vector<int>& aswpseq,
+                               std::ofstream& outf)
 {
 	StatusCode ierr = 0;
 
@@ -165,66 +167,68 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			<< std::setw(w) << (tdata.converged ? 1 : 0) << "\n#---\n" << std::flush;
 	}
 
-	omp_set_num_threads(numthreads);
-	
-	// Carry out multi-thread run
-	// Note: The run is regarded as converged only if each repetition converged
-	for (const int nswp : sweep_seq)
+	for(int numthreads : threads_seq)
 	{
-		TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
-		double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
-		const int naswp = std::round(sweepratio*nswp);
+		omp_set_num_threads(numthreads);
 
-		int irpt;
-		for(irpt = 0; irpt < numrepeat; irpt++) 
+		// Carry out multi-thread run
+		// Note: The run is regarded as converged only if each repetition converged
+		for (size_t i = 0; i < bswpseq.size(); i++)
 		{
-			TimingData td = run_sweeps(startprob, prob, maintconf, nswp, naswp, 
-					&ksp, u, A, M, mfjac, mf_flg, bctx);
-			
-			computeTotalTimes(&bctx);
+			TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
+			double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
 
-			tdata.nelem = td.nelem;
-			tdata.num_threads = td.num_threads;
-			tdata.lin_walltime += td.lin_walltime;
-			tdata.lin_cputime +=  td.lin_cputime;
-			tdata.ode_walltime += td.ode_walltime;
-			tdata.ode_cputime +=  td.ode_cputime;
-			tdata.total_lin_iters += td.total_lin_iters;
-			tdata.num_timesteps += td.num_timesteps;
-			tdata.converged = tdata.converged && td.converged;
-			factorwalltime += bctx.factorwalltime;
-			applywalltime += bctx.applywalltime;
-			precwalltime += bctx.factorwalltime + bctx.applywalltime;
-			preccputime += bctx.factorcputime + bctx.applycputime;
+			int irpt;
+			for(irpt = 0; irpt < numrepeat; irpt++) 
+			{
+				TimingData td = run_sweeps(startprob, prob, maintconf, bswpseq[i], aswpseq[i], 
+						&ksp, u, A, M, mfjac, mf_flg, bctx);
 
-			if(!td.converged) {
-				irpt++;
-				break;
+				computeTotalTimes(&bctx);
+
+				if(!td.converged) {
+					tdata.converged = false;
+					break;
+				}
+
+				tdata.nelem = td.nelem;
+				tdata.num_threads = td.num_threads;
+				tdata.lin_walltime += td.lin_walltime;
+				tdata.lin_cputime +=  td.lin_cputime;
+				tdata.ode_walltime += td.ode_walltime;
+				tdata.ode_cputime +=  td.ode_cputime;
+				tdata.total_lin_iters += td.total_lin_iters;
+				tdata.num_timesteps += td.num_timesteps;
+				tdata.converged = tdata.converged && td.converged;
+				factorwalltime += bctx.factorwalltime;
+				applywalltime += bctx.applywalltime;
+				precwalltime += bctx.factorwalltime + bctx.applywalltime;
+				preccputime += bctx.factorcputime + bctx.applycputime;
 			}
-		}
 
-		tdata.lin_walltime /= (double)irpt;
-		tdata.lin_cputime /= (double)irpt;
-		tdata.ode_walltime /= (double)irpt;
-		tdata.ode_cputime /= (double)irpt;
-		tdata.num_timesteps /= (double)irpt;
-		tdata.total_lin_iters /= (double)irpt;
-		tdata.avg_lin_iters = tdata.total_lin_iters / (double)tdata.num_timesteps;
-		factorwalltime /= (double)irpt;
-		applywalltime /= (double)irpt;
-		precwalltime /= (double)irpt;
-		preccputime /= (double)irpt;
+			tdata.lin_walltime /= (double)irpt;
+			tdata.lin_cputime /= (double)irpt;
+			tdata.ode_walltime /= (double)irpt;
+			tdata.ode_cputime /= (double)irpt;
+			tdata.num_timesteps /= (double)irpt;
+			tdata.total_lin_iters /= (double)irpt;
+			tdata.avg_lin_iters = tdata.total_lin_iters / (double)tdata.num_timesteps;
+			factorwalltime /= (double)irpt;
+			applywalltime /= (double)irpt;
+			precwalltime /= (double)irpt;
+			preccputime /= (double)irpt;
 
-		if(mpirank == 0) {
-			outf << ' ' << std::setw(w) << numthreads 
-				<< std::setw(w/2) << nswp << std::setw(w/2) << naswp
-				<< std::setw(w+5) << factor_basewtime/factorwalltime
-				<< std::setw(w+5) << apply_basewtime/applywalltime
-				<< std::setw(w+5) << prec_basewtime/precwalltime
-				<< std::setw(w) << preccputime
-				<< std::setw(w+6) << tdata.total_lin_iters
-				<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
-				<< std::setw(w) << (tdata.converged ? 1:0) << '\n' << std::flush;
+			if(mpirank == 0) {
+				outf << ' ' << std::setw(w) << numthreads 
+					<< std::setw(w/2) << bswpseq[i] << std::setw(w/2) << aswpseq[i]
+					<< std::setw(w+5) << factor_basewtime/factorwalltime
+					<< std::setw(w+5) << apply_basewtime/applywalltime
+					<< std::setw(w+5) << prec_basewtime/precwalltime
+					<< std::setw(w) << preccputime
+					<< std::setw(w+6) << tdata.total_lin_iters
+					<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
+					<< std::setw(w) << (tdata.converged ? 1:0) << '\n' << std::flush;
+			}
 		}
 	}
 
@@ -282,8 +286,19 @@ TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS
 	Vec ut;
 	ierr = MatCreateVecs(M, &ut, NULL); petsc_throw(ierr, "Couldn't create vec");
 	ierr = VecCopy(u, ut); petsc_throw(ierr, "run_sweeps: Couldn't copy vec");
-	
-	ierr = time->solve(ut); fvens_throw(ierr, "run_sweeps: Couldn't solve ODE");
+
+	try {
+		ierr = time->solve(ut);
+	}
+	catch (Numerical_error& e) {
+		std::cout << "There was a numerical error in the steady state solve!\n";
+		TimingData tdata; tdata.converged = false;
+		delete time;
+		ierr = VecDestroy(&ut); petsc_throw(ierr, "run_sweeps: Couldn't delete vec");
+		return tdata;
+	}
+
+	fvens_throw(ierr, "run_sweeps: Couldn't solve ODE");
 	const TimingData tdata = time->getTimingData();
 
 	delete time;

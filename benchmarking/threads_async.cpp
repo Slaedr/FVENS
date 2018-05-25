@@ -7,11 +7,10 @@
  * * -benchmark_num_repeat [integer] Number of times to repeat the benchmark and average the results
  * * -threads_sequence [integer array] The number of threads to use for the testing; only the first
  *     entry of this array is considered for the 'speedup_sweeps' test.
- * * -async_sweep_sequence [integer array] The number of asynchronous preconditioner build sweeps 
+ * * -async_build_sweep_sequence [integer array] The number of asynchronous preconditioner build sweeps 
  *     to run test(s) with
- * * -async_sweep_ratio [real number] The ratio of the number of apply sweeps to the number of build
- *     sweeps; this is multiplied with each entry in the sweep sequence to compute the number of
- *     apply sweeps to use.
+ * * -async_apply_sweep_sequence [integer array] The number of asynchronous apply sweeps.
+ *     The length of this array must be same as that of build sweeps array.
  *
  * \author Aditya Kashi
  * \date 2018-03
@@ -23,6 +22,7 @@
 #include <petscsys.h>
 
 #include "utilities/aoptionparser.hpp"
+#include "utilities/aerrorhandling.hpp"
 #include "threads_async_tests.hpp"
 
 using namespace acfd;
@@ -56,9 +56,14 @@ int main(int argc, char *argv[])
 	if(testtype == "speedup_sweeps")
 	{
 		const std::vector<int> threadseq = parsePetscCmd_intArray("-threads_sequence", ARR_LEN);
-		const std::vector<int> sweepseq  = parsePetscCmd_intArray("-async_sweep_sequence", ARR_LEN);
-		const PetscReal sweepratio  = parseOptionalPetscCmd_real("-async_sweep_ratio",1.0);
-		ierr = test_speedup_sweeps(opts, bnrepeat, threadseq[0], sweepseq, sweepratio, outf);
+		const std::vector<int> bswpseq  = parsePetscCmd_intArray("-async_build_sweep_sequence",
+		                                                         ARR_LEN);
+		const std::vector<int> aswpseq  = parsePetscCmd_intArray("-async_apply_sweep_sequence",
+		                                                         ARR_LEN);
+		fvens_throw(bswpseq.size() != aswpseq.size(),
+		            "There must be an apply sweep for each build sweep requested and vice-versa!");
+
+		ierr = test_speedup_sweeps(opts, bnrepeat, threadseq, bswpseq, aswpseq, outf);
 		CHKERRQ(ierr);
 	}
 	else {
