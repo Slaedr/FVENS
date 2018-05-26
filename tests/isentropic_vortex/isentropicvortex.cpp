@@ -42,14 +42,7 @@ int main(int argc, char *argv[])
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 	
 	// physical configuration
-	const FlowPhysicsConfig pconf {
-		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
-		opts.viscsim, opts.useconstvisc,
-		opts.isothermalwall_marker, opts.adiabaticwall_marker, opts.isothermalpressurewall_marker,
-		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
-		opts.extrap_marker, opts.periodic_marker,
-		opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel
-	};
+	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 
 	// numerics for main solver
 	//const FlowNumericsConfig nconfmain {opts.invflux, opts.invfluxjac,
@@ -219,19 +212,7 @@ int main(int argc, char *argv[])
 		a_real err;
 		// get the correct kind of FlowFV - but there's got to be a better way to do this
 		if(opts.order2 && opts.useconstvisc) {
-			const FlowFV<true,true>* fprob = reinterpret_cast<const FlowFV<true,true>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		else if(opts.order2 && !opts.useconstvisc) {
-			const FlowFV<true,false>* fprob = reinterpret_cast<const FlowFV<true,false>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		else if(!opts.order2 && opts.useconstvisc) {
-			const FlowFV<false,true>* fprob = reinterpret_cast<const FlowFV<false,true>*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
-		else {
-			const FlowFV<false,false>* fprob = reinterpret_cast<const FlowFV<false,false>*>(prob);
+			const FlowFV_base* fprob = reinterpret_cast<const FlowFV_base*>(prob);
 			err = fprob->compute_entropy_cell(u);
 		}
 		const double h = 1.0/sqrt(m.gnelem());
@@ -265,7 +246,7 @@ int main(int argc, char *argv[])
 	int passed = 0;
 	if(opts.gradientmethod == "LEASTSQUARES") 
 	{
-		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.6)
+		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.8)
 			passed = 1;
 	}
 	else if(opts.gradientmethod == "GREENGAUSS") 
