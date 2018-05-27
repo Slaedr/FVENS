@@ -11,10 +11,10 @@ target_link_libraries(testflowspatial fvens_base)
 add_executable(e_testflow_spatial flowspatial.cpp)
 target_link_libraries(e_testflow_spatial testflowspatial)
 
-add_executable(e_testflow_temporal flowtemporal.cpp)
-target_link_libraries(e_testflow_temporal fvens_base ${PETSC_LIB})
+add_executable(e_testflow_pseudotime flowpseudotime.cpp)
+target_link_libraries(e_testflow_pseudotime fvens_base ${PETSC_LIB})
 if(WITH_BLASTED)
-	target_link_libraries(e_testflow_temporal ${BLASTED_LIB})
+	target_link_libraries(e_testflow_pseudotime ${BLASTED_LIB})
 endif()
 
 add_executable(exec_testdiffusion heat_steady.cpp)
@@ -56,7 +56,8 @@ add_test(NAME SpatialFlow_Walltest_AUSM WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE
 add_test(NAME SpatialFlow_Walltest_AUSMPlus WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND  e_testflow_spatial input/test.cfg numerical_flux AUSMPLUS)
 add_test(NAME SpatialFlow_Walltest_HLL WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND  e_testflow_spatial input/test.cfg numerical_flux HLL)
 add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND e_testflow_spatial input/test.cfg numerical_flux LLF)
-add_test(NAME TemporalFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND e_testflow_temporal flow/testexception.control -test_type exception_nanorinf -options_file flow/inv_cyl.petscrc)
+add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMAND e_testflow_pseudotime flow/testexception.control -test_type exception_nanorinf -options_file flow/inv_cyl.petscrc)
 
 add_test(NAME SpatialDiffusion_LeastSquares_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testdiffusion heat/implls_quad.control -options_file heat/opts.petscrc)
 add_test(NAME SpatialDiffusion_LeastSquares_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMMAND exec_testdiffusion heat/implls_tri.control -options_file heat/opts.petscrc)

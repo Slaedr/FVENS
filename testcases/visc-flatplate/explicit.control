@@ -60,6 +60,9 @@ NO
 ../data/flatplatestruct-roe
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 ROE
@@ -68,7 +71,7 @@ LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
 ---Limiter-parameter
-1e4
+20.0
 ---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
 YES
 ######################################################################

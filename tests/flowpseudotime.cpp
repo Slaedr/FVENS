@@ -1,5 +1,5 @@
-/** \file flow_temporal.cpp
- * \brief Driver function for tests related to the (steady pseudo-)temporal solution process 
+/** \file flowpseudotime.cpp
+ * \brief Driver function for tests related to the steady pseudo-temporal solution process 
  * \author Aditya Kashi
  */
 
@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	SteadyFlowCase case1(opts);
 
 	// solution vector
 	Vec u;
@@ -44,7 +45,7 @@ int main(int argc, char *argv[])
 	// solve case - constructs (creates) u, computes the solution and stores the solution in it
 	if(testchoice == "exception_nanorinf") {
 		try {
-			ierr = steadyCase(opts, "", &u);
+			ierr = case1.run("", &u);
 			CHKERRQ(ierr);
 		}
 		catch (Numerical_error& e) {

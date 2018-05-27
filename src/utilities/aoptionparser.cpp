@@ -47,7 +47,8 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	opts.adiawallvel = 0;
 	opts.isothermalwall_marker=-1; 
 	opts.isothermalpressurewall_marker=-1; 
-	opts.adiabaticwall_marker=-1; 
+	opts.adiabaticwall_marker=-1;
+	opts.time_integrator = "NONE";
 
 	std::ifstream control; 
 	open_file_toRead(argv[1], control);
@@ -76,12 +77,12 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 		opts.lognres = false;
 
 	control >> dum;
-	control >> dum; control >> opts.simtype;
+	control >> dum; control >> opts.flowtype;
 	control >> dum; control >> opts.gamma;
 	control >> dum; control >> opts.alpha;
 	opts.alpha = opts.alpha*PI/180.0;
 	control >> dum; control >> opts.Minf;
-	if(opts.simtype == "NAVIERSTOKES") {
+	if(opts.flowtype == "NAVIERSTOKES") {
 		opts.viscsim = true;
 
 		control >> dum; control >> opts.Tinf;
@@ -151,6 +152,18 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	if(opts.vol_output_reqd == "YES") {
 		control >> dum; 
 		control >> opts.volnameprefix;
+	}
+
+	// Time stuff
+	control.get(dumc); std::getline(control,dum);
+	std::getline(control,dum); control >> opts.sim_type; control.get(dumc); 
+	if(opts.sim_type == "UNSTEADY")
+	{
+		std::getline(control,dum); control >> opts.final_time; control.get(dumc);
+		std::getline(control,dum); control >> opts.time_integrator; control.get(dumc);
+		std::getline(control,dum); control >> opts.time_order; control.get(dumc);
+		std::getline(control,dum); control >> opts.initcfl; control.get(dumc);
+		opts.phy_timestep = opts.initcfl;
 	}
 
 	control >> dum;

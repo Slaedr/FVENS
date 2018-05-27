@@ -38,6 +38,9 @@ EULER
 ../data/naca-euler-su2-hll
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
 ######################################################################
 -inviscid-flux
 HLL
@@ -45,6 +48,8 @@ HLL
 LEASTSQUARES
 -limiter
 WENO
+---Limiter-parameter
+20.0
 ---Reconstruct-primitive-variables?(YES,NO)
 YES
 ######################################################################

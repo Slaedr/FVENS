@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
 	Vec u;
 
 	// solve case - constructs (creates) u, computes the solution and stores the solution in it
-	ierr = steadyCase(opts, "", &u); CHKERRQ(ierr);
+	SteadyFlowCase case1(opts);
+	ierr = case1.run("", &u); CHKERRQ(ierr);
 
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
 

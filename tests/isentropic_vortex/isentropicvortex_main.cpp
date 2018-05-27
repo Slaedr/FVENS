@@ -66,8 +66,19 @@ int main(int argc, char *argv[])
 		opts.firsttolerance, opts.firstmaxiter,
 	};
 
-	const IsenVortexConfig ivconf {opts.gamma, opts.Minf, ivopts.vcentre, ivopts.strength,
-		ivopts.clength, ivopts.sigma, alpha};
+	// Read isen-vortex control params
+	std::ifstream infile(argv[2]);
+	std::string dum;
+	std::array<a_real,2> vcentre;
+	a_real strength, clength, sigma;
+	infile >> dum; infile >> vcentre[0] >> vcentre[1];
+	infile >> dum; infile >> strength;
+	infile >> dum; infile >> clength;
+	infile >> dum; infile >> sigma;
+	infile.close()
+
+	const IsenVortexConfig ivconf {opts.gamma, opts.Minf, vcentre, strength,
+			clength, sigma, opts.alpha};
 
 	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
 

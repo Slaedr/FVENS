@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 
+	SteadyFlowCase case1(opts);
+
 	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
 
 	for(int imesh = 0; imesh < nmesh; imesh++) 
@@ -36,7 +38,7 @@ int main(int argc, char *argv[])
 		// Mesh file suffix
 		std::string meshs = std::to_string(imesh) + ".msh";
 
-		const FlowSolutionFunctionals fnls { steadyCase_output(opts, meshs, &u, false) };
+		const FlowSolutionFunctionals fnls { case1.run_output(meshs, false, &u) };
 
 		const a_real h = fnls.meshSizeParameter;
 		const a_real err = fnls.entropy;

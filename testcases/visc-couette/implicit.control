@@ -58,6 +58,9 @@ YES
 YES
 ---Filename-for-volume-output
 ../data/coutte
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 LLF
@@ -92,7 +95,7 @@ IMPLICIT
 ---ramp-start-step-and-end-step
 20 100
 ---tolerance-for-initialization
-1e-2
+1e-1
 ---max-time-steps-for-initialization
 1000
 ########################################################################

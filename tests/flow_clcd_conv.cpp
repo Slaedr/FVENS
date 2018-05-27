@@ -1,3 +1,8 @@
+/** \file flow_clcd_conv.cpp
+ * \brief Spatial convergence tests for target functionals
+ * \author Aditya Kashi
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -45,6 +50,8 @@ int main(int argc, char *argv[])
 	// Read control file
 
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+
+	SteadyFlowCase case1(opts);
 	
 	std::vector<double> lh(nmesh), clerrors(nmesh), cdperrors(nmesh), cdsferrors(nmesh),
 		clslopes(nmesh-1), cdpslopes(nmesh-1), cdsfslopes(nmesh-1);
@@ -56,7 +63,7 @@ int main(int argc, char *argv[])
 		
 		std::string meshs = std::to_string(imesh) + ".msh";
 		
-		const FlowSolutionFunctionals fnls { steadyCase_output(opts, meshs, &u, false) };
+		const FlowSolutionFunctionals fnls { case1.run_output(meshs, false, &u) };
 
 		std::cout << "CL Cdp CDsf = " << fnls.CL << " " << fnls.CDp << " " << fnls.CDsf << std::endl;
 		

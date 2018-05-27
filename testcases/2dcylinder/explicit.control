@@ -38,6 +38,9 @@ EULER
 ../data/2dcyl
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 HLL

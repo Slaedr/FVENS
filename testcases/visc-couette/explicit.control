@@ -58,6 +58,9 @@ YES
 YES
 ---Filename-for-volume-output
 ../data/coutte
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
 LLF

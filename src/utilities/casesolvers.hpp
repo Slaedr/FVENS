@@ -23,32 +23,79 @@ struct FlowSolutionFunctionals
 	a_real CDsf;                ///< Coefficient of drag caused by skin-friction
 };
 
-/// Solves a steady-state case on one mesh
-/** Writes no output files. \sa steadyCase_output
- *
- * \param opts Parsed options from a control file
- * \param mesh_suffix A string to concatenate to the [mesh file name](\ref FlowParserOptions::meshfile)
- *   before passing to the mesh class to be read.
- * \param u Pointer to an uninitialized PETSc vec used for storing the solution; must be destroyed
- *   explicitly by the caller after it has been used.
- * \return PETSc error code
- */
-int steadyCase(const FlowParserOptions& opts, const std::string mesh_suffix, Vec *const u);
+class FlowCase
+{
+public:
+	/// Construct a flow case with parsed options
+	/** \param opts Parsed options from a control file
+	 */
+	FlowCase(const FlowParserOptions& options);
 
-/// Solves a steady-state case on one mesh
-/** Writes ASCII surface and volume output files depending on the control database. May also write
- * a VTU file of the volume output.
- *
- * \param opts Parsed options from a control file
- * \param mesh_suffix A string to concatenate to the [mesh file name](\ref FlowParserOptions::meshfile)
- *   before passing to the mesh class to be read.
- * \param u Pointer to an uninitialized PETSc vec used for storing the solution; must be destroyed
- *   explicitly by the caller after it has been used.
- * \param vtu_output_needed If true, writes out a VTU output file to a filename determined by the
- *   control database.
+	/// Setup and run a case without writing output files and without computing output functionals
+	/** \param mesh_suffix A string to concatenate to the
+	 *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
+	 * \param u Pointer to an uninitialized PETSc vec used for storing the solution;
+	 *   must be destroyed explicitly by the caller after it has been used.
+	 */
+	virtual int run(const std::string mesh_suffix, Vec *const u) const;
+
+	/// Setup and run a case, return some functionals of interest and optionally write output files
+	/** \param mesh_suffix A string to concatenate to the
+	 *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
+	 * \param vtu_output_needed Whether writing the full solution to VTU files is desired.
+	 * \param u Pointer to an uninitialized PETSc vec used for storing the solution;
+	 *   must be destroyed explicitly by the caller after it has been used.
+	 */
+	virtual FlowSolutionFunctionals run_output(const std::string mesh_suffix,
+												const bool vtu_output_needed,
+												Vec *const u) const;
+
+	/// Construct a mesh from the base mesh name in the [options database](\ref FlowParserOptions)
+	///  and a suffix
+	/** \param mesh_suffix A string to concatenate to the
+	 *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
+	 */
+	UMesh2dh constructMesh(const std::string mesh_suffix) const;
+
+	/// Solve a case given a spatial discretization context
+	/** Specific case types must provide an implementation of this.
+	 * \return An error code (may also throw exceptions)
+	 */
+	virtual int execute(const Spatial<NVARS> *const prob, Vec *const u) const = 0;
+
+protected:
+	const FlowParserOptions& opts;
+};
+
+/// Solution procedure for a steady-state case
+/** To use, one should just call either \ref FlowCase::run or \ref FlowCase::run_output.
+ * This class just provides the underlying implementation.
  */
-FlowSolutionFunctionals steadyCase_output(const FlowParserOptions& opts, const std::string mesh_suffix, 
-	Vec *const u, const bool vtu_output_needed);
+class SteadyFlowCase : public FlowCase
+{
+public:
+	/// Construct a flow case with parsed options
+	SteadyFlowCase(const FlowParserOptions& options);
+
+protected:
+	/// Solve a case given a spatial discretization context
+	int execute(const Spatial<NVARS> *const prob, Vec *const u) const;
+};
+
+/// Solution procedure for an unsteady flow case
+/** To use, one should just call either \ref FlowCase::run or \ref FlowCase::run_output.
+ * Currently only TVD RK time integration is supported.
+ */
+class UnsteadyFlowCase : public FlowCase
+{
+public:
+	/// Construct a flow case with parsed options
+	UnsteadyFlowCase(const FlowParserOptions& options);
+
+protected:
+	/// Solve a case given a spatial discretization context
+	int execute(const Spatial<NVARS> *const prob, Vec *const u) const;
+};
 
 }
 #endif

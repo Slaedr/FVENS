@@ -38,6 +38,9 @@ EULER
 ../data/naca-euler-su2
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
 ######################################################################
 -inviscid-flux
 HLLC

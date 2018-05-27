@@ -25,15 +25,17 @@ struct FlowParserOptions
 {
 	std::string meshfile, vtu_output_file, 
 		logfile,                           ///< File to log timing data in
-		simtype,                           ///< Type of flow to simulate - EULER, NAVIERSTOKES
+		flowtype,                          ///< Type of flow to simulate - EULER, NAVIERSTOKES
 		init_soln_file,                    ///< File to read initial solution from (not implemented)
 		invflux, invfluxjac,               ///< Inviscid numerical flux
 		gradientmethod, limiter,           ///< Reconstruction type
 		timesteptype,                      ///< Explicit or implicit time stepping
 		constvisc,                         ///< NO for Sutherland viscosity
 		surfnameprefix, volnameprefix,     ///< Filename prefixes for output files
-		vol_output_reqd;                   ///< Whether volume output is required in a text file
+		vol_output_reqd,                   ///< Whether volume output is required in a text file
 		                                   ///<  in addition to the main VTU output
+		sim_type,                          ///< Steady or unsteady simulation
+		time_integrator;                   ///< Physical time discretization scheme
 	
 	a_real initcfl, endcfl,                  ///< Starting CFL number and max CFL number
 		tolerance,                           ///< Relative tolerance for the whole nonlinear problem
@@ -44,7 +46,9 @@ struct FlowParserOptions
 		limiter_param,                       ///< Parameter controlling some limiters
 		twalltemp, twallvel,                 ///< Isothermal wall temperature and tang. velocity
 		adiawallvel,                         ///< Adiabatic wall tangential velocity magnitude
-		tpwalltemp, tpwallpressure, tpwallvel;  ///< Deprecated
+		tpwalltemp, tpwallpressure, tpwallvel,  ///< Deprecated
+		final_time,                          ///< Physical time upto which to simulate
+		phy_timestep;                        ///< Constant physical time step for unsteady implicit
 	
 	int maxiter, 
 		rampstart, rampend, 
@@ -58,7 +62,8 @@ struct FlowParserOptions
 		periodic_marker, 
 		periodic_axis, 
 		num_out_walls,                    ///< Number of wall boundary markers where output is needed
-		num_out_others;                   ///< Number of other boundaru markers where output is needed
+		num_out_others,                   ///< Number of other boundaru markers where output is needed
+		time_order;                       ///< Desired order of accuracy in time
 	
 	short soln_init_type, 
 		  usestarter;                     ///< Whether to start with a first-order solver initially
@@ -66,7 +71,7 @@ struct FlowParserOptions
 	bool lognres, 
 		 useconstvisc, 
 		 viscsim,
-		 order2;
+		 order2;                     ///< Whether 2nd order in space is required
 	
 	std::vector<int> lwalls,         ///< List of wall boundary markers for output
 		lothers;                     ///< List of other boundary markers for output
