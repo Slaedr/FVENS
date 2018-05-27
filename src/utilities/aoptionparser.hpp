@@ -35,15 +35,15 @@ struct FlowParserOptions
 		vol_output_reqd;                   ///< Whether volume output is required in a text file
 		                                   ///<  in addition to the main VTU output
 	
-	a_real initcfl, endcfl,                     ///< Starting CFL number and max CFL number
-		tolerance,                              ///< Relative tolerance for the whole nonlinear problem
-		firstinitcfl, firstendcfl,              ///< Starting and max CFL numbers for starting problem
-		firsttolerance,                         ///< Relative tolerance for starting problem
-		Minf, alpha, Reinf, Tinf,               ///< Free-stream flow properties
-		Pr, gamma,                              ///< Non-dimensional constants Prandtl no., adia. index
-		limiter_param,                          ///< Parameter controlling some limiters
-		twalltemp, twallvel,                    ///< Isothermal wall temperature and tang. velocity
-		adiawallvel,                            ///< Adiabatic wall tangential velocity magnitude
+	a_real initcfl, endcfl,                  ///< Starting CFL number and max CFL number
+		tolerance,                           ///< Relative tolerance for the whole nonlinear problem
+		firstinitcfl, firstendcfl,           ///< Starting and max CFL numbers for starting problem
+		firsttolerance,                      ///< Relative tolerance for starting problem
+		Minf, alpha, Reinf, Tinf,            ///< Free-stream flow properties
+		Pr, gamma,                           ///< Non-dimensional constants Prandtl no., adia. index
+		limiter_param,                       ///< Parameter controlling some limiters
+		twalltemp, twallvel,                 ///< Isothermal wall temperature and tang. velocity
+		adiawallvel,                         ///< Adiabatic wall tangential velocity magnitude
 		tpwalltemp, tpwallpressure, tpwallvel;  ///< Deprecated
 	
 	int maxiter, 
