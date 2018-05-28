@@ -61,7 +61,7 @@ public:
 	/** Specific case types must provide an implementation of this.
 	 * \return An error code (may also throw exceptions)
 	 */
-	virtual int execute(const Spatial<NVARS> *const prob, Vec *const u) const = 0;
+	virtual int execute(const Spatial<NVARS> *const prob, Vec u) const = 0;
 
 protected:
 	const FlowParserOptions& opts;
@@ -77,9 +77,8 @@ public:
 	/// Construct a flow case with parsed options
 	SteadyFlowCase(const FlowParserOptions& options);
 
-protected:
 	/// Solve a case given a spatial discretization context
-	int execute(const Spatial<NVARS> *const prob, Vec *const u) const;
+	int execute(const Spatial<NVARS> *const prob, Vec u) const;
 };
 
 /// Solution procedure for an unsteady flow case
@@ -92,9 +91,8 @@ public:
 	/// Construct a flow case with parsed options
 	UnsteadyFlowCase(const FlowParserOptions& options);
 
-protected:
 	/// Solve a case given a spatial discretization context
-	int execute(const Spatial<NVARS> *const prob, Vec *const u) const;
+	int execute(const Spatial<NVARS> *const prob, Vec u) const;
 };
 
 }

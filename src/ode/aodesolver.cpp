@@ -618,7 +618,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 				{
 					ustage(iel,i) = tvdcoeffs(istage,0)*u(iel,i)
 						          + tvdcoeffs(istage,1)*ustage(iel,i)
-								  - tvdcoeffs(istage,2) * dtmin*cfl/m->garea(iel)*residual(iel,i);
+						          - tvdcoeffs(istage,2) * dtmin*cfl/m->garea(iel)*residual(iel,i);
 				}
 			}
 		}

@@ -48,7 +48,8 @@ struct FlowParserOptions
 		adiawallvel,                         ///< Adiabatic wall tangential velocity magnitude
 		tpwalltemp, tpwallpressure, tpwallvel,  ///< Deprecated
 		final_time,                          ///< Physical time upto which to simulate
-		phy_timestep;                        ///< Constant physical time step for unsteady implicit
+		phy_timestep,                        ///< Constant physical time step for unsteady implicit
+		phy_cfl;                             ///< CFL used only by unsteady explicit solvers
 	
 	int maxiter, 
 		rampstart, rampend, 

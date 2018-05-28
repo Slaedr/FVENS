@@ -162,8 +162,7 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 		std::getline(control,dum); control >> opts.final_time; control.get(dumc);
 		std::getline(control,dum); control >> opts.time_integrator; control.get(dumc);
 		std::getline(control,dum); control >> opts.time_order; control.get(dumc);
-		std::getline(control,dum); control >> opts.initcfl; control.get(dumc);
-		opts.phy_timestep = opts.initcfl;
+		std::getline(control,dum); control >> opts.phy_cfl; control.get(dumc);
 	}
 
 	control >> dum;

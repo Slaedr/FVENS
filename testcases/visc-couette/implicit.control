@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/visc-couette/grids/struct0.msh
+../testcases/visc-couette/grids/struct1.msh
 ---Output-file
 ../data/couetteq.vtu
 ---Log-file-for-runtimes
@@ -63,13 +63,13 @@ YES
 STEADY
 ######################################################################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
-LLF
+ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
 NONE
 ---Limiter-parameter
-1e4
+20.0
 ---Reconstruct-primitive-variables?(YES=reconstruct-primitive,NO=reconstruct-conserved)
 YES
 ######################################################################
@@ -100,4 +100,4 @@ IMPLICIT
 1000
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-LLF
+ROE

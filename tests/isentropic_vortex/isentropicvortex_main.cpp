@@ -42,6 +42,8 @@ int main(int argc, char *argv[])
 	// Read control file
 
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+
+	UnsteadyFlowCase case1(opts);
 	
 	// physical configuration
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
@@ -79,6 +81,7 @@ int main(int argc, char *argv[])
 
 	const IsenVortexConfig ivconf {opts.gamma, opts.Minf, vcentre, strength,
 			clength, sigma, opts.alpha};
+	const IsentropicVortexProblem isen(ivconf);
 
 	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
 
@@ -97,140 +100,26 @@ int main(int argc, char *argv[])
 		std::cout << "Setting up main spatial scheme.\n";
 		const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
-		std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-		const Spatial<NVARS> *const startprob
-			= create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
+		Vec u, uexact;
+		ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem()*4, &u); CHKERRQ(ierr);
+		ierr = VecDuplicate(u, &uexact); CHKERRQ(ierr);
 
-		std::cout << "\n***\n";
+		// get initial and exact solution vectors
+		double *uarr, *uexarr;
+		ierr = VecGetArray(u, &uarr); CHKERRQ(ierr);
+		ierr = VecGetArray(uexact, &uexarr); CHKERRQ(ierr);
+		isen.getInitialConditionAndExactSolution(m, opts.final_time, uarr, uexarr);
+		ierr = VecRestoreArray(u, &uarr); CHKERRQ(ierr);
+		ierr = VecRestoreArray(uexact, &uexarr); CHKERRQ(ierr);
 
-		/* NOTE: Since the "startup" solver (meant to generate an initial solution) and the "main" solver
-		 * have the same number of unknowns and use first-order Jacobians, we have just one set of
-		 * solution vector, Jacobian matrix, preconditioning matrix and KSP solver.
-		 */
-
-		// solution vector
-		Vec u;
-
-		// Initialize Jacobian for implicit schemes
-		Mat M;
-		ierr = setupSystemMatrix<NVARS>(&m, &M); CHKERRQ(ierr);
-		ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
-
-		// setup matrix-free Jacobian if requested
-		Mat A;
-		MatrixFreeSpatialJacobian<NVARS> mfjac;
-		PetscBool mf_flg = PETSC_FALSE;
-		ierr = PetscOptionsHasName(NULL, NULL, "-matrix_free_jacobian", &mf_flg); CHKERRQ(ierr);
-		if(mf_flg) {
-			std::cout << " Allocating matrix-free Jac\n";
-			ierr = setup_matrixfree_jacobian<NVARS>(&m, &mfjac, &A); 
-			CHKERRQ(ierr);
-		}
-
-		// initialize solver
-		KSP ksp;
-		ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-		if(mf_flg) {
-			ierr = KSPSetOperators(ksp, A, M); 
-			CHKERRQ(ierr);
-		}
-		else {
-			ierr = KSPSetOperators(ksp, M, M); 
-			CHKERRQ(ierr);
-		}
-		ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
-
-		// set up time discrization
-
-		SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
-
-		if(opts.timesteptype == "IMPLICIT")
-		{
-			if(opts.usestarter != 0) {
-				starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
-				std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
-			}
-
-		}
-		else
-		{
-			if(opts.usestarter != 0) {
-				starttime = new SteadyForwardEulerSolver<NVARS>(startprob, u, starttconf);
-				std::cout << "Set up explicit forward Euler temporal scheme for startup solve.\n";
-			}
-		}
-
-		// Ask the spatial discretization context to initialize flow variables
-		startprob->initializeUnknowns(u);
-
-		// setup BLASTed preconditioning if requested
-#ifdef USE_BLASTED
-		Blasted_data_vec bctx = newBlastedDataVec();
-		if(opts.timesteptype == "IMPLICIT") {
-			ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
-		}
-#endif
-
-		std::cout << "\n***\n";
-
-		// computation
-
-		if(opts.usestarter != 0) {
-
-			mfjac.set_spatial(startprob);
-
-			// solve the starter problem to get the initial solution
-			ierr = starttime->solve(u); CHKERRQ(ierr);
-		}
-
-		// Reset the KSP - could be advantageous for some types of algebraic solvers
-		ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-#ifdef USE_BLASTED
-		destroyBlastedDataVec(&bctx);
-#endif
-		ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-		if(mf_flg) {
-			ierr = KSPSetOperators(ksp, A, M); 
-			CHKERRQ(ierr);
-		}
-		else {
-			ierr = KSPSetOperators(ksp, M, M); 
-			CHKERRQ(ierr);
-		}
-		ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
-#ifdef USE_BLASTED
-		// this will reset the timing
-		bctx = newBlastedDataVec();
-		if(opts.timesteptype == "IMPLICIT") {
-			ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
-		}
-#endif
-
-		// setup nonlinear ODE solver for main solve
-		if(opts.timesteptype == "IMPLICIT")
-		{
-			time = new SteadyBackwardEulerSolver<4>(prob, maintconf, ksp);
-			std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
-		}
-		else
-		{
-			time = new SteadyForwardEulerSolver<4>(prob, u, maintconf);
-			std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
-		}
-
-		mfjac.set_spatial(prob);
-
-		// Solve the main problem
-		ierr = time->solve(u); CHKERRQ(ierr);
+		ierr = case1.execute(prob, u); CHKERRQ(ierr);
 
 		std::cout << "***\n";
 		
 		a_real err;
-		// get the correct kind of FlowFV - but there's got to be a better way to do this
-		if(opts.order2 && opts.useconstvisc) {
-			const FlowFV_base* fprob = reinterpret_cast<const FlowFV_base*>(prob);
-			err = fprob->compute_entropy_cell(u);
-		}
+		// get the FlowFV to compute the entropy error
+		const FlowFV_base* fprob = reinterpret_cast<const FlowFV_base*>(prob);
+		err = fprob->compute_entropy_cell(u);
 		const double h = 1.0/sqrt(m.gnelem());
 		std::cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << std::endl;
 		lh[imesh] = log10(h);

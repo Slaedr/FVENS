@@ -53,7 +53,10 @@ int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
-	ierr = execute(prob, u);
+	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
+	prob->initializeUnknowns(*u);
+
+	ierr = execute(prob, *u); CHKERRQ(ierr);
 
 	delete prob;
 
@@ -76,7 +79,10 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 	const FlowFV_base *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
-	ierr = execute(prob, u);
+	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
+	prob->initializeUnknowns(*u);
+
+	ierr = execute(prob, *u);
 	fvens_throw(ierr, "Could not solve steady case! Error code " + std::to_string(ierr));
 
 	const a_real entropy = prob->compute_entropy_cell(*u);
@@ -132,7 +138,7 @@ SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 { }
 
 /// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
-int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) const
+int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 	
@@ -157,7 +163,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) cons
 	// Initialize Jacobian for implicit schemes
 	Mat M;
 	ierr = setupSystemMatrix<NVARS>(m, &M); CHKERRQ(ierr);
-	ierr = MatCreateVecs(M, u, NULL); CHKERRQ(ierr);
+	//ierr = MatCreateVecs(M, u, NULL); CHKERRQ(ierr);
 
 	// setup matrix-free Jacobian if requested
 	Mat A;
@@ -212,13 +218,13 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) cons
 	else
 	{
 		if(opts.usestarter != 0) {
-			starttime = new SteadyForwardEulerSolver<NVARS>(startprob, *u, starttconf);
+			starttime = new SteadyForwardEulerSolver<NVARS>(startprob, u, starttconf);
 			std::cout << "Set up explicit forward Euler temporal scheme for startup solve.\n";
 		}
 	}
 
 	// Ask the spatial discretization context to initialize flow variables
-	startprob->initializeUnknowns(*u);
+	//startprob->initializeUnknowns(*u);
 
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
@@ -226,7 +232,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) cons
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
 	if(opts.timesteptype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(ksp,*u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
@@ -239,7 +245,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) cons
 		mfjac.set_spatial(startprob);
 
 		// solve the starter problem to get the initial solution
-		ierr = starttime->solve(*u); CHKERRQ(ierr);
+		ierr = starttime->solve(u); CHKERRQ(ierr);
 	}
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
@@ -261,7 +267,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) cons
 #ifdef USE_BLASTED
 	bctx = newBlastedDataList();
 	if(opts.timesteptype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(ksp,*u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
@@ -273,14 +279,14 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) cons
 	}
 	else
 	{
-		time = new SteadyForwardEulerSolver<NVARS>(prob, *u, maintconf);
+		time = new SteadyForwardEulerSolver<NVARS>(prob, u, maintconf);
 		std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
 	}
 
 	mfjac.set_spatial(prob);
 
 	// Solve the main problem
-	ierr = time->solve(*u); CHKERRQ(ierr);
+	ierr = time->solve(u); CHKERRQ(ierr);
 
 	std::cout << "***\n";
 
@@ -307,12 +313,12 @@ UnsteadyFlowCase::UnsteadyFlowCase(const FlowParserOptions& options)
 
 /** \todo Implement an unsteady integrator factory and use that here.
  */
-int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) const
+int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 
 	if(opts.time_integrator == "TVDRK") {
-		TVDRKSolver<NVARS> time(prob, *u, opts.time_order, opts.logfile, opts.initcfl);
+		TVDRKSolver<NVARS> time(prob, u, opts.time_order, opts.logfile, opts.phy_cfl);
 		ierr = time.solve(opts.final_time);
 		CHKERRQ(ierr);
 		return ierr;
@@ -341,7 +347,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) co
 	// Initialize Jacobian for implicit schemes
 	Mat M;
 	ierr = setupSystemMatrix<NVARS>(m, &M); CHKERRQ(ierr);
-	ierr = MatCreateVecs(M, u, NULL); CHKERRQ(ierr);
+	//ierr = MatCreateVecs(M, u, NULL); CHKERRQ(ierr);
 
 	// setup matrix-free Jacobian if requested
 	Mat A;
@@ -396,13 +402,13 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) co
 	else
 	{
 		if(opts.usestarter != 0) {
-			starttime = new SteadyForwardEulerSolver<NVARS>(startprob, *u, starttconf);
+			starttime = new SteadyForwardEulerSolver<NVARS>(startprob, u, starttconf);
 			std::cout << "Set up explicit forward Euler temporal scheme for startup solve.\n";
 		}
 	}
 
 	// Ask the spatial discretization context to initialize flow variables
-	startprob->initializeUnknowns(*u);
+	//startprob->initializeUnknowns(*u);
 
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
@@ -410,7 +416,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) co
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
 	if(opts.timesteptype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(ksp,*u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
@@ -423,7 +429,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) co
 		mfjac.set_spatial(startprob);
 
 		// solve the starter problem to get the initial solution
-		ierr = starttime->solve(*u); CHKERRQ(ierr);
+		ierr = starttime->solve(u); CHKERRQ(ierr);
 	}
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
@@ -445,7 +451,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) co
 #ifdef USE_BLASTED
 	bctx = newBlastedDataList();
 	if(opts.timesteptype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(ksp,*u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
@@ -457,14 +463,14 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec *const u) co
 	}
 	else
 	{
-		time = new SteadyForwardEulerSolver<NVARS>(prob, *u, maintconf);
+		time = new SteadyForwardEulerSolver<NVARS>(prob, u, maintconf);
 		std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
 	}
 
 	mfjac.set_spatial(prob);
 
 	// Solve the main problem
-	ierr = time->solve(*u); CHKERRQ(ierr);
+	ierr = time->solve(u); CHKERRQ(ierr);
 
 	std::cout << "***\n";
 

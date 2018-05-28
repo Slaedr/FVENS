@@ -49,7 +49,7 @@ TVDRK
 0.24
 #######################SPATIAL-DISCRETIZATION############################
 ---Inviscid-flux(LLF,VANLEER,HLL,HLLC,ROE)
-HLLC
+ROE
 ---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
 LEASTSQUARES
 ---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
@@ -86,4 +86,4 @@ EXPLICIT
 250
 ########################################################################
 ---inviscid-flux-Jacobian-for-preconditioner-and-or-solver(LLF,HLL)
-HLLC
+ROE
