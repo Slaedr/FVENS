@@ -1,15 +1,13 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <omp.h>
-#include <petscksp.h>
+#include <petscvec.h>
 
-#include "../src/alinalg.hpp"
-#include "../src/autilities.hpp"
-#include "../src/aoutput.hpp"
-#include "../src/aodesolver.hpp"
-#include "../src/afactory.hpp"
-#include "../src/ameshutils.hpp"
+#include "linalg/alinalg.hpp"
+#include "utilities/casesolvers.hpp"
+#include "spatial/aoutput.hpp"
+#include "utilities/afactory.hpp"
+#include "mesh/ameshutils.hpp"
 #include "isentropicvortex.hpp"
 
 #ifdef USE_BLASTED
@@ -77,7 +75,7 @@ int main(int argc, char *argv[])
 	infile >> dum; infile >> strength;
 	infile >> dum; infile >> clength;
 	infile >> dum; infile >> sigma;
-	infile.close()
+	infile.close();
 
 	const IsenVortexConfig ivconf {opts.gamma, opts.Minf, vcentre, strength,
 			clength, sigma, opts.alpha};
@@ -101,7 +99,7 @@ int main(int argc, char *argv[])
 		const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 		Vec u, uexact;
-		ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem()*4, &u); CHKERRQ(ierr);
+		ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*4, &u); CHKERRQ(ierr);
 		ierr = VecDuplicate(u, &uexact); CHKERRQ(ierr);
 
 		// get initial and exact solution vectors
@@ -127,21 +125,9 @@ int main(int argc, char *argv[])
 		if(imesh > 0)
 			slopes[imesh-1] = (lerrors[imesh]-lerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
 
-
-		delete starttime;
-		delete time;
-		ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
-#ifdef USE_BLASTED
-		destroyBlastedDataVec(&bctx);
-#endif
-		ierr = MatDestroy(&M); CHKERRQ(ierr);
-		if(mf_flg) {
-			ierr = MatDestroy(&A); 
-			CHKERRQ(ierr);
-		}
-
 		delete prob;
-		delete startprob;
+		ierr = VecDestroy(&u); CHKERRQ(ierr);
+		ierr = VecDestroy(&uexact); CHKERRQ(ierr);
 	}
 	
 	std::cout << ">> Spatial orders = \n" ;

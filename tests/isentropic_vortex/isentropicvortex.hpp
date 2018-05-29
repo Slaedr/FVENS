@@ -8,9 +8,12 @@
 #define FVENS_ISENTROPIC_VORTEX_H
 
 #include <array>
-#include "amesh2dh.hpp"
+#include "mesh/amesh2dh.hpp"
 
 namespace fvens_tests {
+
+using acfd::a_real;
+using acfd::a_int;
 
 /// Physical configuration for the isentropic vortex problem
 struct IsenVortexConfig {
@@ -32,7 +35,7 @@ public:
 	IsentropicVortexProblem(const IsenVortexConfig config);
 
 	/// Computes initial condition and exact solution for a given mesh and final time
-	void getInitialConditionAndExactSolution(const UMesh2dh& mesh, const a_real time,
+	void getInitialConditionAndExactSolution(const acfd::UMesh2dh& mesh, const a_real time,
 	                                         a_real *const u, a_real *const uexact) const;
 
 protected:
@@ -40,10 +43,13 @@ protected:
 	a_real pinf;
 
 	/// Computes vortex intensity at a given location
-	a_real computeOmega(std::array<a_real,2> r) const;
+	a_real computeOmega(const std::array<a_real,2> r) const;
 
 	/// Computes velocity
-	std::array<a_real,2> computeVelocity(std::array<a_real,2> r) const;
+	/** \param r Position
+	 * \param omega Vortex intensity \sa computeOmega
+	 */
+	std::array<a_real,2> computeVelocity(const std::array<a_real,2> r, const a_real omega) const;
 
 	/// Computes the flow state as non-dimensional conserved variables at a given location
 	void computeFlowState(const std::array<a_real,2> cellcentre,
