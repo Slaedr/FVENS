@@ -16,7 +16,7 @@
    along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-h = 0.2/refine;
+h = 0.4/refine;
 L = 5.0;
 
 xstart = -L;
@@ -27,6 +27,10 @@ Point(1) = {xstart, ystart, 0, h};
 Point(2) = {xend, ystart, 0, h};
 Point(3) = {xend, yend, 0, h};
 Point(4) = {xstart, yend, 0, h};
+/*Point(5) = {-L/10, ystart, 0, 3*h};
+Point(6) = {L/10, ystart, 0, 3*h};
+Point(7) = {-L/10, yend, 0, 3*h};
+Point(8) = {L/10, yend, 0, 3*h};*/
 Line(1) = {1, 2};
 Line(2) = {2, 3};
 Line(3) = {3, 4};

@@ -5,8 +5,9 @@
 
 #include "linalg/alinalg.hpp"
 #include "utilities/casesolvers.hpp"
-#include "spatial/aoutput.hpp"
 #include "utilities/afactory.hpp"
+#include "utilities/aerrorhandling.hpp"
+#include "spatial/aoutput.hpp"
 #include "mesh/ameshutils.hpp"
 #include "isentropicvortex.hpp"
 
@@ -90,7 +91,8 @@ int main(int argc, char *argv[])
 
 		UMesh2dh m;
 		m.readMesh(meshi);
-		CHKERRQ(preprocessMesh(m));
+		int ierr = preprocessMesh(m); 
+		acfd::fvens_throw(ierr, "Mesh could not be preprocessed!");
 		m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
 
 		std::cout << "\n***\n";

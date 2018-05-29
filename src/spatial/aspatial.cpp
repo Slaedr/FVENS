@@ -258,7 +258,6 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 		<< ", Periodic " << pconfig.periodic_id << '\n';
 	std::cout << "  Isothermal " << pconfig.isothermalwall_id;
 	std::cout << "  Adiabatic " << pconfig.adiabaticwall_id;
-	std::cout << "  Isothermal isobaric " << pconfig.isothermalbaricwall_id << '\n';
 	std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
 		<< pconfig.adiabaticwall_vel << '\n';
 	if(constVisc)
@@ -445,8 +444,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
 	}
-	
-	else {
+	else if(!(m->gintfacbtags(ied,0) == pconfig.periodic_id)) {
+		// Taken care of earlier
 		std::cout << " ! FlowFV: Unknown boundary tag!!\n";
 		std::abort();
 	}

@@ -156,7 +156,7 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 
 	// Time stuff
 	control.get(dumc); std::getline(control,dum);
-	std::getline(control,dum); control >> opts.sim_type; control.get(dumc); 
+	std::getline(control,dum); control >> opts.sim_type; control.get(dumc);
 	if(opts.sim_type == "UNSTEADY")
 	{
 		std::getline(control,dum); control >> opts.final_time; control.get(dumc);

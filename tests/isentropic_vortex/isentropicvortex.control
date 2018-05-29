@@ -28,12 +28,12 @@ EULER
 -1
 ---Periodic-marker
 1
+---Periodic-axis
+0
 ---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
 0
 ---Number-of-'other'-boundaries-at-which-surface-output-is-needed
 0
----Prefix-for-name-of-surface-output-file
-non-existentd-dir/2dcyl
 ---Is-volume-output-of-cell-centred-variables-required?
 NO
 #####################TEMPORAL-CONDITIONS##############################

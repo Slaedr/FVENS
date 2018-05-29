@@ -58,7 +58,7 @@ IMPLICIT
 ---initial-CFL
 250.0
 ---final-CFL
-500.0
+1000.0
 ---ramp-start-step-and-end-step
 50 100
 ---Tolerance
