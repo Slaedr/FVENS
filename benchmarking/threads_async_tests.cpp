@@ -89,14 +89,14 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 
 	// set up time discrization
 
-	const SteadySolverConfig maintconf {
-		opts.lognres, opts.logfile+".tlog",
+	SteadySolverConfig maintconf {
+		opts.lognres, opts.logfile,
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
 	};
 
 	const SteadySolverConfig starttconf {
-		opts.lognres, opts.logfile+"-init.tlog",
+		opts.lognres, opts.logfile+"-init",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
 	};
@@ -135,6 +135,9 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	if(mpirank == 0) {
 		outf << "# Preconditioner wall times #\n# num-cells = " << m.gnelem() << "\n";
 	}
+
+	// change file to which residual history is written
+	maintconf.logfile = opts.logfile + "-sweeps11-serial";
 
 	omp_set_num_threads(1);
 
@@ -181,6 +184,17 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			int irpt;
 			for(irpt = 0; irpt < numrepeat; irpt++) 
 			{
+				// change file to which residual history is written
+				// Only write residual history for last run
+				if(irpt != numrepeat-1)
+					maintconf.lognres = false;
+				else {
+					maintconf.lognres = opts.lognres;
+					maintconf.logfile = opts.logfile + "-sweeps"
+						+std::to_string(bswpseq[i])+std::to_string(aswpseq[i])+"-"
+						+std::to_string(numthreads)+"threads";
+				}
+
 				TimingData td = run_sweeps(startprob, prob, maintconf, bswpseq[i], aswpseq[i], 
 						&ksp, u, A, M, mfjac, mf_flg, bctx);
 
