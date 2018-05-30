@@ -191,13 +191,13 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	// set up time discrization
 
 	const SteadySolverConfig maintconf {
-		opts.lognres, opts.logfile+".tlog",
+		opts.lognres, opts.logfile,
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
 	};
 
 	const SteadySolverConfig starttconf {
-		opts.lognres, opts.logfile+"-init.tlog",
+		opts.lognres, opts.logfile+"-init",
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
 	};

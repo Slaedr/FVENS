@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
 
 	std::ofstream outf;
-	open_file_toWrite(opts.logfile, outf);
+	open_file_toWrite(opts.logfile+".logb", outf);
 
 	const std::string testtype = parsePetscCmd_string("-benchmark_type", 20);
 	const int bnrepeat = parsePetscCmd_int("-benchmark_num_repeat");
