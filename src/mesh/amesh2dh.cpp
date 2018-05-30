@@ -1299,7 +1299,7 @@ void UMesh2dh::compute_face_data()
 #endif
 }
 
-// This function is only valid in 2D
+/// This function is only valid in 2D
 void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
 {
 	if(bcm < 0) {
@@ -1336,7 +1336,7 @@ void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
 					const a_real cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
 					
 					// 1e-11 is seemingly the best tolerance Gmsh can offer
-					if(std::fabs(ci-cj) <= 1e-11)
+					if(std::fabs(ci-cj) <= 1e-8)
 					{
 						periodicmap[iface] = jface;
 						periodicmap[jface] = iface;

@@ -549,6 +549,8 @@ TVDRKSolver<nvars>::TVDRKSolver(const Spatial<nvars> *const spatial,
 	int ierr = VecDuplicate(uvec, &rvec);
 	if(ierr)
 		std::cout << "! TVDRKSolver: Could not create residual vector!\n";
+	std::cout << " TVDRKSolver: Initialized TVD RK solver of order " << order <<
+		", CFL = " << cfl << std::endl;
 }
 
 template <int nvars>
@@ -611,6 +613,9 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			if(istage == 0)
 				dtmin = *std::min_element(dtm.begin(),dtm.end());
 
+			if(!std::isfinite(dtmin))
+				throw Numerical_error("TVDRK solver diverged - dtmin is Nan or inf!");
+
 #pragma omp parallel for simd default(shared)
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
@@ -629,13 +634,13 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 				u(iel,ivar) = ustage(iel,ivar);
 
 
-		if(step % 50 == 0)
+		if(step % 10 == 0)
 			if(mpirank == 0)
 				std::cout << "  TVDRKSolver: solve(): Step " << step 
-					<< ", time " << time << std::endl;
+				          << ", time " << time << ", time-step = " << dtmin*cfl << std::endl;
 
 		step++;
-		time += dtmin;
+		time += dtmin*cfl;
 	}
 	
 	gettimeofday(&time2, NULL);
@@ -644,7 +649,8 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	walltime += (finalwtime-initialwtime); cputime += (finalctime-initialctime);
 
 	if(mpirank == 0) {
-		std::cout << " TVDRKSolver: solve(): Done, steps = " << step << "\n\n";
+		std::cout << " TVDRKSolver: solve(): Done, steps = " << step << ", phy time = "
+		          << time << "\n\n";
 		std::cout << " TVDRKSolver: solve(): Time taken by ODE solver:\n";
 		std::cout << "                                   CPU time = " << cputime 
 			<< ", wall time = " << walltime << std::endl << std::endl;

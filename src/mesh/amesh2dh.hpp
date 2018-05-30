@@ -87,7 +87,7 @@ public:
 	/// Returns the components of the unit normal or the length of a face \sa facemetric
 	a_real gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
-	/// Returns paired faces in case of periodic boundaries \sa periodicmap
+	/// Returns paired faces (\ref intfac) in case of periodic boundaries \sa periodicmap
 	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
 
 	/// Get \ref bface index of a face from its \ref intfac index

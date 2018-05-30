@@ -12,6 +12,7 @@ set(isentropicvortex_meshfiles
   ${CMAKE_CURRENT_BINARY_DIR}/grids/dom0.msh 
   ${CMAKE_CURRENT_BINARY_DIR}/grids/dom1.msh 
   ${CMAKE_CURRENT_BINARY_DIR}/grids/dom2.msh 
+  #${CMAKE_CURRENT_BINARY_DIR}/grids/dom3.msh 
   )
 foreach(imesh 0 1 2)
   math(EXPR imeshp1 ${imesh}+1)
@@ -33,6 +34,6 @@ add_dependencies(test_isentropicvortex isentropicvortex_meshes)
 add_test(NAME SpatialTemportalFlow_Euler_Vortex_TVDRK_LeastSquares_Roe_Tri
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND test_isentropicvortex ${CMAKE_CURRENT_SOURCE_DIR}/isentropicvortex.control
-  ${CMAKE_CURRENT_SOURCE_DIR}/vortex.params -number_of_meshes 2
+  ${CMAKE_CURRENT_SOURCE_DIR}/vortex.params -number_of_meshes 3
   )
 

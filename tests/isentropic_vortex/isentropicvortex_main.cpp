@@ -95,6 +95,12 @@ int main(int argc, char *argv[])
 		acfd::fvens_throw(ierr, "Mesh could not be preprocessed!");
 		m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
 
+		// Check periodic map
+		/*m.compute_boundary_maps();
+		for(a_int i = 0; i < m.gnbface(); i++) {
+			std::cout << m.gbifmap(i) << " -> " << m.gperiodicmap(i) << '\n';
+			}*/
+
 		std::cout << "\n***\n";
 
 		std::cout << "Setting up main spatial scheme.\n";
@@ -126,6 +132,14 @@ int main(int argc, char *argv[])
 		lerrors[imesh] = log10(err);
 		if(imesh > 0)
 			slopes[imesh-1] = (lerrors[imesh]-lerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
+
+		amat::Array2d<a_real> scalars;
+		amat::Array2d<a_real> velocities;
+		prob->postprocess_point(u, scalars, velocities);
+
+		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
+		writeScalarsVectorToVtu_PointData(opts.vtu_output_file+std::to_string(imesh)+".vtu",
+		                                  m, scalars, scalarnames, velocities, "velocity");
 
 		delete prob;
 		ierr = VecDestroy(&u); CHKERRQ(ierr);
