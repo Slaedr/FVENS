@@ -1,5 +1,5 @@
 ---Mesh-file(file-name-or-"READFROMCMD")
-../testcases/2dcylinder/grids/2dcylquad2.msh
+READFROMCMD
 ---Output-file
 ../data/2dcyl5.vtu
 ---Log-file-for-runtimes

@@ -1,3 +1,3 @@
 #! /bin/bash
 $@
-rm speedup_sweeps.log
+rm speedup_sweeps.logb

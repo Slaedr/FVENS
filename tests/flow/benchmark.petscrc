@@ -2,7 +2,7 @@
 #-log_view
 -options_left
 
--fvens_log_file speedup_sweeps.log
+-fvens_log_file speedup_sweeps
 
 -benchmark_type speedup_sweeps
 -benchmark_num_repeat 2

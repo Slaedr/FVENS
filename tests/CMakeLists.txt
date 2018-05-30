@@ -75,7 +75,9 @@ add_test(NAME SpatialFlow_NavierStokes_FlatPlate_LeastSquares_Roe_Quad WORKING_D
 
 if(WITH_BLASTED)
   add_test(NAME Benchmark_Euler_Blasted_run
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	COMMAND sh benchtest.sh ${CMAKE_BINARY_DIR}/bench_threads_async flow/small-2dcylinder.control
-	-options_file flow/benchmark.petscrc)
+	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+	  COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/benchtest.sh ${CMAKE_BINARY_DIR}/bench_threads_async 
+	  ${CMAKE_CURRENT_SOURCE_DIR}/flow/small-2dcylinder.control 
+	  ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh
+	  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/benchmark.petscrc)
 endif()
