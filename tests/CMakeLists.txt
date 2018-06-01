@@ -16,7 +16,7 @@ if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")
   message(WARNING "Gmsh not found")
 else()
   message(STATUS "Found Gmsh at ${GMSH_EXEC}")
-endif(GMSH_EXEC-NOTFOUND)
+endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/tests)
 
@@ -67,6 +67,7 @@ add_test(NAME Mesh_Topology_ElemSurrElem
 add_test(NAME Mesh_Periodic
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh periodic
   ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+
 add_test(NAME MeshUtils_LevelSchedule WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
   levelschedule input/squarecoarse.msh input/squarecoarselevels.dat)
