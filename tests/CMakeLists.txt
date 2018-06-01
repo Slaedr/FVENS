@@ -75,32 +75,44 @@ add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
   levelscheduleInternal input/2dcylinderhybrid.msh)
 
-add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg wall_boundaries)
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg wall_boundaries
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 
-add_test(NAME SpatialFlow_Walltest_HLLC WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+add_test(NAME SpatialFlow_Walltest_HLLC WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg numerical_flux HLLC)
-add_test(NAME SpatialFlow_Walltest_Roe WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux HLLC
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+add_test(NAME SpatialFlow_Walltest_Roe WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg numerical_flux ROE)
-add_test(NAME SpatialFlow_Walltest_AUSM WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux ROE
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+add_test(NAME SpatialFlow_Walltest_AUSM WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND  ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg numerical_flux AUSM)
-add_test(NAME SpatialFlow_Walltest_AUSMPlus WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux AUSM
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+add_test(NAME SpatialFlow_Walltest_AUSMPlus WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND  ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg numerical_flux AUSMPLUS)
-add_test(NAME SpatialFlow_Walltest_HLL WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux AUSMPLUS
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+add_test(NAME SpatialFlow_Walltest_HLL WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg numerical_flux HLL)
-add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux HLL
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  input/test.cfg numerical_flux LLF)
-add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux LLF
+  --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
+
+add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_pseudotime
-  flow/testexception.control -test_type exception_nanorinf -options_file flow/inv_cyl.petscrc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/testexception.control -test_type exception_nanorinf
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh)
 
+# The heat tests must still take place in the source directory as it has a hard-coded
+#  command-line parsing. For now that's okay because there are no ouput files.
 add_test(NAME SpatialDiffusion_LeastSquares_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testdiffusion
   heat/implls_quad.control -options_file heat/opts.petscrc)
@@ -111,34 +123,44 @@ add_test(NAME SpatialDiffusion_LeastSquares_Tri WORKING_DIRECTORY ${CMAKE_CURREN
 add_subdirectory(isentropic_vortex)
 
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv
-  flow/inv-cyl-ls-hllc_tri.control -options_file flow/inv_cyl.petscrc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv-cyl-ls-hllc_tri.control
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylinder)
 add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv
-  flow/inv-cyl-gg-hllc_tri.control -options_file flow/inv_cyl.petscrc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv-cyl-gg-hllc_tri.control -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylinder)
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv
-  flow/inv-cyl-ls-hllc_quad.control -options_file flow/inv_cyl.petscrc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv-cyl-ls-hllc_quad.control
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad)
 
 add_test(NAME SpatialFlow_Euler_NACA0012_transonic_WENO_LeastSquares_HLLC
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow
-  tests/flow/transonic-naca0012.control -options_file tests/flow/transonic-naca0012.petscrc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/transonic-naca0012.control
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/transonic-naca0012.petscrc
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/naca0012/grids/naca0012luo.msh)
 
 add_test(NAME SpatialFlow_NavierStokes_FlatPlate_LeastSquares_Roe_Quad
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv_clcd
-  flow/flatplate.control -options_file flow/flatplate.petscrc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/flatplate.control
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/flatplate.petscrc
+  -exact_solution_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/exact_clcd_flatplate.dat
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/visc-flatplate/grids/flatplatestructstretched)
 
 if(WITH_BLASTED)
   add_test(NAME Benchmark_Euler_Blasted_run
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-	  COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/benchtest.sh
-	  ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/bench_threads_async
+	  #COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/benchtest.sh
+	  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/bench_threads_async
 	  ${CMAKE_CURRENT_SOURCE_DIR}/flow/small-2dcylinder.control 
-	  ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh
-	  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/benchmark.petscrc)
+	  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/benchmark.petscrc
+	  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh )
 endif()

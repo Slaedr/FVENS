@@ -8,7 +8,7 @@ add_library(fvens_base utilities/aoptionparser.cpp utilities/afactory.cpp utilit
 	spatial/aspatial.cpp spatial/areconstruction.cpp spatial/agradientschemes.cpp 
 	spatial/anumericalflux.cpp physics/aphysics.cpp spatial/aoutput.cpp 
 	mesh/ameshutils.cpp mesh/amesh2dh.cpp utilities/aarray2d.cpp)
-target_link_libraries(fvens_base ${PETSC_LIB})
+target_link_libraries(fvens_base ${PETSC_LIB} ${Boost_LIBRARIES})
 if(WITH_BLASTED)
 	target_link_libraries(fvens_base ${BLASTED_LIB})
   endif()

@@ -7,6 +7,11 @@
 #include "aoptionparser.hpp"
 #include "aerrorhandling.hpp"
 #include <iostream>
+#include <cstdlib>
+#include <boost/program_options/cmdline.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/program_options/parsers.hpp>
 
 namespace acfd {
 
@@ -35,6 +40,28 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 		std::abort();
 	}
 
+	// First set up command line options parsing
+
+	namespace po = boost::program_options;
+	po::options_description desc
+		(std::string("FVENS options: The first argument is always the input control file name.\n")
+		 + "Further options");
+	desc.add_options()
+		("help", "help message")
+		("mesh_file", po::value<std::string>(),
+		 "Mesh file to solve the problem on; overrides the corresponding option in the control file");
+
+	po::variables_map cmdvarmap;
+	po::parsed_options parsedopts =
+		po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
+	po::store(parsedopts, cmdvarmap);
+	po::notify(cmdvarmap);
+	// show help message and exit
+	if(cmdvarmap.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
+
 	FlowParserOptions opts;
 
 	// set some default values
@@ -50,20 +77,17 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	opts.adiabaticwall_marker=-1;
 	opts.time_integrator = "NONE";
 
+	// start reading control file and override with command line options when applicable
+
 	std::ifstream control; 
 	open_file_toRead(argv[1], control);
 
 	std::string dum; char dumc;
 
 	std::getline(control,dum); control >> opts.meshfile;
-	if(opts.meshfile == "READFROMCMD")
-	{
-		if(argc >= 3)
-			opts.meshfile = argv[2];
-		else {
-			std::cout << "! Mesh file not given in command line!\n";
-			std::abort();
-		}
+	if(cmdvarmap.count("mesh_file")) {
+		std::cout << "Read mesh file from the command line rather than the control file.\n";
+		opts.meshfile = cmdvarmap["mesh_file"].as<std::string>();
 	}
 
 	control >> dum; control >> opts.vtu_output_file;
