@@ -2,9 +2,9 @@
 
 #set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/tests)
 
-if(GMSH_EXEC-NOTFOUND)
+if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")
   message(WARNING "Isentropic vortex test not built because Gmsh was not found")
-else(GMSH_EXEC-NOTFOUND)
+else()
 
   add_executable(test_isentropicvortex isentropicvortex_main.cpp isentropicvortex.cpp)
   target_link_libraries(test_isentropicvortex fvens_base ${PETSC_LIB})
@@ -41,5 +41,5 @@ else(GMSH_EXEC-NOTFOUND)
 	${CMAKE_CURRENT_SOURCE_DIR}/vortex.params -number_of_meshes 3
 	)
 
-endif(GMSH_EXEC-NOTFOUND)
+endif()
 
