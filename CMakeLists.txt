@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 # The environment variable EIGEN_DIR needs to be set to the path of the Eigen top-level directory.
 # The env variables PETSC_DIR and PETSC_ARCH need to be set.
@@ -14,35 +14,24 @@ cmake_minimum_required(VERSION 2.8)
 # Pass -DKNL=1 to compile for Xeon Phi Knights Landing.
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DPROFILE=1 for profiling.
+# Pass -DSLURM=1 for running the automated tests on a system managed by SLURM
 # Pass -DNOTAGS=1 to NOT generate tags for navigating code, otherwise, exuberent-ctags is needed.
 
 project (fvens)
 
-# detect C++ compiler - the C compiler must be the same type too
+# detect C++ compiler
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	set(CXX_COMPILER_GNUCLANG TRUE) 
 	message(STATUS "GNU or Clang C++ compiler detected")
-	if(NOT("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR "${CMAKE_C_COMPILER_ID}" MATCHES "Clang"))
-		message(SEND_ERROR "C and C++ compilers should match!")
-	endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
 	set(CXX_COMPILER_INTEL TRUE)
 	message(STATUS "Intel C++ compiler detected")
-	if(NOT("${CMAKE_C_COMPILER_ID}" MATCHES "Intel"))
-		message(SEND_ERROR "C and C++ compilers should match!")
-	endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 	set(CXX_COMPILER_CRAY TRUE)
 	message(STATUS "Cray C++ compiler detected")
-	if(NOT("${CMAKE_C_COMPILER_ID}" MATCHES "Cray"))
-		message(SEND_ERROR "C and C++ compilers should match!")
-	endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "PGI")
 	set(CXX_COMPILER_PGI TRUE)
 	message(STATUS "PGI C++ compiler detected")
-	if(NOT("${CMAKE_C_COMPILER_ID}" MATCHES "PGI"))
-		message(SEND_ERROR "C and C++ compilers should match!")
-	endif()
 else()
 	message(SEND_ERROR "Could not identify compiler!")
 endif()
@@ -50,20 +39,20 @@ endif()
 # Basic options
 if(CXX_COMPILER_GNUCLANG OR CXX_COMPILER_INTEL)
 	set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -Werror")
-	set (CMAKE_C_FLAGS "-std=c11 -Wall -Werror")
 	set (CMAKE_CXX_FLAGS_DEBUG "-g")
 	set (CMAKE_CXX_FLAGS_RELEASE "-O3")
 elseif(CXX_COMPILER_PGI)
 	set (CMAKE_CXX_FLAGS "-std=c++14")
-	set (CMAKE_C_FLAGS "-std=c11")
 	set (CMAKE_CXX_FLAGS_DEBUG "-g")
 	set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 elseif(CXX_COMPILER_CRAY)
 	set (CMAKE_CXX_FLAGS "-h std=c++14 -h error_on_warning")
-	set (CMAKE_C_FLAGS "-h std=c11 -h error_on_warning")
 	set (CMAKE_CXX_FLAGS_DEBUG "-g -O1")
 	set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 endif()
+
+# Disable C - this should cause C compilation to fail
+set(CMAKE_C_FLAGS "-std=c++14")
 
 # to compile with OpenMP
 if(NOOMP)
@@ -83,11 +72,9 @@ if(NOOMP)
 else()
 	if(CXX_COMPILER_GNUCLANG)
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-		set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
 		message(STATUS "Compiling with OpenMP for GNU")
 	elseif(CXX_COMPILER_INTEL)
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qopenmp")
-		set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -qopenmp")	  
 		message(STATUS "Compiling with OpenMP for Intel")
 	elseif(CXX_COMPILER_CRAY)
 		message(STATUS "Compiling with OpenMP for Cray")
@@ -233,19 +220,19 @@ add_subdirectory(src)
 
 # Tags
 if(NOT NOTAGS)
+	find_program(CTAGS_PATH ctags)
+	if(CTAGS_PATH)
+		message(STATUS "Found ctags: ${CTAGS_PATH}")
+	else()
+		message(STATUS "ctags not found! Tags cannot be generated.")
+	endif(CTAGS_PATH)
+
 	set_source_files_properties(tags PROPERTIES GENERATED true)
 	add_custom_target ( tags
 		COMMAND ctags -R --c++-kinds=+pf --extra=+q . 
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} 
 	  )
 
-	find_program(CTAGS_PATH ctags)
-	if(CTAGS_PATH)
-		message(STATUS "Found ctags: ${CTAGS_PATH}")
-		#add_dependencies (fvens_steady tags)
-	else()
-		message(STATUS "ctags not found! Tags will not be generated.")
-	endif(CTAGS_PATH)
 endif()
 
 # Tests
