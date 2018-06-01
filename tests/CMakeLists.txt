@@ -12,7 +12,7 @@ endif(SLURM)
 
 # Gmsh for generating meshes
 find_program(GMSH_EXEC gmsh)
-if(GMSH_EXEC-NOTFOUND)
+if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")
   message(WARNING "Gmsh not found")
 else()
   message(STATUS "Found Gmsh at ${GMSH_EXEC}")
