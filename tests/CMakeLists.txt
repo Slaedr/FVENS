@@ -12,11 +12,11 @@ endif(SLURM)
 
 # Gmsh for generating meshes
 find_program(GMSH_EXEC gmsh)
-if(NOT GMSH_EXEC-NOTFOUND)
-  message(STATUS "Found Gmsh at ${GMSH_EXEC}")
+if(GMSH_EXEC-NOTFOUND)
+  message(WARNING "Gmsh not found")
 else()
-  message(WARNING "Gmsh not founf")
-endif(NOT GMSH_EXEC-NOTFOUND)
+  message(STATUS "Found Gmsh at ${GMSH_EXEC}")
+endif(GMSH_EXEC-NOTFOUND)
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/tests)
 
