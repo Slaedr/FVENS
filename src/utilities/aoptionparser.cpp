@@ -9,11 +9,14 @@
 #include <iostream>
 #include <cstdlib>
 #include <boost/program_options/cmdline.hpp>
-#include <boost/program_options/options_description.hpp>
-#include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/parsers.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/info_parser.hpp>
 
 namespace acfd {
+
+namespace po = boost::program_options;
+namespace pt = boost::property_tree;
 
 void open_file_toRead(const std::string file, std::ifstream& fin)
 {
@@ -32,25 +35,9 @@ void open_file_toWrite(const std::string file, std::ofstream& fout)
 	}
 }
 
-const FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[])
+const po::variables_map parse_cmd_options(const int argc, const char *const argv[],
+                                          const po::options_description desc)
 {
-	if(argc < 2)
-	{
-		std::cerr << "! Please give a control file name.\n";
-		std::abort();
-	}
-
-	// First set up command line options parsing
-
-	namespace po = boost::program_options;
-	po::options_description desc
-		(std::string("FVENS options: The first argument is always the input control file name.\n")
-		 + "Further options");
-	desc.add_options()
-		("help", "help message")
-		("mesh_file", po::value<std::string>(),
-		 "Mesh file to solve the problem on; overrides the corresponding option in the control file");
-
 	po::variables_map cmdvarmap;
 	po::parsed_options parsedopts =
 		po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
@@ -60,6 +47,18 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 	if(cmdvarmap.count("help")) {
 		std::cout << desc << std::endl;
 		std::exit(0);
+	}
+
+	return cmdvarmap;
+}
+
+const FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
+                                               const po::variables_map cmdvars)
+{
+	if(argc < 2)
+	{
+		std::cerr << "! Please give a control file name.\n";
+		std::abort();
 	}
 
 	FlowParserOptions opts;
@@ -79,26 +78,33 @@ const FlowParserOptions parse_flow_controlfile(const int argc, const char *const
 
 	// start reading control file and override with command line options when applicable
 
-	std::ifstream control; 
-	open_file_toRead(argv[1], control);
+	pt::ptree infopts;
+	pt::read_info(argv[1], infopts);
 
-	std::string dum; char dumc;
+	// std::ifstream control; 
+	// open_file_toRead(argv[1], control);
 
-	std::getline(control,dum); control >> opts.meshfile;
+	// std::string dum; char dumc;
+
+	//std::getline(control,dum); control >> opts.meshfile;
+	opts.meshfile = infopts.get<std::string>("io.mesh_file");
 	if(cmdvarmap.count("mesh_file")) {
 		std::cout << "Read mesh file from the command line rather than the control file.\n";
 		opts.meshfile = cmdvarmap["mesh_file"].as<std::string>();
 	}
 
-	control >> dum; control >> opts.vtu_output_file;
-	control >> dum; control >> opts.logfile;
+	// control >> dum; control >> opts.vtu_output_file;
+	// control >> dum; control >> opts.logfile;
+	opts.vtu_output_file = infopts.get<std::string>("io.solution_output_file");
+	opts.logfile = infopts.get<std::string>("io.log_file_prefix");
 
-	std::string lognresstr;
-	control >> dum; control >> lognresstr;
-	if(lognresstr == "YES")
-		opts.lognres = true;
-	else
-		opts.lognres = false;
+	// std::string lognresstr;
+	// control >> dum; control >> lognresstr;
+	// if(lognresstr == "YES")
+	// 	opts.lognres = true;
+	// else
+	// 	opts.lognres = false;
+	opts.lognres = infopts.get<bool>("io.convergence_history_required");
 
 	control >> dum;
 	control >> dum; control >> opts.flowtype;

@@ -8,6 +8,8 @@
 #define AOPTIONPARSER_H
 
 #include <fstream>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include "aconstants.hpp"
 #include "spatial/aspatial.hpp"
 #include "ode/aodesolver.hpp"
@@ -78,8 +80,16 @@ struct FlowParserOptions
 		lothers;                     ///< List of other boundary markers for output
 };
 
+/// Parses command line parameters into a map
+const po::variables_map parse_cmd_options(const int argc, const char *const argv[],
+                                          const po::options_description desc);
+
 /// Reads a control file for flow problems
-const FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[]);
+/** Replaces some option values read from the control file with those read from the command line
+ * if the latter have been supplied by the user.
+ */
+const FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
+                                               const po::variables_map cmdvars);
 
 /// Extracts the spatial physics configuration from the parsed control file data
 FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);

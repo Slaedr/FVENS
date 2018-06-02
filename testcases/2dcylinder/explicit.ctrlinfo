@@ -1,0 +1,136 @@
+io {
+	mesh_file                    "../testcases/2dcylinder/grids/2dcylquad2.msh"
+	solution_output_file         "2dcyl.vtu"
+	log_file_prefix              "2dcyl-log"
+	convergence_history_required true
+}
+
+flow-conditions {
+	;; euler or navierstokes flow
+	flow_type               euler
+	adiabatic_index         1.4
+	angle_of_attack         0.0
+	freestream_mach_number  0.38
+}
+
+bc              ;; boundary conditions
+{
+	slipwall_marker        2
+	farfield_marker        4
+	numberof_output_wall_boundaries  1
+	listof_output_wall_boundaries    2
+	surface_output_file_prefix       "2dcyl"
+	volume-output-required           false
+}
+
+time {
+	;; steady or unsteady
+	simulation-type           steady
+}
+
+spatial-discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	insviscid_flux                   LLF
+	gradient_scheme                  leastsquares
+	limiter                          none
+	reconstruct-primitive-variables  true
+}
+
+pseudotime {
+	main {
+		pseudotime_stepping_type explicit
+		cfl_min                  0.2
+		cfl_max                  0.2
+		tolerance                1e-5
+		max_timesteps            500000
+	}
+	initialization {	
+		pseudotime_stepping_type explicit
+		cfl_min                  0.5
+		cfl_max                  0.5
+		tolerance                1e-1
+		max_timesteps            5000
+	}
+}
+;; end
+
+---Mesh-file(file-name-or-"READFROMCMD")
+../testcases/2dcylinder/grids/2dcylquad2.msh
+---Output-file
+../data/2dcyl.vtu
+---Log-file-for-runtimes
+log.txt
+---Log-nonlinear-convergence-history(YES,NO)
+NO
+########PHYSICS######################################################
+---Flow-type(EULER,NAVIERSTOKES)
+EULER
+---Adiabatic-index
+1.4
+---Angle_of_attack
+0.0
+---Free-stream-Mach-number
+0.38
+---Initial-values-type(0=from_infinity_values,1=from_file)
+0
+###########BOUNDARY-CONDITIONS########################################
+---Slip-wall-marker
+2
+---Farfield-marker
+4
+---Inflow-outflow-marker
+-1
+---Extrapolation-marker
+-1
+---Periodic-marker
+-1
+---Number-of-'wall'-boundaries-at-which-surface-output-is-needed
+1
+---List-of-wall-boundaries-at-which-surface-output-is-needed
+2
+---Number-of-'other'-boundaries-at-which-surface-output-is-needed
+0
+---Prefix-for-name-of-surface-output-file
+../data/2dcyl
+---Is-volume-output-of-cell-centred-variables-required?
+NO
+#####################TEMPORAL-CONDITIONS##############################
+---Simulation-type(STEADY,UNSTEADY)
+STEADY
+######################################################################
+---Inviscid-flux(LLF,VANLEER,HLL,HLLC)
+HLL
+---Reconstruction-scheme(NONE,GREENGAUSS,LEASTSQUARES)
+LEASTSQUARES
+---Limiter(NONE,WENO,VANALBADA,BARTHJESPERSEN,VENKATAKRISHNAN)
+NONE
+---Limiter-parameter
+1e4
+---Reconstruct-primitive-variables?(YES,NO)
+YES
+######################################################################
+---time-stepping-type(EXPLICIT,IMPLICIT)
+EXPLICIT
+---initial-CFL
+0.2
+---final-CFL
+0.2
+---ramp-start-step-and-end-step
+0 0
+---Tolerance
+1e-5
+---Max-pseudotime-iterations
+500000
+#######################################################################
+---use-first-order-initial-condition
+1
+---initial-CFL
+0.5
+---final-CFL
+0.5
+---ramp-start-step-and-end-step
+0 0
+---tolerance-for-initialization
+1e-1
+---max-time-steps-for-initialization
+5000
