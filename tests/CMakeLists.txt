@@ -68,12 +68,13 @@ add_test(NAME Mesh_Periodic
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh periodic
   ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 
-add_test(NAME MeshUtils_LevelSchedule WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+add_test(NAME MeshUtils_LevelSchedule WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
-  levelschedule input/squarecoarse.msh input/squarecoarselevels.dat)
-add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  levelschedule ${CMAKE_CURRENT_SOURCE_DIR}/input/squarecoarse.msh 
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/squarecoarselevels.dat)
+add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
-  levelscheduleInternal input/2dcylinderhybrid.msh)
+  levelscheduleInternal ${CMAKE_CURRENT_SOURCE_DIR}/input/2dcylinderhybrid.msh)
 
 add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
@@ -114,10 +115,10 @@ add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURREN
 # The heat tests must still take place in the source directory as it has a hard-coded
 #  command-line parsing. For now that's okay because there are no ouput files.
 add_test(NAME SpatialDiffusion_LeastSquares_Quad WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} exec_testdiffusion
+  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testdiffusion
   heat/implls_quad.control -options_file heat/opts.petscrc)
 add_test(NAME SpatialDiffusion_LeastSquares_Tri WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} exec_testdiffusion
+  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testdiffusion
   heat/implls_tri.control -options_file heat/opts.petscrc)
 
 add_subdirectory(isentropic_vortex)
