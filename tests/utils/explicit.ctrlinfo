@@ -10,14 +10,14 @@ flow-conditions {
 	flow_type               euler
 	adiabatic_index         1.4
 	angle_of_attack         0.0
-	freestream_mach_number  0.38
+	freestream_Mach_number  0.38
 }
 
 bc              ;; boundary conditions
 {
 	slipwall_marker        2
 	farfield_marker        4
-	numberof_output_wall_boundaries  1
+	;; (not required) numberof_output_wall_boundaries  1
 	listof_output_wall_boundaries    2
 	surface_output_file_prefix       "2dcyl"
 	volume-output-required           false
@@ -31,21 +31,19 @@ time {
 spatial-discretization {
 	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
 	insviscid_flux                   LLF
-	gradient_scheme                  leastsquares
+	gradient_method                  leastsquares
 	limiter                          none
-	reconstruct-primitive-variables  true
 }
 
 pseudotime {
+	pseudotime_stepping_type explicit
 	main {
-		pseudotime_stepping_type explicit
 		cfl_min                  0.2
 		cfl_max                  0.2
 		tolerance                1e-5
 		max_timesteps            500000
 	}
 	initialization {	
-		pseudotime_stepping_type explicit
 		cfl_min                  0.5
 		cfl_max                  0.5
 		tolerance                1e-1

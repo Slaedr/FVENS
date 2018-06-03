@@ -18,6 +18,8 @@
 using namespace amat;
 using namespace acfd;
 using namespace fvens_tests;
+namespace po = boost::program_options;
+using namespace std::literals::string_literals;
 
 int main(int argc, char *argv[])
 {
@@ -29,18 +31,26 @@ int main(int argc, char *argv[])
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
+	po::options_description desc
+		("FVENS unsteady convergence test.\n"s
+		 + " The first argument is the input control file name.\n"
+		 + "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
 	// Get number of meshes
-	PetscBool set = PETSC_FALSE;
-	int nmesh = 0;
-	ierr = PetscOptionsGetInt(NULL, NULL, "-number_of_meshes", &nmesh, &set); CHKERRQ(ierr);
-	if(!set) {
-		ierr = -1;
-		throw "Need number of meshes!";
+	//const int nmesh = parsePetscCmd_int("-number_of_meshes");
+	const int nmesh = cmdvars["number_of_meshes"].as<int>();
+	desc.add_options()("number_of_meshes", "Number of grids for order-of-accuracy test");
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
 	}
 
 	// Read control file
 
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	UnsteadyFlowCase case1(opts);
 	

@@ -24,6 +24,8 @@
 
 using namespace amat;
 using namespace acfd;
+namespace po = boost::program_options;
+using namespace std::literals::string_literals;
 
 int main(int argc, char *argv[])
 {
@@ -33,14 +35,24 @@ int main(int argc, char *argv[])
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
 
+	po::options_description desc
+		("FVENS functional convergence test.\n"s
+		 + " The first argument is the input control file name.\n"
+		 + "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
 	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 	SteadyFlowCase case1(opts);
 
 	// solution vector
 	Vec u;
 
-	std::string testchoice = parsePetscCmd_string("-test_type", 100);
+	//std::string testchoice = parsePetscCmd_string("-test_type", 100);
+	std::string testchoice = cmdvars["test_type"].as<std::string>();
+	desc.add_options()("test_type", "Type of test: 'exception_nanorinf' for testing detection of \
+NaN or inf during nonlinear sovlve");
 
 	// solve case - constructs (creates) u, computes the solution and stores the solution in it
 	if(testchoice == "exception_nanorinf") {

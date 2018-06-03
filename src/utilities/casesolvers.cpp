@@ -207,7 +207,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 
 	SteadySolver<NVARS> * starttime = nullptr, * time = nullptr;
 
-	if(opts.timesteptype == "IMPLICIT")
+	if(opts.pseudotimetype == "IMPLICIT")
 	{
 		if(opts.usestarter != 0) {
 			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
@@ -231,7 +231,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
-	if(opts.timesteptype == "IMPLICIT") {
+	if(opts.pseudotimetype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
@@ -266,13 +266,13 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
 	bctx = newBlastedDataList();
-	if(opts.timesteptype == "IMPLICIT") {
+	if(opts.pseudotimetype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
 	// setup nonlinear ODE solver for main solve - MUST be done AFTER KSPCreate
-	if(opts.timesteptype == "IMPLICIT")
+	if(opts.pseudotimetype == "IMPLICIT")
 	{
 		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, ksp);
 		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
@@ -391,7 +391,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 
 	SteadySolver<NVARS> * starttime = nullptr, * time = nullptr;
 
-	if(opts.timesteptype == "IMPLICIT")
+	if(opts.pseudotimetype == "IMPLICIT")
 	{
 		if(opts.usestarter != 0) {
 			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
@@ -415,7 +415,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
-	if(opts.timesteptype == "IMPLICIT") {
+	if(opts.pseudotimetype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
@@ -450,13 +450,13 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
 	bctx = newBlastedDataList();
-	if(opts.timesteptype == "IMPLICIT") {
+	if(opts.pseudotimetype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
 	// setup nonlinear ODE solver for main solve - MUST be done AFTER KSPCreate
-	if(opts.timesteptype == "IMPLICIT")
+	if(opts.pseudotimetype == "IMPLICIT")
 	{
 		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, ksp);
 		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";

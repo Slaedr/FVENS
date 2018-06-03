@@ -8,6 +8,7 @@
 
 using namespace amat;
 using namespace acfd;
+namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
 {
@@ -20,11 +21,18 @@ int main(int argc, char *argv[])
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
+	po::options_description desc
+		(std::string("FVENS Conv options: The first argument is the input control file name.\n")
+		 + "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
 	// Get number of meshes
-	const int nmesh = parsePetscCmd_int("-number_of_meshes");
+	//const int nmesh = parsePetscCmd_int("-number_of_meshes");
+	const int nmesh = cmdvars["number_of_meshes"].as<int>();
 
 	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	SteadyFlowCase case1(opts);
 

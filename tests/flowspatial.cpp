@@ -4,6 +4,8 @@
 #include "testflowspatial.hpp"
 
 using namespace acfd;
+namespace po = boost::program_options;
+using namespace std::literals::string_literals;
 
 /** The first command line argument is the control file.
  * The second is a string that decides which test to perform.
@@ -22,7 +24,19 @@ int main(int argc, char *argv[])
 	
 	int finerr = 0;
 	
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	po::options_description desc
+		("FVENS functional convergence test.\n"s
+		 + " The first argument is the input control file name.\n"
+		 + "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
+
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 	std::string testchoice = argv[2];
 
 	UMesh2dh m;

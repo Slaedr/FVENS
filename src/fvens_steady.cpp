@@ -3,7 +3,6 @@
 #include <string>
 #include <omp.h>
 #include <petscksp.h>
-#include <boost/program_options/cmdline.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
@@ -34,15 +33,18 @@ int main(int argc, char *argv[])
 	// First set up command line options parsing
 
 	po::options_description desc
-		(std::string("FVENS options: The first argument is always the input control file name.\n")
+		(std::string("FVENS options: The first argument is the input control file name.\n")
 		 + "Further options");
-	desc.add_options()
-		("help", "help message")
-		("mesh_file", po::value<std::string>(),
-		 "Mesh file to solve the problem on; overrides the corresponding option in the control file");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
 
 	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
 
 	// solution vector
 	Vec u;

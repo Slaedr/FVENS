@@ -23,6 +23,7 @@
 
 using namespace amat;
 using namespace acfd;
+namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
 {
@@ -32,8 +33,19 @@ int main(int argc, char *argv[])
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
 
+	po::options_description desc
+		(std::string("FVENS options: The first argument is the input control file name.\n")
+		 + "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
+
 	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	// solution vector
 	Vec u;

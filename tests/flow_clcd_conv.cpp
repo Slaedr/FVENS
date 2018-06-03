@@ -14,6 +14,8 @@
 
 using namespace amat;
 using namespace acfd;
+namespace po = boost::program_options;
+using namespace std::literals::string_literals;
 
 int main(int argc, char *argv[])
 {
@@ -26,14 +28,34 @@ int main(int argc, char *argv[])
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
+	po::options_description desc
+		("FVENS functional convergence test.\n"s
+		 + " The first argument is the input control file name.\n"
+		+ "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
 	// Get number of meshes
-	const int nmesh = parsePetscCmd_int("-number_of_meshes");
+	//const int nmesh = parsePetscCmd_int("-number_of_meshes");
+	const int nmesh = cmdvars["number_of_meshes"].as<int>();
+	desc.add_options()("number_of_meshes", "Number of grids for order-of-accuracy test");
 
 	// get test type - CL, CDP or CDSF
-	const std::string test_type = parsePetscCmd_string("-test_type", 20);
+	//const std::string test_type = parsePetscCmd_string("-test_type", 20);
+	const std::string test_type = cmdvars["test_type"].as<std::string>();
+	desc.add_options()("test_type", "Type of test: 'CL', 'CDP' or 'CDSF' for lift, pressure drag or \
+skin-friction drag respectively");
 
 	// get the locaiton of the file containing the exact CL, CDp and CDsf
-	const std::string exf = parsePetscCmd_string("-exact_solution_file", 100);
+	//const std::string exf = parsePetscCmd_string("-exact_solution_file", 100);
+	const std::string exf = cmdvars["exact_solution_file"].as<std::string>();
+	desc.add_options()("exact_solution_file", "Location of file containing the exact solution for \
+the desired target functional");
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
 
 	// read exact calues
 	a_real ex_CL, ex_CDp, ex_CDsf;
@@ -49,7 +71,7 @@ int main(int argc, char *argv[])
 
 	// Read control file
 
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	SteadyFlowCase case1(opts);
 	

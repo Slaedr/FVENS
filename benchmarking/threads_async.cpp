@@ -27,6 +27,8 @@
 
 using namespace acfd;
 using namespace benchmark;
+namespace po = boost::program_options;
+using namespace std::literals::string_literals;
 
 #define ARR_LEN 10
 
@@ -39,8 +41,20 @@ int main(int argc, char *argv[])
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
 	
+	po::options_description desc
+		("Utility for bencharking BLASTed asynchronous preconditioners.\n"s
+		 + " The first argument is the input control file name.\n"
+		 + "Further options");
+
+	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
+
 	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv);
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	std::ofstream outf;
 	open_file_toWrite(opts.logfile+".logb", outf);

@@ -31,7 +31,7 @@ struct FlowParserOptions
 		init_soln_file,                    ///< File to read initial solution from (not implemented)
 		invflux, invfluxjac,               ///< Inviscid numerical flux
 		gradientmethod, limiter,           ///< Reconstruction type
-		timesteptype,                      ///< Explicit or implicit time stepping
+		pseudotimetype,                      ///< Explicit or implicit time stepping
 		constvisc,                         ///< NO for Sutherland viscosity
 		surfnameprefix, volnameprefix,     ///< Filename prefixes for output files
 		vol_output_reqd,                   ///< Whether volume output is required in a text file
@@ -81,15 +81,16 @@ struct FlowParserOptions
 };
 
 /// Parses command line parameters into a map
-const po::variables_map parse_cmd_options(const int argc, const char *const argv[],
-                                          const po::options_description desc);
+boost::program_options::variables_map
+parse_cmd_options(const int argc, const char *const argv[],
+                  boost::program_options::options_description& desc);
 
 /// Reads a control file for flow problems
 /** Replaces some option values read from the control file with those read from the command line
  * if the latter have been supplied by the user.
  */
-const FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
-                                               const po::variables_map cmdvars);
+FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
+                                         const boost::program_options::variables_map cmdvars);
 
 /// Extracts the spatial physics configuration from the parsed control file data
 FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts);
