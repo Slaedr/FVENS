@@ -1,0 +1,61 @@
+io {
+	mesh_file                    "../testcases/2dcylinder/grids/2dcylquad2.msh"
+	solution_output_file         "2dcyl.vtu"
+	log_file_prefix              "2dcyl-log"
+	convergence_history_required true
+}
+
+flow_conditions {
+	;; euler or navierstokes flow
+	flow_type               euler
+	adiabatic_index         1.4
+	angle_of_attack         2.0
+	freestream_Mach_number  0.38
+}
+
+bc
+{
+	slipwall_marker           2
+	farfield_marker           4
+	
+	;; List of boundary markers at which surface output is required
+	;;  and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "2dcyl"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                   LLF
+	gradient_method                  leastsquares
+	limiter                          none
+}
+
+;; Psuedo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    explicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  0.2
+		cfl_max                  0.2
+		tolerance                1e-5
+		max_timesteps            500000
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	initialization {	
+		cfl_min                  0.5
+		cfl_max                  0.5
+		tolerance                1e-1
+		max_timesteps            5000
+	}
+}
+

@@ -102,10 +102,10 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 
 	// categories
 	const std::string c_io = "io";
-	const std::string c_flowconds = "flow-conditions";
+	const std::string c_flowconds = "flow_conditions";
 	const std::string c_bcs = "bc";
 	const std::string c_phy_time = "time";
-	const std::string c_spatial = "spatial-discretization";
+	const std::string c_spatial = "spatial_discretization";
 	const std::string c_pseudotime = "pseudotime";
 
 	// options that possibly repeat
@@ -116,6 +116,8 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	const std::string extrap_m = "extrapolation_marker";
 	const std::string periodic_m = "periodic_marker";
 	const std::string periodic_axis = "periodic_axis";
+	const std::string isothermalwall_m = "isothermal_wall_marker";
+	const std::string adiabaticwall_m = "adiabatic_wall_marker";
 	// Pseudotime settings
 	const std::string pt_step_type = "pseudotime_stepping_type";
 	const std::string pt_cflmin = "cfl_min";
@@ -129,133 +131,61 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	pt::ptree infopts;
 	pt::read_info(argv[1], infopts);
 
-	// std::ifstream control; 
-	// open_file_toRead(argv[1], control);
-
-	// std::string dum; char dumc;
-
-	//std::getline(control,dum); control >> opts.meshfile;
 	opts.meshfile = infopts.get<std::string>("io.mesh_file");
 	if(cmdvars.count("mesh_file")) {
 		std::cout << "Read mesh file from the command line rather than the control file.\n";
 		opts.meshfile = cmdvars["mesh_file"].as<std::string>();
 	}
 
-	// control >> dum; control >> opts.vtu_output_file;
-	// control >> dum; control >> opts.logfile;
 	opts.vtu_output_file = infopts.get<std::string>(c_io+".solution_output_file");
 	opts.logfile = infopts.get<std::string>(c_io+".log_file_prefix");
-
-	// std::string lognresstr;
-	// control >> dum; control >> lognresstr;
-	// if(lognresstr == "YES")
-	// 	opts.lognres = true;
-	// else
-	// 	opts.lognres = false;
 	opts.lognres = infopts.get<bool>(c_io+".convergence_history_required");
 
-	// control >> dum;
-	// control >> dum; control >> opts.flowtype;
-	// control >> dum; control >> opts.gamma;
-	// control >> dum; control >> opts.alpha;
-	// opts.alpha = opts.alpha*PI/180.0;
-	// control >> dum; control >> opts.Minf;
 	opts.flowtype = get_upperCaseString(infopts, c_flowconds+".flow_type");
 	opts.gamma = infopts.get<a_real>(c_flowconds+".adiabatic_index");
 	opts.alpha = PI/180.0*infopts.get<a_real>(c_flowconds+".angle_of_attack");
 	opts.Minf = infopts.get<a_real>(c_flowconds+".freestream_Mach_number");
 	if(opts.flowtype == "NAVIERSTOKES") {
 		opts.viscsim = true;
-
-		// control >> dum; control >> opts.Tinf;
-		// control >> dum; control >> opts.Reinf;
-		// control >> dum; control >> opts.Pr;
 		opts.Tinf = infopts.get<a_real>(c_flowconds+".freestream_temperature");
 		opts.Reinf = infopts.get<a_real>(c_flowconds+".freestream_Reynolds_number");
 		opts.Pr = infopts.get<a_real>(c_flowconds+".Prandtl_number");
-
-		// std::string constvisc;
-		// control >> dum; control >> constvisc;
-		// if(constvisc == "YES")
-		// 	opts.useconstvisc = true;
 		opts.useconstvisc = infopts.get(c_flowconds+".use_constant_viscosity",false);
 	}
 
-	// control >> dum; control >> opts.soln_init_type;
-	// if(opts.soln_init_type == 1) {
-	// 	control >> dum; control >> opts.init_soln_file;
-	// }
-	// control.get(dumc); std::getline(control,dum); // FIXME formatting of control file
-	// control >> dum; control >> opts.slipwall_marker;
-	// control >> dum; control >> opts.farfield_marker;
-	// control >> dum; control >> opts.inout_marker;
-	// control >> dum; control >> opts.extrap_marker;
-	// control >> dum; control >> opts.periodic_marker;
 	opts.slipwall_marker = infopts.get(c_bcs+"."+slipwall_m,-1);
 	opts.farfield_marker = infopts.get(c_bcs+"."+farfield_m,-1);
 	opts.inout_marker = infopts.get(c_bcs+"."+inoutflow_m,-1);
 	opts.extrap_marker = infopts.get(c_bcs+"."+extrap_m,-1);
 	opts.periodic_marker = infopts.get(c_bcs+"."+periodic_m,-1);
 	if(opts.periodic_marker >= 0) {
-		// control >> dum; control >> opts.periodic_axis;
 		opts.periodic_axis = infopts.get<int>(c_bcs+"."+periodic_axis);
 	}
 	if(opts.viscsim) {
-		// std::getline(control,dum); std::getline(control,dum); 
-		// control >> opts.isothermalwall_marker;
-
-		// std::getline(control,dum); std::getline(control,dum); 
-		// control >> opts.twalltemp >> opts.twallvel;
-
-		// std::getline(control,dum); std::getline(control,dum); 
-		// control >> opts.adiabaticwall_marker;
-
-		// std::getline(control,dum); std::getline(control,dum); 
-		// control >> opts.adiawallvel;
-
-		// std::getline(control,dum); std::getline(control,dum); 
-		// control >> opts.isothermalpressurewall_marker;
-
-		// std::getline(control,dum); std::getline(control,dum); 
-		// control >> opts.tpwalltemp >> opts.tpwallvel >> opts.tpwallpressure;
+		opts.isothermalwall_marker = infopts.get(c_bcs+"."+isothermalwall_m,-1);
+		if(opts.isothermalwall_marker >= 0) {
+			opts.twalltemp = infopts.get<a_real>(c_bcs+".isothermal_wall_temperature");
+			opts.twallvel = infopts.get<a_real>(c_bcs+".isothermal_wall_velocity");
+		}
+		opts.adiabaticwall_marker = infopts.get(c_bcs+"."+adiabaticwall_m,-1);
+		if(opts.adiabaticwall_marker >= 0)
+			opts.adiawallvel = infopts.get<a_real>(c_bcs+".adiabatic_wall_velocity");
 	}
 
-	// control >> dum; control >> opts.num_out_walls;
-	// opts.num_out_walls = infopts.get<int>(c_bcs+".numberof_output_wall_boundaries");
-	// opts.lwalls.resize(opts.num_out_walls);
-	// if(opts.num_out_walls > 0) {
-	// 	control >> dum;
-	// 	for(int i = 0; i < opts.num_out_walls; i++)
-	// 		control >> opts.lwalls[i];
-	// }
 	auto optlwalls = infopts.get_optional<std::string>(c_bcs+".listof_output_wall_boundaries");
 	if(optlwalls)
 		opts.lwalls = parseStringToVector<int>(*optlwalls);
 	opts.num_out_walls = static_cast<int>(opts.lwalls.size());
 
-	// control >> dum; control >> opts.num_out_others;
-	// opts.lothers.resize(opts.num_out_others);
-	// if(opts.num_out_others > 0)
-	// {
-	// 	control >> dum;
-	// 	for(int i = 0; i < opts.num_out_others; i++)
-	// 		control >> opts.lothers[i];
-	// }
 	auto optlothers= infopts.get_optional<std::string>(c_bcs+".listof_output_other_boundaries");
 	if(optlothers)
 		opts.lothers = parseStringToVector<int>(*optlothers);
 	opts.num_out_others = static_cast<int>(opts.lothers.size());
 
 	if(opts.num_out_others > 0 || opts.num_out_walls > 0) {
-		// control >> dum; 
-		// control >> opts.surfnameprefix;
-		opts.surfnameprefix = infopts.get<std::string>(c_bcs+".surface_output_file_prefx");
+		opts.surfnameprefix = infopts.get<std::string>(c_bcs+".surface_output_file_prefix");
 	}
-	// control >> dum; control >> opts.vol_output_reqd;
-	// if(opts.vol_output_reqd == "YES") {
-	// 	control >> dum; 
-	// 	control >> opts.volnameprefix;
-	// }
+
 	auto volnamepref = infopts.get_optional<std::string>(c_bcs+".volume_output_file_prefix");
 	if(volnamepref) {
 		opts.volnameprefix = *volnamepref;
@@ -265,15 +195,9 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	}
 
 	// Time stuff
-	// control.get(dumc); std::getline(control,dum);
-	// std::getline(control,dum); control >> opts.sim_type; control.get(dumc);
-	opts.sim_type = get_upperCaseString(infopts, c_phy_time+".simulation-type");
+	opts.sim_type = get_upperCaseString(infopts, c_phy_time+".simulation_type");
 	if(opts.sim_type == "UNSTEADY")
 	{
-		// std::getline(control,dum); control >> opts.final_time; control.get(dumc);
-		// std::getline(control,dum); control >> opts.time_integrator; control.get(dumc);
-		// std::getline(control,dum); control >> opts.time_order; control.get(dumc);
-		// std::getline(control,dum); control >> opts.phy_cfl; control.get(dumc);
 		opts.final_time = infopts.get<a_real>(c_phy_time+".final_time");
 		opts.time_integrator = get_upperCaseString(infopts, c_phy_time + ".time_integrator");
 		opts.time_order = infopts.get<int>(c_phy_time + ".temporal_order");
@@ -284,39 +208,19 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 			opts.phy_timestep = infopts.get<a_real>(c_phy_time+".physical_time_step");
 	}
 
-	// control >> dum;
-	// control >> dum; control >> opts.invflux;
-	// control >> dum; control >> opts.gradientmethod;
-
-	// control >> dum; control >> opts.limiter;
-	// control >> dum; control >> opts.limiter_param;
 	opts.invflux = get_upperCaseString(infopts, c_spatial+".inviscid_flux");
 	opts.gradientmethod = get_upperCaseString(infopts, c_spatial+".gradient_method");
 	if(opts.gradientmethod == "NONE")
 		opts.order2 = false;
 	opts.limiter = get_upperCaseString(infopts, c_spatial+".limiter");
 
-	// control >> dum;
-	// control >> dum; control >> opts.pseudotimetype;
-	// control >> dum; control >> opts.initcfl;
-	// control >> dum; control >> opts.endcfl;
-	// control >> dum; control >> opts.rampstart >> opts.rampend;
-	// control >> dum; control >> opts.tolerance;
-	// control >> dum; control >> opts.maxiter;
-	// control >> dum;
-	// control >> dum; control >> opts.usestarter;
-	// control >> dum; control >> opts.firstinitcfl;
-	// control >> dum; control >> opts.firstendcfl;
-	// control >> dum; control >> opts.firstrampstart >> opts.firstrampend;
-	// control >> dum; control >> opts.firsttolerance;
-	// control >> dum; control >> opts.firstmaxiter;
 	opts.pseudotimetype = get_upperCaseString(infopts, c_pseudotime+".pseudotime_stepping_type");
 
 	opts.initcfl = infopts.get<a_real>(c_pseudotime+"."+pt_main+".cfl_min");
 	opts.endcfl = infopts.get<a_real>(c_pseudotime+"."+pt_main+".cfl_max");
 	opts.tolerance = infopts.get<a_real>(c_pseudotime+"."+pt_main+".tolerance");
 	opts.maxiter = infopts.get<int>(c_pseudotime+"."+pt_main+".max_timesteps");
-	if(infopts.find(c_pseudotime+"."+pt_init) != infopts.not_found()) {
+	if(infopts.get_child_optional(c_pseudotime+"."+pt_init)) {
 		opts.usestarter = 1;
 		opts.firstinitcfl = infopts.get<a_real>(c_pseudotime+"."+pt_init+".cfl_min");
 		opts.firstendcfl = infopts.get<a_real>(c_pseudotime+"."+pt_init+".cfl_max");
@@ -325,8 +229,6 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	}
 
 	if(opts.pseudotimetype == "IMPLICIT") {
-		// control >> dum;
-		// control >> dum; control >> opts.invfluxjac;
 		opts.invfluxjac = get_upperCaseString(infopts, "Jacobian_inviscid_flux");
 	}
 	

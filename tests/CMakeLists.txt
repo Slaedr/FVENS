@@ -61,6 +61,8 @@ endif()
 
 # Tests
 
+add_subdirectory(utils)
+
 add_test(NAME Mesh_Topology_ElemSurrElem
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
   esup ${CMAKE_CURRENT_SOURCE_DIR}/input/2dcylinderhybrid.msh)

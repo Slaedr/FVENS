@@ -1,0 +1,101 @@
+;; Sample control file for FVENS
+ ; Steady case
+
+io {
+	mesh_file                    "FVENS/testcases/some_viscous_case/grids/some_mesh.msh"
+	solution_output_file         "visc-case.vtu"
+	log_file_prefix              "visc-case-log"
+	convergence_history_required true
+}
+
+flow_conditions 
+{
+	;; Type of flow to solve for - euler or navierstokes
+	flow_type                     navierstokes
+	
+	adiabatic_index               1.4
+	
+	;; Angle of attack in degrees
+	angle_of_attack               2.0
+	
+	freestream_Mach_number        0.5
+	
+	freestream_Reynolds_number    5000.0
+	
+	;; Free-streeam temperature in Kelvin
+	freestream_temperature        290.0
+	
+	Prandtl_number                0.72
+	
+	;; Optional - false by default, in which case Sutherland model is used
+	use_constant_viscosity        false
+}
+
+bc
+{
+	;; Markers in the mesh file corresponding to each kind of boundary.
+	 ; Currently, there can only be one marker of each type.
+	 ; Some boundary conditions require boundary values
+	farfield_marker              4
+	
+	adiabatic_wall_marker        5
+	;; Non-dimensional velocity
+	adiabatic_wall_velocity      20.0
+	
+	isothermal_wall_marker       7
+	;; Temperature in Kelvin
+	isothermal_wall_temperature  290.0
+	;; Non-dimensional velocity
+	isothermal_wall_velocity     10.0
+	
+	;; List of boundary markers at which surface output is required
+	 ; and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    5 7
+	
+	listof_output_other_boundaries   4
+	
+	surface_output_file_prefix       "2dcyl"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization 
+{
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    Roe
+	
+	;; Gradient computation method - none (first-order), leastSquares, greenGauss
+	gradient_method                  leastsquares
+	
+	;; Limiter for shock-capturing - none, Venkatakrishnan, VanAlbada, WENO
+	limiter                          WENO
+	;; A parameter controlling the limiter - the meaning differs with the limiter
+	limiter_parameter                20.0
+}
+
+;; Pseudo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  100.0
+		cfl_max                  2000.0
+		tolerance                1e-5
+		max_timesteps            500
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	 ; Uses a first-order spatial discretization for steady cases
+	initialization {	
+		cfl_min                  50.0
+		cfl_max                  500.0
+		tolerance                1e-1
+		max_timesteps            50
+	}
+}
+
