@@ -9,7 +9,7 @@ flow-conditions {
 	;; euler or navierstokes flow
 	flow_type               euler
 	adiabatic_index         1.4
-	angle_of_attack         0.0
+	angle_of_attack         2.0
 	freestream_Mach_number  0.38
 }
 
