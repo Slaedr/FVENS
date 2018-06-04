@@ -1,0 +1,64 @@
+io {
+	mesh_file                    "from-cmd"
+	solution_output_file         "2dcyl.vtu"
+	log_file_prefix              "2dcyl-log"
+	convergence_history_required false
+}
+
+flow_conditions {
+	;; euler or navierstokes flow
+	flow_type               euler
+	adiabatic_index         1.4
+	angle_of_attack         0.0
+	freestream_Mach_number  0.38
+}
+
+bc
+{
+	slipwall_marker           2
+	farfield_marker           4
+	
+	;; List of boundary markers at which surface output is required
+	;;  and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "2dcyl"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+Jacobian_inviscid_flux consistent
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    hllc
+	gradient_method                  leastsquares
+	limiter                          none
+}
+
+;; Psuedo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  250.0
+		cfl_max                  1000.0
+		tolerance                1e-2
+		max_timesteps            400
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	initialization {	
+		cfl_min                  50.0
+		cfl_max                  500.0
+		tolerance                1e-1
+		max_timesteps            150
+	}
+}
+
+

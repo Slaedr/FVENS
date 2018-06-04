@@ -1,5 +1,5 @@
 -mesh_file-prefix
-heat/grids/squareunsquad
+grids/squareunsquad
 --number-of-meshes-for-grid-convergence
 4
 -output_file

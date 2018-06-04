@@ -34,6 +34,11 @@ int main(int argc, char *argv[])
 		+ "Further options");
 	desc.add_options()("number_of_meshes", po::value<int>(),
 	                   "Number of meshes for grid convergence test");
+	desc.add_options()("test_type", po::value<std::string>(),
+	                   "Type of test: 'CL', 'CDP' or 'CDSF' for lift, pressure drag or \
+skin-friction drag respectively");
+	desc.add_options()("exact_solution_file", po::value<std::string>(),
+	                   "Location of file containing the exact solution for the desired target functional");
 
 	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
 
@@ -43,15 +48,10 @@ int main(int argc, char *argv[])
 
 	// get test type - CL, CDP or CDSF
 	//const std::string test_type = parsePetscCmd_string("-test_type", 20);
-	desc.add_options()("test_type", po::value<std::string>(),
-	                   "Type of test: 'CL', 'CDP' or 'CDSF' for lift, pressure drag or \
-skin-friction drag respectively");
 	const std::string test_type = cmdvars["test_type"].as<std::string>();
 
 	// get the locaiton of the file containing the exact CL, CDp and CDsf
 	//const std::string exf = parsePetscCmd_string("-exact_solution_file", 100);
-	desc.add_options()("exact_solution_file", po::value<std::string>(),
-	            "Location of file containing the exact solution for the desired target functional");
 	const std::string exf = cmdvars["exact_solution_file"].as<std::string>();
 
 	if(cmdvars.count("help")) {

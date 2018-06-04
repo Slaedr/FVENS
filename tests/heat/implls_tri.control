@@ -1,5 +1,5 @@
 -mesh_file-prefix
-heat/grids/square
+grids/square
 --number-of-meshes-for-grid-convergence
 4
 -output_file
