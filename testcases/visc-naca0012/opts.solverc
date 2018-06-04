@@ -2,6 +2,8 @@
 -options_left
 #-log_view
 
+#-mesh_reorder rcm
+
 -mat_type baij
 #-matrix_free_jacobian
 #-matrix_free_difference_step 1e-6
@@ -10,5 +12,5 @@
 -ksp_rtol 1e-1
 -ksp_max_it 40
 -pc_type bjacobi
--sub_pc_type sor
--sub_pc_sor_symmetric
+-sub_pc_type ilu
+

@@ -1,0 +1,63 @@
+io {
+	mesh_file                    "../testcases/naca0012/grids/NACA0012_inv.su2"
+	solution_output_file         "naca.vtu"
+	log_file_prefix              "naca-log"
+	convergence_history_required false
+}
+
+flow_conditions {
+	;; euler or navierstokes flow
+	flow_type               euler
+	adiabatic_index         1.4
+	angle_of_attack         1.25
+	freestream_Mach_number  0.8
+}
+
+bc
+{
+	slipwall_marker           2
+	farfield_marker           4
+	
+	;; List of boundary markers at which surface output is required
+	;;  and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "inv-naca"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    hllc
+	gradient_method                  leastsquares
+	limiter                          weno
+	limiter_parameter                20.0
+}
+
+;; Psuedo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  20.0
+		cfl_max                  200.0
+		tolerance                1e-7
+		max_timesteps            2000
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	initialization {	
+		cfl_min                  20.0
+		cfl_max                  200.0
+		tolerance                1e-1
+		max_timesteps            100
+	}
+}
+
+Jacobian_inviscid_flux       consistent
