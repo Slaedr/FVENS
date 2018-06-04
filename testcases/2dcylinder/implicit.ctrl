@@ -1,16 +1,16 @@
 io {
-	mesh_file                    "../testcases/2dcylinder/grids/2dcylquad2.msh"
+	mesh_file                    "../testcases/2dcylinder/grids/2dcylquad3.msh"
 	solution_output_file         "2dcyl.vtu"
 	log_file_prefix              "2dcyl-log"
-	convergence_history_required true
+	convergence_history_required false
 }
 
 flow_conditions {
 	;; euler or navierstokes flow
 	flow_type               euler
 	adiabatic_index         1.4
+	angle_of_attack         0.0
 	freestream_Mach_number  0.38
-	angle_of_attack         2.0
 }
 
 bc
@@ -32,7 +32,7 @@ time {
 
 spatial_discretization {
 	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
-	inviscid_flux                   LLF
+	inviscid_flux                    hllc
 	gradient_method                  leastsquares
 	limiter                          none
 }
@@ -40,22 +40,24 @@ spatial_discretization {
 ;; Psuedo-time continuation settings for the nonlinear solver
 pseudotime 
 {
-	pseudotime_stepping_type    explicit
+	pseudotime_stepping_type    implicit
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  0.2
-		cfl_max                  0.2
+		cfl_min                  250.0
+		cfl_max                  1000.0
 		tolerance                1e-5
-		max_timesteps            500000
+		max_timesteps            500
 	}
 	
 	;; The solver which computes an initial guess for the main solver
 	initialization {	
-		cfl_min                  0.5
-		cfl_max                  0.5
+		cfl_min                  25.0
+		cfl_max                  500.0
 		tolerance                1e-1
-		max_timesteps            5000
+		max_timesteps            100
 	}
 }
+
+Jacobian_inviscid_flux     consistent
 

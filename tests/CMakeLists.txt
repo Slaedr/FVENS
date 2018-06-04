@@ -59,6 +59,16 @@ if(WITH_BLASTED)
 	target_link_libraries(e_testflow_conv_clcd ${BLASTED_LIB})
 endif()
 
+# List of control files
+set(CONTROL_FILES inv-2dcyl/inv-cyl-gg-hllc_tri.ctrl
+  inv-2dcyl/inv-cyl-ls-hllc_tri.ctrl
+  inv-2dcyl/inv-cyl-ls-hllc_quad.ctrl)
+# Process them to include CMake variables
+foreach(file ${CONTROL_FILES})
+  message(STATUS "Configuring control file ${file}")
+  configure_file(${file} ${file})
+endforeach(file)
+
 # Tests
 
 add_subdirectory(utils)
@@ -80,38 +90,38 @@ add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT
 
 add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg wall_boundaries
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl wall_boundaries
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 
 add_test(NAME SpatialFlow_Walltest_HLLC WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux HLLC
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl numerical_flux HLLC
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 add_test(NAME SpatialFlow_Walltest_Roe WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux ROE
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl numerical_flux ROE
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 add_test(NAME SpatialFlow_Walltest_AUSM WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND  ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux AUSM
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl numerical_flux AUSM
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 add_test(NAME SpatialFlow_Walltest_AUSMPlus WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND  ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux AUSMPLUS
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl numerical_flux AUSMPLUS
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 add_test(NAME SpatialFlow_Walltest_HLL WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux HLL
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl numerical_flux HLL
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_spatial
-  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.cfg numerical_flux LLF
+  ${CMAKE_CURRENT_SOURCE_DIR}/input/test.ctrl numerical_flux LLF
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/input/testperiodic.msh)
 
 add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_pseudotime
-  ${CMAKE_CURRENT_SOURCE_DIR}/flow/testexception.control --test_type exception_nanorinf
-  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/testexception.ctrl --test_type exception_nanorinf
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/testexception.petscrc
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh)
 
 # The heat tests must still take place in the source directory as it has a hard-coded
@@ -128,28 +138,29 @@ add_subdirectory(isentropic_vortex)
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv
-  ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv-cyl-ls-hllc_tri.control
-  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  ${CMAKE_CURRENT_BINARY_DIR}/inv-2dcyl/inv-cyl-ls-hllc_tri.ctrl
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv-2dcyl/inv_cyl.petscrc
   --number_of_meshes 4
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylinder)
 add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv
-  ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv-cyl-gg-hllc_tri.control -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  ${CMAKE_CURRENT_BINARY_DIR}/inv-2dcyl/inv-cyl-gg-hllc_tri.ctrl
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv-2dcyl/inv_cyl.petscrc
   --number_of_meshes 4
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylinder)
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow_conv
-  ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv-cyl-ls-hllc_quad.control
-  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/inv_cyl.petscrc
+  ${CMAKE_CURRENT_BINARY_DIR}/inv-2dcyl/inv-cyl-ls-hllc_quad.ctrl
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv-2dcyl/inv_cyl.petscrc
   --number_of_meshes 4
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad)
 
 add_test(NAME SpatialFlow_Euler_NACA0012_transonic_WENO_LeastSquares_HLLC
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} e_testflow
-  ${CMAKE_CURRENT_SOURCE_DIR}/flow/transonic-naca0012.control
+  ${CMAKE_CURRENT_SOURCE_DIR}/flow/transonic-naca0012.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow/transonic-naca0012.petscrc
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/naca0012/grids/naca0012luo.msh)
 

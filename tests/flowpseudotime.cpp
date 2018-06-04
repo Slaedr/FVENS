@@ -39,8 +39,15 @@ int main(int argc, char *argv[])
 		("FVENS functional convergence test.\n"s
 		 + " The first argument is the input control file name.\n"
 		 + "Further options");
+	desc.add_options()("test_type", po::value<std::string>(), "Type of test: 'exception_nanorinf' \
+for testing detection of NaN or inf during nonlinear sovlve");
 
 	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
+
+	if(cmdvars.count("help")) {
+		std::cout << desc << std::endl;
+		std::exit(0);
+	}
 
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
@@ -51,8 +58,6 @@ int main(int argc, char *argv[])
 
 	//std::string testchoice = parsePetscCmd_string("-test_type", 100);
 	std::string testchoice = cmdvars["test_type"].as<std::string>();
-	desc.add_options()("test_type", "Type of test: 'exception_nanorinf' for testing detection of \
-NaN or inf during nonlinear sovlve");
 
 	// solve case - constructs (creates) u, computes the solution and stores the solution in it
 	if(testchoice == "exception_nanorinf") {

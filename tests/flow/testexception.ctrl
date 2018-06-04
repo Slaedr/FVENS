@@ -2,10 +2,10 @@
  ; Steady case
 
 io {
-	mesh_file                    "FVENS/testcases/some_viscous_case/grids/some_mesh.msh"
+	mesh_file                    "cmd"
 	solution_output_file         "visc-case.vtu"
 	log_file_prefix              "visc-case-log"
-	convergence_history_required true
+	convergence_history_required false
 }
 
 flow_conditions 
@@ -36,13 +36,13 @@ bc
 	;; Markers in the mesh file corresponding to each kind of boundary.
 	 ; Currently, there can only be one marker of each type.
 	 ; Some boundary conditions require boundary values
-	farfield_marker              4
+	inflow_outflow_marker        4
 	
-	adiabatic_wall_marker        5
+	adiabatic_wall_marker        2
 	;; Non-dimensional velocity
 	adiabatic_wall_velocity      20.0
 	
-	isothermal_wall_marker       7
+	isothermal_wall_marker       -1
 	;; Temperature in Kelvin
 	isothermal_wall_temperature  290.0
 	;; Non-dimensional velocity
@@ -50,11 +50,9 @@ bc
 	
 	;; List of boundary markers at which surface output is required
 	 ; and are to be treated as walls, ie, CL and CD are computed
-	listof_output_wall_boundaries    5 7
+	listof_output_wall_boundaries    2
 	
-	listof_output_other_boundaries   4
-	
-	surface_output_file_prefix       "2dcyl"
+	surface_output_file_prefix       "naca"
 }
 
 time {
@@ -71,7 +69,7 @@ spatial_discretization
 	gradient_method                  leastsquares
 	
 	;; Limiter for shock-capturing - none, Venkatakrishnan, VanAlbada, WENO
-	limiter                          WENO
+	limiter                          none
 	;; A parameter controlling the limiter - the meaning differs with the limiter
 	limiter_parameter                20.0
 }
@@ -83,25 +81,23 @@ pseudotime
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  100.0
+		cfl_min                  2000.0
 		cfl_max                  2000.0
-		tolerance                1e-5
+		tolerance                1e-7
 		max_timesteps            500
 	}
 	
 	;; The solver which computes an initial guess for the main solver
 	 ; Uses a first-order spatial discretization for steady cases
 	initialization {	
-		cfl_min                  50.0
-		cfl_max                  500.0
+		cfl_min                  500.0
+		cfl_max                  1000.0
 		tolerance                1e-1
-		max_timesteps            50
+		max_timesteps            0
 	}
 }
 
-;; Inviscid flux function to use for computing the Jacobian for implicit solvers
- ; Apart from all the fluxes available, 'consistent' can be specified.
- ; This will cause FVENS to use the same flux as specified above for
- ; the spatial discretization (usually a good choice).
-Jacobian_inviscid_flux         consistent
+;; Inviscid flux function to use for computing the Jacobian
+ ; in case of implicit solvers
+Jacobian_inviscid_flux         Roe
 

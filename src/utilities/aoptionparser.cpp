@@ -230,6 +230,8 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 
 	if(opts.pseudotimetype == "IMPLICIT") {
 		opts.invfluxjac = get_upperCaseString(infopts, "Jacobian_inviscid_flux");
+		if(opts.invfluxjac == "CONSISTENT")
+			opts.invfluxjac = opts.invflux;
 	}
 	
 	// check for some PETSc options

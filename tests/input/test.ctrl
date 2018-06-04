@@ -1,0 +1,84 @@
+io {
+	mesh_file                    "input/testperiodic.msh"
+	solution_output_file         "2dcyl.vtu"
+	log_file_prefix              "2dcyl-log"
+	convergence_history_required false
+}
+
+flow_conditions {
+	;; euler or navierstokes flow
+	flow_type                navierstokes
+	adiabatic_index             1.4
+	angle_of_attack             0.0
+	freestream_Mach_number        0.5
+	
+	freestream_Reynolds_number    5000.0
+	
+	;; Free-streeam temperature in Kelvin
+	freestream_temperature        288.15
+	
+	Prandtl_number                0.72
+	
+	;; Optional - false by default, in which case Sutherland model is used
+	use_constant_viscosity        false
+}
+
+bc
+{
+	farfield_marker              4
+	
+	adiabatic_wall_marker        2
+	adiabatic_wall_velocity      0.0
+	
+	isothermal_wall_marker       3
+	isothermal_wall_temperature  290.0
+	isothermal_wall_velocity     0.0
+	
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "some"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization 
+{
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    Roe
+	
+	;; Gradient computation method - none (first-order), leastSquares, greenGauss
+	gradient_method                  leastsquares
+	
+	;; Limiter for shock-capturing - none, Venkatakrishnan, VanAlbada, WENO
+	limiter                          none
+	;; A parameter controlling the limiter - the meaning differs with the limiter
+	limiter_parameter                20.0
+}
+
+;; Pseudo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  100.0
+		cfl_max                  2000.0
+		tolerance                1e-5
+		max_timesteps            500
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	 ; Uses a first-order spatial discretization for steady cases
+	initialization {	
+		cfl_min                  50.0
+		cfl_max                  500.0
+		tolerance                1e-1
+		max_timesteps            50
+	}
+}
+
+Jacobian_inviscid_flux         Roe

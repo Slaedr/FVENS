@@ -1,0 +1,32 @@
+#include "@CMAKE_SOURCE_DIR@/tests/inv-2dcyl/inv-cyl-base.ctrl"
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    hllc
+	gradient_method                  leastsquares
+	limiter                          none
+}
+
+;; Psuedo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  250.0
+		cfl_max                  1000.0
+		tolerance                1e-6
+		max_timesteps            400
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	initialization {	
+		cfl_min                  25.0
+		cfl_max                  500.0
+		tolerance                1e-1
+		max_timesteps            150
+	}
+}
+
+

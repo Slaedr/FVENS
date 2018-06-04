@@ -73,7 +73,7 @@ Make sure to set the paths of input and output files appropriately in the contro
 
 Control files
 -------------
-Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called. The structure of the control files is currently very rigid; it is recommended to copy one of the existing cases' control file and modify it.
+Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called.
 
 PETSc options for FVENS
 -----------------------

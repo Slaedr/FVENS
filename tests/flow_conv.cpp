@@ -24,6 +24,8 @@ int main(int argc, char *argv[])
 	po::options_description desc
 		(std::string("FVENS Conv options: The first argument is the input control file name.\n")
 		 + "Further options");
+	desc.add_options()("number_of_meshes", po::value<int>(),
+	                   "Number of meshes for grid convergence test");
 
 	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
 

@@ -33,18 +33,18 @@ int main(int argc, char *argv[])
 	// First set up command line options parsing
 
 	po::options_description desc
-		(std::string("FVENS options: The first argument is the input control file name.\n")
-		 + "Further options");
+		(std::string("FVENS - Finite volume Euler and Navier-Stokes solver")
+		 + "\n The first argument must be the control file to use. Further options");
 
 	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
-
-	// Read control file
-	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	if(cmdvars.count("help")) {
 		std::cout << desc << std::endl;
 		std::exit(0);
 	}
+
+	// Read control file
+	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	// solution vector
 	Vec u;
