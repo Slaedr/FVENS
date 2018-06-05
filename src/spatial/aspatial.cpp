@@ -1771,7 +1771,6 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), nvars);
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
