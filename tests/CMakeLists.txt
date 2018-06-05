@@ -69,7 +69,7 @@ add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURREN
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flow-general/testexception.solverc
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh)
 
-add_subdirectory(isentropic-vortex)
+#add_subdirectory(isentropic-vortex)
 
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
