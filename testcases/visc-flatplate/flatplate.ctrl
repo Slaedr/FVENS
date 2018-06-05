@@ -1,8 +1,8 @@
 
 io {
-	mesh_file                    "flatplatestructstretched"
-	solution_output_file         "visc-case.vtu"
-	log_file_prefix              "visc-case-log"
+	mesh_file                    "../testcases/visc-flatplate/grids/flatplatestruct2.msh"
+	solution_output_file         "flatplate.vtu"
+	log_file_prefix              "flatplate"
 	convergence_history_required false
 }
 
@@ -29,7 +29,7 @@ bc
 	
 	listof_output_wall_boundaries    2
 	listof_output_other_boundaries   5
-	surface_output_file_prefix       "2dcyl"
+	surface_output_file_prefix       "flatplate"
 }
 
 time {
