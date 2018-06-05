@@ -1,0 +1,80 @@
+
+io {
+	mesh_file                    "../testcases/visc-cylinder/grids/2dcylinderhybrid4.msh"
+	solution_output_file         "visc-cyl.vtu"
+	log_file_prefix              "visc-cyl"
+	convergence_history_required false
+}
+
+flow_conditions 
+{
+	;; Type of flow to solve for - euler or navierstokes
+	flow_type                     navierstokes
+	
+	adiabatic_index               1.4
+	
+	;; Angle of attack in degrees
+	angle_of_attack               0.0
+	
+	freestream_Mach_number        0.1
+	
+	freestream_Reynolds_number    20.0
+	
+	;; Free-streeam temperature in Kelvin
+	freestream_temperature        273.15
+	
+	Prandtl_number                0.72
+	
+	;; Optional - false by default, in which case Sutherland model is used
+	use_constant_viscosity        false
+}
+
+bc
+{
+	inflow_outflow_marker        4
+	
+	adiabatic_wall_marker        2
+	adiabatic_wall_velocity      0.0
+	
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "vcyl"
+}
+
+time {
+	simulation_type           steady
+}
+
+spatial_discretization 
+{
+	inviscid_flux                    HLLC
+	gradient_method                  leastsquares
+	limiter                          none
+	limiter_parameter                20.0
+}
+
+;; Pseudo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  200.0
+		cfl_max                  5000.0
+		tolerance                1e-7
+		max_timesteps            500
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	 ; Uses a first-order spatial discretization for steady cases
+	initialization {	
+		cfl_min                  75.0
+		cfl_max                  500.0
+		tolerance                1e-1
+		max_timesteps            50
+	}
+}
+
+Jacobian_inviscid_flux         consistent
+

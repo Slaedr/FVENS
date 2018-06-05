@@ -1,0 +1,69 @@
+
+io {
+	mesh_file                    "flatplatestructstretched"
+	solution_output_file         "visc-case.vtu"
+	log_file_prefix              "visc-case-log"
+	convergence_history_required false
+}
+
+flow_conditions 
+{
+	flow_type                     navierstokes
+	adiabatic_index               1.4
+	angle_of_attack               0.0
+	freestream_Mach_number        0.2
+	freestream_Reynolds_number    8.7e5
+	freestream_temperature        290.19
+	Prandtl_number                0.708
+	use_constant_viscosity        false
+}
+
+bc
+{
+	slipwall_marker              3
+	farfield_marker              4
+	inflow_outflow_marker        5
+	
+	adiabatic_wall_marker        2
+	adiabatic_wall_velocity      0.0
+	
+	listof_output_wall_boundaries    2
+	listof_output_other_boundaries   5
+	surface_output_file_prefix       "2dcyl"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization 
+{
+	inviscid_flux                    Roe
+	gradient_method                  leastsquares
+	limiter                          none
+	limiter_parameter                20.0
+}
+
+;; Pseudo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	main {
+		cfl_min                  100.0
+		cfl_max                  2000.0
+		tolerance                1e-5
+		max_timesteps            500
+	}
+	
+	initialization {	
+		cfl_min                  20.0
+		cfl_max                  2000.0
+		tolerance                1e-1
+		max_timesteps            50
+	}
+}
+
+Jacobian_inviscid_flux         consistent
+
