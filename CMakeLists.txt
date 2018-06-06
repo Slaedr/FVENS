@@ -174,7 +174,7 @@ endif()
 # Boost
 find_package(Boost 1.60 REQUIRED COMPONENTS program_options)
 include_directories(${Boost_INCLUDE_DIRS})
-#message(STATUS "Linking Boost libraries ${Boost_LIBRARIES}")
+message(STATUS "Found Boost libraries at ${Boost_LIBRARIES}")
 
 # Eigen
 include_directories($ENV{EIGEN_DIR})
