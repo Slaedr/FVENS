@@ -10,6 +10,7 @@
 #include <petscvec.h>
 
 #include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
 
 using namespace amat;

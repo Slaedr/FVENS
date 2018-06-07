@@ -1,22 +1,15 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <omp.h>
 #include <petscksp.h>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
 #include "linalg/alinalg.hpp"
 #include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/casesolvers.hpp"
-#include "spatial/aoutput.hpp"
-#include "ode/aodesolver.hpp"
-#include "mesh/ameshutils.hpp"
-
-#ifdef USE_BLASTED
-#include <blasted_petsc.h>
-#endif
 
 using namespace amat;
 using namespace acfd;

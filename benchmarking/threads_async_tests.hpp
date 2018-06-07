@@ -11,8 +11,9 @@
 #include <string>
 #include <fstream>
 
-#include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
 #include "linalg/alinalg.hpp"
+#include "ode/aodesolver.hpp"
 
 namespace benchmark {
 

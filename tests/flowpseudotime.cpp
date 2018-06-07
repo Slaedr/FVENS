@@ -6,23 +6,13 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <omp.h>
-#include <petscksp.h>
+#include <petscvec.h>
 
-#include "linalg/alinalg.hpp"
 #include "utilities/aoptionparser.hpp"
-#include "utilities/afactory.hpp"
-#include "utilities/casesolvers.hpp"
+#include "utilities/controlparser.hpp"
 #include "utilities/aerrorhandling.hpp"
-#include "spatial/aoutput.hpp"
-#include "ode/aodesolver.hpp"
-#include "mesh/ameshutils.hpp"
+#include "utilities/casesolvers.hpp"
 
-#ifdef USE_BLASTED
-#include <blasted_petsc.h>
-#endif
-
-using namespace amat;
 using namespace acfd;
 namespace po = boost::program_options;
 using namespace std::literals::string_literals;

@@ -7,6 +7,7 @@
 #include <boost/program_options/variables_map.hpp>
 #include <petscsys.h>
 #include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
 
 using namespace std;
 using namespace acfd;

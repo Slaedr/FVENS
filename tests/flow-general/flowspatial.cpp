@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 #include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
 #include "testflowspatial.hpp"
 
 using namespace acfd;
