@@ -145,9 +145,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 #pragma omp parallel for simd default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++) {
-			for(int i = 0; i < nvars; i++)
-				residual(iel,i) = 0;
+		for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+			rarr[i] = 0;
 		}
 
 		// update residual
@@ -157,7 +156,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 #pragma omp parallel default(shared)
 		{
-#pragma omp for simd
+#pragma omp for
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
 				for(int i = 0; i < nvars; i++)

@@ -21,8 +21,14 @@ project (fvens)
 
 # detect C++ compiler
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-	set(CXX_COMPILER_GNUCLANG TRUE) 
-	message(STATUS "GNU or Clang C++ compiler detected")
+	set(CXX_COMPILER_GNUCLANG TRUE)
+	if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+		set(CXX_COMPILER_GNU TRUE)
+		message(STATUS "GNU C++ compiler detected")
+	else()
+		set(CXX_COMPILER_CLANG TRUE)
+		message(STATUS "Clang C++ compiler detected")
+	endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
 	set(CXX_COMPILER_INTEL TRUE)
 	message(STATUS "Intel C++ compiler detected")
@@ -50,6 +56,9 @@ elseif(CXX_COMPILER_CRAY)
 	set (CMAKE_CXX_FLAGS_DEBUG "-g -O1")
 	set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 endif()
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG=1")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UDEBUG -DNDEBUG")
 
 # Disable C - this should cause C compilation to fail
 set(CMAKE_C_FLAGS "-std=c++14")
@@ -86,9 +95,9 @@ else()
 endif()
 
 # set verbosity options
-if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+if(CXX_COMPILER_GNU)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-inline-vec-optimized-missed=optimizations.info")
-elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+elseif(CXX_COMPILER_CLANG)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Rpass=inline,vectorize")
 elseif(CXX_COMPILER_INTEL)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qopt-report=2")
@@ -198,11 +207,6 @@ message(STATUS "Building with PETSc found at ${PETSC_LIB}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
 
 # ---------------------------------------------------------------------------- #
-
-# flags and stuff
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb -DDEBUG=1")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -UDEBUG -DNDEBUG")
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} LCASE_CMAKE_BUILD_TYPE)
 if(LCASE_CMAKE_BUILD_TYPE MATCHES "debug")

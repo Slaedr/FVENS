@@ -32,7 +32,7 @@ void ZeroGradients<nvars>::compute_gradients(
 		const amat::Array2d<a_real>& ug, 
 		std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grad ) const
 {
-#pragma omp parallel for simd default(shared)
+#pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		for(int j = 0; j < NDIM; j++)
@@ -57,7 +57,7 @@ void GreenGaussGradients<nvars>::compute_gradients(
 {
 #pragma omp parallel default(shared)
 	{
-#pragma omp for simd
+#pragma omp for
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int j = 0; j < NDIM; j++)
