@@ -5,9 +5,6 @@
  * Part of FVENS.
  * @author Aditya Kashi
  * @date Feb 10, 2015
- *
- * 2016-04-17: Removed variable storage-order. Everything is row-major now.
- * Further, all indexing is now by a_int rather than int.
  */
 
 /**
@@ -66,15 +63,7 @@ public:
 	}
 
 	/// Deep copy
-	Array2d(const Array2d<T>& other)
-		: nrows{other.nrows}, ncols{other.ncols}, size{other.size},
-		elems{new T[nrows*ncols]}
-	{
-		for(a_int i = 0; i < nrows*ncols; i++)
-		{
-			elems[i] = other.elems[i];
-		}
-	}
+	Array2d(const Array2d<T>& other);
 
 	~Array2d()
 	{
@@ -82,22 +71,7 @@ public:
 	}
 
 	/// Deep copy
-	Array2d<T>& operator=(const Array2d<T>& rhs)
-	{
-#ifdef DEBUG
-		if(this==&rhs) return *this;		// check for self-assignment
-#endif
-		nrows = rhs.nrows;
-		ncols = rhs.ncols;
-		size = nrows*ncols;
-		delete [] elems;
-		elems = new T[nrows*ncols];
-		for(a_int i = 0; i < nrows*ncols; i++)
-		{
-			elems[i] = rhs.elems[i];
-		}
-		return *this;
-	}
+	Array2d<T>& operator=(const Array2d<T>& rhs);
 	
 	/// Sets a new size for the array, deletes the contents and allocates new memory
 	void resize(const a_int nr, const a_int nc)
@@ -124,9 +98,10 @@ public:
 	/// Fill the array with ones
 	void ones();
 
-	/// function to set matrix elements from a ROW-MAJOR array
+	/// function to copy matrix elements from a ROW-MAJOR array
 	void setdata(const T* A, a_int sz);
 
+	/// Getter function \sa operator()
 	T get(const a_int i, const a_int j=0) const
 	{
 		assert(i < nrows);
@@ -147,7 +122,8 @@ public:
 	a_int cols() const { return ncols; }
 	a_int msize() const { return size; }
 
-	/// Getter/setter function for expressions like A(1,2) = 141 to set the element at 1st row and 2nd column to 141
+	/// Getter/setter function for expressions like A(1,2) = 141
+	///  to set the element at 1st row and 2nd column to 141
 	T& operator()(const a_int x, const a_int y=0)
 	{
 		assert(x < nrows);
@@ -156,7 +132,7 @@ public:
 		return elems[x*ncols + y];
 	}
 	
-	/// Const Getter/setter function for expressions like x = A(1,2) to get the element at 1st row and 2nd column
+	/// Const getter function for expressions like x = A(1,2) to get the element at 1st row and 2nd column
 	const T& operator()(const a_int x, const a_int y=0) const
 	{
 		assert(x < nrows);
