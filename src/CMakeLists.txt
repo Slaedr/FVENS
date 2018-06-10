@@ -21,6 +21,9 @@ if(WITH_BLASTED)
 	target_link_libraries(fvens_base ${BLASTED_LIB})
   endif()
 target_link_libraries(fvens_base ${MPI_C_LIBRARIES} ${MPI_C_LINK_FLAGS})
+if(CXX_COMPILER_CLANG)
+  target_compile_options(fvens_base PRIVATE "-Wno-error=pass-failed")
+endif()
 
 # for the final executable(s)
 
