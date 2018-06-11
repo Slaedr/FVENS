@@ -177,7 +177,7 @@ endif()
 
 # profiling
 if(PROFILE)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -g")
 endif()
 
 # Boost
