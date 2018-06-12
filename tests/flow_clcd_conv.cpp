@@ -88,7 +88,7 @@ skin-friction drag respectively");
 		
 		std::string meshs = std::to_string(imesh) + ".msh";
 		
-		const FlowSolutionFunctionals fnls { case1.run_output(meshs, false, &u) };
+		const FlowSolutionFunctionals fnls = case1.run_output(meshs, false, &u);
 
 		std::cout << "CL Cdp CDsf = " << fnls.CL << " " << fnls.CDp << " " << fnls.CDsf << std::endl;
 		
