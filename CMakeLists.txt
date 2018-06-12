@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 
-# The environment variable EIGEN_DIR needs to be set to the path of the Eigen top-level directory.
-# The env variables PETSC_DIR and PETSC_ARCH need to be set.
-# The environment variable BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
-# THe env variable BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
+# EIGEN3_ROOT needs to be set to the path of the Eigen top-level directory.
+# PETSC_DIR and PETSC_ARCH need to be set.
+# BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
+# BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
 
 # Pass -DBOOST_ROOT=<path-to-Boost-root-directory> if Boost is not present in a default directory
 # Pass -DWITH_BLASTED=1 to compile with BLASTed preconditioning support

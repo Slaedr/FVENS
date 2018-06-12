@@ -29,11 +29,11 @@ Building
 --------
 The following libraries are required:
 - [Boost](http://www.boost.org/), present in the default package repositories of all GNU/Linux distributions
-- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs an environment variable called EIGEN_DIR to be set to the top-level Eigen directory
-- [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers
+- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs a variable called EIGEN3_ROOT to be set to the top-level Eigen directory
+- [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers; needs PETSC_DIR and PETSC_ARCH set
 - Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called BLASTED_DIR to be set to the top level BLASTed source directory and BLASTED_BIN_DIR to be set to the BLASTed build directory.
 
-OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
+The variables needed can either be passed as arguments to CMake during configuration (see below) or set as environment variables. OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
 
 To build, issue
 
@@ -74,6 +74,10 @@ Make sure to set the paths of input and output files appropriately in the contro
 Control files
 -------------
 Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called.
+
+Command Line Options
+--------------------
+--mesh_file <string> If given, this overrides the mesh file specified in the control file.
 
 PETSc options for FVENS
 -----------------------
