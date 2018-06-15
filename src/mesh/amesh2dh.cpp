@@ -41,8 +41,8 @@ void UMesh2dh::readMesh(const std::string mfile)
 
 	if(parts[parts.size()-1] == "su2")
 		readSU2(mfile);
-	else if(parts[parts.size()-1] == "domn")
-		readDomn(mfile);
+	/*else if(parts[parts.size()-1] == "domn")
+	  readDomn(mfile);*/
 	else
 		readGmsh2(mfile);
 }

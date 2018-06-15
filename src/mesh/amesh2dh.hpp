@@ -171,6 +171,7 @@ public:
 	 * \note Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
 	 * \deprecated Please use Gmsh format instead.
 	*/
+	[[deprecated("Please use Gmsh files instead")]]
 	void readDomn(const std::string mfile);
 
 	/// Re-orders calls according to some permutation vector
