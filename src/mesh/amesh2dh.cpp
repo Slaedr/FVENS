@@ -822,424 +822,11 @@ void UMesh2dh::compute_topological()
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Calculating and storing topological info...\n";
 #endif
-	/// 1. Elements surrounding points
-	//std::cout << "UMesh2d: compute_topological(): Elements surrounding points\n";
-	esup_p.resize(npoin+1,1);
-	esup_p.zeros();
 
-	for(int i = 0; i < nelem; i++)
-	{
-		for(int j = 0; j < nnode[i]; j++)
-		{
-			/* The first index is inpoel(i,j) + 1 : the + 1 is there because 
-			 * the storage corresponding to the first node begins at 0, not at 1
-			 */
-			esup_p(inpoel(i,j)+1,0) += 1;
-		}
-	}
-	// Now make the members of esup_p cumulative
-	for(int i = 1; i < npoin+1; i++)
-		esup_p(i,0) += esup_p(i-1,0);
-	// Now populate esup
-	esup.resize(esup_p(npoin,0),1);
-	esup.zeros();
-	for(int i = 0; i < nelem; i++)
-	{
-		for(int j = 0; j < nnode[i]; j++)
-		{
-			int ipoin = inpoel(i,j);
-			
-			// now put that element no. in the space pointed to by esup_p(ipoin):
-			esup(esup_p(ipoin,0),0) = i;
+	compute_elementsSurroundingPoints();
+	compute_elementsSurroundingElements();
+	compute_faceConnectivity();
 
-			// an element corresponding to ipoin has been found - increment esup_p for that point:
-			esup_p(ipoin,0) += 1;				
-		}
-	}
-	
-	//But now esup_p holds increased values:
-	// each member increased by the number elements surrounding the corresponding point.
-	// So now correct this.
-	for(int i = npoin; i >= 1; i--)
-		esup_p(i,0) = esup_p(i-1,0);
-	esup_p(0,0) = 0;
-	// Elements surrounding points is now done.
-
-	/// 2. Points surrounding points
-#ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Points surrounding points\n";
-#endif
-	psup_p.resize(npoin+1,1);
-	psup_p.zeros();
-	psup_p(0,0) = 0;
-
-	// The ith member indicates the global point number of which 
-	// the ith point is a surrounding point
-	amat::Array2d<int > lpoin(npoin,1);
-	for(int i = 0; i < npoin; i++) lpoin(i,0) = -1;	// initialize this std::vector to -1
-	int istor = 0;
-
-	// first pass: calculate storage needed for psup
-	for(int ip = 0; ip < npoin; ip++)
-	{
-		lpoin(ip,0) = ip;		// the point ip itself is not counted as a surrounding point of ip
-		// Loop over elements surrounding this point
-		for(int ie = esup_p(ip,0); ie <= esup_p(ip+1,0)-1; ie++)
-		{
-			int ielem = esup(ie,0);		// element number
-
-			// find local node number of ip in ielem
-			int inode = -1;
-			for(int jnode = 0; jnode < nnode[ielem]; jnode++)
-				if(inpoel(ielem,jnode) == ip) inode = jnode;
-#ifdef DEBUG
-			if(inode == -1) {
-				std::cout << " ! UMesh2dh: compute_topological(): ";
-				std::cout << "inode not found while computing psup!\n";
-			}
-#endif
-
-			// contains true if that local node number is connected to a particular local node.
-			std::vector<bool> nbd(nnode[ielem]);
-			for(int j = 0; j < nnode[ielem]; j++)
-				nbd[j] = false;
-
-			if(nnode[ielem] == 3)
-				for(size_t i = 0; i < nbd.size(); i++)
-					nbd[i] = true;
-			else if(nnode[ielem] == 4)
-				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
-				{
-					if(jnode == (inode + 1) % nnode[ielem] 
-							|| jnode == (inode + nnode[ielem]-1) % nnode[ielem])
-						nbd[jnode] = true;
-				}
-
-			//loop over nodes of the element
-			for(int inode = 0; inode < nnode[ielem]; inode++)
-			{
-				//Get global index of this node
-				int jpoin = inpoel(ielem, inode);
-
-				/* test if this point as already been counted as a surrounding point of ip, 
-				 * and whether it's connected to ip. 
-				 */
-				if(lpoin(jpoin,0) != ip && nbd[inode])		
-				{
-					istor++;
-					lpoin(jpoin,0) = ip;		// set this point as a surrounding point of ip
-				}
-			}
-		}
-		psup_p(ip+1,0) = istor;
-	}
-
-	psup.resize(istor,1);
-	//std::cout << "+++ " << istor << std::endl;
-
-	//second pass: populate psup
-	istor = 0;
-	for(int i = 0; i < npoin; i++) lpoin(i,0) = -1;	// initialize lpoin to -1
-	for(int ip = 0; ip < npoin; ip++)
-	{
-		lpoin(ip,0) = ip;		// the point ip itself is not counted as a surrounding point of ip
-		// Loop over elements surrounding this point
-		for(int ie = esup_p(ip,0); ie <= esup_p(ip+1,0)-1; ie++)
-		{
-			int ielem = esup(ie,0);		// element number
-
-			// find local node number of ip in ielem
-			int inode = -1;
-			for(int jnode = 0; jnode < nnode[ielem]; jnode++)
-				if(inpoel(ielem,jnode) == ip) inode = jnode;
-#ifdef DEBUG
-			if(inode == -1) {
-				std::cout << " ! UMesh2dh: compute_topological(): ";
-				std::cout << "inode not found while computing psup!\n";
-			}
-#endif
-
-			// nbd[j] contains true if ip is connected to local node number j of ielem.
-			std::vector<bool> nbd(nnode[ielem]);
-			for(int j = 0; j < nnode[ielem]; j++)
-				nbd[j] = false;
-
-			if(nnode[ielem] == 3)
-				for(size_t i = 0; i < nbd.size(); i++)
-					nbd[i] = true;
-			else if(nnode[ielem] == 4)
-				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
-				{
-					if(jnode == (inode + 1) % nnode[ielem] 
-							|| jnode == (inode + nnode[ielem]-1) % nnode[ielem])
-						nbd[jnode] = true;
-				}
-
-			//loop over nodes of the element
-			for(int inode = 0; inode < nnode[ielem]; inode++)
-			{
-				//Get global index of this node
-				int jpoin = inpoel(ielem, inode);
-				if(lpoin(jpoin,0) != ip && nbd[inode])
-					// test of this point as already been counted as a surrounding point of ip
-				{
-					psup(istor,0) = jpoin;
-					istor++;
-					lpoin(jpoin,0) = ip;		// set this point as a surrounding point of ip
-				}
-			}
-		}
-	}
-	//Points surrounding points is now done.
-
-	/// 3. Elements surrounding elements
-#ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Elements surrounding elements...\n";
-#endif
-	//amat::Array2d<int> lpoin(npoin,1);
-	esuel.resize(nelem, maxnfael);
-	for(int ii = 0; ii < nelem; ii++)
-		for(int jj = 0; jj < maxnfael; jj++)
-			esuel(ii,jj) = -1;
-	//lpofa.mprint();
-	amat::Array2d<int > lhelp(nnofa,1);
-	lhelp.zeros();
-	lpoin.zeros();
-
-	for(int ielem = 0; ielem < nelem; ielem++)
-	{
-		// first get lpofa for this element
-		// lpofa(i,j) holds local node number of jth node of ith face 
-		//   (j in [0:nnofa], i in [0:nfael])
-		amat::Array2d<int > lpofai(nfael[ielem], nnofa);	
-		for(int i = 0; i < nfael[ielem]; i++)
-		{
-			for(int j = 0; j < nnofa; j++)
-			{
-				// fine as long as operands of % are not negative
-				lpofai(i,j) = (i+j) % nnode[ielem];		
-			}
-		}
-
-		for(int ifael = 0; ifael < nfael[ielem]; ifael++)
-		{
-			for(int i = 0; i < nnofa; i++)
-			{
-				// lhelp stores global node nos. of current face of current element
-				lhelp(i,0) = inpoel(ielem, lpofai(ifael,i));	
-				lpoin(lhelp(i,0)) = 1;
-			}
-			int ipoin = lhelp(0);
-			for(int istor = esup_p(ipoin); istor < esup_p(ipoin+1); istor++)
-			{
-				int jelem = esup(istor);
-
-				if(jelem != ielem)
-				{
-					// setup lpofa for jelem
-					amat::Array2d<int > lpofaj;
-					lpofaj.resize(nfael[jelem],nnofa);
-					for(int i = 0; i < nfael[jelem]; i++)
-						for(int j = 0; j < nnofa; j++)
-							lpofaj(i,j) = (i+j)%nnode[jelem];
-
-					for(int jfael = 0; jfael < nfael[jelem]; jfael++)
-					{
-						//Assume that no. of nodes in face ifael is same as that in face jfael
-						int icoun = 0;
-						for(int jnofa = 0; jnofa < nnofa; jnofa++)
-						{
-							int jpoin = inpoel(jelem, lpofaj(jfael,jnofa));
-							if(lpoin(jpoin)==1) icoun++;
-						}
-						if(icoun == nnofa)		// nnofa is 2
-						{
-							esuel(ielem,ifael) = jelem;
-							esuel(jelem,jfael) = ielem;
-						}
-					}
-				}
-			}
-			for(int i = 0; i < nnofa; i++)
-				lpoin(lhelp(i)) = 0;
-		}
-	}
-
-	/** Computes, for each face, the elements on either side, the starting node and 
-	 * the ending node of the face. These are stored in \ref intfac. 
-	 * 
-	 * The orientation of the face is such that the element with smaller index is 
-	 * always to the left of the face, while the element with greater index 
-	 * is always to the right of the face.
-	 * 
-	 * The node ordering of the face is such that the face `points' to the cell with greater index;
-	 * this means the vector starting at node 0 and pointing towards node 1 would 
-	 * rotate clockwise by 90 degrees to point to the cell with greater index.
-	 * 
-	 * Also computes element-face connectivity array \ref elemface in the same loop 
-	 * which computes intfac.
-	 * 
-	 * \note After the following portion, \ref esuel holds (nelem + face no.) for each ghost cell, 
-	 * instead of -1 as before.
-	 */
-#ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
-#endif
-	nbface = naface = 0;
-	// first run: calculate nbface
-	for(int ie = 0; ie < nelem; ie++)
-	{
-		for(int in = 0; in < nnode[ie]; in++)
-		{
-			int je = esuel(ie,in);
-			if(je == -1)
-			{
-				//esuel(ie,in) = nelem+nbface;
-				nbface++;
-			}
-		}
-	}
-	std::cout << "UMesh2dh: compute_topological(): Number of boundary faces = " 
-		<< nbface << std::endl;
-	// calculate number of internal faces
-	naface = nbface;
-	for(int ie = 0; ie < nelem; ie++)
-	{
-		for(int in = 0; in < nnode[ie]; in++)
-		{
-			int je = esuel(ie,in);
-			if(je > ie && je < nelem) naface++;
-		}
-	}
-	std::cout << "UMesh2dh: compute_topological(): Number of all faces = " << naface << std::endl;
-
-	//allocate intfac and elemface
-	intfac.resize(naface,nnofa+2);
-	elemface.resize(nelem,maxnfael);
-
-	//reset face totals
-	nbface = naface = 0;
-
-	int in1, je, jnode;
-
-	//second run: populate intfac
-	for(int ie = 0; ie < nelem; ie++)
-	{
-		for(int in = 0; in < nnode[ie]; in++)
-		{
-			je = esuel(ie,in);
-			if(je == -1)
-			{
-				in1 = (in+1)%nnode[ie];
-				esuel(ie,in) = nelem+nbface;
-				intfac(nbface,0) = ie;
-				intfac(nbface,1) = nelem+nbface;
-				intfac(nbface,2) = inpoel(ie,in);
-				intfac(nbface,3) = inpoel(ie,in1);
-				elemface(ie,in) = nbface;
-
-				nbface++;
-			}
-		}
-	}
-	naface = nbface;
-	for(int ie = 0; ie < nelem; ie++)
-	{
-		for(int in = 0; in < nnode[ie]; in++)
-		{
-			je = esuel(ie,in);
-			if(je > ie && je < nelem)
-			{
-				in1 = (in+1)%nnode[ie];
-				intfac(naface,0) = ie;
-				intfac(naface,1) = je;
-				intfac(naface,2) = inpoel.get(ie,in);
-				intfac(naface,3) = inpoel.get(ie,in1);
-
-				elemface(ie,in) = naface;
-				for(jnode = 0; jnode < nnode[je]; jnode++)
-					if(inpoel.get(ie,in1) == inpoel.get(je,jnode))
-						elemface(je,jnode) = naface;
-
-				naface++;
-			}
-		}
-	}
-
-	/*// Finally, calculates bpoints.
-
-	//first get number of bpoints
-	nbpoin = 0;
-	amat::Array2d<int > isbpflag(npoin,1);
-	isbpflag.zeros();
-	for(int i = 0; i < nface; i++)
-	{
-		for(int j = 0; j < nnofa; j++)
-			isbpflag(bface(i,j)) = 1;
-	}
-	for(int i = 0; i < npoin; i++)
-		if(isbpflag(i)==1) nbpoin++;
-
-	std::cout << "UMesh2dh: compute_topological(): Number of boundary points = " 
-		<< nbpoin << std::endl;
-
-	//Allocate bpoints
-	bpoints.resize(nbpoin,3);		
-	// We need 1 field for global point number 
-	// and in 2D linear meshes, we need 2 more for surrounding faces
-	for(int i = 0; i < nbpoin; i++)
-		for(int j = 0; j < 3; j++)
-			bpoints(i,j) = -1;
-
-	int bp = 0;
-
-	// Next, populate bpoints by iterating over intfac faces
-	lpoin.zeros();		// lpoin will be 1 if the point has been visited
-	for(int iface = 0; iface < nbface; iface++)
-	{
-		int p1, p2;
-		p1 = intfac.get(iface,2+0);
-		p2 = intfac.get(iface,2+1);
-		std::cout << p1 << "," << p2 << " ";
-
-		if(lpoin.get(p1) == 0)	// if this point has not been visited before
-		{
-			bpoints(bp,0) = p1;
-			bpoints(bp,2) = iface;
-			bp++;
-			lpoin(p1) = 1;
-		}
-		else
-		{
-			// search bpoints for point p1
-			int ibp=-1;
-			for(int i = 0; i < bp; i++)
-			{
-				if(bpoints.get(i,0) == p1) ibp = i;
-			}
-
-			bpoints(ibp,2) = iface;
-		}
-
-		if(lpoin.get(p2) == 0)	// if this point has not been visited before
-		{
-			bpoints(bp,0) = p2;
-			bpoints(bp,1) = iface;
-			bp++;
-			lpoin(p2) = 1;
-		}
-		else
-		{
-			// search bpoints for point p2
-			int ibp;
-			for(int i = 0; i < bp; i++)
-			{
-				if(bpoints.get(i,0) == p2) ibp = i;
-			}
-
-			bpoints(ibp,1) = iface;
-		}
-	}*/
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Done." << std::endl;
 #endif
@@ -1721,6 +1308,342 @@ UMesh2dh UMesh2dh::convertQuadToTri() const
 	}
 	
 	return tm;
+}
+
+void UMesh2dh::compute_elementsSurroundingPoints()
+{
+	//std::cout << "UMesh2d: compute_topological(): Elements surrounding points\n";
+	esup_p.resize(npoin+1,1);
+	esup_p.zeros();
+
+	for(int i = 0; i < nelem; i++)
+	{
+		for(int j = 0; j < nfael[i]; j++)
+		{
+			/* The first index is inpoel(i,j) + 1 : the + 1 is there because 
+			 * the storage corresponding to the first node begins at 0, not at 1
+			 */
+			esup_p(inpoel(i,j)+1,0) += 1;
+		}
+	}
+	// Now make the members of esup_p cumulative
+	for(int i = 1; i < npoin+1; i++)
+		esup_p(i,0) += esup_p(i-1,0);
+	// Now populate esup
+	esup.resize(esup_p(npoin,0),1);
+	esup.zeros();
+	for(int i = 0; i < nelem; i++)
+	{
+		for(int j = 0; j < nfael[i]; j++)
+		{
+			int ipoin = inpoel(i,j);
+			
+			// now put that element no. in the space pointed to by esup_p(ipoin):
+			esup(esup_p(ipoin,0),0) = i;
+
+			// an element corresponding to ipoin has been found - increment esup_p for that point:
+			esup_p(ipoin,0) += 1;				
+		}
+	}
+	
+	//But now esup_p holds increased values:
+	// each member increased by the number elements surrounding the corresponding point.
+	// So now correct this.
+	for(int i = npoin; i >= 1; i--)
+		esup_p(i,0) = esup_p(i-1,0);
+	esup_p(0,0) = 0;
+}
+
+void UMesh2dh::compute_elementsSurroundingElements()
+{
+#ifdef DEBUG
+	std::cout << "UMesh2dh: compute_topological(): Elements surrounding elements...\n";
+#endif
+	//amat::Array2d<int> lpoin(npoin,1);
+	esuel.resize(nelem, maxnfael);
+	for(int ii = 0; ii < nelem; ii++)
+		for(int jj = 0; jj < maxnfael; jj++)
+			esuel(ii,jj) = -1;
+
+	amat::Array2d<int > lpoin(npoin,1);
+	lpoin.zeros();
+
+	for(int ielem = 0; ielem < nelem; ielem++)
+	{
+		amat::Array2d<int > lhelp(nnofa,1);
+		lhelp.zeros();
+
+		// first get lpofa for this element
+		// lpofa(i,j) holds local node number of jth node of ith face 
+		//   (j in [0:nnofa], i in [0:nfael])
+		amat::Array2d<int > lpofai(nfael[ielem], nnofa);	
+		for(int i = 0; i < nfael[ielem]; i++)
+		{
+			for(int j = 0; j < nnofa; j++)
+			{
+				// fine as long as operands of % are not negative
+				lpofai(i,j) = (i+j) % nnode[ielem];		
+			}
+		}
+
+		for(int ifael = 0; ifael < nfael[ielem]; ifael++)
+		{
+			for(int i = 0; i < nnofa; i++)
+			{
+				// lhelp stores global node nos. of vertices of current face of current element
+				lhelp(i,0) = inpoel(ielem, lpofai(ifael,i));	
+				lpoin(lhelp(i,0)) = 1;
+			}
+			int ipoin = lhelp(0);
+			for(int istor = esup_p(ipoin); istor < esup_p(ipoin+1); istor++)
+			{
+				int jelem = esup(istor);
+
+				if(jelem != ielem)
+				{
+					// setup lpofa for jelem
+					amat::Array2d<int > lpofaj;
+					lpofaj.resize(nfael[jelem],nnofa);
+					for(int i = 0; i < nfael[jelem]; i++)
+						for(int j = 0; j < nnofa; j++)
+							lpofaj(i,j) = (i+j)%nnode[jelem];
+
+					for(int jfael = 0; jfael < nfael[jelem]; jfael++)
+					{
+						//Assume that no. of nodes in face ifael is same as that in face jfael
+						int icoun = 0;
+						for(int jnofa = 0; jnofa < nnofa; jnofa++)
+						{
+							int jpoin = inpoel(jelem, lpofaj(jfael,jnofa));
+							if(lpoin(jpoin)==1) icoun++;
+						}
+						if(icoun == nnofa)		// nnofa is 2
+						{
+							esuel(ielem,ifael) = jelem;
+							esuel(jelem,jfael) = ielem;
+						}
+					}
+				}
+			}
+			for(int i = 0; i < nnofa; i++)
+				lpoin(lhelp(i)) = 0;
+		}
+	}
+}
+
+void UMesh2dh::compute_faceConnectivity()
+{
+#ifdef DEBUG
+	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
+#endif
+	nbface = naface = 0;
+	// first run: calculate nbface
+	for(int ie = 0; ie < nelem; ie++)
+	{
+		for(int in = 0; in < nnode[ie]; in++)
+		{
+			int je = esuel(ie,in);
+			if(je == -1)
+			{
+				//esuel(ie,in) = nelem+nbface;
+				nbface++;
+			}
+		}
+	}
+	std::cout << "UMesh2dh: compute_topological(): Number of boundary faces = " 
+		<< nbface << std::endl;
+	// calculate number of internal faces
+	naface = nbface;
+	for(int ie = 0; ie < nelem; ie++)
+	{
+		for(int in = 0; in < nnode[ie]; in++)
+		{
+			int je = esuel(ie,in);
+			if(je > ie && je < nelem) naface++;
+		}
+	}
+	std::cout << "UMesh2dh: compute_topological(): Number of all faces = " << naface << std::endl;
+
+	//allocate intfac and elemface
+	intfac.resize(naface,nnofa+2);
+	elemface.resize(nelem,maxnfael);
+
+	//reset face totals
+	nbface = naface = 0;
+
+	int in1, je, jnode;
+
+	//second run: populate intfac
+	for(int ie = 0; ie < nelem; ie++)
+	{
+		for(int in = 0; in < nnode[ie]; in++)
+		{
+			je = esuel(ie,in);
+			if(je == -1)
+			{
+				in1 = (in+1)%nnode[ie];
+				esuel(ie,in) = nelem+nbface;
+				intfac(nbface,0) = ie;
+				intfac(nbface,1) = nelem+nbface;
+				intfac(nbface,2) = inpoel(ie,in);
+				intfac(nbface,3) = inpoel(ie,in1);
+				elemface(ie,in) = nbface;
+
+				nbface++;
+			}
+		}
+	}
+	naface = nbface;
+	for(int ie = 0; ie < nelem; ie++)
+	{
+		for(int in = 0; in < nnode[ie]; in++)
+		{
+			je = esuel(ie,in);
+			if(je > ie && je < nelem)
+			{
+				in1 = (in+1)%nnode[ie];
+				intfac(naface,0) = ie;
+				intfac(naface,1) = je;
+				intfac(naface,2) = inpoel.get(ie,in);
+				intfac(naface,3) = inpoel.get(ie,in1);
+
+				elemface(ie,in) = naface;
+				for(jnode = 0; jnode < nnode[je]; jnode++)
+					if(inpoel.get(ie,in1) == inpoel.get(je,jnode))
+						elemface(je,jnode) = naface;
+
+				naface++;
+			}
+		}
+	}
+}
+
+void UMesh2dh::compute_pointsSurroundingPoints()
+{
+#ifdef DEBUG
+	std::cout << "UMesh2dh: compute_topological(): Points surrounding points\n";
+#endif
+	psup_p.resize(npoin+1,1);
+	psup_p.zeros();
+	psup_p(0,0) = 0;
+
+	// The ith member indicates the global point number of which 
+	// the ith point is a surrounding point
+	amat::Array2d<int > lpoin(npoin,1);
+	for(int i = 0; i < npoin; i++) lpoin(i,0) = -1;	// initialize this std::vector to -1
+	int istor = 0;
+
+	// first pass: calculate storage needed for psup
+	for(int ip = 0; ip < npoin; ip++)
+	{
+		lpoin(ip,0) = ip;		// the point ip itself is not counted as a surrounding point of ip
+		// Loop over elements surrounding this point
+		for(int ie = esup_p(ip,0); ie <= esup_p(ip+1,0)-1; ie++)
+		{
+			int ielem = esup(ie,0);		// element number
+
+			// find local node number of ip in ielem
+			int inode = -1;
+			for(int jnode = 0; jnode < nnode[ielem]; jnode++)
+				if(inpoel(ielem,jnode) == ip) inode = jnode;
+#ifdef DEBUG
+			if(inode == -1) {
+				std::cout << " ! UMesh2dh: compute_topological(): ";
+				std::cout << "inode not found while computing psup!\n";
+			}
+#endif
+
+			// contains true if that local node number is connected to a particular local node.
+			std::vector<bool> nbd(nnode[ielem]);
+			for(int j = 0; j < nnode[ielem]; j++)
+				nbd[j] = false;
+
+			if(nnode[ielem] == 3)
+				for(size_t i = 0; i < nbd.size(); i++)
+					nbd[i] = true;
+			else if(nnode[ielem] == 4)
+				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
+				{
+					if(jnode == (inode + 1) % nnode[ielem] 
+							|| jnode == (inode + nnode[ielem]-1) % nnode[ielem])
+						nbd[jnode] = true;
+				}
+
+			//loop over nodes of the element
+			for(int inode = 0; inode < nnode[ielem]; inode++)
+			{
+				//Get global index of this node
+				int jpoin = inpoel(ielem, inode);
+
+				/* test if this point as already been counted as a surrounding point of ip, 
+				 * and whether it's connected to ip. 
+				 */
+				if(lpoin(jpoin,0) != ip && nbd[inode])		
+				{
+					istor++;
+					lpoin(jpoin,0) = ip;		// set this point as a surrounding point of ip
+				}
+			}
+		}
+		psup_p(ip+1,0) = istor;
+	}
+
+	psup.resize(istor,1);
+
+	//second pass: populate psup
+	istor = 0;
+	for(int i = 0; i < npoin; i++)
+		lpoin(i,0) = -1;
+	for(int ip = 0; ip < npoin; ip++)
+	{
+		lpoin(ip,0) = ip;		// the point ip itself is not counted as a surrounding point of ip
+		// Loop over elements surrounding this point
+		for(int ie = esup_p(ip,0); ie <= esup_p(ip+1,0)-1; ie++)
+		{
+			int ielem = esup(ie,0);		// element number
+
+			// find local node number of ip in ielem
+			int inode = -1;
+			for(int jnode = 0; jnode < nnode[ielem]; jnode++)
+				if(inpoel(ielem,jnode) == ip) inode = jnode;
+#ifdef DEBUG
+			if(inode == -1) {
+				std::cout << " ! UMesh2dh: compute_topological(): ";
+				std::cout << "inode not found while computing psup!\n";
+			}
+#endif
+
+			// nbd[j] contains true if ip is connected to local node number j of ielem.
+			std::vector<bool> nbd(nnode[ielem]);
+			for(int j = 0; j < nnode[ielem]; j++)
+				nbd[j] = false;
+
+			if(nnode[ielem] == 3)
+				for(size_t i = 0; i < nbd.size(); i++)
+					nbd[i] = true;
+			else if(nnode[ielem] == 4)
+				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
+				{
+					if(jnode == (inode + 1) % nnode[ielem] 
+							|| jnode == (inode + nnode[ielem]-1) % nnode[ielem])
+						nbd[jnode] = true;
+				}
+
+			//loop over nodes of the element
+			for(int inode = 0; inode < nnode[ielem]; inode++)
+			{
+				//Get global index of this node
+				int jpoin = inpoel(ielem, inode);
+				if(lpoin(jpoin,0) != ip && nbd[inode])
+					// test of this point as already been counted as a surrounding point of ip
+				{
+					psup(istor,0) = jpoin;
+					istor++;
+					lpoin(jpoin,0) = ip;		// set this point as a surrounding point of ip
+				}
+			}
+		}
+	}
 }
 
 } // end namespace

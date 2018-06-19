@@ -212,6 +212,7 @@ public:
 	/// Computes unit normals and lengths, and sets boundary face tags for all faces in intfacbtags
 	/** \note Uses intfac, so call only after compute_topological, only for linear mesh
 	 * \note The normal vector is the UNIT normal vector.
+	 * \sa facemetric
 	 * \warning Use only for linear meshes
 	 */
 	void compute_face_data();
@@ -352,6 +353,40 @@ private:
 	 * The unit normal points towards the cell with greater index.
 	 */
 	amat::Array2d<a_real> facemetric;
+
+	/// Compute lists of elements (cells) surrounding each point \sa esup
+	/** \note This function is required to be called before some other topology-related computations.
+	 */
+	void compute_elementsSurroundingPoints();
+
+	/// Compute lists of elements (cells) surrounding each element \sa esuel
+	/** \warning Requires \ref esup and \ref esup_p to be computed beforehand.
+	 * \sa compute_elementsSurroundingPoints
+	 */
+	void compute_elementsSurroundingElements();
+
+	/** \brief Computes, for each face, the elements on either side, the starting node and 
+	 * the ending node of the face. These are stored in \ref intfac.
+	 * Also computes \ref elemface and modifies \ref esuel .
+	 * 
+	 * The orientation of the face is such that the element with smaller index is 
+	 * always to the left of the face, while the element with greater index 
+	 * is always to the right of the face.
+	 * 
+	 * The node ordering of the face is such that the face `points' to the cell with greater index;
+	 * this means the vector starting at node 0 and pointing towards node 1 would 
+	 * rotate clockwise by 90 degrees to point to the cell with greater index.
+	 * 
+	 * Also computes element-face connectivity array \ref elemface in the same loop 
+	 * which computes intfac.
+	 * 
+	 * \note After the following portion, \ref esuel holds (nelem + face no.) for each ghost cell, 
+	 * instead of -1 as before.
+	 */
+	void compute_faceConnectivity();
+
+	/// Compute a list of points surrounding each point \sa psup
+	void compute_pointsSurroundingPoints();
 };
 
 
