@@ -44,6 +44,14 @@ add_test(NAME SpatialFlow_Walltest_LLF WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_
   numerical_flux LLF
   --mesh_file ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testperiodic.msh)
 
+add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_pseudotime
+  ${CMAKE_CURRENT_SOURCE_DIR}/testexception.ctrl
+  --test_type exception_nanorinf
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/testexception.solverc
+  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh)
+
+
 if(WITH_BLASTED)
   add_test(NAME Benchmark_Euler_Blasted_run
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

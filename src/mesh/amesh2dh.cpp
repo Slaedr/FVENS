@@ -814,9 +814,6 @@ void UMesh2dh::compute_cell_centres(std::vector<a_real>& centres) const
 	}
 }
 
-/** \todo: There is an issue with psup for some boundary nodes 
- * belonging to elements of different types. Correct this.
- */
 void UMesh2dh::compute_topological()
 {
 #ifdef DEBUG
@@ -1518,6 +1515,9 @@ void UMesh2dh::compute_faceConnectivity()
 	}
 }
 
+/** \todo: There is an issue with psup for some boundary nodes 
+ * belonging to elements of different types. Correct this.
+ */
 void UMesh2dh::compute_pointsSurroundingPoints()
 {
 #ifdef DEBUG
