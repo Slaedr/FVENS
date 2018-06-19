@@ -67,10 +67,10 @@ public:
 	/// the local face index of an element
 	a_int gelemface(const a_int ielem, const int inode) const { return elemface.get(ielem,inode); }
 
-	/// Returns an entry from the face data structure [computed](\ref compute_topological) by us
-	/** \param face Index of the face of which data is needed 
+	/// Returns an entry from the face data structure \ref intfac
+	/** \param face Index of the face about which data is needed 
 	 *   (NOT the same as the index in \ref bface, this is the index in \ref intfac)
-	 * \param i A number which specifies what information is returned:
+	 * \param i An integer which specifies what information is returned:
 	 *  - 0: Left cell index
 	 *  - 1: Right cell index (or for a boundary face, \ref nelem + face index)
 	 *  - 2: Global index of `first' or `starting' node of the face
@@ -117,7 +117,7 @@ public:
 	/// Returns the total number of faces, both boundary and internal ('Get Number of All FACEs')
 	a_int gnaface() const {return naface; }
 
-	/// Returns the number of bounding in an element
+	/// Returns the number of faces bounding an element
 	int gnfael(const int ielem) const { return nfael[ielem]; }
 
 	/// Returns the number of nodes per face

@@ -1365,18 +1365,21 @@ void UMesh2dh::compute_elementsSurroundingElements()
 	amat::Array2d<int > lpoin(npoin,1);
 	lpoin.zeros();
 
+	// TODO: Fix for 3D - this would then be different for each face and the kernel below changes
+	const int nverfa = 2;      // number of vertices per face
+
 	for(int ielem = 0; ielem < nelem; ielem++)
 	{
-		amat::Array2d<int > lhelp(nnofa,1);
+		amat::Array2d<int > lhelp(nverfa,1);
 		lhelp.zeros();
 
 		// first get lpofa for this element
-		// lpofa(i,j) holds local node number of jth node of ith face 
-		//   (j in [0:nnofa], i in [0:nfael])
-		amat::Array2d<int > lpofai(nfael[ielem], nnofa);	
+		// lpofa(i,j) holds local vertex number of jth vertex of ith face 
+		//   (j in [0:nverfa], i in [0:nfael])
+		amat::Array2d<int > lpofai(nfael[ielem], nverfa);	
 		for(int i = 0; i < nfael[ielem]; i++)
 		{
-			for(int j = 0; j < nnofa; j++)
+			for(int j = 0; j < nverfa; j++)
 			{
 				// fine as long as operands of % are not negative
 				lpofai(i,j) = (i+j) % nnode[ielem];		
@@ -1385,7 +1388,7 @@ void UMesh2dh::compute_elementsSurroundingElements()
 
 		for(int ifael = 0; ifael < nfael[ielem]; ifael++)
 		{
-			for(int i = 0; i < nnofa; i++)
+			for(int i = 0; i < nverfa; i++)
 			{
 				// lhelp stores global node nos. of vertices of current face of current element
 				lhelp(i,0) = inpoel(ielem, lpofai(ifael,i));	
@@ -1400,21 +1403,21 @@ void UMesh2dh::compute_elementsSurroundingElements()
 				{
 					// setup lpofa for jelem
 					amat::Array2d<int > lpofaj;
-					lpofaj.resize(nfael[jelem],nnofa);
+					lpofaj.resize(nfael[jelem],nverfa);
 					for(int i = 0; i < nfael[jelem]; i++)
-						for(int j = 0; j < nnofa; j++)
-							lpofaj(i,j) = (i+j)%nnode[jelem];
+						for(int j = 0; j < nverfa; j++)
+							lpofaj(i,j) = (i+j)%nfael[jelem];
 
 					for(int jfael = 0; jfael < nfael[jelem]; jfael++)
 					{
 						//Assume that no. of nodes in face ifael is same as that in face jfael
 						int icoun = 0;
-						for(int jnofa = 0; jnofa < nnofa; jnofa++)
+						for(int jnofa = 0; jnofa < nverfa; jnofa++)
 						{
 							int jpoin = inpoel(jelem, lpofaj(jfael,jnofa));
 							if(lpoin(jpoin)==1) icoun++;
 						}
-						if(icoun == nnofa)		// nnofa is 2
+						if(icoun == nverfa)		// nnofa is 2
 						{
 							esuel(ielem,ifael) = jelem;
 							esuel(jelem,jfael) = ielem;
@@ -1422,7 +1425,7 @@ void UMesh2dh::compute_elementsSurroundingElements()
 					}
 				}
 			}
-			for(int i = 0; i < nnofa; i++)
+			for(int i = 0; i < nverfa; i++)
 				lpoin(lhelp(i)) = 0;
 		}
 	}
@@ -1437,7 +1440,7 @@ void UMesh2dh::compute_faceConnectivity()
 	// first run: calculate nbface
 	for(int ie = 0; ie < nelem; ie++)
 	{
-		for(int in = 0; in < nnode[ie]; in++)
+		for(int in = 0; in < nfael[ie]; in++)
 		{
 			int je = esuel(ie,in);
 			if(je == -1)
@@ -1453,7 +1456,7 @@ void UMesh2dh::compute_faceConnectivity()
 	naface = nbface;
 	for(int ie = 0; ie < nelem; ie++)
 	{
-		for(int in = 0; in < nnode[ie]; in++)
+		for(int in = 0; in < nfael[ie]; in++)
 		{
 			int je = esuel(ie,in);
 			if(je > ie && je < nelem) naface++;
