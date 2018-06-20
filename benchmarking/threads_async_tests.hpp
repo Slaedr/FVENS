@@ -17,7 +17,7 @@
 
 namespace benchmark {
 
-using namespace acfd;
+using namespace fvens;
 
 /// Find the dependence of the speed-up from a certain thread-count on the number of async sweeps
 /** Only for implicit solves.

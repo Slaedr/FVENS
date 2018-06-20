@@ -273,7 +273,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 	}
 }
 
-void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m, 
+void writeScalarsVectorToVtu_CellData(std::string fname, const fvens::UMesh2dh& m, 
 		const amat::Array2d<double>& x, std::string scaname[], 
 		const amat::Array2d<double>& y, std::string vecname)
 {
@@ -399,7 +399,7 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const acfd::UMesh2dh& m
 	std::cout << "Vtu file written.\n";
 }
 
-void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& m, 
+void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh2dh& m, 
 		const amat::Array2d<double>& x, std::string scaname[], 
 		const amat::Array2d<double>& y, std::string vecname)
 {
@@ -529,7 +529,7 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const acfd::UMesh2dh& 
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, acfd::UMesh2dh& m)
+void writeMeshToVtu(std::string fname, fvens::UMesh2dh& m)
 {
 	std::cout << "Writing vtu output...\n";
 	std::ofstream out(fname);

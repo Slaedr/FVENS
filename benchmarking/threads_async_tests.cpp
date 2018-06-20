@@ -22,7 +22,7 @@
 
 namespace benchmark {
 
-using namespace acfd;
+using namespace fvens;
 
 /// Set -blasted_async_sweeps in the default Petsc options database and throw if not successful
 static void set_blasted_sweeps(const int nbswp, const int naswp);

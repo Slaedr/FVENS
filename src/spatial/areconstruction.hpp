@@ -10,7 +10,7 @@
 #include "utilities/aarray2d.hpp"
 #include "mesh/amesh2dh.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Abstract class for computing face values from cell-centered values and gradients
 /** \note Face values at boundary faces are only computed for the left (interior) side. 

@@ -42,7 +42,7 @@ inline void fvens_throw(const int ierr, const std::string str) {
  */
 inline void petsc_throw(const int ierr, const std::string str) {
 	if(ierr != 0) 
-		throw acfd::Petsc_exception(str);
+		throw fvens::Petsc_exception(str);
 }
 
 }
