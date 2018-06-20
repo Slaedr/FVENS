@@ -3,7 +3,9 @@ FVENS
 
 This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes.
 
-Currently, only steady-state problems are supported. Both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. 'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal.
+For steady-state problems, both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. 'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal.
+
+If you wish to contribute, please read the [guidelines](CONTRIBUTING.md).
 
 Features
 --------
@@ -27,28 +29,29 @@ Limitations
 
 Building
 --------
-The following libraries are required:
+The following libraries and programs are required:
 - [Boost](http://www.boost.org/), present in the default package repositories of all GNU/Linux distributions
-- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs a variable called EIGEN3_ROOT to be set to the top-level Eigen directory
-- [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers; needs PETSC_DIR and PETSC_ARCH set
-- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called BLASTED_DIR to be set to the top level BLASTed source directory and BLASTED_BIN_DIR to be set to the BLASTed build directory.
+- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs a variable called `EIGEN3_ROOT` to be set to the top-level Eigen directory
+- [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
+- [Gmsh](http://gmsh.info/) is required for building some of the tests. It is available in most GNU/Linux distributions' official repositories.
+- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory.
 
 The variables needed can either be passed as arguments to CMake during configuration (see below) or set as environment variables. OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
 
-To build, issue
+To build go to the FVENS root directory and issue
 
 		mkdir build && cd build
-		cmake /path/to/src -DCMAKE_BUILD_TYPE=Debug
+		cmake .. 
 
-and for a release build with SSE 4.2 vectorization
+and for a release build
 
-		cmake /path/to/src -DCMAKE_BUILD_TYPE=Release -DSSE=1
+		cmake .. -DCMAKE_BUILD_TYPE=Release
 
-`-DNOOMP=1` should be appended if OpenMP is not available. `-DSSE=1` can be replaced by `-DAVX=1`, if your CPU supports it. See the header of the top-level CMakeLists.txt for a list of all build options.  Finally,
+`-DNOOMP=1` should be appended if OpenMP is not available. `-DAVX=1` etc. can be passed if your CPU supports the corresponding vector instructions. See the header of the top-level CMakeLists.txt for a list of all build options.  Finally,
 
 		make -j<N>
 
-where '\<N\>' should be replaced by the number of threads to use for building. The build is known to work with recent versions of GCC C++ (5.4 and above) and Intel C++ (2017) compilers on GNU/Linux systems.
+where '\<N\>' should be replaced by the number of threads to use for building. The build is known to work with recent versions of GCC C++ (5.4 and above) and Intel C++ (2017 and 2018) compilers on GNU/Linux systems.
 
 To run the tests, run `make test` or `ctest` in the `build` directory.
 
@@ -60,11 +63,11 @@ Of course, this requires you to have [Doxygen](http://www.stack.nl/~dimitri/doxy
 
 Browsing the code
 -----------------
-A tags file is built when the code is built (if ctags is available), which makes navigation in Vim convenient. Using tags in Vim is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags).
+A tags file is built when the code is built (if ctags is available), which makes navigation in Vim convenient. Using tags in Vim or [Spacemacs](http://spacemacs.org/) is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags).
 
 Running
 -------
-The executables should be called with the paths to a control file (required) and a PETSc options file as input. Set OMP_NUM_THREADS to the number of threads you want to use.
+The executables should be called with the paths to a control file (required) and a PETSc options file as input. Set `OMP_NUM_THREADS` to the number of threads you want to use.
 
 		export OMP_NUM_THREADS=4
 		./fvens_steady /path/to/testcases/2dcylinder/implicit.control -options_file /path/to/testcases/2dcylinder/opts.petscrc
@@ -73,18 +76,18 @@ Make sure to set the paths of input and output files appropriately in the contro
 
 Control files
 -------------
-Examples are present in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called.
+Examples are present (`.ctrl` files) in the various test cases' directories. Note that the locations of mesh files and output files should be relative to the directory from which the executable is called.
 
 Command Line Options
 --------------------
---mesh_file <string> If given, this overrides the mesh file specified in the control file.
+* `--mesh_file` <string> If given, this overrides the mesh file specified in the control file.
 
 PETSc options for FVENS
 -----------------------
-* -mesh_reorder (string argument): If mentioned, the mesh cells will be reordered in the preprocessing stage, into one of the supported [PETSc orderings](http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html).
-* -matrix_free_jacobian (no argument): If mentioned, matrix-free finite-difference Jacobian will be used, but the first-order approximate Jacobian will still be stored for the preconditioner.
-* -matrix_free_difference_step (float argument): The finite difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
-* -fvens_log_file (string argument): Prefix (path + base file name) of the file into which to write timing logs (.tlog extension), and if requested, nonlinear residual histories (.conv extension). Note that this option, if specified, overrides the corresponding option in the control file.
+* `-mesh_reorder` (string argument): If mentioned, the mesh cells will be reordered in the preprocessing stage, into one of the supported [PETSc orderings](http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html).
+* `-matrix_free_jacobian` (no argument): If mentioned, matrix-free finite-difference Jacobian will be used, but the first-order approximate Jacobian will still be stored for the preconditioner.
+* `-matrix_free_difference_step` (float argument): The finite difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
+* `-fvens_log_file` (string argument): Prefix (path + base file name) of the file into which to write timing logs (.tlog extension), and if requested, nonlinear residual histories (.conv extension). Note that this option, if specified, overrides the corresponding option in the control file.
 
 ---
 
