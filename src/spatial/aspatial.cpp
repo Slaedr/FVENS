@@ -320,11 +320,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		const a_real *const ins, 
 		a_real *const gs        ) const
 {
-	const a_real nx = m->gfacemetric(ied,0);
-	const a_real ny = m->gfacemetric(ied,1);
-	const a_real n[NDIM] = {m->gfacemetric(ied,0), m->gfacemetric(ied,1)};
+	const std::array<a_real,NDIM> n = m->gnormal(ied);
 
-	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
+	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 
 	if(m->gintfacbtags(ied,0) == pconfig.slipwall_id)
 	{
@@ -404,8 +402,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		{
 			const a_real tangMomentum = pconfig.adiabaticwall_vel * ins[0];
 			gs[0] = ins[0];
-			gs[1] =  2.0*tangMomentum*ny - ins[1];
-			gs[2] = -2.0*tangMomentum*nx - ins[2];
+			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
+			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
 			gs[3] = ins[3];
 		}
 
@@ -422,8 +420,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 			//gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
 			gs[0] = ins[0];
-			gs[1] = gs[0]*( 2.0*pconfig.isothermalwall_vel*ny - ins[1]/ins[0]);
-			gs[2] = gs[0]*(-2.0*pconfig.isothermalwall_vel*nx - ins[2]/ins[0]);
+			gs[1] = gs[0]*( 2.0*pconfig.isothermalwall_vel*n[1] - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*pconfig.isothermalwall_vel*n[0] - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
@@ -438,8 +436,8 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 				- physics.getTemperature(ins[0],gp);
 
 			gs[0] = physics.getDensityFromPressureTemperature(gp, gtemp);
-			gs[1] = gs[0]*( 2.0*pconfig.isothermalbaricwall_vel*ny - ins[1]/ins[0]);
-			gs[2] = gs[0]*(-2.0*pconfig.isothermalbaricwall_vel*nx - ins[2]/ins[0]);
+			gs[1] = gs[0]*( 2.0*pconfig.isothermalbaricwall_vel*n[1] - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*pconfig.isothermalbaricwall_vel*n[0] - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}

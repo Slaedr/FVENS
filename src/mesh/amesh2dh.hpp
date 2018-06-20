@@ -87,6 +87,15 @@ public:
 	/// Returns the components of the unit normal or the length of a face \sa facemetric
 	a_real gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
+	/// Returns the unit normal vector as a fixed-size array for a given face of \ref intfac
+	std::array<a_real,NDIM> gnormal(const a_int iface) const {
+#if NDIM == 2
+			return {facemetric.get(iface,0), facemetric.get(iface,1)};
+#else
+			return {facemetric.get(iface,0), facemetric.get(iface,1), facemetric.get(iface,2)};
+#endif
+	}
+
 	/// Returns paired faces (\ref intfac) in case of periodic boundaries \sa periodicmap
 	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
 
