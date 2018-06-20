@@ -11,7 +11,7 @@
 #include <iostream>
 #include "anumericalflux.hpp"
 
-namespace acfd {
+namespace fvens {
 
 InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx) 
 	: physics(phyctx), g{phyctx->g}
@@ -1723,4 +1723,4 @@ void HLLCFlux::get_flux_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " !!!! Not available!!\n";
 }
 
-} // end namespace acfd
+} // end namespace fvens

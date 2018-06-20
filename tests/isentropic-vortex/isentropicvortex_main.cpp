@@ -15,8 +15,7 @@
 #include <blasted_petsc.h>
 #endif
 
-using namespace amat;
-using namespace acfd;
+using namespace fvens;
 using namespace fvens_tests;
 namespace po = boost::program_options;
 using namespace std::literals::string_literals;

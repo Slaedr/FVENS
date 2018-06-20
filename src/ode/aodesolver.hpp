@@ -11,7 +11,7 @@
 #include <petscksp.h>
 #include "spatial/aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// A collection of parameters specifying the temporal discretization
 struct SteadySolverConfig {

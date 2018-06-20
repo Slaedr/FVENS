@@ -18,7 +18,7 @@
 #include <blasted_petsc.h>
 #endif
 
-namespace acfd {
+namespace fvens {
 
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context

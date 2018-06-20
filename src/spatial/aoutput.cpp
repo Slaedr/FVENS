@@ -8,7 +8,7 @@
 #include "aoutput.hpp"
 #include "utilities/aoptionparser.hpp"
 
-namespace acfd {
+namespace fvens {
 
 template <short nvars>
 Output<nvars>::Output(const Spatial<nvars> *const fv)

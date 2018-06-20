@@ -29,7 +29,7 @@
 #include "spatial/areconstruction.hpp"
 #include "spatial/aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Returns a new inviscid numerical flux context
 InviscidFlux* create_mutable_inviscidflux(const std::string& type, 

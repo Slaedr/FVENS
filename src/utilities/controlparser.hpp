@@ -14,7 +14,7 @@
 #include "aconstants.hpp"
 #include "spatial/aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Data read from a control file for flow problems
 struct FlowParserOptions

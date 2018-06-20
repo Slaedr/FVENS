@@ -7,7 +7,7 @@
 #include "ameshutils.hpp"
 #include "linalg/alinalg.hpp"
 
-namespace acfd {
+namespace fvens {
 
 StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh& m)
 {

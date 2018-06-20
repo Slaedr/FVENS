@@ -23,7 +23,7 @@
 #include "utilities/afactory.hpp"
 #include "aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /** Currently, the ghost cell coordinates are computed as reflections about the face centre.
  * \todo TODO: Replace midpoint-reflected ghost cells with face-reflected ones.

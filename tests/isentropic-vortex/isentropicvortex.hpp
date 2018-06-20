@@ -12,8 +12,8 @@
 
 namespace fvens_tests {
 
-using acfd::a_real;
-using acfd::a_int;
+using fvens::a_real;
+using fvens::a_int;
 
 /// Physical configuration for the isentropic vortex problem
 struct IsenVortexConfig {

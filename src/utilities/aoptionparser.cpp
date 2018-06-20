@@ -13,7 +13,7 @@
 #include <boost/program_options/parsers.hpp>
 #include <petscsys.h>
 
-namespace acfd {
+namespace fvens {
 
 namespace po = boost::program_options;
 

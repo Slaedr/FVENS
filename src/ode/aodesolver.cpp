@@ -37,7 +37,7 @@
 #include "utilities/aoptionparser.hpp"
 #include "utilities/aerrorhandling.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Returns an array containing TVD Runge-Kutta coefficients for high-order accuracy
 static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order) 

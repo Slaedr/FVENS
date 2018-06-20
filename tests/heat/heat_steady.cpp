@@ -8,9 +8,8 @@
 
 #undef NDEBUG
 
-using namespace amat;
 using namespace std;
-using namespace acfd;
+using namespace fvens;
 
 int main(int argc, char* argv[])
 {

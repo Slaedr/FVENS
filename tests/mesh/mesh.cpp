@@ -7,7 +7,7 @@
 
 #undef NDEBUG
 
-using namespace acfd;
+using namespace fvens;
 
 int test_topology_internalconsistency_esup(const UMesh2dh& m)
 {

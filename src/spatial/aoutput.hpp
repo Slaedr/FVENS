@@ -7,7 +7,7 @@
 
 #include "aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Interface for output to files
 template <short nvars>

@@ -13,7 +13,7 @@
 #include "utilities/aerrorhandling.hpp"
 #include "utilities/casesolvers.hpp"
 
-using namespace acfd;
+using namespace fvens;
 namespace po = boost::program_options;
 using namespace std::literals::string_literals;
 

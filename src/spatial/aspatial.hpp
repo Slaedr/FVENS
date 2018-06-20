@@ -34,7 +34,7 @@
 
 #include <petscmat.h>
 
-namespace acfd {
+namespace fvens {
 
 /// Base class for finite volume spatial discretization
 template<int nvars>

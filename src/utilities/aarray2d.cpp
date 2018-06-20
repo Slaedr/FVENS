@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdlib>
 
+namespace fvens {
 namespace amat {
 
 template <typename T>
@@ -141,4 +142,5 @@ void Array2d<T>::fread(std::ifstream& infile)
 template class Array2d<a_real>;
 template class Array2d<a_int>;
 
+}
 }

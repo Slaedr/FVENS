@@ -6,7 +6,7 @@
 #include <iostream>
 #include "areconstruction.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Reconstructs a face value
 static inline a_real linearExtrapolate(

@@ -8,7 +8,7 @@
 
 #define FLUX_TOL 10*ZERO_TOL
 
-namespace acfd {
+namespace fvens {
 
 int TestFlowFV::testWalls(const a_real *const u) const
 {

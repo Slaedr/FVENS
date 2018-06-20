@@ -5,7 +5,7 @@
 
 #include "aerrorhandling.hpp"
 
-namespace acfd {
+namespace fvens {
 	
 Petsc_exception::Petsc_exception(const std::string& msg) 
 	: std::runtime_error(std::string("PETSc error: ")+msg)

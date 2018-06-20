@@ -4,7 +4,7 @@
 #include <cstring>
 #include <limits>
 
-namespace acfd {
+namespace fvens {
 
 template <int nvars>
 static StatusCode setJacobianSizes(const UMesh2dh *const m, Mat A) 

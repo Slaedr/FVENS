@@ -13,7 +13,7 @@
 
 #include "aconstants.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Returns a dot product computed between the first NDIM components of the two vectors.
 inline a_real dimDotProduct(const a_real *const u, const a_real *const v)

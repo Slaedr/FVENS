@@ -22,13 +22,14 @@
 #define MATRIX_DOUBLE_PRECISION 14
 #endif
 
+namespace fvens {
 namespace amat {
 	
 /// Real type
-using acfd::a_real;
+using fvens::a_real;
 
 /// Integer type
-using acfd::a_int;
+using fvens::a_int;
 
 const int WIDTH = 10;		// width of field for printing matrices
 
@@ -171,5 +172,6 @@ public:
 
 
 } //end namespace amat
+} // namespace fvens
 
 #endif

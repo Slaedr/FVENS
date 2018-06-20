@@ -10,7 +10,7 @@
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Hybrid unstructured mesh class supporting triangular and quadrangular elements
 class UMesh2dh

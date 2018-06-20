@@ -12,7 +12,7 @@
 #include "utilities/aoptionparser.hpp"
 #include "spatial/aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 class TestFlowFV : public FlowFV<true,false>
 {

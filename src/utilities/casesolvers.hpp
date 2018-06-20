@@ -12,7 +12,7 @@
 #include "utilities/controlparser.hpp"
 #include "utilities/aoptionparser.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Integrated quantities of interest in the solution of a flow problem
 struct FlowSolutionFunctionals

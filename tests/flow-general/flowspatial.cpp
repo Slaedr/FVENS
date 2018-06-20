@@ -4,7 +4,7 @@
 #include "utilities/controlparser.hpp"
 #include "testflowspatial.hpp"
 
-using namespace acfd;
+using namespace fvens;
 namespace po = boost::program_options;
 using namespace std::literals::string_literals;
 

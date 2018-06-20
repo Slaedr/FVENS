@@ -9,7 +9,7 @@
 
 #include "mesh/amesh2dh.hpp"
 
-namespace acfd
+namespace fvens
 {
 
 /// Abstract class for solution gradient computation schemes

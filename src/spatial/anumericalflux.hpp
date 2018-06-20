@@ -10,7 +10,7 @@
 #include "aconstants.hpp"
 #include "physics/aphysics.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Abstract class from which to derive all numerical flux classes
 /** The class is such that given the left and right states and a face normal, 
@@ -298,6 +298,6 @@ protected:
 		a_real dustrj[NVARS][NVARS]) const __attribute((always_inline));
 };
 
-} // end namespace acfd
+} // end namespace fvens
 
 #endif

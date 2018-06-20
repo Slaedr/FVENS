@@ -7,7 +7,7 @@
 #include "aphysics.hpp"
 #include <iostream>
 	
-namespace acfd {
+namespace fvens {
 
 IdealGasPhysics::IdealGasPhysics(const a_real _g, const a_real M_inf, 
 		const a_real T_inf, const a_real Re_inf, const a_real _Pr) 

@@ -22,7 +22,7 @@
 #include <blasted_petsc.h>
 #endif
 
-namespace acfd {
+namespace fvens {
 
 FlowCase::FlowCase(const FlowParserOptions& options) : opts{options} { }
 

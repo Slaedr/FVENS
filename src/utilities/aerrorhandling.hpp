@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace acfd {
+namespace fvens {
 
 /// Exception to throw on errors related to numerics
 class Numerical_error : public std::logic_error

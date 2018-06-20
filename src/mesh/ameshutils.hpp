@@ -10,7 +10,7 @@
 #include "amesh2dh.hpp"
 #include "spatial/aspatial.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// Computes various entity lists required for mesh traversal, also reorders the cells if requested
 /** This can, and should, be called immediately after [reading](UMesh2dh::readMesh) the mesh.

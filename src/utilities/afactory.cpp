@@ -21,7 +21,7 @@
 #include <iostream>
 #include "afactory.hpp"
 
-namespace acfd {
+namespace fvens {
 
 InviscidFlux* create_mutable_inviscidflux(
 		const std::string& type, 

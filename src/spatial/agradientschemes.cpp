@@ -7,7 +7,7 @@
 #include "agradientschemes.hpp"
 #include <Eigen/LU>
 
-namespace acfd
+namespace fvens
 {
 
 template<short nvars>

@@ -11,8 +11,8 @@
 #include "utilities/afactory.hpp"
 #include "utilities/casesolvers.hpp"
 
-using namespace amat;
-using namespace acfd;
+using namespace fvens;
+using namespace fvens::amat;
 namespace po = boost::program_options;
 
 int main(int argc, char *argv[])

@@ -13,8 +13,7 @@
 #include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
 
-using namespace amat;
-using namespace acfd;
+using namespace fvens;
 namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
