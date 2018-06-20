@@ -29,10 +29,11 @@ Limitations
 
 Building
 --------
-The following libraries are required:
+The following libraries and programs are required:
 - [Boost](http://www.boost.org/), present in the default package repositories of all GNU/Linux distributions
 - The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs a variable called `EIGEN3_ROOT` to be set to the top-level Eigen directory
 - [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
+- [Gmsh](http://gmsh.info/) is required for building some of the tests. It is available in most GNU/Linux distributions' official repositories.
 - Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory.
 
 The variables needed can either be passed as arguments to CMake during configuration (see below) or set as environment variables. OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
