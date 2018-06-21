@@ -14,7 +14,8 @@ endif()
 add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
 	ode/aodesolver.cpp linalg/alinalg.cpp 
 	spatial/aspatial.cpp spatial/areconstruction.cpp spatial/agradientschemes.cpp 
-	spatial/anumericalflux.cpp physics/aphysics.cpp spatial/aoutput.cpp 
+	spatial/anumericalflux.cpp spatial/aoutput.cpp spatial/abc.cpp
+	physics/aphysics.cpp 
 	mesh/ameshutils.cpp mesh/amesh2dh.cpp utilities/aarray2d.cpp)
 target_link_libraries(fvens_base fvens_parsing_errh ${PETSC_LIB})
 if(WITH_BLASTED)

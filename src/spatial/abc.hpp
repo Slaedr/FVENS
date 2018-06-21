@@ -8,9 +8,9 @@
 #ifndef FVENS_BC_H
 #define FVENS_BC_H
 
-#include "aphysics.hpp"
+#include "physics/aphysics.hpp"
 
-namespace acfd {
+namespace fvens {
 
 /// The types of boundary condition a boundary face can have
 enum BCType {
@@ -33,54 +33,126 @@ template <typename scalar>
 class FlowBC
 {
 public:
-	FlowBC(const int face_id, const IdealGasPhysics& gasphysics);
+	/// Set up a flow boundary condition
+	/** \param bc_tag The boundary marker tag for which we want this BC to apply
+	 * \param gasphysics Context describing some properties of the gas
+	 */
+	FlowBC(const int bc_tag, const IdealGasPhysics& gasphysics);
+
+	/// Return the boundary marker tag that this BC context applies to
+	int bctag() const { return btag; }
 
 	/// Computes the ghost state given the interior state and normal vector
+	/** \param uin Interior state
+	 * \param n Unit normal vector
+	 * \param ughost Ghost state (on output)
+	 */
 	virtual void computeGhostState(const scalar *const uin, const scalar *const n,
 	                               scalar *const ughost) const = 0;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	/** \param uin Interior state
+	 * \param n Unit normal vector
+	 * \param [in,out] ug Ghost state
+	 * \param [in,out] dugdui Jacobian of ghost state w.r.t. interior state (on output)
+	 */
 	virtual void computeJacobian(const scalar *const uin, const scalar *const n,
+	                             scalar *const ug,
 	                             scalar *const dugdui) const = 0;
 
 protected:
 	/// Tag index of mesh faces on which this BC is to be applied
-	int faceid;
+	int btag;
 
 	/// Thermodynamic and some mechanical properties of the fluid
 	const IdealGasPhysics& phy;
 };
 
 template <typename scalar>
-class SlipWall : public FlowBC
+class SlipWall : public FlowBC<scalar>
 {
 public:
-	SlipWall(const int face_id, const IdealGasPhysics& gasphysics);
+	SlipWall(const int bctag, const IdealGasPhysics& gasphysics);
 
 	/// Computes the ghost state given the interior state and normal vector
-	virtual void computeGhostState(const scalar *const uin, const scalar *const n,
+	void computeGhostState(const scalar *const uin, const scalar *const n,
 	                               scalar *const ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	virtual void computeJacobian(const scalar *const uin, const scalar *const n,
-	                             scalar *const dugdui) const;
+	void computeJacobian(const scalar *const uin, const scalar *const n,
+	                     scalar *const ug,
+	                     scalar *const dugdui) const;
+
+protected:
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
 };
 
 /// Currently, this is a pressure-imposed outflow and all-imposed inflow BC
+/** This "inflow-outflow" BC assumes we know the state at the inlet is 
+ * the free-stream state with certainty,
+ * while the state at the outlet is not certain to be the free-stream state. 
+ * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
+ *
+ * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
+ * in the paper \cite carlson_bcs. It assumes that the flow at the outflow boundary is
+ * isentropic.
+ *
+ * Whether the flow is subsonic or supersonic at the boundary
+ * is decided by interior value of the Mach number.
+ */
 template <typename scalar>
-class InOutFlow : public FlowBC
+class InOutFlow : public FlowBC<scalar>
 {
 public:
-	SlipWall(const int face_id, const IdealGasPhysics& gasphysics, const scalar ufar[NVARS]);
+	/// Setup inflow-outflow BC 
+	/** \sa FlowBC::FlowBC
+	 * \param ufar Far-field state
+	 */
+	InOutFlow(const int face_id, const IdealGasPhysics& gasphysics,
+	         const std::array<scalar,NDIM>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
-	virtual void computeGhostState(const scalar *const uin, const scalar *const n,
-	                               scalar *const ughost) const;
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	virtual void computeJacobian(const scalar *const uin, const scalar *const n,
-	                             scalar *const dugdui) const;
+	void computeJacobian(const scalar *const uin, const scalar *const n,
+	                     scalar *const ug,
+	                     scalar *const dugdui) const;
+
+protected:
+	const std::array<scalar,NDIM> uinf;
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
 };
+
+/// Simply sets the ghost state as the given free-stream state
+template <typename scalar>
+class Farfield : public FlowBC<scalar>
+{
+public:
+	/// Setup farfield BC 
+	/** \sa FlowBC::FlowBC
+	 * \param ufar Far-field state
+	 */
+	Farfield(const int face_id, const IdealGasPhysics& gasphysics,
+	         const std::array<scalar,NDIM>& u_far);
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeJacobian(const scalar *const uin, const scalar *const n,
+	                     scalar *const ug,
+	                     scalar *const dugdui) const;
+
+protected:
+	const std::array<scalar,NDIM> uinf;
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+}
 
 }
 #endif

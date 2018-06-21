@@ -158,4 +158,27 @@ void InOutFlow<scalar>::computeJacobian(const scalar *const ins, const scalar *c
 	}
 }
 
+template <typename scalar>
+Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics& gasphysics,
+                           const std::array<scalar,NDIM>& u_far)
+	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
+{ }
+
+template <typename scalar>
+void Farfield<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                         scalar *const gs) const
+{
+	for(int i = 0; i < NVARS; i++)
+		gs[i] = uinf[i];
+}
+
+template <typename scalar>
+void Farfield<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
+                                       scalar *const gs,
+                                       scalar *const dgs) const
+{
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dgs[k] = 0;
+}
+
 }
