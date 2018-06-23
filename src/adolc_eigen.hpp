@@ -10,6 +10,7 @@
 //#define ADOLC_TAPELESS
 
 /// Since ADOL-C does not define a namespace, we do
+/// Use adouble etc as adolc::adouble etc in code
 namespace adolc {
 
 #include <adolc/adouble.h>
@@ -44,10 +45,14 @@ template<> struct NumTraits<adolc::adouble>
 
 }
 
-inline const adouble& conj(const adouble& x)  { return x; }
-inline const adouble& real(const adouble& x)  { return x; }
-inline adouble imag(const adouble&)    { return 0.; }
-inline adouble abs(const adouble&  x)  { return fabs(x); }
-inline adouble abs2(const adouble& x)  { return x*x; }
+namespace fvens {
+	
+inline const adolc::adouble& conj(const adolc::adouble& x)  { return x; }
+inline const adolc::adouble& real(const adolc::adouble& x)  { return x; }
+inline adolc::adouble imag(const adolc::adouble&)    { return 0.; }
+inline adolc::adouble abs(const adolc::adouble&  x)  { return adolc::fabs(x); }
+inline adolc::adouble abs2(const adolc::adouble& x)  { return x*x; }
+
+}
 
 #endif // ADOLCSUPPORT_H
