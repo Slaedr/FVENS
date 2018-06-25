@@ -127,6 +127,38 @@ protected:
 	using FlowBC<scalar>::phy;
 };
 
+/// Normal inflow BC with total pressure and total temperature specified
+/** Taken from \cite carlson_bcs section 2.7. One difference though is that here,
+ * the flow is constrained normal to the boundary.
+ */
+template <typename scalar>
+class InFlow : public FlowBC<scalar>
+{
+public:
+	/// Setup inflow BC 
+	/** \sa FlowBC::FlowBC
+	 * \param totalpressure Non-dimensional total pressure at inflow
+	 * \param totaltemperature Total temperature at inflow
+	 */
+	InFlow(const int face_id, const IdealGasPhysics& gasphysics,
+	       const scalar totalpressure, const scalar totaltemperature); 
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeJacobian(const scalar *const uin, const scalar *const n,
+	                     scalar *const ug,
+	                     scalar *const dugdui) const;
+
+protected:
+	const scalar ptotal;
+	const scalar ttotal;
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+};
+
 /// Simply sets the ghost state as the given free-stream state
 template <typename scalar>
 class Farfield : public FlowBC<scalar>
