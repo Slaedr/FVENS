@@ -2,7 +2,7 @@
 -options_left
 #-log_view
 
-#-mesh_reorder rcm
+-mesh_reorder rcm
 
 -mat_type baij
 #-matrix_free_jacobian

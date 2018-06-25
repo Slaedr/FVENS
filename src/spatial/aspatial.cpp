@@ -251,15 +251,15 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 
 {
 	std::cout << " FlowFV: Boundary markers:\n";
-	std::cout << "  Farfield " << pconfig.farfield_id 
-		<< ", inflow/outflow " << pconfig.inflowoutflow_id
-		<< ", slip wall " << pconfig.slipwall_id;
-	std::cout << "  Extrapolation " << pconfig.extrapolation_id 
-		<< ", Periodic " << pconfig.periodic_id << '\n';
-	std::cout << "  Isothermal " << pconfig.isothermalwall_id;
-	std::cout << "  Adiabatic " << pconfig.adiabaticwall_id;
+	std::cout << "  Farfield " << pconfig.bcconf.farfield_id 
+		<< ", inflow/outflow " << pconfig.bcconf.inflowoutflow_id
+		<< ", slip wall " << pconfig.bcconf.slipwall_id;
+	std::cout << "  Extrapolation " << pconfig.bcconf.extrapolation_id 
+		<< ", Periodic " << pconfig.bcconf.periodic_id << '\n';
+	std::cout << "  Isothermal " << pconfig.bcconf.isothermalwall_id;
+	std::cout << "  Adiabatic " << pconfig.bcconf.adiabaticwall_id;
 	std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
-		<< pconfig.adiabaticwall_vel << '\n';
+		<< pconfig.bcconf.adiabaticwall_vel << '\n';
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
 }
@@ -307,7 +307,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
 	
-		if(m->gintfacbtags(ied,0) == pconfig.periodic_id)
+		if(m->gintfacbtags(ied,0) == pconfig.bcconf.periodic_id)
 		{
 			for(int i = 0; i < NVARS; i++)
 				bs(ied,i) = ins(m->gperiodicmap(ied), i);
@@ -324,7 +324,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 
-	if(m->gintfacbtags(ied,0) == pconfig.slipwall_id)
+	if(m->gintfacbtags(ied,0) == pconfig.bcconf.slipwall_id)
 	{
 		gs[0] = ins[0];
 		for(int i = 1; i < NDIM+1; i++)
@@ -332,7 +332,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		gs[3] = ins[3];
 	}
 
-	else if(m->gintfacbtags(ied,0) == pconfig.extrapolation_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.bcconf.extrapolation_id)
 	{
 		gs[0] = ins[0];
 		for(int i = 1; i < NDIM+1; i++)
@@ -342,7 +342,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 	/** For the far-field BCs, ghost state values are always free-stream values.
 	 */
-	else if(m->gintfacbtags(ied,0) == pconfig.farfield_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.bcconf.farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf[i];
@@ -360,7 +360,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 	 * Whether the flow is subsonic or supersonic at the boundary
 	 * is decided by interior value of the Mach number.
 	 */
-	else if(m->gintfacbtags(ied,0) == pconfig.inflowoutflow_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.bcconf.inflowoutflow_id)
 	{
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
@@ -398,9 +398,9 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 
 	else if(pconfig.viscous_sim) 
 	{
-		if(m->gintfacbtags(ied,0) == pconfig.adiabaticwall_id)
+		if(m->gintfacbtags(ied,0) == pconfig.bcconf.adiabaticwall_id)
 		{
-			const a_real tangMomentum = pconfig.adiabaticwall_vel * ins[0];
+			const a_real tangMomentum = pconfig.bcconf.adiabaticwall_vel * ins[0];
 			gs[0] = ins[0];
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
@@ -410,39 +410,40 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 		/** At an isothermal wall, density in the ghost cell is the same as that in the interior cell.
 		 * Temperature is computed from the boundary value, and is used to compute the energy.
 		 */
-		else if(m->gintfacbtags(ied,0) == pconfig.isothermalwall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.bcconf.isothermalwall_id)
 		{
 			// pressure in the interior cell
 			const a_real p = physics.getPressureFromConserved(ins);
 			
 			// temperature in the ghost cell
-			const a_real gtemp = 2.0*pconfig.isothermalwall_temp - physics.getTemperature(ins[0],p);
+			const a_real gtemp = 2.0*pconfig.bcconf.isothermalwall_temp
+				- physics.getTemperature(ins[0],p);
 
 			//gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
 			gs[0] = ins[0];
-			gs[1] = gs[0]*( 2.0*pconfig.isothermalwall_vel*n[1] - ins[1]/ins[0]);
-			gs[2] = gs[0]*(-2.0*pconfig.isothermalwall_vel*n[0] - ins[2]/ins[0]);
+			gs[1] = gs[0]*( 2.0*pconfig.bcconf.isothermalwall_vel*n[1] - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*pconfig.bcconf.isothermalwall_vel*n[0] - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
 
-		else if(m->gintfacbtags(ied,0) == pconfig.isothermalbaricwall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.bcconf.isothermalbaricwall_id)
 		{
 			// pressure in the ghost cell
 			const a_real gp = physics.getFreestreamPressure();
 			
 			// temperature in the ghost cell
-			const a_real gtemp= 2.0*pconfig.isothermalbaricwall_temp 
+			const a_real gtemp= 2.0*pconfig.bcconf.isothermalbaricwall_temp 
 				- physics.getTemperature(ins[0],gp);
 
 			gs[0] = physics.getDensityFromPressureTemperature(gp, gtemp);
-			gs[1] = gs[0]*( 2.0*pconfig.isothermalbaricwall_vel*n[1] - ins[1]/ins[0]);
-			gs[2] = gs[0]*(-2.0*pconfig.isothermalbaricwall_vel*n[0] - ins[2]/ins[0]);
+			gs[1] = gs[0]*( 2.0*pconfig.bcconf.isothermalbaricwall_vel*n[1] - ins[1]/ins[0]);
+			gs[2] = gs[0]*(-2.0*pconfig.bcconf.isothermalbaricwall_vel*n[0] - ins[2]/ins[0]);
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 			gs[3] = physics.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 		}
 	}
-	else if(!(m->gintfacbtags(ied,0) == pconfig.periodic_id)) {
+	else if(!(m->gintfacbtags(ied,0) == pconfig.bcconf.periodic_id)) {
 		// Taken care of earlier
 		std::cout << " ! FlowFV: Unknown boundary tag!!\n";
 		std::abort();
@@ -466,7 +467,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		0
 	};
 
-	if(m->gintfacbtags(ied,0) == pconfig.slipwall_id)
+	if(m->gintfacbtags(ied,0) == pconfig.bcconf.slipwall_id)
 	{
 		gs[0] = ins[0];
 		
@@ -489,7 +490,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		dgs[3*NVARS+3] = 1.0;
 	}
 
-	else if(m->gintfacbtags(ied,0) == pconfig.extrapolation_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.bcconf.extrapolation_id)
 	{
 		gs[0] = ins[0];
 		gs[1] = ins[1];
@@ -502,13 +503,13 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 	/* For the far-field BCs, ghost state values are always free-stream values.
 	 * Therefore the Jacobian is zero.
 	 */
-	else if(m->gintfacbtags(ied,0) == pconfig.farfield_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.bcconf.farfield_id)
 	{
 		for(int i = 0; i < NVARS; i++)
 			gs[i] = uinf[i];
 	}
 
-	else if(m->gintfacbtags(ied,0) == pconfig.inflowoutflow_id)
+	else if(m->gintfacbtags(ied,0) == pconfig.bcconf.inflowoutflow_id)
 	{
 		const a_real ci = physics.getSoundSpeedFromConserved(ins);
 		const a_real Mni = vni/ci;
@@ -557,42 +558,43 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 
 	else if(pconfig.viscous_sim) 
 	{
-		if(m->gintfacbtags(ied,0) == pconfig.adiabaticwall_id)
+		if(m->gintfacbtags(ied,0) == pconfig.bcconf.adiabaticwall_id)
 		{
-			const a_real tangMomentum = pconfig.adiabaticwall_vel * ins[0];
+			const a_real tangMomentum = pconfig.bcconf.adiabaticwall_vel * ins[0];
 			gs[0] = ins[0];
 			dgs[0] = 1.0;
 
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			dgs[NVARS+0] = 2.0*pconfig.adiabaticwall_vel*n[1];
+			dgs[NVARS+0] = 2.0*pconfig.bcconf.adiabaticwall_vel*n[1];
 			dgs[NVARS+1] = -1.0;
 
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			dgs[2*NVARS+0] = -2.0*pconfig.adiabaticwall_vel*n[0];
+			dgs[2*NVARS+0] = -2.0*pconfig.bcconf.adiabaticwall_vel*n[0];
 			dgs[2*NVARS+2] = -1.0;
 
 			gs[3] = ins[3];
 			dgs[3*NVARS+3] = 1.0;
 		}
 
-		else if(m->gintfacbtags(ied,0) == pconfig.isothermalwall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.bcconf.isothermalwall_id)
 		{
 			/// \todo Fix isothermal BC Jacobian
 			// FIXME: Wrong Jacobian
-			const a_real tangMomentum = pconfig.isothermalwall_vel * ins[0];
+			const a_real tangMomentum = pconfig.bcconf.isothermalwall_vel * ins[0];
 			gs[0] = ins[0];
 			dgs[0] = 1.0;
 
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
-			dgs[NVARS+0] = 2.0*pconfig.isothermalwall_vel*n[1];
+			dgs[NVARS+0] = 2.0*pconfig.bcconf.isothermalwall_vel*n[1];
 			dgs[NVARS+1] = -1.0;
 
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			dgs[2*NVARS+0] = -2.0*pconfig.isothermalwall_vel*n[0];
+			dgs[2*NVARS+0] = -2.0*pconfig.bcconf.isothermalwall_vel*n[0];
 			dgs[2*NVARS+2] = -1.0;
 
 			const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
-			gs[3] = physics.getEnergyFromTemperature(pconfig.isothermalwall_temp, ins[0], vmag2);
+			gs[3] = physics.getEnergyFromTemperature(pconfig.bcconf.isothermalwall_temp,
+			                                         ins[0], vmag2);
 			
 			a_real dvmag2[NVARS]; // derivative of vmag2 w.r.t. ins
 			dvmag2[0] = -2.0*dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]*ins[0]);
@@ -604,19 +606,21 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 			a_real dT[NVARS];
 			for(int i = 0; i < NVARS; i++) dT[i] = 0;
 
-			physics.getJacobianEnergyFromJacobiansTemperatureVmag2(pconfig.isothermalwall_temp,
+			physics.getJacobianEnergyFromJacobiansTemperatureVmag2(pconfig.bcconf.isothermalwall_temp,
 				ins[0], vmag2, dT, dvmag2, &dgs[3*NVARS]);
 		}
 
-		else if(m->gintfacbtags(ied,0) == pconfig.isothermalbaricwall_id)
+		else if(m->gintfacbtags(ied,0) == pconfig.bcconf.isothermalbaricwall_id)
 		{
 			// FIXME: Wrong Jacobian
-			const a_real tangMomentum = pconfig.isothermalbaricwall_vel * ins[0];
+			const a_real tangMomentum = pconfig.bcconf.isothermalbaricwall_vel * ins[0];
 			const a_real gp = physics.getFreestreamPressure();
-			gs[0] = physics.getDensityFromPressureTemperature(gp, pconfig.isothermalbaricwall_temp);
+			gs[0] = physics.getDensityFromPressureTemperature
+				(gp, pconfig.bcconf.isothermalbaricwall_temp);
 			gs[1] =  2.0*tangMomentum*n[1] - ins[1];
 			gs[2] = -2.0*tangMomentum*n[0] - ins[2];
-			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],pconfig.isothermalbaricwall_temp};
+			a_real prim2state[] = {gs[0],gs[1]/gs[0],gs[2]/gs[0],
+			                       pconfig.bcconf.isothermalbaricwall_temp};
 			gs[3] = physics.getEnergyFromPrimitive2(prim2state);
 		}
 	}

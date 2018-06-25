@@ -26,7 +26,7 @@ int TestFlowFV::testWalls(const a_real *const u) const
 		a_real flux[NVARS];
 		inviflux->get_flux(u,ug,n,flux);
 		
-		if(m->gintfacbtags(iface,0) == pconfig.adiabaticwall_id)
+		if(m->gintfacbtags(iface,0) == pconfig.bcconf.adiabaticwall_id)
 		{
 			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;
@@ -51,7 +51,7 @@ int TestFlowFV::testWalls(const a_real *const u) const
 				std::cerr << "! Normal mass flux at isothermalbaric wall is nonzero!\n";
 			}*/
 		
-		if(m->gintfacbtags(iface,0) == pconfig.slipwall_id)
+		if(m->gintfacbtags(iface,0) == pconfig.bcconf.slipwall_id)
 		{
 			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;

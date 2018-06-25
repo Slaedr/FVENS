@@ -23,6 +23,23 @@ enum BCType {
 	ADIABATIC_WALL_BC
 };
 
+/// Collection of options describing boundary conditions
+struct FlowBCConfig {
+	int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
+	int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
+	int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
+	int slipwall_id;                  ///< Marker for slip wall
+	int farfield_id;                  ///< Marker for far-field boundary
+	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
+	int extrapolation_id;             ///< Marker for an extrapolation boundary
+	int periodic_id;                  ///< Marker for periodic boundary
+	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
+	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
+	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
+	a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
+	a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
+};
+
 /// Abstract class for storing the details and providing functionality for one type if BC
 /** Each FlowBC (derived class) object is associated with an integer [tag](\ref UMesh2dh::bface)
  * which, in turn, is associated with a collection of boundary faces on which the BC is to be applied.

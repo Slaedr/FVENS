@@ -214,10 +214,11 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts)
 	const FlowPhysicsConfig pconf { 
 		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
 		opts.viscsim, opts.useconstvisc,
-		opts.isothermalwall_marker, opts.adiabaticwall_marker, opts.isothermalpressurewall_marker,
-		opts.slipwall_marker, opts.farfield_marker, opts.inout_marker, 
-		opts.extrap_marker, opts.periodic_marker,
-		opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel
+			FlowBCConfig {opts.isothermalwall_marker, opts.adiabaticwall_marker,
+				opts.isothermalpressurewall_marker,
+				opts.slipwall_marker, opts.farfield_marker, opts.inout_marker, 
+				opts.extrap_marker, opts.periodic_marker,
+				opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel}
 	};
 	return pconf;
 }

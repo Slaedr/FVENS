@@ -150,20 +150,8 @@ struct FlowPhysicsConfig
 	a_real Pr;                          ///< (Constant) Prandtl number
 	a_real aoa;                         ///< Angle of attack in radians 
 	bool viscous_sim;                   ///< Whether to include viscous effects
-	bool const_visc;                  ///< Whether to use constant viscosity
-	int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
-	int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
-	int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
-	int slipwall_id;                  ///< Marker for slip wall
-	int farfield_id;                  ///< Marker for far-field boundary
-	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
-	int extrapolation_id;             ///< Marker for an extrapolation boundary
-	int periodic_id;                  ///< Marker for periodic boundary
-	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
-	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
-	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
-	a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
-	a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
+	bool const_visc;                    ///< Whether to use constant viscosity
+	FlowBCConfig bcconf;                ///< Boundary condition specification
 };
 
 /// Collection of options related to the spatial discretization scheme
