@@ -43,17 +43,17 @@ public:
 	int bctag() const { return btag; }
 
 	/// Computes the ghost state given the interior state and normal vector
-	/** \param uin Interior state
+	/** \param uin Interior conserved state
 	 * \param n Unit normal vector
-	 * \param ughost Ghost state (on output)
+	 * \param ughost Ghost (conserved) state (on output)
 	 */
 	virtual void computeGhostState(const scalar *const uin, const scalar *const n,
 	                               scalar *const ughost) const = 0;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	/** \param uin Interior state
+	/** \param uin Interior conserved state
 	 * \param n Unit normal vector
-	 * \param [in,out] ug Ghost state
+	 * \param [in,out] ug Ghost conserved state
 	 * \param [in,out] dugdui Jacobian of ghost state w.r.t. interior state (on output)
 	 */
 	virtual void computeJacobian(const scalar *const uin, const scalar *const n,
@@ -128,7 +128,8 @@ protected:
 };
 
 /// Normal inflow BC with total pressure and total temperature specified
-/** Taken from \cite carlson_bcs section 2.7. One difference though is that here,
+/** There are two sources: \cite carlson_bcs section 2.7, and \cite blazek, section 8.4.
+ * This is mainly based on the latter (Blazek). One difference though is that here,
  * the flow is constrained normal to the boundary.
  */
 template <typename scalar>
@@ -184,7 +185,7 @@ protected:
 	const std::array<scalar,NDIM> uinf;
 	using FlowBC<scalar>::btag;
 	using FlowBC<scalar>::phy;
-}
+};
 
 }
 #endif

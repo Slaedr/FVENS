@@ -12,29 +12,9 @@
 #define APHYSICS_H
 
 #include "aconstants.hpp"
+#include "mathutils.hpp"
 
 namespace fvens {
-
-/// Returns a dot product computed between the first NDIM components of the two vectors.
-inline a_real dimDotProduct(const a_real *const u, const a_real *const v)
-{
-	a_real dot = 0;
-	for(int i = 0; i < NDIM; i++)
-		dot += u[i]*v[i];
-	return dot;
-}
-
-/// Returns the derivatives of f/g given the derivatives of f and g (for NVARS components)
-/** \note The result is added to the output array dq; so prior contents will affect the outcome.
- * \note It is possible for the output array dq to point to the same location as
- * one of the input arrays. In that case, the entire array should overlap, NOT only a part of it.
- */
-inline void getQuotientDerivatives(const a_real f, const a_real *const df, 
-		const a_real g, const a_real *const dg, a_real *const __restrict dq)
-{
-	for(int i = 0; i < NVARS; i++)
-		dq[i] += (df[i]*g-f*dg[i])/(g*g);
-}
 
 /// Abstract class providing analytical fluxes and their Jacobians etc
 class Physics

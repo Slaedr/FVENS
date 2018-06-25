@@ -31,6 +31,7 @@
 #include "anumericalflux.hpp"
 #include "agradientschemes.hpp"
 #include "areconstruction.hpp"
+#include "abc.hpp"
 
 #include <petscmat.h>
 
@@ -196,6 +197,10 @@ public:
 
 	/// Compute norm of cell-centered entropy production
 	virtual a_real compute_entropy_cell(const Vec u) const = 0;
+
+protected:
+	/// The different boundary conditions required for all the boundaries
+	const std::vector<const FlowBC<a_real>*> bcs;
 };
 
 /// Computes the integrated fluxes and their Jacobians for compressible flow

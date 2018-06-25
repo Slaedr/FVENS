@@ -1,0 +1,55 @@
+/** \file mathutils.hpp
+ * \brief Provides convenient functions for certain geometric or calculus operations
+ * \author Aditya Kashi
+ */
+
+#ifndef FVENS_MATHUTILS_H
+#define FVENS_MATHUTILS_H
+
+#include "aconstants.hpp"
+
+namespace fvens {
+
+/// Returns a dot product computed between the first NDIM components of the two vectors.
+inline a_real dimDotProduct(const a_real *const u, const a_real *const v)
+{
+	a_real dot = 0;
+	for(int i = 0; i < NDIM; i++)
+		dot += u[i]*v[i];
+	return dot;
+}
+
+/** Computes the Cartesian components of a vector given its magnitude and direction
+ *
+ * \param mag Magnitude of the vector
+ * \param dir Unit vector in the direction of the vector
+ * \param [out] vec Cartesian components of the vector
+ */
+template <typename scalar>
+inline void getComponentsCartesian(const scalar mag, const scalar dir[NDIM], scalar vec[NDIM])
+{
+	zeros(vec,NDIM);
+	const scalar cosphi = (NDIM == 3) ? sqrt(dir[0]*dir[0]+dir[1]*dir[1]) : 1.0;
+	const scalar sinphi = (NDIM == 3) ? dir[2] : 0.0;
+	if(NDIM == 3)
+		vec[2] = mag*sinphi;
+	vec[0] = mag*cosphi*dir[0];
+	vec[1] = mag*cosphi*dir[1];
+}
+
+/// Returns the derivatives of f/g given the derivatives of f and g (for NVARS components)
+/** \note The result is added to the output array dq; so prior contents will affect the outcome.
+ * \note It is possible for the output array dq to point to the same location as
+ * one of the input arrays. In that case, the entire array should overlap, NOT only a part of it.
+ */
+inline void getQuotientDerivatives(const a_real f, const a_real *const df, 
+                                   const a_real g, const a_real *const dg,
+                                   a_real *const __restrict dq)
+{
+	for(int i = 0; i < NVARS; i++)
+		dq[i] += (df[i]*g-f*dg[i])/(g*g);
+}
+
+}
+
+#endif

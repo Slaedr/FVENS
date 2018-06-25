@@ -72,10 +72,10 @@ template <typename scalar>
 void InOutFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
                                          scalar *const gs) const
 {
-	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
-	const a_real ci = phy.getSoundSpeedFromConserved(ins);
-	const a_real Mni = vni/ci;
-	const a_real pinf = phy.getFreestreamPressure();
+	const scalar vni = dimDotProduct(&ins[1],&n[0])/ins[0];
+	const scalar ci = phy.getSoundSpeedFromConserved(ins);
+	const scalar Mni = vni/ci;
+	const scalar pinf = phy.getFreestreamPressure();
 
 	/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 	 * takes care of signal propagation at the boundary.
@@ -164,10 +164,34 @@ InFlow<scalar>::InFlow(const int bc_tag, const IdealGasPhysics& gasphysics,
 	: FlowBC<scalar>(bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
 { }
 
+/** Assumes the flow at the boundary is isentropic. Uses the the fact that the stagnation speed
+ * of sound and the outgoing Riemann invariant are conserved across the face.
+ */
 template <typename scalar>
 void InFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
                                        scalar *const gs) const
 {
+	const scalar ci = phy.getSoundSpeedFromConserved(ins);
+	// Outgoing Riemann invariant
+	const scalar Rminus = dimDotProduct(&ins[1],&n[0])/ins[0] - ci/(2*phy.g - 1.0);
+	// Square of stagnation speed of sound
+	const scalar co2 = ci*ci + (phy.g-1.0)/2.0 * dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]);
+
+	const scalar q = sqrt((phy.g+1)*co2/((phy.g-1)*Rminus*Rminus) - (phy.g-1)/2.0);
+
+	// Ghost state values
+	const scalar cg = -Rminus*(phy.g-1)/(phy.g+1) * (1.0 + q);
+	const scalar tg = ttotal*cg*cg/co2;
+	const scalar pg = ptotal * pow(tg/ttotal, phy.g/(phy.g-1.0));
+	gs[0] = phy.getDensityFromPressureTemperature(pg,tg);
+	const scalar vgmag = sqrt(2.0/(phy.g-1.0)*(co2 - cg*cg));
+
+	// Get velocity components of ghost state assuming it's (anti-)parallel to the face normal
+	scalar vg[NDIM];
+	getComponentsCartesian<scalar>(vgmag, n, vg);
+	for(int i = 0; i < NDIM; i++)
+		gs[i+1] = gs[0]*vg[i];
+	gs[NDIM+1] = phy.getEnergyFromPressure(pg,gs[0],vgmag*vgmag);
 }
 
 template <typename scalar>
@@ -199,5 +223,9 @@ void Farfield<scalar>::computeJacobian(const scalar *const ins, const scalar *co
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 }
+
+template class InOutFlow<a_real>;
+template class InFlow<a_real>;
+template class Farfield<a_real>;
 
 }
