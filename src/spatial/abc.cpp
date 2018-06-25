@@ -228,4 +228,20 @@ template class InOutFlow<a_real>;
 template class InFlow<a_real>;
 template class Farfield<a_real>;
 
+template <typename scalar>
+std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                        const IdealGasPhysics& physics)
+{
+	std::vector<const FlowBC<scalar>*> bcvec;
+
+	// TODO: Add construction
+	const FlowBC* iobc = new InOutFlow(conf.inflowoutflow_id, physics, conf.ufar);
+	bcvec.push_back(iobc);
+
+	return bcvec;
+}
+
+template std::vector<const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                                 const IdealGasPhysics& physics);
+
 }

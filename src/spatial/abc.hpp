@@ -204,5 +204,10 @@ protected:
 	using FlowBC<scalar>::phy;
 };
 
+/// Create a list of pointers to immutable boundary condition objects, possibly of different types
+template <typename scalar>
+std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                        const IdealGasPhysics& physics);
+
 }
 #endif
