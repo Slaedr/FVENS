@@ -1,14 +1,15 @@
-/** \file testflowspatial.cpp
- * \brief Implements unit tests for spatial discretizations of Euler or Navier-Stokes equations
+/** \file testwallbcs.cpp
+ * \brief Implements unit tests for wall boundary conditions of Euler or Navier-Stokes equations
  * \author Aditya Kashi
  * \date 2017-10
  */
 #include <iostream>
-#include "testflowspatial.hpp"
+#include "testwallbcs.hpp"
 
 #define FLUX_TOL 10*ZERO_TOL
 
 namespace fvens {
+namespace fvens_tests {
 
 int TestFlowFV::testWalls(const a_real *const u) const
 {
@@ -75,4 +76,5 @@ std::array<a_real,NVARS> get_test_state()
 	return u;
 }
 
+}
 }

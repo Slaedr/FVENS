@@ -1,11 +1,11 @@
-/** \file testflowspatial.hpp
- * \brief Specifies a class for testing various aspects of the spatial discretization of a flow problem
+/** \file testwallbcs.hpp
+ * \brief Specifies a class for testing wall boundary condition of a flow problem
  * \author Aditya Kashi
  * \date 2017-10
  */
 
-#ifndef TESTFLOWSPATIAL_H
-#define TESTFLOWSPATIAL_H
+#ifndef FVENS_TEST_WALLBCS_H
+#define FVENS_TEST_WALLBCS_H
 
 #include <string>
 #include <array>
@@ -13,6 +13,7 @@
 #include "spatial/aspatial.hpp"
 
 namespace fvens {
+namespace fvens_tests {
 
 class TestFlowFV : public FlowFV<true,false>
 {
@@ -36,5 +37,6 @@ protected:
 /// Returns a state vector in conserved variables that can be used in testing
 std::array<a_real,NVARS> get_test_state();
 
+}
 }
 #endif

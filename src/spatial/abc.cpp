@@ -203,7 +203,7 @@ void InFlow<scalar>::computeJacobian(const scalar *const ins, const scalar *cons
 
 template <typename scalar>
 Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics& gasphysics,
-                           const std::array<scalar,NDIM>& u_far)
+                           const std::array<scalar,NVARS>& u_far)
 	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
 { }
 
@@ -240,7 +240,7 @@ std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf
 	bcvec.push_back(iobc);
 
 	const FlowBC<scalar>* ibc = new InFlow<scalar>(conf.subsonicinflow_id, physics,
-	                                               subsonicinflow_ptot, subsonicinflow_ttot);
+	                                               conf.subsonicinflow_ptot, conf.subsonicinflow_ttot);
 	bcvec.push_back(ibc);
 
 	const FlowBC<scalar>* fbc = new Farfield<scalar>(conf.farfield_id, physics, uinf);

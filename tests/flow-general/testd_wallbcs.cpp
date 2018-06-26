@@ -2,9 +2,10 @@
 #include <iostream>
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
-#include "testflowspatial.hpp"
+#include "testwallbcs.hpp"
 
 using namespace fvens;
+using namespace fvens_tests;
 namespace po = boost::program_options;
 using namespace std::literals::string_literals;
 
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
 	int finerr = 0;
 	
 	po::options_description desc
-		("FVENS functional convergence test.\n"s
+		("FVENS wall boundary conditions' tests.\n"s
 		 + " The first argument is the input control file name.\n"
 		 + "Further options");
 

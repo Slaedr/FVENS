@@ -189,7 +189,7 @@ public:
 	 * \param ufar Far-field state
 	 */
 	Farfield(const int face_id, const IdealGasPhysics& gasphysics,
-	         const std::array<scalar,NDIM>& u_far);
+	         const std::array<scalar,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -201,7 +201,7 @@ public:
 	                     scalar *const __restrict dugdui) const;
 
 protected:
-	const std::array<scalar,NDIM> uinf;
+	const std::array<scalar,NVARS> uinf;
 	using FlowBC<scalar>::btag;
 	using FlowBC<scalar>::phy;
 };
