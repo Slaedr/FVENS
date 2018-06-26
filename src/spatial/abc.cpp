@@ -112,6 +112,9 @@ void InOutFlow<scalar>::computeJacobian(const scalar *const ins, const scalar *c
                                         scalar *const __restrict gs,
                                         scalar *const __restrict dgs) const
 {
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dgs[k] = 0;
+
 	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	const a_real ci = phy.getSoundSpeedFromConserved(ins);
 	const a_real Mni = vni/ci;
@@ -224,34 +227,115 @@ void Farfield<scalar>::computeJacobian(const scalar *const ins, const scalar *co
 		dgs[k] = 0;
 }
 
+template <typename scalar>
+Slipwall<scalar>::Slipwall(const int bc_tag, const IdealGasPhysics& gasphysics)
+	: FlowBC<scalar>(bc_tag, gasphysics)
+{ }
+
+template <typename scalar>
+void Slipwall<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                         scalar *const __restrict gs) const
+{
+	gs[0] = ins[0];
+	for(int i = 1; i < NDIM+1; i++)
+		gs[i] = ins[i] - 2.0*vni*n[i-1]*ins[0];
+	gs[3] = ins[3];
+}
+
+/// \todo Make this dimension-independent
+template <typename scalar>
+void Slipwall<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
+                                       scalar *const __restrict gs,
+                                       scalar *const __restrict dgs) const
+{
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dgs[k] = 0;
+
+	const scalar vni = dimDotProduct(&ins[1],n)/ins[0];
+	scalar dvni[NVARS];
+	dvni[0] = -vni/ins[0];
+	for(int i = 1; i < NDIM+1; i++)
+		dvni[i] = n[i-1]/ins[0];
+	dvni[NDIM+1] = 0;
+
+	gs[0] = ins[0];
+		
+	dgs[0] = 1.0;
+
+	gs[1] = ins[1] - 2.0*vni*n[0]*ins[0];
+		
+	dgs[NVARS+0] = -2.0*n[0]*(dvni[0]*ins[0]+vni);
+	dgs[NVARS+1] = 1.0 - 2.0*n[0]*ins[0]*dvni[1];
+	dgs[NVARS+2] = -2.0*n[0]*ins[0]*dvni[2];
+
+	gs[2] = ins[2] - 2.0*vni*n[1]*ins[0];
+		
+	dgs[2*NVARS+0] = -2.0*n[1]*(dvni[0]*ins[0]+vni);
+	dgs[2*NVARS+1] = -2.0*n[1]*ins[0]*dvni[1];
+	dgs[2*NVARS+2] = 1.0 - 2.0*n[1]*ins[0]*dvni[2];
+
+	gs[3] = ins[3];
+		
+	dgs[3*NVARS+3] = 1.0;
+}
+
+template <typename scalar>
+Extrapolation<scalar>::Extrapolation(const int bc_tag, const IdealGasPhysics& gasphysics)
+	: FlowBC<scalar>(bc_tag, gasphysics)
+{ }
+
+template <typename scalar>
+void Extrapolation<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                              scalar *const __restrict gs) const
+{
+	for(int k = 0; k < NVARS; k++) {
+		gs[k] = ins[k];
+	}
+}
+
+template <typename scalar>
+void Extrapolation<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
+                                            scalar *const __restrict gs,
+                                            scalar *const __restrict dgs) const
+{
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dgs[k] = 0;
+	for(int k = 0; k < NVARS; k++) {
+		gs[k] = ins[k];
+		dgs[k*NVARS+k] = 1.0;
+	}
+}
+
 template class InOutFlow<a_real>;
 template class InFlow<a_real>;
 template class Farfield<a_real>;
+template class Slipwall<a_real>;
+template class Extrapolation<a_real>;
 
 template <typename scalar>
-std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                        const IdealGasPhysics& physics,
-                                                        const std::array<a_real,NVARS>& uinf)
+std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                         const IdealGasPhysics& physics,
+                                                         const std::array<a_real,NVARS>& uinf)
 {
-	std::vector<const FlowBC<scalar>*> bcvec;
+	std::map<int,const FlowBC<scalar>*> bcmap;
 
 	// TODO: Add construction
 	const FlowBC<scalar>* iobc = new InOutFlow<scalar>(conf.inflowoutflow_id, physics, uinf);
-	bcvec.push_back(iobc);
+	bcmap[conf.inflowoutflow_id] = iobc;
 
 	const FlowBC<scalar>* ibc = new InFlow<scalar>(conf.subsonicinflow_id, physics,
 	                                               conf.subsonicinflow_ptot, conf.subsonicinflow_ttot);
-	bcvec.push_back(ibc);
+	bcmap[conf.subsonicinflow_id] = ibc;
 
 	const FlowBC<scalar>* fbc = new Farfield<scalar>(conf.farfield_id, physics, uinf);
-	bcvec.push_back(fbc);
+	bcmap[conf.farfield_id] = fbc;
 
-	return bcvec;
+	return bcmap;
 }
 
 template
-std::vector<const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                        const IdealGasPhysics& physics,
-                                                        const std::array<a_real,NVARS>& uinf);
+std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                         const IdealGasPhysics& physics,
+                                                         const std::array<a_real,NVARS>& uinf);
 
 }

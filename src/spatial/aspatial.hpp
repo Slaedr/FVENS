@@ -234,7 +234,7 @@ protected:
 	const SolutionReconstruction *const lim;
 
 	/// The different boundary conditions required for all the boundaries
-	const std::vector<const FlowBC<a_real>*> bcs;
+	const std::map<int,const FlowBC<a_real>*> bcs;
 
 	/// Computes flow variables at all boundaries (either Gauss points or ghost cell centers) 
 	/// using the interior state provided

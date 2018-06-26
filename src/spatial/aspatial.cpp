@@ -239,8 +239,9 @@ FlowFV_base::FlowFV_base(const UMesh2dh *const mesh,
 	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &physics)},
 
 	gradcomp {create_const_gradientscheme<NVARS>(nconfig.gradientscheme, m, rc)},
+	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)},
 
-	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)}
+	bcs {create_const_flowBCs<a_real>(pconf.bcconf, physics,uinf)}
 
 {
 	std::cout << " FlowFV: Boundary markers:\n";
@@ -286,9 +287,8 @@ StatusCode FlowFV_base::initializeUnknowns(Vec u) const
 	return ierr;
 }
 
-void FlowFV_base::compute_boundary_states(
-		const amat::Array2d<a_real>& ins, 
-		       amat::Array2d<a_real>& bs ) const
+void FlowFV_base::compute_boundary_states(const amat::Array2d<a_real>& ins, 
+                                          amat::Array2d<a_real>& bs ) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -304,8 +304,8 @@ void FlowFV_base::compute_boundary_states(
 }
 
 void FlowFV_base::compute_boundary_state(const int ied, 
-		const a_real *const ins, 
-		a_real *const gs        ) const
+                                         const a_real *const ins, 
+                                         a_real *const gs        ) const
 {
 	const std::array<a_real,NDIM> n = m->gnormal(ied);
 

@@ -7,6 +7,7 @@
 #ifndef FVENS_BC_H
 #define FVENS_BC_H
 
+#include <map>
 #include "physics/aphysics.hpp"
 
 namespace fvens {
@@ -206,15 +207,39 @@ protected:
 	using FlowBC<scalar>::phy;
 };
 
-/// Create a list of pointers to immutable boundary condition objects, possibly of different types
-/** \param conf Boundary condition parameters read from control file
+template <typename scalar>
+class Slipwall : public FlowBC<scalar>
+{
+public:
+	/// Setup slip wall BC 
+	/** \sa FlowBC::FlowBC
+	 */
+	Slipwall(const int face_id, const IdealGasPhysics& gasphysics);
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const __restrict ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeJacobian(const scalar *const uin, const scalar *const n,
+	                     scalar *const __restrict ug,
+	                     scalar *const __restrict dugdui) const;
+
+protected:
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+};
+
+/// Create a set of pointers to immutable boundary condition objects, possibly of different types
+/** The BC objects are mapped to their corresponding boundary markers specified in the control file.
+ * \param conf Boundary condition parameters read from control file
  * \param physics Gas properties
  * \param uinf Free-stream state in conserved variables
  */
 template <typename scalar>
-std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                        const IdealGasPhysics& physics,
-                                                        const std::array<a_real,NVARS>& uinf);
+std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                         const IdealGasPhysics& physics,
+                                                         const std::array<a_real,NVARS>& uinf);
 
 }
 #endif
