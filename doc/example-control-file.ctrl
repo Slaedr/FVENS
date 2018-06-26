@@ -37,6 +37,14 @@ bc
 	 ; Currently, there can only be one marker of each type.
 	 ; Some boundary conditions require boundary values
 	farfield_marker              4
+
+	;; Subsonic inflow boundary
+	subsonic_inflow_marker            3
+	;; Non-dimensional total pressure at inflow
+	 ; Non-dimensionalized by free-stream density times square of free-stream velocity
+	subsonic_inflow_total_pressure    2.0
+	;; Total temperature in Kelvin at inflow
+	subsonic_inflow_total_temperature 373.0
 	
 	adiabatic_wall_marker        5
 	;; Non-dimensional velocity

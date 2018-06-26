@@ -78,6 +78,7 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	const std::string slipwall_m = "slipwall_marker";
 	const std::string farfield_m = "farfield_marker";
 	const std::string inoutflow_m = "inflow_outflow_marker";
+	const std::string subsonicinflow_m = "subsonic_inflow_marker";
 	const std::string extrap_m = "extrapolation_marker";
 	const std::string periodic_m = "periodic_marker";
 	const std::string periodic_axis = "periodic_axis";
@@ -121,6 +122,11 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	opts.slipwall_marker = infopts.get(c_bcs+"."+slipwall_m,-1);
 	opts.farfield_marker = infopts.get(c_bcs+"."+farfield_m,-1);
 	opts.inout_marker = infopts.get(c_bcs+"."+inoutflow_m,-1);
+	opts.subsonicinflow_marker = infopts.get(c_bcs+"."+subsonicinflow_m,-1);
+	if(opts.subsonicinflow_marker >= 0) {
+		opts.subsonicinflow_ptot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_pressure");
+		opts.subsonicinflow_ttot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_temperature");
+	}
 	opts.extrap_marker = infopts.get(c_bcs+"."+extrap_m,-1);
 	opts.periodic_marker = infopts.get(c_bcs+"."+periodic_m,-1);
 	if(opts.periodic_marker >= 0) {
@@ -216,8 +222,10 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts)
 		opts.viscsim, opts.useconstvisc,
 			FlowBCConfig {opts.isothermalwall_marker, opts.adiabaticwall_marker,
 				opts.isothermalpressurewall_marker,
-				opts.slipwall_marker, opts.farfield_marker, opts.inout_marker, 
+				opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
+				opts.subsonicinflow_marker, 
 				opts.extrap_marker, opts.periodic_marker,
+				opts.subsonicinflow_ptot, opts.subsonicinflow_ttot,
 				opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel}
 	};
 	return pconf;

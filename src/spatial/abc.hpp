@@ -2,7 +2,6 @@
  * \brief Boundary conditions management
  * \author Aditya Kashi
  * \date 2018-05
- * \todo Implement!
  */
 
 #ifndef FVENS_BC_H
@@ -31,8 +30,11 @@ struct FlowBCConfig {
 	int slipwall_id;                  ///< Marker for slip wall
 	int farfield_id;                  ///< Marker for far-field boundary
 	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
+	int subsonicinflow_id;            ///< Marker for subsonic inflow
 	int extrapolation_id;             ///< Marker for an extrapolation boundary
 	int periodic_id;                  ///< Marker for periodic boundary
+	a_real subsonicinflow_ptot;       ///< Total non-dimensional pressure at subsonic inflow
+	a_real subsonicinflow_ttot;       ///< Total temperature at subsonic inflow
 	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
 	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
 	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
@@ -65,7 +67,7 @@ public:
 	 * \param ughost Ghost (conserved) state (on output)
 	 */
 	virtual void computeGhostState(const scalar *const uin, const scalar *const n,
-	                               scalar *const ughost) const = 0;
+	                               scalar *const __restrict ughost) const = 0;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	/** \param uin Interior conserved state
@@ -74,8 +76,8 @@ public:
 	 * \param [in,out] dugdui Jacobian of ghost state w.r.t. interior state (on output)
 	 */
 	virtual void computeJacobian(const scalar *const uin, const scalar *const n,
-	                             scalar *const ug,
-	                             scalar *const dugdui) const = 0;
+	                             scalar *const __restrict ug,
+	                             scalar *const __restrict dugdui) const = 0;
 
 protected:
 	/// Tag index of mesh faces on which this BC is to be applied
@@ -93,12 +95,12 @@ public:
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
-	                               scalar *const ughost) const;
+	                               scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const ug,
-	                     scalar *const dugdui) const;
+	                     scalar *const __restrict ug,
+	                     scalar *const __restrict dugdui) const;
 
 protected:
 	using FlowBC<scalar>::btag;
@@ -127,19 +129,19 @@ public:
 	 * \param ufar Far-field state
 	 */
 	InOutFlow(const int face_id, const IdealGasPhysics& gasphysics,
-	         const std::array<scalar,NDIM>& u_far);
+	          const std::array<scalar,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
-	                       scalar *const ughost) const;
+	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const ug,
-	                     scalar *const dugdui) const;
+	                     scalar *const __restrict ug,
+	                     scalar *const __restrict dugdui) const;
 
 protected:
-	const std::array<scalar,NDIM> uinf;
+	const std::array<scalar,NVARS> uinf;
 	using FlowBC<scalar>::btag;
 	using FlowBC<scalar>::phy;
 };
@@ -163,12 +165,12 @@ public:
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
-	                       scalar *const ughost) const;
+	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const ug,
-	                     scalar *const dugdui) const;
+	                     scalar *const __restrict ug,
+	                     scalar *const __restrict dugdui) const;
 
 protected:
 	const scalar ptotal;
@@ -191,12 +193,12 @@ public:
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
-	                       scalar *const ughost) const;
+	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const ug,
-	                     scalar *const dugdui) const;
+	                     scalar *const __restrict ug,
+	                     scalar *const __restrict dugdui) const;
 
 protected:
 	const std::array<scalar,NDIM> uinf;
@@ -205,9 +207,14 @@ protected:
 };
 
 /// Create a list of pointers to immutable boundary condition objects, possibly of different types
+/** \param conf Boundary condition parameters read from control file
+ * \param physics Gas properties
+ * \param uinf Free-stream state in conserved variables
+ */
 template <typename scalar>
 std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                        const IdealGasPhysics& physics);
+                                                        const IdealGasPhysics& physics,
+                                                        const std::array<a_real,NVARS>& uinf);
 
 }
 #endif

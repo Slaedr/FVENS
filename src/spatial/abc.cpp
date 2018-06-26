@@ -20,7 +20,7 @@ SlipWall<scalar>::SlipWall(const int bc_tag, const IdealGasPhysics& gasphysics)
 
 template <typename scalar>
 void SlipWall<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                         scalar *const gs) const
+                                         scalar *const __restrict gs) const
 {
 	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	gs[0] = ins[0];
@@ -31,8 +31,8 @@ void SlipWall<scalar>::computeGhostState(const scalar *const ins, const scalar *
 
 template <typename scalar>
 void SlipWall<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
-                                       scalar *const gs,
-                                       scalar *const dgs) const
+                                       scalar *const __restrict gs,
+                                       scalar *const __restrict dgs) const
 {
 	const a_real vni = dimDotProduct(&ins[1],n)/ins[0];
 	a_real dvni[NVARS];
@@ -64,13 +64,13 @@ void SlipWall<scalar>::computeJacobian(const scalar *const ins, const scalar *co
 
 template <typename scalar>
 InOutFlow<scalar>::InOutFlow(const int bc_tag, const IdealGasPhysics& gasphysics,
-                             const std::array<scalar,NDIM>& u_far)
+                             const std::array<scalar,NVARS>& u_far)
 	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
 { }
 
 template <typename scalar>
 void InOutFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                         scalar *const gs) const
+                                         scalar *const __restrict gs) const
 {
 	const scalar vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	const scalar ci = phy.getSoundSpeedFromConserved(ins);
@@ -109,8 +109,8 @@ void InOutFlow<scalar>::computeGhostState(const scalar *const ins, const scalar 
 
 template <typename scalar>
 void InOutFlow<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
-                                        scalar *const gs,
-                                        scalar *const dgs) const
+                                        scalar *const __restrict gs,
+                                        scalar *const __restrict dgs) const
 {
 	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	const a_real ci = phy.getSoundSpeedFromConserved(ins);
@@ -169,7 +169,7 @@ InFlow<scalar>::InFlow(const int bc_tag, const IdealGasPhysics& gasphysics,
  */
 template <typename scalar>
 void InFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                       scalar *const gs) const
+                                       scalar *const __restrict gs) const
 {
 	const scalar ci = phy.getSoundSpeedFromConserved(ins);
 	// Outgoing Riemann invariant
@@ -196,8 +196,8 @@ void InFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *co
 
 template <typename scalar>
 void InFlow<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
-                                     scalar *const gs,
-                                     scalar *const dgs) const
+                                     scalar *const __restrict gs,
+                                     scalar *const __restrict dgs) const
 {
 }
 
@@ -209,7 +209,7 @@ Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics& gasphysics,
 
 template <typename scalar>
 void Farfield<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                         scalar *const gs) const
+                                         scalar *const __restrict gs) const
 {
 	for(int i = 0; i < NVARS; i++)
 		gs[i] = uinf[i];
@@ -217,8 +217,8 @@ void Farfield<scalar>::computeGhostState(const scalar *const ins, const scalar *
 
 template <typename scalar>
 void Farfield<scalar>::computeJacobian(const scalar *const ins, const scalar *const n,
-                                       scalar *const gs,
-                                       scalar *const dgs) const
+                                       scalar *const __restrict gs,
+                                       scalar *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
@@ -230,18 +230,28 @@ template class Farfield<a_real>;
 
 template <typename scalar>
 std::vector<const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                        const IdealGasPhysics& physics)
+                                                        const IdealGasPhysics& physics,
+                                                        const std::array<a_real,NVARS>& uinf)
 {
 	std::vector<const FlowBC<scalar>*> bcvec;
 
 	// TODO: Add construction
-	const FlowBC* iobc = new InOutFlow(conf.inflowoutflow_id, physics, conf.ufar);
+	const FlowBC<scalar>* iobc = new InOutFlow<scalar>(conf.inflowoutflow_id, physics, uinf);
 	bcvec.push_back(iobc);
+
+	const FlowBC<scalar>* ibc = new InFlow<scalar>(conf.subsonicinflow_id, physics,
+	                                               subsonicinflow_ptot, subsonicinflow_ttot);
+	bcvec.push_back(ibc);
+
+	const FlowBC<scalar>* fbc = new Farfield<scalar>(conf.farfield_id, physics, uinf);
+	bcvec.push_back(fbc);
 
 	return bcvec;
 }
 
-template std::vector<const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                                 const IdealGasPhysics& physics);
+template
+std::vector<const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
+                                                        const IdealGasPhysics& physics,
+                                                        const std::array<a_real,NVARS>& uinf);
 
 }

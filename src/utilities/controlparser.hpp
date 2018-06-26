@@ -42,6 +42,8 @@ struct FlowParserOptions
 		limiter_param,                       ///< Parameter controlling some limiters
 		twalltemp, twallvel,                 ///< Isothermal wall temperature and tang. velocity
 		adiawallvel,                         ///< Adiabatic wall tangential velocity magnitude
+		subsonicinflow_ptot,                 ///< Total pressure at subsonic inflow
+		subsonicinflow_ttot,                 ///< Total temperature at subsonic inflow
 		tpwalltemp, tpwallpressure, tpwallvel,  ///< Deprecated
 		final_time,                          ///< Physical time upto which to simulate
 		phy_timestep,                        ///< Constant physical time step for unsteady implicit
@@ -51,7 +53,8 @@ struct FlowParserOptions
 		rampstart, rampend, 
 		firstmaxiter, 
 		firstrampstart, firstrampend,
-		farfield_marker, inout_marker, 
+		farfield_marker, inout_marker,
+		subsonicinflow_marker,
 		slipwall_marker, isothermalwall_marker,
 		adiabaticwall_marker,  
 		isothermalpressurewall_marker,          ///< Deprecated
