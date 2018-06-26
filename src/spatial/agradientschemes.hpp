@@ -12,6 +12,9 @@
 namespace fvens
 {
 
+/// Spatial gradients of flow variables for all cells in the mesh
+typedef std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>>> GradVector;
+
 /// Abstract class for solution gradient computation schemes
 /** For this, we need ghost cell-centered values of flow variables.
  */

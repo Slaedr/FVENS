@@ -172,46 +172,13 @@ struct FlowNumericsConfig
 class FlowFV_base : public Spatial<NVARS>
 {
 public:
-	FlowFV_base(const UMesh2dh *const mesh);
-
-	//virtual ~FlowFV_base();
-
-	/// Sets initial conditions
-	/** \param[in] fromfile True if initial data is to be read from a file
-	 * \param[in] file Name of initial conditions file
-	 * \param[in,out] u Vector to store the initial data in
-	 */
-	virtual StatusCode initializeUnknowns(Vec u) const = 0;
-
-	/// Compute norm of cell-centered entropy production
-	virtual a_real compute_entropy_cell(const Vec u) const = 0;
-
-protected:
-	/// The different boundary conditions required for all the boundaries
-	const std::vector<const FlowBC<a_real>*> bcs;
-};
-
-/// Computes the integrated fluxes and their Jacobians for compressible flow
-/** Note about BCs: normal velocity is assumed zero at all walls.
- * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
- * have been called on the mesh object prior to initialzing an object of this class.
- */
-template <
-	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
-	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
->
-class FlowFV : public FlowFV_base
-{
-public:
 	/// Sets data and initializes the numerics
-	/** \note The parameter for the Venkatakrishnan limiter is set here, for some reason.
-	 */
-	FlowFV(const UMesh2dh *const mesh,                  ///< Mesh context
-		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
-		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
-	);
-	
-	~FlowFV();
+	FlowFV_base(const UMesh2dh *const mesh,              ///< Mesh context
+	            const FlowPhysicsConfig& pconfig,        ///< Physical data defining the problem
+	            const FlowNumericsConfig& nconfig        ///< Options defining the numerical method
+	            );
+
+	virtual ~FlowFV_base();
 
 	/// Sets initial conditions
 	/** \param[in] fromfile True if initial data is to be read from a file
@@ -220,27 +187,9 @@ public:
 	 */
 	StatusCode initializeUnknowns(Vec u) const;
 
-	/// Calls functions to assemble the [right hand side](@ref residual)
-	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is 
-	 * [M du/dt +] r(u) = 0. 
-	 * Invokes flux calculation and adds the fluxes to the residual vector,
-	 * and also computes local time steps.
-	 */
-	StatusCode compute_residual(const Vec u, Vec residual, 
-			const bool gettimesteps, std::vector<a_real>& dtm) const;
-
-	/// Computes the residual Jacobian as a PETSc martrix
-	/** Computes the Jacobian of r(u), where the 
-	 */
-	StatusCode compute_jacobian(const Vec u, Mat A) const;
-	
-	/// Computes gradients of converved variables
-	void getGradients(const MVector& u,
-		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const;
-
 	/// Compute cell-centred quantities to export \deprecated Use postprocess_point instead.
 	StatusCode postprocess_cell(const Vec u, amat::Array2d<a_real>& scalars, 
-			amat::Array2d<a_real>& velocities) const;
+	                            amat::Array2d<a_real>& velocities) const;
 	
 	/// Compute nodal quantities to export
 	/** Based on area-weighted averaging which takes into account ghost cells as well.
@@ -248,12 +197,15 @@ public:
 	 * and velocity is exported as well.
 	 */
 	StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
-			amat::Array2d<a_real>& velocities) const;
+	                             amat::Array2d<a_real>& velocities) const;
 
 	/// Compute norm of cell-centered entropy production
 	/** Call after computing pressure etc \sa postprocess_cell
 	 */
 	a_real compute_entropy_cell(const Vec u) const;
+
+	/// Computes gradients of converved variables
+	void getGradients(const MVector& u, GradVector& grads) const;
 
 protected:
 	/// Problem specification
@@ -280,6 +232,9 @@ protected:
 
 	/// Reconstruction context
 	const SolutionReconstruction *const lim;
+
+	/// The different boundary conditions required for all the boundaries
+	const std::vector<const FlowBC<a_real>*> bcs;
 
 	/// Computes flow variables at all boundaries (either Gauss points or ghost cell centers) 
 	/// using the interior state provided
@@ -309,7 +264,43 @@ protected:
 	 */
 	void compute_boundary_Jacobian(const int ied, const a_real *const ins, 
 			a_real *const gs, a_real *const dgs) const;
+};
 
+/// Computes the integrated fluxes and their Jacobians for compressible flow
+/** Note about BCs: normal velocity is assumed zero at all walls.
+ * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
+ * have been called on the mesh object prior to initialzing an object of this class.
+ */
+template <
+	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
+	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
+>
+class FlowFV : public FlowFV_base
+{
+public:
+	/// Sets data and initializes the numerics
+	FlowFV(const UMesh2dh *const mesh,                  ///< Mesh context
+		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
+		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
+	);
+	
+	~FlowFV();
+
+	/// Calls functions to assemble the [right hand side](@ref residual)
+	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is 
+	 * [M du/dt +] r(u) = 0. 
+	 * Invokes flux calculation and adds the fluxes to the residual vector,
+	 * and also computes local time steps.
+	 */
+	StatusCode compute_residual(const Vec u, Vec residual, 
+			const bool gettimesteps, std::vector<a_real>& dtm) const;
+
+	/// Computes the residual Jacobian as a PETSc martrix
+	/** Computes the Jacobian of r(u), where the 
+	 */
+	StatusCode compute_jacobian(const Vec u, Mat A) const;
+	
+protected:
 	/// Computes viscous flux across a face
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index

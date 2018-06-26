@@ -225,18 +225,11 @@ void Spatial<nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
 	}
 }
 
-FlowFV_base::FlowFV_base(const UMesh2dh *const mesh) : Spatial<NVARS>(mesh)
-{ }
-
-//FlowFV_base::~FlowFV_base()
-//{ }
-
-template<bool secondOrderRequested, bool constVisc>
-FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
-		const FlowPhysicsConfig& pconf, 
-		const FlowNumericsConfig& nconf)
+FlowFV_base::FlowFV_base(const UMesh2dh *const mesh,
+                         const FlowPhysicsConfig& pconf, 
+                         const FlowNumericsConfig& nconf)
 	: 
-	FlowFV_base(mesh), 
+	Spatial<NVARS>(mesh), 
 	pconfig{pconf},
 	nconfig{nconf},
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
@@ -260,12 +253,9 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
 	std::cout << "  Adiabatic " << pconfig.bcconf.adiabaticwall_id;
 	std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
 		<< pconfig.bcconf.adiabaticwall_vel << '\n';
-	if(constVisc)
-		std::cout << " FLowFV: Using constant viscosity.\n";
 }
 
-template<bool secondOrderRequested, bool constVisc>
-FlowFV<secondOrderRequested,constVisc>::~FlowFV()
+FlowFV_base::~FlowFV_base()
 {
 	delete gradcomp;
 	delete inviflux;
@@ -273,8 +263,7 @@ FlowFV<secondOrderRequested,constVisc>::~FlowFV()
 	delete lim;
 }
 
-template<bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) const
+StatusCode FlowFV_base::initializeUnknowns(Vec u) const
 {
 	StatusCode ierr = 0;
 	PetscScalar * uloc;
@@ -297,8 +286,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::initializeUnknowns(Vec u) con
 	return ierr;
 }
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(
+void FlowFV_base::compute_boundary_states(
 		const amat::Array2d<a_real>& ins, 
 		       amat::Array2d<a_real>& bs ) const
 {
@@ -315,8 +303,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_states(
 	}
 }
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ied, 
+void FlowFV_base::compute_boundary_state(const int ied, 
 		const a_real *const ins, 
 		a_real *const gs        ) const
 {
@@ -450,8 +437,7 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_state(const int ie
 	}
 }
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int ied, 
+void FlowFV_base::compute_boundary_Jacobian(const int ied, 
 		const a_real *const ins, 
 		a_real *const gs, a_real *const dgs) const
 {
@@ -629,6 +615,148 @@ void FlowFV<secondOrderRequested,constVisc>::compute_boundary_Jacobian(const int
 		std::abort();
 	}
 }
+
+void FlowFV_base::getGradients(const MVector& u, 
+                               GradVector& grads) const
+{
+	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
+	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	{
+		const a_int lelem = m->gintfac(iface,0);
+		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
+	}
+
+	gradcomp->compute_gradients(u, ug, grads);
+}
+
+StatusCode FlowFV_base::postprocess_point(const Vec uvec, 
+		amat::Array2d<a_real>& scalars, 
+		amat::Array2d<a_real>& velocities) const
+{
+	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
+	scalars.resize(m->gnpoin(),4);
+	velocities.resize(m->gnpoin(),NDIM);
+	
+	amat::Array2d<a_real> areasum(m->gnpoin(),1);
+	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
+	up.zeros();
+	areasum.zeros();
+
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int ivar = 0; ivar < NVARS; ivar++)
+			{
+				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
+				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
+			}
+	}
+
+	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(int ivar = 0; ivar < NVARS; ivar++)
+			up(ipoin,ivar) /= areasum(ipoin);
+	
+	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	{
+		scalars(ipoin,0) = up(ipoin,0);
+
+		for(int idim = 0; idim < NDIM; idim++)
+			velocities(ipoin,idim) = up(ipoin,idim+1)/up(ipoin,0);
+		const a_real vmag2 = dimDotProduct(&velocities(ipoin,0),&velocities(ipoin,0));
+
+		scalars(ipoin,2) = physics.getPressureFromConserved(&up(ipoin,0));
+		a_real c = physics.getSoundSpeedFromConserved(&up(ipoin,0));
+		scalars(ipoin,1) = sqrt(vmag2)/c;
+		scalars(ipoin,3) = physics.getTemperatureFromConserved(&up(ipoin,0));
+	}
+
+	compute_entropy_cell(uvec);
+
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	std::cout << "FlowFV: postprocess_point(): Done.\n";
+	return ierr;
+}
+
+StatusCode FlowFV_base::postprocess_cell(const Vec uvec, 
+		amat::Array2d<a_real>& scalars, 
+		amat::Array2d<a_real>& velocities) const
+{
+	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
+	scalars.resize(m->gnelem(), 3);
+	velocities.resize(m->gnelem(), NDIM);
+	
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+
+	for(a_int iel = 0; iel < m->gnelem(); iel++) {
+		scalars(iel,0) = u(iel,0);
+	}
+
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		velocities(iel,0) = u(iel,1)/u(iel,0);
+		velocities(iel,1) = u(iel,2)/u(iel,0);
+		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
+		scalars(iel,2) = physics.getPressureFromConserved(&uarr[iel*NVARS]);
+		a_real c = physics.getSoundSpeedFromConserved(&uarr[iel*NVARS]);
+		scalars(iel,1) = sqrt(vmag2)/c;
+	}
+	compute_entropy_cell(uvec);
+	
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	std::cout << "FlowFV: postprocess_cell(): Done.\n";
+	return ierr;
+}
+
+a_real FlowFV_base::compute_entropy_cell(const Vec uvec) const
+{
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr);
+
+	a_real sinf = physics.getEntropyFromConserved(&uinf[0]);
+
+	amat::Array2d<a_real> s_err(m->gnelem(),1);
+	a_real error = 0;
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		s_err(iel) = (physics.getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
+		error += s_err(iel)*s_err(iel)*m->garea(iel);
+	}
+	error = sqrt(error);
+
+	a_real h = 1.0/sqrt(m->gnelem());
+ 
+	std::cout << "FlowFV:   " << log10(h) << "  " 
+		<< std::setprecision(10) << log10(error) << std::endl;
+
+	ierr = VecRestoreArrayRead(uvec, &uarr);
+	(void)ierr;
+	return error;
+}
+
+template<bool secondOrderRequested, bool constVisc>
+FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
+                                               const FlowPhysicsConfig& pconf, 
+                                               const FlowNumericsConfig& nconf)
+	: FlowFV_base(mesh, pconf, nconf)
+{
+	if(secondOrderRequested)
+		std::cout << "FlowFV: Second order solution requested.\n";
+	if(constVisc)
+		std::cout << " FLowFV: Using constant viscosity.\n";
+}
+
+template<bool secondOrderRequested, bool constVisc>
+FlowFV<secondOrderRequested,constVisc>::~FlowFV()
+{ }
 
 template<bool secondOrderRequested, bool constVisc>
 void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int iface, 
@@ -1400,136 +1528,6 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u,
 }
 
 #endif
-
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::getGradients(const MVector& u, 
-		    std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads) const
-{
-	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
-	{
-		const a_int lelem = m->gintfac(iface,0);
-		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
-	}
-
-	gradcomp->compute_gradients(u, ug, grads);
-}
-
-template<bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_point(const Vec uvec, 
-		amat::Array2d<a_real>& scalars, 
-		amat::Array2d<a_real>& velocities) const
-{
-	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
-	scalars.resize(m->gnpoin(),4);
-	velocities.resize(m->gnpoin(),NDIM);
-	
-	amat::Array2d<a_real> areasum(m->gnpoin(),1);
-	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
-	up.zeros();
-	areasum.zeros();
-
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
-
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(int ivar = 0; ivar < NVARS; ivar++)
-			{
-				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
-				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
-			}
-	}
-
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < NVARS; ivar++)
-			up(ipoin,ivar) /= areasum(ipoin);
-	
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-	{
-		scalars(ipoin,0) = up(ipoin,0);
-
-		for(int idim = 0; idim < NDIM; idim++)
-			velocities(ipoin,idim) = up(ipoin,idim+1)/up(ipoin,0);
-		const a_real vmag2 = dimDotProduct(&velocities(ipoin,0),&velocities(ipoin,0));
-
-		scalars(ipoin,2) = physics.getPressureFromConserved(&up(ipoin,0));
-		a_real c = physics.getSoundSpeedFromConserved(&up(ipoin,0));
-		scalars(ipoin,1) = sqrt(vmag2)/c;
-		scalars(ipoin,3) = physics.getTemperatureFromConserved(&up(ipoin,0));
-	}
-
-	compute_entropy_cell(uvec);
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	std::cout << "FlowFV: postprocess_point(): Done.\n";
-	return ierr;
-}
-
-template<bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<secondOrderRequested,constVisc>::postprocess_cell(const Vec uvec, 
-		amat::Array2d<a_real>& scalars, 
-		amat::Array2d<a_real>& velocities) const
-{
-	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
-	scalars.resize(m->gnelem(), 3);
-	velocities.resize(m->gnelem(), NDIM);
-	
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
-
-	for(a_int iel = 0; iel < m->gnelem(); iel++) {
-		scalars(iel,0) = u(iel,0);
-	}
-
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
-	{
-		velocities(iel,0) = u(iel,1)/u(iel,0);
-		velocities(iel,1) = u(iel,2)/u(iel,0);
-		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
-		scalars(iel,2) = physics.getPressureFromConserved(&uarr[iel*NVARS]);
-		a_real c = physics.getSoundSpeedFromConserved(&uarr[iel*NVARS]);
-		scalars(iel,1) = sqrt(vmag2)/c;
-	}
-	compute_entropy_cell(uvec);
-	
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	std::cout << "FlowFV: postprocess_cell(): Done.\n";
-	return ierr;
-}
-
-template<bool secondOrderRequested, bool constVisc>
-a_real FlowFV<secondOrderRequested,constVisc>::compute_entropy_cell(const Vec uvec) const
-{
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr);
-
-	a_real sinf = physics.getEntropyFromConserved(&uinf[0]);
-
-	amat::Array2d<a_real> s_err(m->gnelem(),1);
-	a_real error = 0;
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
-	{
-		s_err(iel) = (physics.getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
-		error += s_err(iel)*s_err(iel)*m->garea(iel);
-	}
-	error = sqrt(error);
-
-	a_real h = 1.0/sqrt(m->gnelem());
- 
-	std::cout << "FlowFV:   " << log10(h) << "  " 
-		<< std::setprecision(10) << log10(error) << std::endl;
-
-	ierr = VecRestoreArrayRead(uvec, &uarr);
-	(void)ierr;
-	return error;
-}
 
 template class FlowFV<true,true>;
 template class FlowFV<false,true>;
