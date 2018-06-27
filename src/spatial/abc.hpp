@@ -59,6 +59,8 @@ public:
 	 */
 	FlowBC(const int bc_tag, const IdealGasPhysics& gasphysics);
 
+	virtual ~FlowBC();
+
 	/// Return the boundary marker tag that this BC context applies to
 	int bctag() const { return btag; }
 
@@ -76,9 +78,9 @@ public:
 	 * \param [in,out] ug Ghost conserved state
 	 * \param [in,out] dugdui Jacobian of ghost state w.r.t. interior state (on output)
 	 */
-	virtual void computeJacobian(const scalar *const uin, const scalar *const n,
-	                             scalar *const __restrict ug,
-	                             scalar *const __restrict dugdui) const = 0;
+	virtual void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                          scalar *const __restrict ug,
+	                                          scalar *const __restrict dugdui) const = 0;
 
 protected:
 	/// Tag index of mesh faces on which this BC is to be applied
@@ -86,26 +88,6 @@ protected:
 
 	/// Thermodynamic and some mechanical properties of the fluid
 	const IdealGasPhysics& phy;
-};
-
-template <typename scalar>
-class SlipWall : public FlowBC<scalar>
-{
-public:
-	SlipWall(const int bctag, const IdealGasPhysics& gasphysics);
-
-	/// Computes the ghost state given the interior state and normal vector
-	void computeGhostState(const scalar *const uin, const scalar *const n,
-	                               scalar *const __restrict ughost) const;
-
-	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const __restrict ug,
-	                     scalar *const __restrict dugdui) const;
-
-protected:
-	using FlowBC<scalar>::btag;
-	using FlowBC<scalar>::phy;
 };
 
 /// Currently, this is a pressure-imposed outflow and all-imposed inflow BC
@@ -137,9 +119,9 @@ public:
 	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const __restrict ug,
-	                     scalar *const __restrict dugdui) const;
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
 
 protected:
 	const std::array<scalar,NVARS> uinf;
@@ -169,9 +151,9 @@ public:
 	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const __restrict ug,
-	                     scalar *const __restrict dugdui) const;
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
 
 protected:
 	const scalar ptotal;
@@ -197,9 +179,9 @@ public:
 	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const __restrict ug,
-	                     scalar *const __restrict dugdui) const;
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
 
 protected:
 	const std::array<scalar,NVARS> uinf;
@@ -207,6 +189,31 @@ protected:
 	using FlowBC<scalar>::phy;
 };
 
+/// Simply sets the ghost state as the interior state
+template <typename scalar>
+class Extrapolation : public FlowBC<scalar>
+{
+public:
+	/// Setup extrapolation BC
+	/** \sa FlowBC::FlowBC
+	 */
+	Extrapolation(const int face_id, const IdealGasPhysics& gasphysics);
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const __restrict ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
+
+protected:
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+};
+
+/// Slip wall BC for Euler equations
 template <typename scalar>
 class Slipwall : public FlowBC<scalar>
 {
@@ -221,13 +228,68 @@ public:
 	                       scalar *const __restrict ughost) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
-	void computeJacobian(const scalar *const uin, const scalar *const n,
-	                     scalar *const __restrict ug,
-	                     scalar *const __restrict dugdui) const;
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
 
 protected:
 	using FlowBC<scalar>::btag;
 	using FlowBC<scalar>::phy;
+};
+
+/// No-slip adiabatic wall BC for 2D NS equations
+template <typename scalar>
+class Adiabaticwall2D : public FlowBC<scalar>
+{
+	static_assert(NDIM == 2, "Adiabaticwall2D is only defined for 2D cases.");
+public:
+	/// Setup adiabatic no-slip wall BC 
+	/** \sa FlowBC::FlowBC
+	 */
+	Adiabaticwall2D(const int face_id, const IdealGasPhysics& gasphysics,
+	                const a_real wall_tangential_velocity);
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const __restrict ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
+
+protected:
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+	const a_real tangvel;
+};
+
+/// No-slip isothermal wall BC for 2D NS equations
+template <typename scalar>
+class Isothermalwall2D : public FlowBC<scalar>
+{
+	static_assert(NDIM == 2, "Isothermalwall2D is only defined for 2D cases.");
+public:
+	/// Setup isothermal no-slip wall BC 
+	/** \sa FlowBC::FlowBC
+	 */
+	Isothermalwall2D(const int face_id, const IdealGasPhysics& gasphysics,
+	                 const a_real wall_tangential_velocity, const a_real wall_temperature);
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const __restrict ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
+
+protected:
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+	const a_real tangvel;
+	const a_real walltemperature;
 };
 
 /// Create a set of pointers to immutable boundary condition objects, possibly of different types

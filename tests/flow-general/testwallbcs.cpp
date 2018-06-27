@@ -31,12 +31,13 @@ int TestFlowFV::testWalls(const a_real *const u) const
 		{
 			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;
-				std::cerr << "! Normal mass flux at adiabatic wall is nonzero!\n";
+				std::cerr << "! Normal mass flux at adiabatic wall is nonzero " << flux[0] << "\n";
 			}
 
 			if(std::fabs(flux[NVARS-1]) > FLUX_TOL) {
 				ierr = 1;
-				std::cerr << "! Normal energy flux at adiabatic wall is nonzero!\n";
+				std::cerr << "! Normal energy flux at adiabatic wall is nonzero! "
+				          << flux[NVARS-1] << "\n";
 			}
 		}
 
