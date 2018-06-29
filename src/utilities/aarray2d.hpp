@@ -93,7 +93,7 @@ public:
 	void zeros()
 	{
 		for(a_int i = 0; i < size; i++)
-			elems[i] = (T)(0.0);
+			elems[i] = (T)(0);
 	}
 
 	/// Fill the array with ones

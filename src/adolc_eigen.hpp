@@ -9,9 +9,8 @@
 
 //#define ADOLC_TAPELESS
 
-/// Since ADOL-C does not define a namespace, we do
-/// Use adouble etc as adolc::adouble etc in code
-namespace adolc {
+// Unfortunately, ADOL-C does not define a namespace, so careful with names!
+// Eg., fabs below must actually be fabs from ADOL-C
 
 #include <adolc/adouble.h>
 
@@ -19,19 +18,17 @@ namespace adolc {
 #include <adolc/adolc_openmp.h>
 #endif
 
-}
-
 #include <Eigen/Core>
 
 namespace Eigen {
 
 /// Scalar traits required by Eigen
-template<> struct NumTraits<adolc::adouble>
+template<> struct NumTraits<adouble>
 	: NumTraits<double> // permits to get the epsilon, dummy_precision, lowest, highest functions
 {
-	typedef adolc::adouble Real;
-	typedef adolc::adouble NonInteger;
-	typedef adolc::adouble Nested;
+	typedef adouble Real;
+	typedef adouble NonInteger;
+	typedef adouble Nested;
 	enum {
 		IsComplex = 0,
 		IsInteger = 0,
@@ -45,14 +42,11 @@ template<> struct NumTraits<adolc::adouble>
 
 }
 
-namespace fvens {
-	
-inline const adolc::adouble& conj(const adolc::adouble& x)  { return x; }
-inline const adolc::adouble& real(const adolc::adouble& x)  { return x; }
-inline adolc::adouble imag(const adolc::adouble&)    { return 0.; }
-inline adolc::adouble abs(const adolc::adouble&  x)  { return adolc::fabs(x); }
-inline adolc::adouble abs2(const adolc::adouble& x)  { return x*x; }
-
-}
+inline const adouble& conj(const adouble& x)  { return x; }
+inline const adouble& real(const adouble& x)  { return x; }
+inline adouble imag(const adouble&)    { return 0.; }
+// Here, fabs must be from ADOL-C
+inline adouble abs(const adouble&  x)  { return fabs(x); }
+inline adouble abs2(const adouble& x)  { return x*x; }
 
 #endif // ADOLCSUPPORT_H

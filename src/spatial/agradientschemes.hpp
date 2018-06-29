@@ -13,8 +13,12 @@ namespace fvens
 {
 
 /// Spatial gradients of flow variables for all cells in the mesh
+/** We could have made this row major, but Eigen complains against defining
+ * row-major matrices with only one column, as required by scalar problems.
+ */
 template <int nvars>
-using GradArray = std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>;
+using GradArray = std::vector<Eigen::Array<a_real,NDIM,nvars>,
+                              Eigen::aligned_allocator<Eigen::Array<a_real,NDIM,nvars>>>;
 
 /// An array of fixed-size Eigen matrices each with the number of space dimensions as the size
 /** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
