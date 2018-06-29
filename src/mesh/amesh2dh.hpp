@@ -291,7 +291,7 @@ private:
 	amat::Array2d<int> vol_regions;
 	
 	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
-	amat::Array2d<a_real > flag_bpoin;	
+	amat::Array2d<int> flag_bpoin;	
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int > esup_p;
@@ -327,7 +327,7 @@ private:
 	/** Stores -1 for faces that are not on a periodic bounary.
 	 * Stored according to \ref intfac indices.
 	 */
-	std::vector<a_real> periodicmap;
+	std::vector<a_int> periodicmap;
 	
 	/// Relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
 	/** Computed in \ref compute_boundary_maps.

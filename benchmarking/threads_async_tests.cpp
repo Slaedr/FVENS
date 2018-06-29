@@ -224,9 +224,9 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			tdata.lin_cputime /= (double)irpt;
 			tdata.ode_walltime /= (double)irpt;
 			tdata.ode_cputime /= (double)irpt;
-			tdata.num_timesteps /= (double)irpt;
-			tdata.total_lin_iters /= (double)irpt;
-			tdata.avg_lin_iters = tdata.total_lin_iters / (double)tdata.num_timesteps;
+			tdata.num_timesteps = (int) std::round(tdata.num_timesteps / (double)irpt);
+			tdata.total_lin_iters = (int) std::round(tdata.total_lin_iters / (double)irpt);
+			tdata.avg_lin_iters = (int)std::round(tdata.total_lin_iters/(double)tdata.num_timesteps);
 			factorwalltime /= (double)irpt;
 			applywalltime /= (double)irpt;
 			precwalltime /= (double)irpt;

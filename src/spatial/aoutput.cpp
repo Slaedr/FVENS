@@ -76,7 +76,7 @@ std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData (const MVector& 
 			totallen += len;
 
 			// coords of face center
-			a_real ijp[NDIM];
+			a_int ijp[NDIM];
 			ijp[0] = m->gintfac(iface,2);
 			ijp[1] = m->gintfac(iface,3);
 			a_real coord[NDIM];
@@ -240,7 +240,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 				const a_real len = m->gfacemetric(iface,2);*/
 
 				// coords of face center
-				a_real ijp[NDIM];
+				a_int ijp[NDIM];
 				ijp[0] = m->gintfac(iface,2);
 				ijp[1] = m->gintfac(iface,3);
 				a_real coord[NDIM];

@@ -46,7 +46,7 @@ endif()
 
 # Basic options
 if(CXX_COMPILER_GNUCLANG OR CXX_COMPILER_INTEL)
-  set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -Werror")
+  set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -Wfloat-conversion -Werror")
   set (CMAKE_CXX_FLAGS_DEBUG "-g")
   set (CMAKE_CXX_FLAGS_RELEASE "-O3")
 elseif(CXX_COMPILER_PGI)

@@ -483,7 +483,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); 
 	tdata.ode_cputime += (finalctime-initialctime);
-	tdata.avg_lin_iters = tdata.total_lin_iters / (double)step;
+	tdata.avg_lin_iters = (int) (tdata.total_lin_iters / (double)step);
 	tdata.num_timesteps = step;
 
 	if(config.lognres)
