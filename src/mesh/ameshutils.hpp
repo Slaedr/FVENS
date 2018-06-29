@@ -17,7 +17,7 @@ namespace fvens {
  * Does not compute [periodic boundary maps](UMesh2dh::compute_periodic_map); 
  * this must be done separately. 
  */
-StatusCode preprocessMesh(UMesh2dh& m);
+StatusCode preprocessMesh(UMesh2dh<a_real>& m);
 
 /// Reorders the mesh cells in a given ordering using PETSc
 /** Symmetric premutations only.
@@ -30,13 +30,13 @@ StatusCode preprocessMesh(UMesh2dh& m);
  * \param sd Spatial discretization to be used to generate a Jacobian matrix
  * \param m The mesh context
  */
-StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh& m);
+StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh<a_real>& m);
 
 /// Divides mesh cells into levels within each of which no cell is coupled to another
 /** Returns a list of cell indices corresponding to the start of each level.
  * The length of the list is one more than the number of levels.
  */
-std::vector<a_int> levelSchedule(const UMesh2dh& m);
+std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m);
 
 }
 #endif

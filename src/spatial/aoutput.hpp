@@ -33,7 +33,7 @@ public:
 
 protected:
 	const Spatial<nvars> *const space;
-	const UMesh2dh *const m;
+	const UMesh2dh<a_real> *const m;
 };
 
 /// Output for flow simulations
@@ -87,19 +87,19 @@ protected:
  * If either x or y is a 0x0 matrix, it is ignored.
  * \param fname is the output vtu file name
  */
-void writeScalarsVectorToVtu_CellData(std::string fname, const UMesh2dh& m, 
+void writeScalarsVectorToVtu_CellData(std::string fname, const UMesh2dh<a_real>& m, 
 		const amat::Array2d<double>& x, std::string scaname[], 
 		const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes nodal data to VTU file
-void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh2dh& m, 
+void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh2dh<a_real>& m, 
 		const amat::Array2d<double>& x, std::string scaname[], 
 		const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, UMesh2dh& m);
+void writeMeshToVtu(std::string fname, UMesh2dh<a_real>& m);
 
 }
 #endif

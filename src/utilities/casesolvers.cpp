@@ -27,11 +27,11 @@ namespace fvens {
 FlowCase::FlowCase(const FlowParserOptions& options) : opts{options} { }
 
 /// Prepare a mesh for use in a fluid simulation
-UMesh2dh FlowCase::constructMesh(const std::string mesh_suffix) const
+UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
 {
 	// Set up mesh
 	const std::string meshfile = opts.meshfile + mesh_suffix;
-	UMesh2dh m;
+	UMesh2dh<a_real> m;
 	m.readMesh(meshfile);
 	int ierr = preprocessMesh(m); 
 	fvens_throw(ierr, "Mesh could not be preprocessed!");
@@ -43,7 +43,7 @@ int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
 {
 	int ierr = 0;
 	
-	const UMesh2dh m = constructMesh(mesh_suffix);
+	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
 	std::cout << "***\n";
 
 	std::cout << "Setting up main spatial scheme.\n";
@@ -68,7 +68,7 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 {
 	int ierr = 0;
 	
-	const UMesh2dh m = constructMesh(mesh_suffix);
+	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
 	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
 	std::cout << "***\n";
 
@@ -147,7 +147,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	// simpler numerics for startup
 	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
 
-	const UMesh2dh *const m = prob->mesh();
+	const UMesh2dh<a_real> *const m = prob->mesh();
 
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
 	const Spatial<NVARS> *const startprob
@@ -331,7 +331,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	// simpler numerics for startup
 	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
 
-	const UMesh2dh *const m = prob->mesh();
+	const UMesh2dh<a_real> *const m = prob->mesh();
 
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
 	const Spatial<NVARS> *const startprob

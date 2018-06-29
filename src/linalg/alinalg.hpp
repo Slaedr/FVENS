@@ -31,11 +31,11 @@ namespace fvens {
  * only MPI matrices are supported.
  */
 template <int nvars>
-StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A);
+StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A);
 
 /// Computes the amount of memory to be reserved for the Jacobian matrix
 template <int nvars>
-StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A);
+StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A);
 
 /// Matrix-free Jacobian of the flux
 /** The normalized step length epsilon for the finite-difference Jacobian is set to a default value,
@@ -96,7 +96,7 @@ protected:
  *   to set the size etc.
  */
 template <int nvars>
-StatusCode setup_matrixfree_jacobian(const UMesh2dh *const m,
+StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
 		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A);
 
 /// Returns true iff the argument is a matrix-free PETSc Mat

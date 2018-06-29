@@ -46,7 +46,7 @@ public:
 	/** Computes and stores cell centre coordinates, ghost cells' centres, and 
 	 * quadrature point coordinates.
 	 */
-	Spatial(const UMesh2dh *const mesh);
+	Spatial(const UMesh2dh<a_real> *const mesh);
 
 	virtual ~Spatial();
 	
@@ -83,14 +83,14 @@ public:
 			amat::Array2d<a_real>& vector) const = 0;
 
 	/// Exposes access to the mesh context
-	const UMesh2dh* mesh() const
+	const UMesh2dh<a_real>* mesh() const
 	{
 		return m;
 	}
 
 protected:
 	/// Mesh context
-	const UMesh2dh *const m;
+	const UMesh2dh<a_real> *const m;
 
 	/// Cell centers of both real cells and ghost cells
 	/** The first nelem rows correspond to real cells, 
@@ -174,7 +174,7 @@ class FlowFV_base : public Spatial<NVARS>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV_base(const UMesh2dh *const mesh,              ///< Mesh context
+	FlowFV_base(const UMesh2dh<a_real> *const mesh,              ///< Mesh context
 	            const FlowPhysicsConfig& pconfig,        ///< Physical data defining the problem
 	            const FlowNumericsConfig& nconfig        ///< Options defining the numerical method
 	            );
@@ -280,7 +280,7 @@ class FlowFV : public FlowFV_base
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV(const UMesh2dh *const mesh,                  ///< Mesh context
+	FlowFV(const UMesh2dh<a_real> *const mesh,                  ///< Mesh context
 		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
 		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
 	);
@@ -354,7 +354,7 @@ template <int nvars>
 class Diffusion : public Spatial<nvars>
 {
 public:
-	Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
+	Diffusion(const UMesh2dh<a_real> *const mesh, const a_real diffcoeff, const a_real bvalue,
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 			> source);
@@ -409,7 +409,7 @@ template <int nvars>
 class DiffusionMA : public Diffusion<nvars>
 {
 public:
-	DiffusionMA(const UMesh2dh *const mesh,            ///< Mesh context
+	DiffusionMA(const UMesh2dh<a_real> *const mesh,    ///< Mesh context
 			const a_real diffcoeff,                    ///< Diffusion coefficient 
 			const a_real bvalue,                       ///< Constant boundary value
 			std::function <

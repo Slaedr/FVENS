@@ -7,7 +7,7 @@
 namespace fvens {
 
 template <int nvars>
-static StatusCode setJacobianSizes(const UMesh2dh *const m, Mat A) 
+static StatusCode setJacobianSizes(const UMesh2dh<a_real> *const m, Mat A) 
 {
 	StatusCode ierr = 0;
 	ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m->gnelem()*nvars, m->gnelem()*nvars);
@@ -17,7 +17,7 @@ static StatusCode setJacobianSizes(const UMesh2dh *const m, Mat A)
 }
 
 template <int nvars>
-StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A) 
+StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A) 
 {
 	// The implementation must be changed for the multi-process case
 	
@@ -47,10 +47,10 @@ StatusCode setJacobianPreallocation(const UMesh2dh *const m, Mat A)
 	return ierr;
 }
 
-template StatusCode setJacobianPreallocation<1>(const UMesh2dh *const m, Mat A);
+template StatusCode setJacobianPreallocation<1>(const UMesh2dh<a_real> *const m, Mat A);
 
 template <int nvars>
-StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
+StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
 {
 	StatusCode ierr = 0;
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
@@ -69,8 +69,8 @@ StatusCode setupSystemMatrix(const UMesh2dh *const m, Mat *const A)
 	return ierr;
 }
 
-template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh *const m, Mat *const A);
-template StatusCode setupSystemMatrix<1>(const UMesh2dh *const m, Mat *const A);
+template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh<a_real> *const m, Mat *const A);
+template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *const A);
 
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()
@@ -115,7 +115,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 {
 	StatusCode ierr = 0;
 	std::vector<a_real> dummy;
-	const UMesh2dh *const m = spatial->mesh();
+	const UMesh2dh<a_real> *const m = spatial->mesh();
 	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 
 	const a_real *xr;
@@ -182,7 +182,7 @@ StatusCode matrixfree_destroy(Mat A)
 }
 
 template <int nvars>
-StatusCode setup_matrixfree_jacobian(const UMesh2dh *const m,
+StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
 		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A)
 {
 	StatusCode ierr = 0;
@@ -202,10 +202,10 @@ StatusCode setup_matrixfree_jacobian(const UMesh2dh *const m,
 	return ierr;
 }
 
-template StatusCode setup_matrixfree_jacobian<NVARS>( const UMesh2dh *const m,
+template StatusCode setup_matrixfree_jacobian<NVARS>( const UMesh2dh<a_real> *const m,
 		MatrixFreeSpatialJacobian<NVARS> *const mfj,
 		Mat *const A);
-template StatusCode setup_matrixfree_jacobian<1>( const UMesh2dh *const m,
+template StatusCode setup_matrixfree_jacobian<1>( const UMesh2dh<a_real> *const m,
 		MatrixFreeSpatialJacobian<1> *const mfj,
 		Mat *const A);
 

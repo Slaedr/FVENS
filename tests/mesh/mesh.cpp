@@ -9,7 +9,7 @@
 
 using namespace fvens;
 
-int test_topology_internalconsistency_esup(const UMesh2dh& m)
+int test_topology_internalconsistency_esup(const UMesh2dh<a_real>& m)
 {
 	for(a_int ipoin = 0; ipoin < m.gnpoin(); ipoin++)
 	{
@@ -30,7 +30,7 @@ int test_topology_internalconsistency_esup(const UMesh2dh& m)
 	return 0;
 }
 
-int test_periodic_map(UMesh2dh& m, const int bcm, const int axis)
+int test_periodic_map(UMesh2dh<a_real>& m, const int bcm, const int axis)
 {
 	m.compute_face_data();
 	m.compute_periodic_map(bcm,axis);
@@ -58,7 +58,7 @@ int test_periodic_map(UMesh2dh& m, const int bcm, const int axis)
 	return ierr;
 }
 
-int test_levelscheduling(const UMesh2dh& m, const std::string levelsfile)
+int test_levelscheduling(const UMesh2dh<a_real>& m, const std::string levelsfile)
 {
 	std::vector<a_int> levels = levelSchedule(m);
 	const int nlevels = (int)(levels.size()-1);
@@ -90,7 +90,7 @@ int test_levelscheduling(const UMesh2dh& m, const std::string levelsfile)
 	return 0;
 }
 
-int test_levelscheduling_internalconsistency(const UMesh2dh& m)
+int test_levelscheduling_internalconsistency(const UMesh2dh<a_real>& m)
 {
 	std::vector<a_int> levels = levelSchedule(m);
 	const int nlevels = (int)(levels.size()-1);
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	std::string whichtest = argv[1];
 	int err = 0;
 	
-	UMesh2dh m;
+	UMesh2dh<a_real> m;
 	m.readMesh(argv[2]);
 	m.compute_topological();
 

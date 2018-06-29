@@ -18,7 +18,7 @@ namespace fvens_tests {
 class TestFlowFV : public FlowFV<true,false>
 {
 public:
-	TestFlowFV(const UMesh2dh *const mesh, const FlowPhysicsConfig& pconf,
+	TestFlowFV(const UMesh2dh<a_real> *const mesh, const FlowPhysicsConfig& pconf,
 			const FlowNumericsConfig& nconf)
 	: FlowFV<true,false>(mesh, pconf, nconf)
 	{ }

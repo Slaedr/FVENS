@@ -9,7 +9,7 @@
 
 namespace fvens {
 
-StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh& m)
+StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh<a_real>& m)
 {
 	// The implementation must be changed for the multi-process case
 	StatusCode ierr = 0;
@@ -47,7 +47,7 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2d
 	return ierr;
 }
 
-StatusCode preprocessMesh(UMesh2dh& m)
+StatusCode preprocessMesh(UMesh2dh<a_real>& m)
 {
 	char ordstr[PETSCOPTION_STR_LEN];
 	PetscBool flag = PETSC_FALSE;
@@ -78,7 +78,7 @@ StatusCode preprocessMesh(UMesh2dh& m)
 /* Returns a list of cell indices corresponding to the start of each level.
  * The length of the list is one more than the number of levels.
  */
-std::vector<a_int> levelSchedule(const UMesh2dh& m)
+std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m)
 {
 	// zeroth level starts at cell 0
 	std::vector<a_int> levels;

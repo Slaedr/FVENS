@@ -56,7 +56,7 @@ public:
 	/** \param mesh_suffix A string to concatenate to the
 	 *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
 	 */
-	UMesh2dh constructMesh(const std::string mesh_suffix) const;
+	UMesh2dh<a_real> constructMesh(const std::string mesh_suffix) const;
 
 	/// Solve a case given a spatial discretization context
 	/** Specific case types must provide an implementation of this.

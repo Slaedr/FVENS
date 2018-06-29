@@ -79,7 +79,7 @@ const InviscidFlux* create_const_inviscidflux(
 template <int nvars>
 GradientScheme<nvars>* create_mutable_gradientscheme(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) 
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) 
 {
 	GradientScheme<nvars> * gradcomp = nullptr;
 
@@ -104,7 +104,7 @@ GradientScheme<nvars>* create_mutable_gradientscheme(
 template <int nvars>
 const GradientScheme<nvars>* create_const_gradientscheme(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) 
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) 
 {
 	return create_mutable_gradientscheme<nvars>(type, m, rc);
 }
@@ -112,23 +112,23 @@ const GradientScheme<nvars>* create_const_gradientscheme(
 // template instantiations
 template GradientScheme<NVARS>* create_mutable_gradientscheme<NVARS>(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
 template const GradientScheme<NVARS>* create_const_gradientscheme<NVARS>(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
 template GradientScheme<1>* create_mutable_gradientscheme<1>(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
 template const GradientScheme<1>* create_const_gradientscheme<1>(
 		const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc);
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
 
 SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param)
 {
 	SolutionReconstruction * reconst = nullptr;
@@ -166,14 +166,14 @@ SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
 }
 
 const SolutionReconstruction* create_const_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param)
 {
 	return create_mutable_reconstruction(type, m, rc, gr, param);
 }
 
 FlowFV_base* create_mutable_flowSpatialDiscretization(
-	const UMesh2dh *const m,
+	const UMesh2dh<a_real> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
 {
@@ -190,7 +190,7 @@ FlowFV_base* create_mutable_flowSpatialDiscretization(
 }
 
 const FlowFV_base* create_const_flowSpatialDiscretization(
-	const UMesh2dh *const m,
+	const UMesh2dh<a_real> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
 {

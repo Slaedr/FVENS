@@ -42,12 +42,12 @@ const InviscidFlux* create_const_inviscidflux(const std::string& type,
 /// Returns a newly-created gradient computation context
 template <int nvars>
 GradientScheme<nvars>* create_mutable_gradientscheme(const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) ;
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) ;
 
 /// Returns a newly-created immutable gradient computation context
 template <int nvars>
 const GradientScheme<nvars>* create_const_gradientscheme(const std::string& type, 
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc) ;
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) ;
 
 /// Returns a solution reconstruction context
 /** Solution reconstruction here means computing the values of the conserved variables at faces from
@@ -55,19 +55,21 @@ const GradientScheme<nvars>* create_const_gradientscheme(const std::string& type
  * \param param A parameter that controls the behaviour of some limiters.
  */
 SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
-		const amat::Array2d<a_real> *const gr, const a_real param);
+                                                      const UMesh2dh<a_real> *const m,
+                                                      const amat::Array2d<a_real>& rc,
+                                                      const amat::Array2d<a_real> *const gr,
+                                                      const a_real param);
 
 /// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
 const SolutionReconstruction* create_const_reconstruction(const std::string& type,
-		const UMesh2dh *const m, const amat::Array2d<a_real>& rc,
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param);
 
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.
  */
 FlowFV_base* create_mutable_flowSpatialDiscretization(
-	const UMesh2dh *const m,                       ///< Mesh context
+	const UMesh2dh<a_real> *const m,               ///< Mesh context
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 
@@ -75,7 +77,7 @@ FlowFV_base* create_mutable_flowSpatialDiscretization(
 /** \sa create_mutable_flowSpatialDiscretization
  */
 const FlowFV_base* create_const_flowSpatialDiscretization(
-	const UMesh2dh *const m,                       ///< Mesh context
+	const UMesh2dh<a_real> *const m,               ///< Mesh context
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 

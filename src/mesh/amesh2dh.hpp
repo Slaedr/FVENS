@@ -13,18 +13,19 @@
 namespace fvens {
 
 /// Hybrid unstructured mesh class supporting triangular and quadrangular elements
+template <typename scalar>
 class UMesh2dh
 {
 public:
 	UMesh2dh();
 
 	~UMesh2dh();
-		
+	
 	/* Functions to get mesh data are defined right here so as to enable inlining.
 	 */
 
 	/// Returns coordinates of a mesh node
-	a_real gcoords(const a_int pointno, const int dim) const
+	scalar gcoords(const a_int pointno, const int dim) const
 	{
 		return coords.get(pointno,dim);
 	}
@@ -82,13 +83,13 @@ public:
 	int gintfacbtags(const a_int face, const int i) const { return intfacbtags.get(face,i); }
 
 	/// Returns the measure of a cell
-	a_real garea(const a_int ielem) const { return area.get(ielem,0); }
+	scalar garea(const a_int ielem) const { return area.get(ielem,0); }
 
 	/// Returns the components of the unit normal or the length of a face \sa facemetric
-	a_real gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
+	scalar gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
 	/// Returns the unit normal vector as a fixed-size array for a given face of \ref intfac
-	std::array<a_real,NDIM> gnormal(const a_int iface) const {
+	std::array<scalar,NDIM> gnormal(const a_int iface) const {
 #if NDIM == 2
 			return {facemetric.get(iface,0), facemetric.get(iface,1)};
 #else
@@ -141,7 +142,7 @@ public:
 	/// Set coordinates of a certain point
 	/** 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
 	 */
-	void scoords(const a_int pointno, const int dim, const a_real value)
+	void scoords(const a_int pointno, const int dim, const scalar value)
 	{
 		assert(pointno < npoin);
 		assert(dim < NDIM);
@@ -205,7 +206,7 @@ public:
 	/// Computes locations of cell centres
 	/** \param[out] centres Should be logically of size nelem x NDIM.
 	 */
-	void compute_cell_centres(std::vector<a_real>& centres) const;
+	void compute_cell_centres(std::vector<scalar>& centres) const;
 
 	/// Computes some connectivity structures among mesh entities
 	/** Computes data structures for 
@@ -279,7 +280,7 @@ private:
 	int ndtag;                      ///< number of tags for each element
 	
 	/// Coordinates of nodes
-	amat::Array2d<a_real> coords;
+	amat::Array2d<scalar> coords;
 	
 	/// Interconnectivity matrix: lists node numbers of nodes in each element
 	amat::Array2d<a_int > inpoel; 
@@ -354,14 +355,14 @@ private:
 	amat::Array2d<int > bfacebp;
 
 	/// Contains area of each element (either triangle or quad)
-	amat::Array2d<a_real> area;	
+	amat::Array2d<scalar> area;	
 
 	/// Stores lengths and unit normals for linear mesh faces
 	/** For each face, the first two entries are x- and y-components of the unit normal,
 	 * the third component is the length.
 	 * The unit normal points towards the cell with greater index.
 	 */
-	amat::Array2d<a_real> facemetric;
+	amat::Array2d<scalar> facemetric;
 
 	/// Compute lists of elements (cells) surrounding each point \sa esup
 	/** \note This function is required to be called before some other topology-related computations.

@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
 		
 		std::string meshfile = meshprefix + std::to_string(imesh) + ".msh";
 
-		UMesh2dh m;
+		UMesh2dh<a_real> m;
 		m.readMesh(meshfile);
 		CHKERRQ(preprocessMesh(m));
 

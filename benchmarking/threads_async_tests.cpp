@@ -35,7 +35,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	StatusCode ierr = 0;
 
 	// Set up mesh
-	UMesh2dh m;
+	UMesh2dh<a_real> m;
 	m.readMesh(opts.meshfile);
 	CHKERRQ(preprocessMesh(m));
 	m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);

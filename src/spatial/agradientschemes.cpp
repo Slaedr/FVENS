@@ -11,7 +11,7 @@ namespace fvens
 {
 
 template<short nvars>
-GradientScheme<nvars>::GradientScheme(const UMesh2dh *const mesh, 
+GradientScheme<nvars>::GradientScheme(const UMesh2dh<a_real> *const mesh, 
 		const amat::Array2d<a_real>& _rc)
 	: m{mesh}, rc{_rc}
 { }
@@ -21,7 +21,7 @@ GradientScheme<nvars>::~GradientScheme()
 { }
 
 template<short nvars>
-ZeroGradients<nvars>::ZeroGradients(const UMesh2dh *const mesh, 
+ZeroGradients<nvars>::ZeroGradients(const UMesh2dh<a_real> *const mesh, 
 		const amat::Array2d<a_real>& _rc)
 	: GradientScheme<nvars>(mesh, _rc)
 { }
@@ -42,7 +42,7 @@ void ZeroGradients<nvars>::compute_gradients(
 }
 
 template<short nvars>
-GreenGaussGradients<nvars>::GreenGaussGradients(const UMesh2dh *const mesh, 
+GreenGaussGradients<nvars>::GreenGaussGradients(const UMesh2dh<a_real> *const mesh, 
 		const amat::Array2d<a_real>& _rc)
 	: GradientScheme<nvars>(mesh, _rc)
 { }
@@ -140,7 +140,7 @@ void GreenGaussGradients<nvars>::compute_gradients(
  */
 template<short nvars>
 WeightedLeastSquaresGradients<nvars>::WeightedLeastSquaresGradients(
-		const UMesh2dh *const mesh, 
+		const UMesh2dh<a_real> *const mesh, 
 		const amat::Array2d<a_real>& _rc)
 	: GradientScheme<nvars>(mesh, _rc)
 { 

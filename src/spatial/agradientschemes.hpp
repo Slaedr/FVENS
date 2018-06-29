@@ -19,11 +19,11 @@ template<short nvars>
 class GradientScheme
 {
 protected:
-	const UMesh2dh *const m;                             ///< Mesh context
+	const UMesh2dh<a_real> *const m;                     ///< Mesh context
 	const amat::Array2d<a_real>& rc;                     ///< All cell-centres' coordinates
 
 public:
-	GradientScheme(const UMesh2dh *const mesh,        ///< Mesh context
+	GradientScheme(const UMesh2dh<a_real> *const mesh,       ///< Mesh context
 	               const amat::Array2d<a_real>& _rc);        ///< Cell centers 
 	
 	virtual ~GradientScheme();
@@ -40,7 +40,7 @@ template<short nvars>
 class ZeroGradients : public GradientScheme<nvars>
 {
 public:
-	ZeroGradients(const UMesh2dh *const mesh, 
+	ZeroGradients(const UMesh2dh<a_real> *const mesh, 
 	              const amat::Array2d<a_real>& _rc);
 
 	void compute_gradients(const MVector& unk, 
@@ -61,7 +61,7 @@ template<short nvars>
 class GreenGaussGradients : public GradientScheme<nvars>
 {
 public:
-	GreenGaussGradients(const UMesh2dh *const mesh, 
+	GreenGaussGradients(const UMesh2dh<a_real> *const mesh, 
 	                    const amat::Array2d<a_real>& _rc);
 
 	void compute_gradients(const MVector& unk, 
@@ -78,7 +78,7 @@ template<short nvars>
 class WeightedLeastSquaresGradients : public GradientScheme<nvars>
 {
 public:
-	WeightedLeastSquaresGradients(const UMesh2dh *const mesh, 
+	WeightedLeastSquaresGradients(const UMesh2dh<a_real> *const mesh, 
 	                              const amat::Array2d<a_real>& _rc);
 
 	void compute_gradients(const MVector& unk, 

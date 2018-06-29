@@ -26,15 +26,18 @@
 
 namespace fvens {
 
-UMesh2dh::UMesh2dh() 
+template <typename scalar>
+UMesh2dh<scalar>::UMesh2dh() 
 	: isBoundaryMaps{false}
 {  }
 
-UMesh2dh::~UMesh2dh()
+template <typename scalar>
+UMesh2dh<scalar>::~UMesh2dh()
 {
 }
 
-void UMesh2dh::readMesh(const std::string mfile)
+template <typename scalar>
+void UMesh2dh<scalar>::readMesh(const std::string mfile)
 {
 	std::vector<std::string> parts;
 	boost::split(parts, mfile, boost::is_any_of("."));
@@ -52,7 +55,8 @@ void UMesh2dh::readMesh(const std::string mfile)
    ntype makes no sense for us now.
    Can only be used for a linear mesh having all cells of the same shape.
 */
-void UMesh2dh::readDomn(const std::string mfile)
+template <typename scalar>
+void UMesh2dh<scalar>::readDomn(const std::string mfile)
 {
 	std::ifstream infile(mfile);
 	if(!infile) {
@@ -199,14 +203,15 @@ void UMesh2dh::readDomn(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-void UMesh2dh::readPlot2d(const std::string mfile, const int bci0, const int bcimx,
+template <typename scalar>
+void UMesh2dh<scalar>::readPlot2d(const std::string mfile, const int bci0, const int bcimx,
 		const int bcj0, const int bcjmx)
 {
 	std::ifstream fin;
 	open_file_toRead(mfile, fin);
 
 	a_int imx, jmx, nbl;
-	a_real ddum;
+	scalar ddum;
 
 	fin >> nbl; // dummy
 	fin >> imx >> jmx;
@@ -239,7 +244,8 @@ void UMesh2dh::readPlot2d(const std::string mfile, const int bci0, const int bci
 }
 
 /// Reads mesh from Gmsh 2 format file
-void UMesh2dh::readGmsh2(const std::string mfile)
+template <typename scalar>
+void UMesh2dh<scalar>::readGmsh2(const std::string mfile)
 {
 	int dum; double dummy; std::string dums; char ch;
 
@@ -441,7 +447,8 @@ void UMesh2dh::readGmsh2(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-void UMesh2dh::readSU2(const std::string mfile)
+template <typename scalar>
+void UMesh2dh<scalar>::readSU2(const std::string mfile)
 {
 	std::string dum;
 	std::ifstream fin;
@@ -575,7 +582,8 @@ void UMesh2dh::readSU2(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-void UMesh2dh::reorder_cells(const PetscInt *const permvec)
+template <typename scalar>
+void UMesh2dh<scalar>::reorder_cells(const PetscInt *const permvec)
 {
 	// reorder inpoel, nnode, nfael, vol_regions
 	const amat::Array2d<a_int> tempelems = inpoel;
@@ -597,7 +605,8 @@ void UMesh2dh::reorder_cells(const PetscInt *const permvec)
  * it gives the boundary node number (according to bpointsb) of each local node of a bface.
  * \note Only for linear meshes.
  */
-void UMesh2dh::compute_boundary_points()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_boundary_points()
 {
 	std::cout << "UMesh2dh: compute_boundary_points(): Calculating bpointsb structure"<< std::endl;
 
@@ -684,7 +693,8 @@ void UMesh2dh::compute_boundary_points()
 	}
 }
 
-void UMesh2dh::printmeshstats() const
+template <typename scalar>
+void UMesh2dh<scalar>::printmeshstats() const
 {
 	std::cout << "UMesh2dh: No. of points: " << npoin << ", no. of elements: " << nelem 
 		<< ", no. of boundary faces " << nface 
@@ -692,7 +702,8 @@ void UMesh2dh::printmeshstats() const
 		<< ", max no. of faces per element: " << maxnfael << std::endl;
 }
 
-void UMesh2dh::writeGmsh2(const std::string mfile)
+template <typename scalar>
+void UMesh2dh<scalar>::writeGmsh2(const std::string mfile)
 {
 	std::cout << "UMesh2dh: writeGmsh2(): writing mesh to file " << mfile << std::endl;
 	// decide element type first, based on nfael/nnode and nnofa
@@ -777,7 +788,8 @@ void UMesh2dh::writeGmsh2(const std::string mfile)
 }
 
 // Computes areas of linear triangles and quads
-void UMesh2dh::compute_areas()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_areas()
 {
 	area.resize(nelem,1);
 	for(a_int i = 0; i < nelem; i++)
@@ -801,7 +813,8 @@ void UMesh2dh::compute_areas()
 	}
 }
 	
-void UMesh2dh::compute_cell_centres(std::vector<a_real>& centres) const
+template <typename scalar>
+void UMesh2dh<scalar>::compute_cell_centres(std::vector<scalar>& centres) const
 {
 	for(a_int i = 0; i < nelem; i++)
 	{
@@ -814,7 +827,8 @@ void UMesh2dh::compute_cell_centres(std::vector<a_real>& centres) const
 	}
 }
 
-void UMesh2dh::compute_topological()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_topological()
 {
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Calculating and storing topological info...\n";
@@ -833,7 +847,8 @@ void UMesh2dh::compute_topological()
  * when normal is calculated as
  * 		nx = y2 - y1, ny = -(x2-x1).
  */
-void UMesh2dh::compute_face_data()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_face_data()
 {
 	int i, j, p1, p2;
 
@@ -884,7 +899,8 @@ void UMesh2dh::compute_face_data()
 }
 
 /// This function is only valid in 2D
-void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
+template <typename scalar>
+void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 {
 	if(bcm < 0) {
 		std::cout << " UMesh2dh: No periodic boundary specified.\n";
@@ -932,7 +948,8 @@ void UMesh2dh::compute_periodic_map(const int bcm, const int axis)
 	}
 }
 
-void UMesh2dh::compute_boundary_maps()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_boundary_maps()
 {
 	// iterate over bfaces and find corresponding intfac face for each bface
 	bifmap.resize(nbface,1);
@@ -994,7 +1011,8 @@ void UMesh2dh::compute_boundary_maps()
 	isBoundaryMaps = true;
 }
 
-void UMesh2dh::writeBoundaryMapsToFile(std::string mapfile)
+template <typename scalar>
+void UMesh2dh<scalar>::writeBoundaryMapsToFile(std::string mapfile)
 {
 	if(isBoundaryMaps == false) {
 		std::cout << "UMesh2d: writeBoundaryMapsToFile(): ! Boundary maps not available!" 
@@ -1013,7 +1031,8 @@ void UMesh2dh::writeBoundaryMapsToFile(std::string mapfile)
 	ofile.close();
 }
 
-void UMesh2dh::readBoundaryMapsFromFile(std::string mapfile)
+template <typename scalar>
+void UMesh2dh<scalar>::readBoundaryMapsFromFile(std::string mapfile)
 {
 	std::ifstream ofile(mapfile);
 	std::string dum; int sz;
@@ -1034,7 +1053,8 @@ void UMesh2dh::readBoundaryMapsFromFile(std::string mapfile)
 	isBoundaryMaps = true;
 }
 
-void UMesh2dh::compute_intfacbtags()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_intfacbtags()
 {
 	/// Populate intfacbtags with boundary markers of corresponding bfaces
 
@@ -1058,11 +1078,12 @@ void UMesh2dh::compute_intfacbtags()
  * NOTE: Make sure to execute [compute_topological()](@ref compute_topological) 
  * before calling this function.
  */
-UMesh2dh UMesh2dh::convertLinearToQuadratic()
+template <typename scalar>
+UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
 {
 	std::cout << "UMesh2d: convertLinearToQuadratic(): Producing quadratic mesh from linear mesh" 
 		<< std::endl;
-	UMesh2dh q;
+	UMesh2dh<scalar> q;
 	if(nnofa != 2) 
 	{ 
 		std::cout << "! UMesh2d: convertLinearToQuadratic(): Mesh is not linear!!" 
@@ -1234,9 +1255,10 @@ UMesh2dh UMesh2dh::convertLinearToQuadratic()
 /**	Converts all quadrilaterals in a linear mesh into triangles, 
  * and returns the fully triangular mesh.
  */
-UMesh2dh UMesh2dh::convertQuadToTri() const
+template <typename scalar>
+UMesh2dh<scalar> UMesh2dh<scalar>::convertQuadToTri() const
 {
-	UMesh2dh tm;
+	UMesh2dh<scalar> tm;
 	std::vector<std::vector<int>> elms;
 	std::vector<std::vector<int>> volregs;
 	std::vector<int> vr(ndtag, -1);
@@ -1307,7 +1329,8 @@ UMesh2dh UMesh2dh::convertQuadToTri() const
 	return tm;
 }
 
-void UMesh2dh::compute_elementsSurroundingPoints()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_elementsSurroundingPoints()
 {
 	//std::cout << "UMesh2d: compute_topological(): Elements surrounding points\n";
 	esup_p.resize(npoin+1,1);
@@ -1351,7 +1374,8 @@ void UMesh2dh::compute_elementsSurroundingPoints()
 	esup_p(0,0) = 0;
 }
 
-void UMesh2dh::compute_elementsSurroundingElements()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_elementsSurroundingElements()
 {
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Elements surrounding elements...\n";
@@ -1431,7 +1455,8 @@ void UMesh2dh::compute_elementsSurroundingElements()
 	}
 }
 
-void UMesh2dh::compute_faceConnectivity()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_faceConnectivity()
 {
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
@@ -1521,7 +1546,8 @@ void UMesh2dh::compute_faceConnectivity()
 /** \todo: There is an issue with psup for some boundary nodes 
  * belonging to elements of different types. Correct this.
  */
-void UMesh2dh::compute_pointsSurroundingPoints()
+template <typename scalar>
+void UMesh2dh<scalar>::compute_pointsSurroundingPoints()
 {
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Points surrounding points\n";
@@ -1648,5 +1674,7 @@ void UMesh2dh::compute_pointsSurroundingPoints()
 		}
 	}
 }
+
+template class UMesh2dh<a_real>;
 
 } // end namespace

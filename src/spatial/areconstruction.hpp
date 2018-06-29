@@ -19,13 +19,13 @@ namespace fvens {
 class SolutionReconstruction
 {
 protected:
-	const UMesh2dh *const m;
+	const UMesh2dh<a_real> *const m;            ///< Mesh context
 	const amat::Array2d<a_real>& ri;            ///< coords of cell centers of cells
 	const amat::Array2d<a_real> *const gr;      ///< coords of Gauss quadrature points of each face
 	const int ng;                               ///< Number of Gauss points
 
 public:
-	SolutionReconstruction (const UMesh2dh *const  mesh,  ///< Mesh context
+	SolutionReconstruction (const UMesh2dh<a_real> *const  mesh,          ///< Mesh context
 	                        const amat::Array2d<a_real>& c_centres,       ///< Cell centres
 	                        const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
 
@@ -46,7 +46,7 @@ class LinearUnlimitedReconstruction : public SolutionReconstruction
 {
 public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
-	LinearUnlimitedReconstruction(const UMesh2dh *const mesh,
+	LinearUnlimitedReconstruction(const UMesh2dh<a_real> *const mesh,
 	                              const amat::Array2d<a_real>& c_centres, 
 	                              const amat::Array2d<a_real>* gauss_r);
 
@@ -70,7 +70,7 @@ class WENOReconstruction : public SolutionReconstruction
 	const a_real lambda;              ///< Weight of central stencil relative to biased stencils
 	const a_real epsilon;             ///< Small constant to avoid division by zero
 public:
-	WENOReconstruction(const UMesh2dh *const mesh,
+	WENOReconstruction(const UMesh2dh<a_real> *const mesh,
 	                   const amat::Array2d<a_real>& c_centres, 
 	                   const amat::Array2d<a_real>* gauss_r,
 	                   const a_real central_weight);
@@ -88,7 +88,7 @@ public:
 class MUSCLReconstruction : public SolutionReconstruction
 {
 public:
-	MUSCLReconstruction(const UMesh2dh *const mesh,
+	MUSCLReconstruction(const UMesh2dh<a_real> *const mesh,
 	                    const amat::Array2d<a_real>& c_centres, 
 	                    const amat::Array2d<a_real>* gauss_r);
     
@@ -136,7 +136,7 @@ protected:
 class MUSCLVanAlbada : public MUSCLReconstruction
 {
 public:
-	MUSCLVanAlbada(const UMesh2dh *const mesh,
+	MUSCLVanAlbada(const UMesh2dh<a_real> *const mesh,
 	               const amat::Array2d<a_real>& c_centres, 
 	               const amat::Array2d<a_real>* gauss_r);
     
@@ -151,7 +151,7 @@ public:
 class BarthJespersenLimiter : public SolutionReconstruction
 {
 public:
-	BarthJespersenLimiter(const UMesh2dh *const mesh, 
+	BarthJespersenLimiter(const UMesh2dh<a_real> *const mesh, 
 	                      const amat::Array2d<a_real>& c_centres, 
 	                      const amat::Array2d<a_real>* gauss_r);
     
@@ -175,7 +175,7 @@ public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
 	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
-	VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
+	VenkatakrishnanLimiter(const UMesh2dh<a_real> *const mesh, 
 	                       const amat::Array2d<a_real>& c_centres, 
 	                       const amat::Array2d<a_real>* gauss_r, a_real k_param);
     

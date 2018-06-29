@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
 
 	//cout << "Input file is of type " << informat << ". Writing as " << outformat << ".\n";
 
-	UMesh2dh m;
+	UMesh2dh<a_real> m;
 	m.readMesh(inmesh);
 
 	if(outformat == "msh")	

@@ -83,7 +83,7 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
 
 	: SteadySolver<nvars>(spatial, conf)
 {
-	const UMesh2dh *const m = space->mesh();
+	const UMesh2dh<a_real> *const m = space->mesh();
 	dtm.resize(m->gnelem(), 0);
 
 	StatusCode ierr = VecDuplicate(uvec, &rvec);
@@ -108,7 +108,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
-	const UMesh2dh *const m = space->mesh();
+	const UMesh2dh<a_real> *const m = space->mesh();
 
 	if(config.maxiter <= 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): No iterations to be done.\n";
@@ -234,7 +234,7 @@ SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
 
 	: SteadySolver<nvars>(spatial, conf), solver{ksp}
 {
-	const UMesh2dh *const m = space->mesh();
+	const UMesh2dh<a_real> *const m = space->mesh();
 	dtm.resize(m->gnelem(), 0);
 	Mat M; int ierr;
 	ierr = KSPGetOperators(solver, NULL, &M);
@@ -297,7 +297,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		return 0;
 	}
 	
-	const UMesh2dh *const m = space->mesh();
+	const UMesh2dh<a_real> *const m = space->mesh();
 	StatusCode ierr = 0;
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
@@ -562,7 +562,7 @@ TVDRKSolver<nvars>::~TVDRKSolver() {
 template<int nvars>
 StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 {
-	const UMesh2dh *const m = space->mesh();
+	const UMesh2dh<a_real> *const m = space->mesh();
 	StatusCode ierr = 0;
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);

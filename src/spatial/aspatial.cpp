@@ -31,7 +31,7 @@ namespace fvens {
  * \sa compute_ghost_cell_coords_about_face
  */
 template<int nvars>
-Spatial<nvars>::Spatial(const UMesh2dh *const mesh) : m(mesh)
+Spatial<nvars>::Spatial(const UMesh2dh<a_real> *const mesh) : m(mesh)
 {
 	rc.resize(m->gnelem()+m->gnbface(), NDIM);
 	gr = new amat::Array2d<a_real>[m->gnaface()];
@@ -226,7 +226,7 @@ void Spatial<nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
 	}
 }
 
-FlowFV_base::FlowFV_base(const UMesh2dh *const mesh,
+FlowFV_base::FlowFV_base(const UMesh2dh<a_real> *const mesh,
                          const FlowPhysicsConfig& pconf, 
                          const FlowNumericsConfig& nconf)
 	: 
@@ -451,7 +451,7 @@ a_real FlowFV_base::compute_entropy_cell(const Vec uvec) const
 }
 
 template<bool secondOrderRequested, bool constVisc>
-FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh *const mesh,
+FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<a_real> *const mesh,
                                                const FlowPhysicsConfig& pconf, 
                                                const FlowNumericsConfig& nconf)
 	: FlowFV_base(mesh, pconf, nconf)
@@ -1246,10 +1246,12 @@ template class FlowFV<false,false>;
 
 
 template<int nvars>
-Diffusion<nvars>::Diffusion(const UMesh2dh *const mesh, const a_real diffcoeff, const a_real bvalue,
-		std::function< 
-		void(const a_real *const, const a_real, const a_real *const, a_real *const)
-			> sourcefunc)
+Diffusion<nvars>::Diffusion(const UMesh2dh<a_real> *const mesh,
+                            const a_real diffcoeff, const a_real bvalue,
+                            std::function < 
+								void(const a_real *const, const a_real, const a_real *const,
+								     a_real *const)
+                            > sourcefunc)
 	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
 {
 	h.resize(m->gnelem());
@@ -1331,7 +1333,7 @@ StatusCode Diffusion<nvars>::postprocess_point(const Vec uvec, amat::Array2d<a_r
 }
 
 template<int nvars>
-DiffusionMA<nvars>::DiffusionMA(const UMesh2dh *const mesh, 
+DiffusionMA<nvars>::DiffusionMA(const UMesh2dh<a_real> *const mesh, 
 		const a_real diffcoeff, const a_real bvalue,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
 		const std::string grad_scheme)
