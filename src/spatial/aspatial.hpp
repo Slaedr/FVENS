@@ -116,9 +116,10 @@ protected:
 	 * \param gradr Right cell-centred gradients
 	 * \param[out] grad Face gradients
 	 */
+	template<typename scalar>
 	void getFaceGradient_modifiedAverage(const a_int iface,
-		const a_real *const ucl, const a_real *const ucr,
-		const a_real gradl[NDIM][nvars], const a_real gradr[NDIM][nvars], a_real grad[NDIM][nvars])
+		const scalar *const ucl, const scalar *const ucr,
+		const scalar gradl[NDIM][nvars], const scalar gradr[NDIM][nvars], scalar grad[NDIM][nvars])
 		const;
 
 	/// Computes the thin-layer face gradient and its Jacobian w.r.t. the left and right states

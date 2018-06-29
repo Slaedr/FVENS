@@ -153,12 +153,13 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 }
 
 template <int nvars>
+template <typename scalar>
 void Spatial<nvars>::getFaceGradient_modifiedAverage(const a_int iface,
-		const a_real *const ucl, const a_real *const ucr,
-		const a_real gradl[NDIM][nvars], const a_real gradr[NDIM][nvars], a_real grad[NDIM][nvars])
+		const scalar *const ucl, const scalar *const ucr,
+		const scalar gradl[NDIM][nvars], const scalar gradr[NDIM][nvars], scalar grad[NDIM][nvars])
 	const
 {
-	a_real dr[NDIM], dist=0;
+	scalar dr[NDIM], dist=0;
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int relem = m->gintfac(iface,1);
 
@@ -173,14 +174,14 @@ void Spatial<nvars>::getFaceGradient_modifiedAverage(const a_int iface,
 
 	for(int i = 0; i < nvars; i++) 
 	{
-		a_real davg[NDIM];
+		scalar davg[NDIM];
 		
 		for(int j = 0; j < NDIM; j++)
 			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
 
-		const a_real corr = (ucr[i]-ucl[i])/dist;
+		const scalar corr = (ucr[i]-ucl[i])/dist;
 		
-		const a_real ddr = dimDotProduct(davg,dr);
+		const scalar ddr = dimDotProduct(davg,dr);
 
 		for(int j = 0; j < NDIM; j++)
 		{
@@ -586,7 +587,7 @@ void FlowFV<secondOrderRequested,constVisc>
 	 */
 	
 	a_real grad[NDIM][NVARS];
-	getFaceGradient_modifiedAverage(iface, ucl, ucr, gradl, gradr, grad);
+	getFaceGradient_modifiedAverage<a_real>(iface, ucl, ucr, gradl, gradr, grad);
 
 	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
 	 * primitive-2 face gradients and conserved face variables.
@@ -1397,8 +1398,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 		}
 	
 		a_real gradf[NDIM][nvars];
-		getFaceGradient_modifiedAverage(iface, &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, 
-				gradf);
+		getFaceGradient_modifiedAverage
+			(iface, &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
@@ -1431,7 +1432,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 		}
 
 		a_real gradf[NDIM][nvars];
-		getFaceGradient_modifiedAverage(iface, &uarr[lelem*nvars], &ug(iface,0), gradl, gradr, gradf);
+		Spatial<nvars>::template getFaceGradient_modifiedAverage<a_real>
+			(iface, &uarr[lelem*nvars], &ug(iface,0), gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
