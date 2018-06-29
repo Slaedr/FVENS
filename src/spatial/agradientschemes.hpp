@@ -13,7 +13,16 @@ namespace fvens
 {
 
 /// Spatial gradients of flow variables for all cells in the mesh
-typedef std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>>> GradVector;
+template <int nvars>
+using GradArray = std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>;
+
+/// An array of fixed-size Eigen matrices each with the number of space dimensions as the size
+/** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
+ * fixed-size vectorizable Eigen arrays; see 
+ * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
+ */
+using DimMatrixArray = std::vector< Matrix<a_real,NDIM,NDIM>,
+                                    aligned_allocator<Matrix<a_real,NDIM,NDIM>> >;
 
 /// Abstract class for solution gradient computation schemes
 /** For this, we need ghost cell-centered values of flow variables.
@@ -27,7 +36,7 @@ protected:
 
 public:
 	GradientScheme(const UMesh2dh *const mesh,        ///< Mesh context
-			const amat::Array2d<a_real>& _rc);        ///< Cell centers 
+	               const amat::Array2d<a_real>& _rc);        ///< Cell centers 
 	
 	virtual ~GradientScheme();
 
@@ -35,7 +44,7 @@ public:
 	virtual void compute_gradients(
 			const MVector& unk,                         ///< [in] Solution multi-vector
 			const amat::Array2d<a_real>& unkg,          ///< [in] Ghost cell states 
-			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const = 0;
+			GradArray<nvars>& grads ) const = 0;
 };
 
 /// Simply sets the gradient to zero
@@ -44,11 +53,11 @@ class ZeroGradients : public GradientScheme<nvars>
 {
 public:
 	ZeroGradients(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real>& _rc);
+	              const amat::Array2d<a_real>& _rc);
 
 	void compute_gradients(const MVector& unk, 
-			const amat::Array2d<a_real>& unkg, 
-			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
+	                       const amat::Array2d<a_real>& unkg, 
+	                       GradArray<nvars>& grads ) const;
 
 protected:
 	using GradientScheme<nvars>::m;
@@ -65,11 +74,11 @@ class GreenGaussGradients : public GradientScheme<nvars>
 {
 public:
 	GreenGaussGradients(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real>& _rc);
+	                    const amat::Array2d<a_real>& _rc);
 
 	void compute_gradients(const MVector& unk, 
-			const amat::Array2d<a_real>& unkg,
-			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
+	                       const amat::Array2d<a_real>& unkg,
+	                       GradArray<nvars>& grads ) const;
 
 protected:
 	using GradientScheme<nvars>::m;
@@ -82,11 +91,11 @@ class WeightedLeastSquaresGradients : public GradientScheme<nvars>
 {
 public:
 	WeightedLeastSquaresGradients(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real>& _rc);
+	                              const amat::Array2d<a_real>& _rc);
 
 	void compute_gradients(const MVector& unk, 
-			const amat::Array2d<a_real>& unkg, 
-			std::vector<FArray<NDIM,nvars>, aligned_allocator<FArray<NDIM,nvars>>>& grads ) const;
+	                       const amat::Array2d<a_real>& unkg, 
+	                       GradArray<nvars>& grads ) const;
 
 protected:
 	using GradientScheme<nvars>::m;
@@ -94,11 +103,7 @@ protected:
 
 private:
 	/// The least squares LHS matrix
-	/** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
-	 * fixed-size vectorizable Eigen arrays; see 
-	 * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
-	 */
-	std::vector< Matrix<a_real,NDIM,NDIM>, aligned_allocator<Matrix<a_real,NDIM,NDIM>> > V;
+	DimMatrixArray V;
 };
 
 

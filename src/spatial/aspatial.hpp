@@ -205,7 +205,7 @@ public:
 	a_real compute_entropy_cell(const Vec u) const;
 
 	/// Computes gradients of converved variables
-	void getGradients(const MVector& u, GradVector& grads) const;
+	void getGradients(const MVector& u, GradArray<NVARS>& grads) const;
 
 protected:
 	/// Problem specification

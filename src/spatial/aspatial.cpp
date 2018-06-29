@@ -324,7 +324,7 @@ void FlowFV_base::compute_boundary_Jacobian(const int ied,
 }
 
 void FlowFV_base::getGradients(const MVector& u,
-                               GradVector& grads) const
+                               GradArray<NVARS>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -835,7 +835,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
-	std::vector<FArray<NDIM,NVARS>, aligned_allocator<FArray<NDIM,NVARS>> > grads;
+	GradArray<NVARS> grads;
 
 	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -1373,7 +1373,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 
-	std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>> grads;
+	GradArray<nvars> grads;
 	grads.resize(m->gnelem());
 	
 	compute_boundary_states(uleft, ug);
