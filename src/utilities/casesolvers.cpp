@@ -118,7 +118,7 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	}
 	
 	MVector output; output.resize(m.gnelem(),NDIM+2);
-	std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>> grad;
+	GradArray<NVARS> grad;
 	grad.resize(m.gnelem());
 	prob->getGradients(umat, grad);
 	const std::tuple<a_real,a_real,a_real> fnls 

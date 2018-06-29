@@ -49,9 +49,10 @@ void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
 	fout.close();
 }
 
-std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData(const MVector& u,
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grad,
-		const int iwbcm, MVector& output) const
+std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData (const MVector& u,
+                                                                 const GradArray<NVARS>& grad,
+                                                                 const int iwbcm,
+                                                                 MVector& output) const
 {
 	a_int facecoun = 0;			// face iteration counter for this boundary marker
 	a_real totallen = 0;		// total area of the surface with this boundary marker
@@ -163,7 +164,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		std::vector<int> obcm, const std::string basename) const
 {
 	// Get conserved variables' gradients
-	std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>> grad;
+	GradArray<NVARS> grad;
 	grad.resize(m->gnelem());
 
 	space->getGradients(u, grad);

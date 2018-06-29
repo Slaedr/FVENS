@@ -69,7 +69,7 @@ public:
 
 	/// Computes gradients of field variables and stores them in the argument
 	virtual void getGradients(const MVector& u,
-		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
+	                          GradArray<nvars>& grads) const = 0;
 
 	/// Sets initial conditions
 	/** \param[in] fromfile True if initial data is to be read from a file
@@ -320,7 +320,7 @@ protected:
 	void computeViscousFlux(
 			const a_int iface, const a_real *const ucell_l, const a_real *const ucell_r,
 			const amat::Array2d<a_real>& ug,
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
+			const GradArray<NVARS>& grads,
 			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
 
@@ -376,7 +376,7 @@ public:
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 	
 	virtual void getGradients(const MVector& u,
-		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const = 0;
+	                          GradArray<nvars>& grads) const = 0;
 	
 	virtual ~Diffusion();
 
@@ -427,7 +427,7 @@ public:
 	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 	void getGradients(const MVector& u,
-		    std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const;
+	                  GradArray<nvars>& grads) const;
 
 	~DiffusionMA();
 

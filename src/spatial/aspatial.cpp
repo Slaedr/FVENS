@@ -466,11 +466,13 @@ FlowFV<secondOrderRequested,constVisc>::~FlowFV()
 { }
 
 template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>::computeViscousFlux(const a_int iface, 
-		const a_real *const ucell_l, const a_real *const ucell_r, const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-		const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
-		a_real *const __restrict vflux) const
+void FlowFV<secondOrderRequested,constVisc>
+::computeViscousFlux(const a_int iface,
+                     const a_real *const ucell_l, const a_real *const ucell_r,
+                     const amat::Array2d<a_real>& ug,
+                     const GradArray<NVARS>& grads,
+                     const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
+                     a_real *const __restrict vflux) const
 {
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int relem = m->gintfac(iface,1);
@@ -1563,7 +1565,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 
 template <int nvars>
 void DiffusionMA<nvars>::getGradients(const MVector& u,
-		std::vector<FArray<NDIM,nvars>,aligned_allocator<FArray<NDIM,nvars>>>& grads) const
+                                      GradArray<nvars>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)

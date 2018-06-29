@@ -44,39 +44,48 @@ namespace fvens
 {
 #define DOUBLE_PRECISION 1
 	
-	/// The floating-point type to use for all float computations
-	typedef double a_real;
+/// The floating-point type to use for all float computations
+typedef double a_real;
 
-	/// Integer type to use for indexing etc
-	/** Using signed types for this might be better than using unsigned types,
-	 * eg., to iterate backwards over an entire array (down to index 0).
-	 */
-	typedef int a_int;
+/// Integer type to use for indexing etc
+/** Using signed types for this might be better than using unsigned types,
+ * eg., to iterate backwards over an entire array (down to index 0).
+ */
+typedef int a_int;
 	
-	using Eigen::Dynamic;
-	using Eigen::RowMajor;
-	using Eigen::ColMajor;
-	using Eigen::Matrix;
-	using Eigen::aligned_allocator;
+using Eigen::Dynamic;
+using Eigen::RowMajor;
+using Eigen::ColMajor;
+using Eigen::Matrix;
+using Eigen::aligned_allocator;
 
-	/// Multi-vector type, used for storing mesh functions like the residual
-	typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
+/// Multi-vector type, used for storing mesh functions like the residual
+typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
 
-	/// A fixed-size row-major array typedef \warning Has to be column major!
-	/** We could have made this row major, but Eigen complains against defining
-	 * row-major matrices with only one column, as required by scalar problems.
-	 */
-	template<int rows, int cols>
-	using FArray = Eigen::Array<a_real,rows,cols,ColMajor>;
+/// Spatial gradients of flow variables for all cells in the mesh
+/** We could have made this row major, but Eigen complains against defining
+ * row-major matrices with only one column, as required by scalar problems.
+ */
+template <int nvars>
+using GradArray = std::vector<Eigen::Array<a_real,NDIM,nvars>,
+                              Eigen::aligned_allocator<Eigen::Array<a_real,NDIM,nvars>>>;
 
-	/// Fill a raw array of reals with zeros
-	inline void zeros(a_real *const __restrict a, const a_int n) {
-		for(int i = 0; i < n; i++)
-			a[i] = 0;
-	}
+/// An array of fixed-size Eigen matrices each with the number of space dimensions as the size
+/** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
+ * fixed-size vectorizable Eigen arrays; see 
+ * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
+ */
+using DimMatrixArray = std::vector< Matrix<a_real,NDIM,NDIM>,
+                                    aligned_allocator<Matrix<a_real,NDIM,NDIM>> >;
 
-	/// A data type for error codes, mostly for use with PETSc
-	typedef int StatusCode;
+/// Fill a raw array of reals with zeros
+inline void zeros(a_real *const __restrict a, const a_int n) {
+	for(int i = 0; i < n; i++)
+		a[i] = 0;
+}
+
+/// A data type for error codes, mostly for use with PETSc
+typedef int StatusCode;
 }
 
 #endif

@@ -25,14 +25,15 @@ protected:
 	const int ng;                               ///< Number of Gauss points
 
 public:
-    SolutionReconstruction (const UMesh2dh *const  mesh,  ///< Mesh context
-			const amat::Array2d<a_real>& c_centres,       ///< Cell centres
-			const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
+	SolutionReconstruction (const UMesh2dh *const  mesh,  ///< Mesh context
+	                        const amat::Array2d<a_real>& c_centres,       ///< Cell centres
+	                        const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
 
 	virtual void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost,
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
+	                                 const amat::Array2d<a_real>& unknow_ghost,
+	                                 const GradArray<NVARS>& grads,
+	                                 amat::Array2d<a_real>& uface_left,
+	                                 amat::Array2d<a_real>& uface_right) const = 0;
 
 	virtual ~SolutionReconstruction();
 };
@@ -46,13 +47,14 @@ class LinearUnlimitedReconstruction : public SolutionReconstruction
 public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
 	LinearUnlimitedReconstruction(const UMesh2dh *const mesh,
-			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
+	                              const amat::Array2d<a_real>& c_centres, 
+	                              const amat::Array2d<a_real>* gauss_r);
 
 	void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
+	                         const amat::Array2d<a_real>& unknow_ghost, 
+	                         const GradArray<NVARS>& grads,
+	                         amat::Array2d<a_real>& uface_left,
+	                         amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Computes state at left and right sides of each face based on WENO-limited derivatives 
@@ -68,15 +70,16 @@ class WENOReconstruction : public SolutionReconstruction
 	const a_real lambda;              ///< Weight of central stencil relative to biased stencils
 	const a_real epsilon;             ///< Small constant to avoid division by zero
 public:
-    WENOReconstruction(const UMesh2dh *const mesh,
-			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r,
-			const a_real central_weight);
+	WENOReconstruction(const UMesh2dh *const mesh,
+	                   const amat::Array2d<a_real>& c_centres, 
+	                   const amat::Array2d<a_real>* gauss_r,
+	                   const a_real central_weight);
 
 	void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
+	                         const amat::Array2d<a_real>& unknow_ghost, 
+	                         const GradArray<NVARS>& grads,
+	                         amat::Array2d<a_real>& uface_left,
+	                         amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Provides common functionality for computing face values using MUSCL reconstruciton
@@ -85,14 +88,15 @@ public:
 class MUSCLReconstruction : public SolutionReconstruction
 {
 public:
-    MUSCLReconstruction(const UMesh2dh *const mesh,
-			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
+	MUSCLReconstruction(const UMesh2dh *const mesh,
+	                    const amat::Array2d<a_real>& c_centres, 
+	                    const amat::Array2d<a_real>* gauss_r);
     
 	virtual void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const = 0;
+	                                 const amat::Array2d<a_real>& unknow_ghost, 
+	                                 const GradArray<NVARS>& grads,
+	                                 amat::Array2d<a_real>& uface_left,
+	                                 amat::Array2d<a_real>& uface_right) const = 0;
 
 protected:
 	const a_real eps;                       ///< Small number
@@ -104,7 +108,8 @@ protected:
 	 * if the gradient of the right cell is given, the forward-biased difference is computed.
 	 */
 	a_real computeBiasedDifference(const a_real *const ri, const a_real *const rj,
-			const a_real ui, const a_real uj, const a_real *const grads) const;
+	                               const a_real ui, const a_real uj,
+	                               const a_real *const grads) const;
 
 	/// Computes the MUSCL reconstructed face value on the left, given the limiter value
 	/** \param ui Left cell-centred value
@@ -114,7 +119,7 @@ protected:
 	 * \return The left state at the face between cells i and j
 	 */
 	a_real musclReconstructLeft(const a_real ui, const a_real uj, 
-			const a_real deltam, const a_real phi) const;
+	                            const a_real deltam, const a_real phi) const;
 	
 	/// Computes the MUSCL reconstructed face value on the right, given the limiter value
 	/** \param ui Left cell-centred value
@@ -124,35 +129,37 @@ protected:
 	 * \return The right state at the face between cells i and j
 	 */
 	a_real musclReconstructRight(const a_real ui, const a_real uj, 
-			const a_real deltap, const a_real phi) const;
+	                             const a_real deltap, const a_real phi) const;
 };
 
 /// Computes face values using MUSCL reconstruciton with Van-Albada limiter
 class MUSCLVanAlbada : public MUSCLReconstruction
 {
 public:
-    MUSCLVanAlbada(const UMesh2dh *const mesh,
-			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
+	MUSCLVanAlbada(const UMesh2dh *const mesh,
+	               const amat::Array2d<a_real>& c_centres, 
+	               const amat::Array2d<a_real>* gauss_r);
     
 	void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
+	                         const amat::Array2d<a_real>& unknow_ghost, 
+	                         const GradArray<NVARS>& grads,
+	                         amat::Array2d<a_real>& uface_left,
+	                         amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Non-differentiable multidimensional slope limiter for linear reconstruction
 class BarthJespersenLimiter : public SolutionReconstruction
 {
 public:
-    BarthJespersenLimiter(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r);
+	BarthJespersenLimiter(const UMesh2dh *const mesh, 
+	                      const amat::Array2d<a_real>& c_centres, 
+	                      const amat::Array2d<a_real>* gauss_r);
     
 	void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
+	                         const amat::Array2d<a_real>& unknow_ghost, 
+	                         const GradArray<NVARS>& grads,
+	                         amat::Array2d<a_real>& uface_left,
+	                         amat::Array2d<a_real>& uface_right) const;
 };
 
 /// Differentiable modification of Barth-Jespersen limiter
@@ -168,14 +175,15 @@ public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
 	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
-    VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
-			const amat::Array2d<a_real>& c_centres, 
-			const amat::Array2d<a_real>* gauss_r, a_real k_param);
+	VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
+	                       const amat::Array2d<a_real>& c_centres, 
+	                       const amat::Array2d<a_real>* gauss_r, a_real k_param);
     
 	void compute_face_values(const MVector& unknowns, 
-			const amat::Array2d<a_real>& unknow_ghost, 
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-			amat::Array2d<a_real>& uface_left, amat::Array2d<a_real>& uface_right) const;
+	                         const amat::Array2d<a_real>& unknow_ghost, 
+	                         const GradArray<NVARS>& grads,
+	                         amat::Array2d<a_real>& uface_left,
+	                         amat::Array2d<a_real>& uface_right) const;
 };
 
 } // end namespace

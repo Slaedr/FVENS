@@ -62,8 +62,8 @@ public:
 	 *                   Cp and Csf, in that order
 	 */
 	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector& u,
-			const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grad,
-			const int iwbcm, MVector& output) const;
+	                                                    const GradArray<NVARS>& grad,
+	                                                    const int iwbcm, MVector& output) const;
 
 	/// Export surface data
 	/** We compute pressure and skin-friction coefficients for wall boundaries, and

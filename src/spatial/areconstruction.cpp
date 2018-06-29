@@ -10,12 +10,12 @@ namespace fvens {
 
 /// Reconstructs a face value
 static inline a_real linearExtrapolate(
-		const a_real ucell,             ///< Relevant cell centred value
-		const FArray<NDIM,NVARS>& grad, ///< Gradients
-		const int ivar,                 ///< Index of physical variable to be reconstructed
-		const a_real lim,               ///< Limiter value
-		const a_real *const gp,         ///< Quadrature point coords
-		const a_real *const rc          ///< Cell centre coords
+		const a_real ucell,                          ///< Relevant cell centred value
+		const Eigen::Array<a_real,NDIM,NVARS>& grad, ///< Gradients
+		const int ivar,                              ///< Index of physical variable to be reconstructed
+		const a_real lim,                            ///< Limiter value
+		const a_real *const gp,                      ///< Quadrature point coords
+		const a_real *const rc                       ///< Cell centre coords
 	)
 {
 	a_real uface = ucell;
@@ -34,14 +34,15 @@ SolutionReconstruction::~SolutionReconstruction()
 { }
 
 LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh *const mesh,
-		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r)
+                                                             const amat::Array2d<a_real>& c_centres,
+                                                             const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, c_centres, gauss_r)
 { }
 
 void LinearUnlimitedReconstruction::compute_face_values(
 		const MVector& u, 
 		const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
+		const GradArray<NVARS>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// (a) internal faces
@@ -77,7 +78,8 @@ void LinearUnlimitedReconstruction::compute_face_values(
 }
 
 WENOReconstruction::WENOReconstruction(const UMesh2dh *const mesh,
-		const amat::Array2d<a_real>& c_centres, const amat::Array2d<a_real>* gauss_r, const a_real l)
+                                       const amat::Array2d<a_real>& c_centres,
+                                       const amat::Array2d<a_real>* gauss_r, const a_real l)
 	: SolutionReconstruction(mesh, c_centres, gauss_r),
 	  gamma{4.0}, lambda{l}, epsilon{1.0e-5}
 {
@@ -87,7 +89,8 @@ WENOReconstruction::WENOReconstruction(const UMesh2dh *const mesh,
 /** \param[in] grad The gradient array
  * \param[in] ivar The index of the physical variable whose gradient magnitude is needed
  */
-static inline a_real gradientMagnitude2(const FArray<NDIM,NVARS>& grad, const int ivar) {
+static inline a_real gradientMagnitude2(const Eigen::Array<a_real,NDIM,NVARS>& grad, const int ivar)
+{
 	a_real res = 0;
 	for(int j = 0; j < NDIM; j++)
 		res += grad(j,ivar)*grad(j,ivar);
@@ -95,9 +98,10 @@ static inline a_real gradientMagnitude2(const FArray<NDIM,NVARS>& grad, const in
 }
 
 void WENOReconstruction::compute_face_values(const MVector& u, 
-		const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
+                                             const amat::Array2d<a_real>& ug,
+                                             const GradArray<NVARS>& grads,
+                                             amat::Array2d<a_real>& ufl,
+                                             amat::Array2d<a_real>& ufr) const
 {
 	// first compute limited derivatives at each cell
 
@@ -192,9 +196,10 @@ MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh *const mesh,
 { }
 
 void MUSCLVanAlbada::compute_face_values(const MVector& u, 
-		const amat::Array2d<a_real>& ug,
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
+                                         const amat::Array2d<a_real>& ug,
+                                         const GradArray<NVARS>& grads,
+                                         amat::Array2d<a_real>& ufl,
+                                         amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -255,15 +260,17 @@ void MUSCLVanAlbada::compute_face_values(const MVector& u,
 }
 
 BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
+                                             const amat::Array2d<a_real>& r_centres,
+                                             const amat::Array2d<a_real>* gauss_r)
 	: SolutionReconstruction(mesh, r_centres, gauss_r)
 {
 }
 
 void BarthJespersenLimiter::compute_face_values(const MVector& u, 
-		const amat::Array2d<a_real>& ug, 
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
+                                                const amat::Array2d<a_real>& ug, 
+                                                const GradArray<NVARS>& grads,
+                                                amat::Array2d<a_real>& ufl,
+                                                amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -317,9 +324,11 @@ void BarthJespersenLimiter::compute_face_values(const MVector& u,
 	}
 }
 
-VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh *const mesh, 
-		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r,
-		a_real k_param=2.0)
+VenkatakrishnanLimiter
+::VenkatakrishnanLimiter(const UMesh2dh *const mesh,
+                         const amat::Array2d<a_real>& r_centres,
+                         const amat::Array2d<a_real>* gauss_r,
+                         a_real k_param=2.0)
 	: SolutionReconstruction(mesh, r_centres, gauss_r), K{k_param}
 {
 	std::cout << "  Venkatakrishnan Limiter: Constant K = " << K << std::endl;
@@ -342,10 +351,12 @@ VenkatakrishnanLimiter::VenkatakrishnanLimiter(const UMesh2dh *const mesh,
 	}
 }
 
-void VenkatakrishnanLimiter::compute_face_values(const MVector& u, 
-		const amat::Array2d<a_real>& ug, 
-		const std::vector<FArray<NDIM,NVARS>,aligned_allocator<FArray<NDIM,NVARS>>>& grads,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
+void VenkatakrishnanLimiter
+::compute_face_values(const MVector& u,
+                      const amat::Array2d<a_real>& ug, 
+                      const GradArray<NVARS>& grads,
+                      amat::Array2d<a_real>& ufl,
+                      amat::Array2d<a_real>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
