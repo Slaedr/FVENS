@@ -77,24 +77,24 @@ const InviscidFlux<a_real>* create_const_inviscidflux(
 }
 
 template <int nvars>
-GradientScheme<nvars>* create_mutable_gradientscheme(
+GradientScheme<a_real,nvars>* create_mutable_gradientscheme(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) 
 {
-	GradientScheme<nvars> * gradcomp = nullptr;
+	GradientScheme<a_real,nvars> * gradcomp = nullptr;
 
 	if(type == "LEASTSQUARES")
 	{
-		gradcomp = new WeightedLeastSquaresGradients<nvars>(m, rc);
+		gradcomp = new WeightedLeastSquaresGradients<a_real,nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
 	}
 	else if(type == "GREENGAUSS")
 	{
-		gradcomp = new GreenGaussGradients<nvars>(m, rc);
+		gradcomp = new GreenGaussGradients<a_real,nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used.\n";
 	}
 	else {
-		gradcomp = new ZeroGradients<nvars>(m, rc);
+		gradcomp = new ZeroGradients<a_real,nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: No gradient computation.\n";
 	}
 
@@ -102,7 +102,7 @@ GradientScheme<nvars>* create_mutable_gradientscheme(
 }
 
 template <int nvars>
-const GradientScheme<nvars>* create_const_gradientscheme(
+const GradientScheme<a_real,nvars>* create_const_gradientscheme(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) 
 {
@@ -110,19 +110,19 @@ const GradientScheme<nvars>* create_const_gradientscheme(
 }
 
 // template instantiations
-template GradientScheme<NVARS>* create_mutable_gradientscheme<NVARS>(
+template GradientScheme<a_real,NVARS>* create_mutable_gradientscheme<NVARS>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
-template const GradientScheme<NVARS>* create_const_gradientscheme<NVARS>(
+template const GradientScheme<a_real,NVARS>* create_const_gradientscheme<NVARS>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
-template GradientScheme<1>* create_mutable_gradientscheme<1>(
+template GradientScheme<a_real,1>* create_mutable_gradientscheme<1>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
-template const GradientScheme<1>* create_const_gradientscheme<1>(
+template const GradientScheme<a_real,1>* create_const_gradientscheme<1>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 

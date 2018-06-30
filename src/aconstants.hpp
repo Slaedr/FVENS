@@ -60,29 +60,25 @@ using Eigen::Matrix;
 using Eigen::aligned_allocator;
 
 /// Multi-vector type, used for storing mesh functions like the residual
-typedef Matrix<a_real, Dynamic,Dynamic,RowMajor> MVector;
+template <typename scalar>
+using MVector = Matrix<scalar, Dynamic,Dynamic,RowMajor>;
 
 /// Spatial gradients of flow variables for all cells in the mesh
 /** We could have made this row major, but Eigen complains against defining
  * row-major matrices with only one column, as required by scalar problems.
  */
-template <int nvars>
-using GradArray = std::vector<Eigen::Array<a_real,NDIM,nvars>,
-                              Eigen::aligned_allocator<Eigen::Array<a_real,NDIM,nvars>>>;
+template <typename scalar, int nvars>
+using GradArray = std::vector<Eigen::Array<scalar,NDIM,nvars>,
+                              Eigen::aligned_allocator<Eigen::Array<scalar,NDIM,nvars>>>;
 
 /// An array of fixed-size Eigen matrices each with the number of space dimensions as the size
 /** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
  * fixed-size vectorizable Eigen arrays; see 
  * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
  */
-using DimMatrixArray = std::vector< Matrix<a_real,NDIM,NDIM>,
-                                    aligned_allocator<Matrix<a_real,NDIM,NDIM>> >;
-
-/// Fill a raw array of reals with zeros
-inline void zeros(a_real *const __restrict a, const a_int n) {
-	for(int i = 0; i < n; i++)
-		a[i] = 0;
-}
+template <typename scalar>
+using DimMatrixArray = std::vector< Matrix<scalar,NDIM,NDIM>,
+                                    aligned_allocator<Matrix<scalar,NDIM,NDIM>> >;
 
 /// A data type for error codes, mostly for use with PETSc
 typedef int StatusCode;

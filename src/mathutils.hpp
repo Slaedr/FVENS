@@ -10,6 +10,13 @@
 
 namespace fvens {
 
+/// Fill a raw array of scalars with zeros
+template <typename scalar>
+inline void zeros(scalar *const __restrict a, const a_int n) {
+	for(a_int i = 0; i < n; i++)
+		a[i] = 0;
+}
+
 /// Returns a dot product computed between the first NDIM components of the two vectors.
 template <typename scalar>
 inline scalar dimDotProduct(const scalar *const u, const scalar *const v)

@@ -324,8 +324,8 @@ void FlowFV_base::compute_boundary_Jacobian(const int ied,
 	bcs.at(m->gintfacbtags(ied,0))->computeGhostStateAndJacobian(ins, &n[0], gs, dgs);
 }
 
-void FlowFV_base::getGradients(const MVector& u,
-                               GradArray<NVARS>& grads) const
+void FlowFV_base::getGradients(const MVector<a_real>& u,
+                               GradArray<a_real,NVARS>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -353,7 +353,7 @@ StatusCode FlowFV_base::postprocess_point(const Vec uvec,
 	StatusCode ierr = 0;
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -401,7 +401,7 @@ StatusCode FlowFV_base::postprocess_cell(const Vec uvec,
 	StatusCode ierr = 0;
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
 
 	for(a_int iel = 0; iel < m->gnelem(); iel++) {
 		scalars(iel,0) = u(iel,0);
@@ -471,7 +471,7 @@ void FlowFV<secondOrderRequested,constVisc>
 ::computeViscousFlux(const a_int iface,
                      const a_real *const ucell_l, const a_real *const ucell_r,
                      const amat::Array2d<a_real>& ug,
-                     const GradArray<NVARS>& grads,
+                     const GradArray<a_real,NVARS>& grads,
                      const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
                      a_real *const __restrict vflux) const
 {
@@ -838,7 +838,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
-	GradArray<NVARS> grads;
+	GradArray<a_real,NVARS> grads;
 
 	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -849,9 +849,9 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	//assert(locnelem == dtsz);
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, locnelem, NVARS);
+	Eigen::Map<const MVector<a_real>> u(uarr, locnelem, NVARS);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> residual(rarr, locnelem, NVARS);
+	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, NVARS);
 	//ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
 
 #pragma omp parallel default(shared)
@@ -882,7 +882,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
-		MVector up(m->gnelem(), NVARS);
+		MVector<a_real> up(m->gnelem(), NVARS);
 
 		// convert everything to primitive variables
 #pragma omp parallel default(shared)
@@ -1059,7 +1059,7 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	//Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+	//Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -1160,7 +1160,7 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
  * \f$ D_{ii} \rightarrow D_{ii} -L_{ij}, D_{jj} \rightarrow D_{jj} -U_{ij} \f$.
  */
 template<bool order2, bool constVisc>
-void FlowFV<order2,constVisc>::compute_jacobian(const MVector& u, 
+void FlowFV<order2,constVisc>::compute_jacobian(const MVector<a_real>& u, 
 				AbstractMatrix<a_real,a_int> *const __restrict A) const
 {
 #pragma omp parallel for default(shared)
@@ -1312,7 +1312,7 @@ StatusCode Diffusion<nvars>::postprocess_point(const Vec uvec, amat::Array2d<a_r
 	StatusCode ierr = 0;
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -1362,9 +1362,9 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector> u(uarr, locnelem, nvars);
+	Eigen::Map<const MVector<a_real>> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
+	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, nvars);
 
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
@@ -1378,7 +1378,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 
-	GradArray<nvars> grads;
+	GradArray<a_real,nvars> grads;
 	grads.resize(m->gnelem());
 	
 	compute_boundary_states(uleft, ug);
@@ -1568,8 +1568,8 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 }
 
 template <int nvars>
-void DiffusionMA<nvars>::getGradients(const MVector& u,
-                                      GradArray<nvars>& grads) const
+void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
+                                      GradArray<a_real,nvars>& grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)

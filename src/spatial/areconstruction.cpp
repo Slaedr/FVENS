@@ -4,6 +4,7 @@
  */
 
 #include <iostream>
+#include "mathutils.hpp"
 #include "areconstruction.hpp"
 
 namespace fvens {
@@ -40,9 +41,9 @@ LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh<a_re
 { }
 
 void LinearUnlimitedReconstruction::compute_face_values(
-		const MVector& u, 
+		const MVector<a_real>& u, 
 		const amat::Array2d<a_real>& ug,
-		const GradArray<NVARS>& grads,
+		const GradArray<a_real,NVARS>& grads,
 		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
 {
 	// (a) internal faces
@@ -97,9 +98,9 @@ static inline a_real gradientMagnitude2(const Eigen::Array<a_real,NDIM,NVARS>& g
 	return res;
 }
 
-void WENOReconstruction::compute_face_values(const MVector& u, 
+void WENOReconstruction::compute_face_values(const MVector<a_real>& u, 
                                              const amat::Array2d<a_real>& ug,
-                                             const GradArray<NVARS>& grads,
+                                             const GradArray<a_real,NVARS>& grads,
                                              amat::Array2d<a_real>& ufl,
                                              amat::Array2d<a_real>& ufr) const
 {
@@ -195,9 +196,9 @@ MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh<a_real> *const mesh,
 	: MUSCLReconstruction(mesh, r_centres, gauss_r)
 { }
 
-void MUSCLVanAlbada::compute_face_values(const MVector& u, 
+void MUSCLVanAlbada::compute_face_values(const MVector<a_real>& u, 
                                          const amat::Array2d<a_real>& ug,
-                                         const GradArray<NVARS>& grads,
+                                         const GradArray<a_real,NVARS>& grads,
                                          amat::Array2d<a_real>& ufl,
                                          amat::Array2d<a_real>& ufr) const
 {
@@ -266,9 +267,9 @@ BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh<a_real> *const mesh,
 {
 }
 
-void BarthJespersenLimiter::compute_face_values(const MVector& u, 
+void BarthJespersenLimiter::compute_face_values(const MVector<a_real>& u, 
                                                 const amat::Array2d<a_real>& ug, 
-                                                const GradArray<NVARS>& grads,
+                                                const GradArray<a_real,NVARS>& grads,
                                                 amat::Array2d<a_real>& ufl,
                                                 amat::Array2d<a_real>& ufr) const
 {
@@ -352,9 +353,9 @@ VenkatakrishnanLimiter
 }
 
 void VenkatakrishnanLimiter
-::compute_face_values(const MVector& u,
+::compute_face_values(const MVector<a_real>& u,
                       const amat::Array2d<a_real>& ug, 
-                      const GradArray<NVARS>& grads,
+                      const GradArray<a_real,NVARS>& grads,
                       amat::Array2d<a_real>& ufl,
                       amat::Array2d<a_real>& ufr) const
 {

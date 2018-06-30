@@ -29,9 +29,9 @@ public:
 	                        const amat::Array2d<a_real>& c_centres,       ///< Cell centres
 	                        const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
 
-	virtual void compute_face_values(const MVector& unknowns, 
+	virtual void compute_face_values(const MVector<a_real>& unknowns, 
 	                                 const amat::Array2d<a_real>& unknow_ghost,
-	                                 const GradArray<NVARS>& grads,
+	                                 const GradArray<a_real,NVARS>& grads,
 	                                 amat::Array2d<a_real>& uface_left,
 	                                 amat::Array2d<a_real>& uface_right) const = 0;
 
@@ -50,9 +50,9 @@ public:
 	                              const amat::Array2d<a_real>& c_centres, 
 	                              const amat::Array2d<a_real>* gauss_r);
 
-	void compute_face_values(const MVector& unknowns, 
+	void compute_face_values(const MVector<a_real>& unknowns, 
 	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<NVARS>& grads,
+	                         const GradArray<a_real,NVARS>& grads,
 	                         amat::Array2d<a_real>& uface_left,
 	                         amat::Array2d<a_real>& uface_right) const;
 };
@@ -75,9 +75,9 @@ public:
 	                   const amat::Array2d<a_real>* gauss_r,
 	                   const a_real central_weight);
 
-	void compute_face_values(const MVector& unknowns, 
+	void compute_face_values(const MVector<a_real>& unknowns, 
 	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<NVARS>& grads,
+	                         const GradArray<a_real,NVARS>& grads,
 	                         amat::Array2d<a_real>& uface_left,
 	                         amat::Array2d<a_real>& uface_right) const;
 };
@@ -92,9 +92,9 @@ public:
 	                    const amat::Array2d<a_real>& c_centres, 
 	                    const amat::Array2d<a_real>* gauss_r);
     
-	virtual void compute_face_values(const MVector& unknowns, 
+	virtual void compute_face_values(const MVector<a_real>& unknowns, 
 	                                 const amat::Array2d<a_real>& unknow_ghost, 
-	                                 const GradArray<NVARS>& grads,
+	                                 const GradArray<a_real,NVARS>& grads,
 	                                 amat::Array2d<a_real>& uface_left,
 	                                 amat::Array2d<a_real>& uface_right) const = 0;
 
@@ -140,9 +140,9 @@ public:
 	               const amat::Array2d<a_real>& c_centres, 
 	               const amat::Array2d<a_real>* gauss_r);
     
-	void compute_face_values(const MVector& unknowns, 
+	void compute_face_values(const MVector<a_real>& unknowns, 
 	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<NVARS>& grads,
+	                         const GradArray<a_real,NVARS>& grads,
 	                         amat::Array2d<a_real>& uface_left,
 	                         amat::Array2d<a_real>& uface_right) const;
 };
@@ -155,9 +155,9 @@ public:
 	                      const amat::Array2d<a_real>& c_centres, 
 	                      const amat::Array2d<a_real>* gauss_r);
     
-	void compute_face_values(const MVector& unknowns, 
+	void compute_face_values(const MVector<a_real>& unknowns, 
 	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<NVARS>& grads,
+	                         const GradArray<a_real,NVARS>& grads,
 	                         amat::Array2d<a_real>& uface_left,
 	                         amat::Array2d<a_real>& uface_right) const;
 };
@@ -179,9 +179,9 @@ public:
 	                       const amat::Array2d<a_real>& c_centres, 
 	                       const amat::Array2d<a_real>* gauss_r, a_real k_param);
     
-	void compute_face_values(const MVector& unknowns, 
+	void compute_face_values(const MVector<a_real>& unknowns, 
 	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<NVARS>& grads,
+	                         const GradArray<a_real,NVARS>& grads,
 	                         amat::Array2d<a_real>& uface_left,
 	                         amat::Array2d<a_real>& uface_right) const;
 };

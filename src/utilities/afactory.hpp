@@ -32,21 +32,21 @@
 namespace fvens {
 
 /// Returns a new inviscid numerical flux context
-InviscidFlux* create_mutable_inviscidflux(const std::string& type, 
+InviscidFlux<a_real>* create_mutable_inviscidflux(const std::string& type, 
 		const IdealGasPhysics<a_real> *const p) ;
 
 /// Returns a new immutable inviscid flux context
-const InviscidFlux* create_const_inviscidflux(const std::string& type, 
+const InviscidFlux<a_real>* create_const_inviscidflux(const std::string& type, 
 		const IdealGasPhysics<a_real> *const p) ;
 
 /// Returns a newly-created gradient computation context
 template <int nvars>
-GradientScheme<nvars>* create_mutable_gradientscheme(const std::string& type, 
+GradientScheme<a_real,nvars>* create_mutable_gradientscheme(const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) ;
 
 /// Returns a newly-created immutable gradient computation context
 template <int nvars>
-const GradientScheme<nvars>* create_const_gradientscheme(const std::string& type, 
+const GradientScheme<a_real,nvars>* create_const_gradientscheme(const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) ;
 
 /// Returns a solution reconstruction context

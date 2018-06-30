@@ -68,8 +68,8 @@ public:
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const MVector& u,
-	                          GradArray<nvars>& grads) const = 0;
+	virtual void getGradients(const MVector<a_real>& u,
+	                          GradArray<a_real,nvars>& grads) const = 0;
 
 	/// Sets initial conditions
 	/** \param[in] fromfile True if initial data is to be read from a file
@@ -206,7 +206,7 @@ public:
 	a_real compute_entropy_cell(const Vec u) const;
 
 	/// Computes gradients of converved variables
-	void getGradients(const MVector& u, GradArray<NVARS>& grads) const;
+	void getGradients(const MVector<a_real>& u, GradArray<a_real,NVARS>& grads) const;
 
 protected:
 	/// Problem specification
@@ -229,7 +229,7 @@ protected:
 	const InviscidFlux<a_real> *const jflux;
 
 	/// Gradient computation context
-	const GradientScheme<NVARS> *const gradcomp;
+	const GradientScheme<a_real,NVARS> *const gradcomp;
 
 	/// Reconstruction context
 	const SolutionReconstruction *const lim;
@@ -321,7 +321,7 @@ protected:
 	void computeViscousFlux(
 			const a_int iface, const a_real *const ucell_l, const a_real *const ucell_r,
 			const amat::Array2d<a_real>& ug,
-			const GradArray<NVARS>& grads,
+			const GradArray<a_real,NVARS>& grads,
 			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
 			a_real *const vflux) const;
 
@@ -376,8 +376,8 @@ public:
 	
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 	
-	virtual void getGradients(const MVector& u,
-	                          GradArray<nvars>& grads) const = 0;
+	virtual void getGradients(const MVector<a_real>& u,
+	                          GradArray<a_real,nvars>& grads) const = 0;
 	
 	virtual ~Diffusion();
 
@@ -422,13 +422,13 @@ public:
 	StatusCode compute_residual(const Vec u, Vec residual, 
 							const bool gettimesteps, std::vector<a_real>& dtm) const;
 	
-	/*void add_source(const MVector& u, 
-			MVector& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
+	/*void add_source(const MVector<scalar>& u, 
+			MVector<scalar>& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
 	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
-	void getGradients(const MVector& u,
-	                  GradArray<nvars>& grads) const;
+	void getGradients(const MVector<a_real>& u,
+	                  GradArray<a_real,nvars>& grads) const;
 
 	~DiffusionMA();
 
@@ -447,7 +447,7 @@ protected:
 	using Diffusion<nvars>::compute_boundary_state;
 	using Diffusion<nvars>::compute_boundary_states;
 	
-	const GradientScheme<nvars> *const gradcomp;
+	const GradientScheme<a_real,nvars> *const gradcomp;
 };
 
 }	// end namespace
