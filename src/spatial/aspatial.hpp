@@ -223,10 +223,10 @@ protected:
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
 	 */
-	const InviscidFlux *const inviflux;
+	const InviscidFlux<a_real> *const inviflux;
 
 	/// Numerical inviscid flux context for the Jacobian
-	const InviscidFlux *const jflux;
+	const InviscidFlux<a_real> *const jflux;
 
 	/// Gradient computation context
 	const GradientScheme<NVARS> *const gradcomp;

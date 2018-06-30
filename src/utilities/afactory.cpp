@@ -23,44 +23,44 @@
 
 namespace fvens {
 
-InviscidFlux* create_mutable_inviscidflux(
+InviscidFlux<a_real>* create_mutable_inviscidflux(
 		const std::string& type, 
 		const IdealGasPhysics<a_real> *const p) 
 {
-	InviscidFlux *inviflux = nullptr;
+	InviscidFlux<a_real> *inviflux = nullptr;
 
 	if(type == "VANLEER") {
-		inviflux = new VanLeerFlux(p);
+		inviflux = new VanLeerFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using Van Leer fluxes." << std::endl;
 	}
 	else if(type == "ROE")
 	{
-		inviflux = new RoeFlux(p);
+		inviflux = new RoeFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using Roe fluxes." << std::endl;
 	}
 	else if(type == "HLL")
 	{
-		inviflux = new HLLFlux(p);
+		inviflux = new HLLFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using HLL fluxes." << std::endl;
 	}
 	else if(type == "HLLC")
 	{
-		inviflux = new HLLCFlux(p);
+		inviflux = new HLLCFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using HLLC fluxes." << std::endl;
 	}
 	else if(type == "LLF")
 	{
-		inviflux = new LocalLaxFriedrichsFlux(p);
+		inviflux = new LocalLaxFriedrichsFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using LLF fluxes." << std::endl;
 	}
 	else if(type == "AUSM")
 	{
-		inviflux = new AUSMFlux(p);
+		inviflux = new AUSMFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using AUSM fluxes." << std::endl;
 	}
 	else if(type == "AUSMPLUS")
 	{
-		inviflux = new AUSMPlusFlux(p);
+		inviflux = new AUSMPlusFlux<a_real>(p);
 		std::cout << " InviscidFluxFactory: Using AUSM+ fluxes." << std::endl;
 	}
 	else
@@ -69,11 +69,11 @@ InviscidFlux* create_mutable_inviscidflux(
 	return inviflux;
 }
 
-const InviscidFlux* create_const_inviscidflux(
+const InviscidFlux<a_real>* create_const_inviscidflux(
 		const std::string& type,
 		const IdealGasPhysics<a_real> *const p) 
 {
-	return const_cast<const InviscidFlux*>(create_mutable_inviscidflux(type, p));
+	return const_cast<const InviscidFlux<a_real>*>(create_mutable_inviscidflux(type, p));
 }
 
 template <int nvars>
