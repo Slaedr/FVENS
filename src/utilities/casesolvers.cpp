@@ -107,7 +107,7 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	ierr = VecRestoreArrayRead(*u, &uarr); 
 	petsc_throw(ierr, "Petsc VecRestoreArrayRead error");
 
-	IdealGasPhysics phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(prob, &phy, opts.alpha);
 
 	try {

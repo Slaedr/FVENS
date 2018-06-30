@@ -11,9 +11,10 @@
 namespace fvens {
 
 /// Returns a dot product computed between the first NDIM components of the two vectors.
-inline a_real dimDotProduct(const a_real *const u, const a_real *const v)
+template <typename scalar>
+inline scalar dimDotProduct(const scalar *const u, const scalar *const v)
 {
-	a_real dot = 0;
+	scalar dot = 0;
 	for(int i = 0; i < NDIM; i++)
 		dot += u[i]*v[i];
 	return dot;
@@ -42,9 +43,10 @@ inline void getComponentsCartesian(const scalar mag, const scalar dir[NDIM], sca
  * \note It is possible for the output array dq to point to the same location as
  * one of the input arrays. In that case, the entire array should overlap, NOT only a part of it.
  */
-inline void getQuotientDerivatives(const a_real f, const a_real *const df, 
-                                   const a_real g, const a_real *const dg,
-                                   a_real *const __restrict dq)
+template <typename scalar>
+inline void getQuotientDerivatives(const scalar f, const scalar *const df, 
+                                   const scalar g, const scalar *const dg,
+                                   scalar *const __restrict dq)
 {
 	for(int i = 0; i < NVARS; i++)
 		dq[i] += (df[i]*g-f*dg[i])/(g*g);

@@ -13,7 +13,7 @@
 
 namespace fvens {
 
-InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx) 
+InviscidFlux::InviscidFlux(const IdealGasPhysics<a_real> *const phyctx) 
 	: physics(phyctx), g{phyctx->g}
 { }
 
@@ -25,7 +25,7 @@ InviscidFlux::InviscidFlux(const IdealGasPhysics *const phyctx)
 InviscidFlux::~InviscidFlux()
 { }
 
-LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const IdealGasPhysics *const analyticalflux)
+LocalLaxFriedrichsFlux::LocalLaxFriedrichsFlux(const IdealGasPhysics<a_real> *const analyticalflux)
 	: InviscidFlux(analyticalflux)
 { }
 
@@ -181,7 +181,7 @@ void LocalLaxFriedrichsFlux::get_jacobian_2(const a_real *const ul,
 		}
 }
 
-VanLeerFlux::VanLeerFlux(const IdealGasPhysics *const analyticalflux) 
+VanLeerFlux::VanLeerFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 {
 }
@@ -241,7 +241,7 @@ void VanLeerFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! VanLeerFlux: Not implemented!\n";
 }
 
-AUSMFlux::AUSMFlux(const IdealGasPhysics *const analyticalflux) 
+AUSMFlux::AUSMFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 { }
 
@@ -453,7 +453,7 @@ void AUSMFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 		dfdl[k] = -dfdl[k];
 }
 
-AUSMPlusFlux::AUSMPlusFlux(const IdealGasPhysics *const analyticalflux) 
+AUSMPlusFlux::AUSMPlusFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 { }
 
@@ -538,7 +538,7 @@ void AUSMPlusFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	std::cout << " ! AUSMPlusFlux: Not implemented!\n";
 }
 
-RoeAverageBasedFlux::RoeAverageBasedFlux(const IdealGasPhysics *const analyticalflux) 
+RoeAverageBasedFlux::RoeAverageBasedFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: InviscidFlux(analyticalflux)
 { }
 
@@ -630,7 +630,7 @@ void RoeAverageBasedFlux::getJacobiansRoeAveragesWrtConserved (
 	}
 }
 
-RoeFlux::RoeFlux(const IdealGasPhysics *const analyticalflux) 
+RoeFlux::RoeFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: RoeAverageBasedFlux(analyticalflux), fixeps{1.0e-4}
 { }
 
@@ -928,7 +928,7 @@ void RoeFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	}
 }
 
-HLLFlux::HLLFlux(const IdealGasPhysics *const analyticalflux) 
+HLLFlux::HLLFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: RoeAverageBasedFlux(analyticalflux)
 {
 }
@@ -1386,7 +1386,7 @@ void HLLFlux::get_jacobian(const a_real *const ul, const a_real *const ur,
 	}
 }
 
-HLLCFlux::HLLCFlux(const IdealGasPhysics *const analyticalflux) 
+HLLCFlux::HLLCFlux(const IdealGasPhysics<a_real> *const analyticalflux) 
 	: RoeAverageBasedFlux(analyticalflux)
 {
 }

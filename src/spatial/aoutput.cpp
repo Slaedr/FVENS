@@ -16,7 +16,7 @@ Output<nvars>::Output(const Spatial<nvars> *const fv)
 { }
 
 FlowOutput::FlowOutput(const Spatial<NVARS> *const fv,
-		const IdealGasPhysics *const physics, const a_real aoa)
+                       const IdealGasPhysics<a_real> *const physics, const a_real aoa)
 	: Output<NVARS>(fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
 {
 }

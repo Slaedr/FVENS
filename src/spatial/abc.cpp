@@ -10,7 +10,7 @@
 namespace fvens {
 
 template <typename scalar>
-FlowBC<scalar>::FlowBC(const int bc_tag, const IdealGasPhysics& gasphysics)
+FlowBC<scalar>::FlowBC(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
 	: btag{bc_tag}, phy{gasphysics}
 { }
 
@@ -19,7 +19,7 @@ FlowBC<scalar>::~FlowBC()
 { }
 
 template <typename scalar>
-InOutFlow<scalar>::InOutFlow(const int bc_tag, const IdealGasPhysics& gasphysics,
+InOutFlow<scalar>::InOutFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                              const std::array<scalar,NVARS>& u_far)
 	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
 { }
@@ -118,7 +118,7 @@ void InOutFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, co
 }
 
 template <typename scalar>
-InFlow<scalar>::InFlow(const int bc_tag, const IdealGasPhysics& gasphysics,
+InFlow<scalar>::InFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                        const scalar t_pressure, const scalar t_temp)
 	: FlowBC<scalar>(bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
 { }
@@ -163,7 +163,7 @@ void InFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, const
 }
 
 template <typename scalar>
-Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics& gasphysics,
+Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                            const std::array<scalar,NVARS>& u_far)
 	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
 { }
@@ -188,7 +188,7 @@ void Farfield<scalar>::computeGhostStateAndJacobian(const scalar *const ins, con
 }
 
 template <typename scalar>
-Slipwall<scalar>::Slipwall(const int bc_tag, const IdealGasPhysics& gasphysics)
+Slipwall<scalar>::Slipwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
 	: FlowBC<scalar>(bc_tag, gasphysics)
 { }
 
@@ -241,7 +241,7 @@ void Slipwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins, con
 }
 
 template <typename scalar>
-Adiabaticwall2D<scalar>::Adiabaticwall2D(const int bc_tag, const IdealGasPhysics& gasphysics,
+Adiabaticwall2D<scalar>::Adiabaticwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                                          const a_real wall_tangential_velocity)
 	: FlowBC<scalar>(bc_tag, gasphysics), tangvel{wall_tangential_velocity}
 { }
@@ -283,7 +283,7 @@ void Adiabaticwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const i
 }
 
 template <typename scalar>
-Isothermalwall2D<scalar>::Isothermalwall2D(const int bc_tag, const IdealGasPhysics& gasphysics,
+Isothermalwall2D<scalar>::Isothermalwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                                            const a_real wtv, const a_real temp)
 	: FlowBC<scalar>(bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
 { }
@@ -347,7 +347,7 @@ void Isothermalwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const 
 }
 
 template <typename scalar>
-Extrapolation<scalar>::Extrapolation(const int bc_tag, const IdealGasPhysics& gasphysics)
+Extrapolation<scalar>::Extrapolation(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
 	: FlowBC<scalar>(bc_tag, gasphysics)
 { }
 
@@ -384,7 +384,7 @@ template class Extrapolation<a_real>;
 
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                         const IdealGasPhysics& physics,
+                                                         const IdealGasPhysics<scalar>& physics,
                                                          const std::array<a_real,NVARS>& uinf)
 {
 	std::map<int,const FlowBC<scalar>*> bcmap;
@@ -419,7 +419,7 @@ std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& con
 
 template
 std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                         const IdealGasPhysics& physics,
+                                                         const IdealGasPhysics<a_real>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
 
 }

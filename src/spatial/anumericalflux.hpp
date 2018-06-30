@@ -20,7 +20,7 @@ class InviscidFlux
 {
 public:
 	/// Sets the physics context for the inviscid flux scheme
-	InviscidFlux(const IdealGasPhysics *const physcs);
+	InviscidFlux(const IdealGasPhysics<a_real> *const physcs);
 
 	/** Computes flux across a face
 	 * \param[in] uleft is the vector of left states for the face
@@ -46,14 +46,14 @@ public:
 	virtual ~InviscidFlux();
 
 protected:
-	const IdealGasPhysics *const physics;        ///< Functionality replated to gas constitutive law
+	const IdealGasPhysics<a_real> *const physics;        ///< Functionality replated to gas constitutive law
 	const a_real g;                              ///< Adiabatic index
 };
 
 class LocalLaxFriedrichsFlux : public InviscidFlux
 {
 public:
-	LocalLaxFriedrichsFlux(const IdealGasPhysics *const analyticalflux);
+	LocalLaxFriedrichsFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	
 	/** \sa InviscidFlux::get_flux
 	 */
@@ -79,7 +79,7 @@ public:
 class VanLeerFlux : public InviscidFlux
 {
 public:
-	VanLeerFlux(const IdealGasPhysics *const analyticalflux);
+	VanLeerFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -97,7 +97,7 @@ public:
 class AUSMFlux : public InviscidFlux
 {
 public:
-	AUSMFlux(const IdealGasPhysics *const analyticalflux);
+	AUSMFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	
 	/** \sa InviscidFlux::get_flux
 	 */
@@ -115,7 +115,7 @@ public:
 class AUSMPlusFlux : public InviscidFlux
 {
 public:
-	AUSMPlusFlux(const IdealGasPhysics *const analyticalflux);
+	AUSMPlusFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -129,7 +129,7 @@ public:
 class RoeAverageBasedFlux : public InviscidFlux
 {
 public:
-	RoeAverageBasedFlux(const IdealGasPhysics *const analyticalflux);
+	RoeAverageBasedFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	virtual void get_flux(const a_real *const ul, const a_real *const ur, const a_real* const n, 
 			a_real *const flux) const = 0;
 	virtual void get_jacobian(const a_real *const ul, const a_real *const ur, const a_real* const n, 
@@ -175,7 +175,7 @@ protected:
 class RoeFlux : public RoeAverageBasedFlux
 {
 public:
-	RoeFlux(const IdealGasPhysics *const analyticalflux);
+	RoeFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	
 	/** \sa InviscidFlux::get_flux
 	 */
@@ -206,7 +206,7 @@ class HLLFlux : public RoeAverageBasedFlux
 			a_real *const flux, a_real *const fluxd) const;
 
 public:
-	HLLFlux(const IdealGasPhysics *const analyticalflux);
+	HLLFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	
 	/** \sa InviscidFlux::get_flux
 	 */
@@ -235,7 +235,7 @@ public:
 class HLLCFlux : public RoeAverageBasedFlux
 {
 public:
-	HLLCFlux(const IdealGasPhysics *const analyticalflux);
+	HLLCFlux(const IdealGasPhysics<a_real> *const analyticalflux);
 	
 	/** \sa InviscidFlux::get_flux
 	 */

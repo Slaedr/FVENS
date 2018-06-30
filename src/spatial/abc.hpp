@@ -57,7 +57,7 @@ public:
 	/** \param bc_tag The boundary marker tag for which we want this BC to apply
 	 * \param gasphysics Context describing some properties of the gas
 	 */
-	FlowBC(const int bc_tag, const IdealGasPhysics& gasphysics);
+	FlowBC(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics);
 
 	virtual ~FlowBC();
 
@@ -87,7 +87,7 @@ protected:
 	int btag;
 
 	/// Thermodynamic and some mechanical properties of the fluid
-	const IdealGasPhysics& phy;
+	const IdealGasPhysics<scalar>& phy;
 };
 
 /// Currently, this is a pressure-imposed outflow and all-imposed inflow BC
@@ -111,7 +111,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 * \param ufar Far-field state
 	 */
-	InOutFlow(const int face_id, const IdealGasPhysics& gasphysics,
+	InOutFlow(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
 	          const std::array<scalar,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -143,7 +143,7 @@ public:
 	 * \param totalpressure Non-dimensional total pressure at inflow
 	 * \param totaltemperature Total temperature at inflow
 	 */
-	InFlow(const int face_id, const IdealGasPhysics& gasphysics,
+	InFlow(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
 	       const scalar totalpressure, const scalar totaltemperature); 
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -171,7 +171,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 * \param ufar Far-field state
 	 */
-	Farfield(const int face_id, const IdealGasPhysics& gasphysics,
+	Farfield(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
 	         const std::array<scalar,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -197,7 +197,7 @@ public:
 	/// Setup extrapolation BC
 	/** \sa FlowBC::FlowBC
 	 */
-	Extrapolation(const int face_id, const IdealGasPhysics& gasphysics);
+	Extrapolation(const int face_id, const IdealGasPhysics<scalar>& gasphysics);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -221,7 +221,7 @@ public:
 	/// Setup slip wall BC 
 	/** \sa FlowBC::FlowBC
 	 */
-	Slipwall(const int face_id, const IdealGasPhysics& gasphysics);
+	Slipwall(const int face_id, const IdealGasPhysics<scalar>& gasphysics);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -246,7 +246,7 @@ public:
 	/// Setup adiabatic no-slip wall BC 
 	/** \sa FlowBC::FlowBC
 	 */
-	Adiabaticwall2D(const int face_id, const IdealGasPhysics& gasphysics,
+	Adiabaticwall2D(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
 	                const a_real wall_tangential_velocity);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -273,7 +273,7 @@ public:
 	/// Setup isothermal no-slip wall BC 
 	/** \sa FlowBC::FlowBC
 	 */
-	Isothermalwall2D(const int face_id, const IdealGasPhysics& gasphysics,
+	Isothermalwall2D(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
 	                 const a_real wall_tangential_velocity, const a_real wall_temperature);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -300,7 +300,7 @@ protected:
  */
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-                                                         const IdealGasPhysics& physics,
+                                                         const IdealGasPhysics<scalar>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
 
 }

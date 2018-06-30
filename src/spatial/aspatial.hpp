@@ -216,7 +216,7 @@ protected:
 	const FlowNumericsConfig& nconfig;
 
 	/// Analytical flux vector computation
-	const IdealGasPhysics physics;
+	const IdealGasPhysics<a_real> physics;
 	
 	const std::array<a_real,NVARS> uinf;                    ///< Free-stream/reference condition
 

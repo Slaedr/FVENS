@@ -9,7 +9,8 @@
 	
 namespace fvens {
 
-IdealGasPhysics::IdealGasPhysics(const a_real _g, const a_real M_inf, 
+template <typename scalar>
+IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf, 
 		const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
 	: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
 {
@@ -19,20 +20,22 @@ IdealGasPhysics::IdealGasPhysics(const a_real _g, const a_real M_inf,
 }
 
 
-void IdealGasPhysics::getDirectionalFluxFromConserved(const a_real *const u, const a_real* const n, 
-		a_real *const __restrict flux) const
+template <typename scalar>
+void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n, 
+		scalar *const __restrict flux) const
 {
-	const a_real vn = dimDotProduct(&u[1],n)/u[0];
-	const a_real p = getPressure(u[NVARS-1] - 0.5*dimDotProduct(&u[1],&u[1])/u[0]);
+	const scalar vn = dimDotProduct(&u[1],n)/u[0];
+	const scalar p = getPressure(u[NVARS-1] - 0.5*dimDotProduct(&u[1],&u[1])/u[0]);
 	getDirectionalFlux(u, n, vn, p, flux);
 }
 
 /** The reference density and reference velocity are the free-stream values, therefore
  * the non-dimensional free-stream density and velocity magnitude are 1.0.
  */
-std::array<a_real,NVARS> IdealGasPhysics::compute_freestream_state(const a_real aoa) const
+template <typename scalar>
+std::array<scalar,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const a_real aoa) const
 {
-	std::array<a_real,NVARS> uinf;
+	std::array<scalar,NVARS> uinf;
 	uinf[0] = 1.0;
 	uinf[1] = cos(aoa);
 	uinf[2] = sin(aoa);
@@ -40,11 +43,12 @@ std::array<a_real,NVARS> IdealGasPhysics::compute_freestream_state(const a_real 
 	return uinf;
 }
 
-void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const u, 
-		const a_real* const n, 
-		a_real *const __restrict dfdu) const
+template <typename scalar>
+void IdealGasPhysics<scalar>::getJacobianDirectionalFluxWrtConserved(const scalar *const u, 
+		const scalar* const n, 
+		scalar *const __restrict dfdu) const
 {
-	const a_real rhovn = dimDotProduct(&u[1],n), u02 = u[0]*u[0];
+	const scalar rhovn = dimDotProduct(&u[1],n), u02 = u[0]*u[0];
 	// first row
 	dfdu[0] = 0; 
 	dfdu[1] = n[0]; 
@@ -67,9 +71,11 @@ void IdealGasPhysics::getJacobianDirectionalFluxWrtConserved(const a_real *const
 	dfdu[15]= g*rhovn/u[0];
 }
 
-void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const a_real *const n,
-	a_real *const __restrict dv, a_real *const __restrict dvn,
-	a_real *const __restrict dp, a_real *const __restrict dH) const
+template <typename scalar>
+void IdealGasPhysics<scalar>
+::getJacobianVarsWrtConserved(const scalar *const uc, const scalar *const n,
+                              scalar *const __restrict dv, scalar *const __restrict dvn,
+                              scalar *const __restrict dp, scalar *const __restrict dH) const
 {
 	for(int j = 0; j < NDIM; j++) 
 	{
@@ -82,7 +88,7 @@ void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const 
 		dvn[j+1] += n[j]/uc[0];
 	}
 
-	const a_real p = getPressureFromConserved(uc);
+	const scalar p = getPressureFromConserved(uc);
 	getJacobianPressureWrtConserved(uc, dp);
 
 	dH[0] += (dp[0]*uc[0] - (uc[3]+p))/(uc[0]*uc[0]);
@@ -91,12 +97,13 @@ void IdealGasPhysics::getJacobianVarsWrtConserved(const a_real *const uc, const 
 	dH[3] += (1.0+dp[3])/uc[0];
 }
 
-void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc, 
-		a_real *const __restrict jac) const
+template <typename scalar>
+void IdealGasPhysics<scalar>::getJacobianPrimitive2WrtConserved(const scalar *const uc, 
+		scalar *const __restrict jac) const
 {
 	jac[0] += 1.0;
 
-	const a_real rho2vmag2 = dimDotProduct(&uc[1],&uc[1]);
+	const scalar rho2vmag2 = dimDotProduct(&uc[1],&uc[1]);
 	
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		// d(up[idim])
@@ -104,21 +111,22 @@ void IdealGasPhysics::getJacobianPrimitive2WrtConserved(const a_real *const uc,
 		jac[idim*NVARS+idim] += 1.0/uc[0];
 	}
 	
-	const a_real p = getPressure(uc[NVARS-1] - 0.5*rho2vmag2/uc[0]);
-	a_real dp[NVARS]; 
+	const scalar p = getPressure(uc[NVARS-1] - 0.5*rho2vmag2/uc[0]);
+	scalar dp[NVARS]; 
 	zeros(dp, NVARS);
 	getJacobianPressureWrtConserved(uc, rho2vmag2, dp);
 
 	getJacobianTemperature(uc[0], p, dp, &jac[3*NVARS]);
 }
 
-void IdealGasPhysics::getJacobianStress(const a_real mu, const a_real *const dmu,
-		const a_real grad[NDIM][NVARS], const a_real dgrad[NDIM][NVARS][NVARS],
-		a_real stress[NDIM][NDIM], 
-		a_real dstress[NDIM][NDIM][NVARS]) const
+template <typename scalar>
+void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *const dmu,
+		const scalar grad[NDIM][NVARS], const scalar dgrad[NDIM][NVARS][NVARS],
+		scalar stress[NDIM][NDIM], 
+		scalar dstress[NDIM][NDIM][NVARS]) const
 {
-	a_real div = 0;
-	a_real dldiv[NVARS];
+	scalar div = 0;
+	scalar dldiv[NVARS];
 	for(int k = 0; k < NVARS; k++)
 		dldiv[k] = 0;
 
@@ -129,7 +137,7 @@ void IdealGasPhysics::getJacobianStress(const a_real mu, const a_real *const dmu
 			dldiv[k] += dgrad[j][j+1][k];
 	}
 	
-	const a_real ldiv = 2.0/3.0*mu*div;
+	const scalar ldiv = 2.0/3.0*mu*div;
 	for(int k = 0; k < NVARS; k++)
 		dldiv[k] = 2.0/3.0 * (dmu[k]*div + mu*dldiv[k]);
 	
@@ -149,5 +157,7 @@ void IdealGasPhysics::getJacobianStress(const a_real mu, const a_real *const dmu
 			dstress[i][i][k] -= dldiv[k];
 	}
 }
+
+template class IdealGasPhysics<a_real>;
 
 }

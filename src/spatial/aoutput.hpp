@@ -47,7 +47,7 @@ public:
 	/** \param[in] angleOfAttack The angle of attack in radians
 	 */
 	FlowOutput(const Spatial<NVARS> *const fv,
-			const IdealGasPhysics *const physics, const a_real angleOfAttack);
+			const IdealGasPhysics<a_real> *const physics, const a_real angleOfAttack);
 	
 	/** For each cell, writes out the coordinates of the cell-centre,
 	 * density, velocities, pressure, temperature and Mach number.
@@ -77,7 +77,7 @@ public:
 protected:
 	using Output<NVARS>::space;
 	using Output<NVARS>::m;
-	const IdealGasPhysics *const phy;
+	const IdealGasPhysics<a_real> *const phy;
 	const a_real av[NDIM];				///< Unit vector in the direction of freestream flow
 };
 

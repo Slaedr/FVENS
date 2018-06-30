@@ -33,11 +33,11 @@ namespace fvens {
 
 /// Returns a new inviscid numerical flux context
 InviscidFlux* create_mutable_inviscidflux(const std::string& type, 
-		const IdealGasPhysics *const p) ;
+		const IdealGasPhysics<a_real> *const p) ;
 
 /// Returns a new immutable inviscid flux context
 const InviscidFlux* create_const_inviscidflux(const std::string& type, 
-		const IdealGasPhysics *const p) ;
+		const IdealGasPhysics<a_real> *const p) ;
 
 /// Returns a newly-created gradient computation context
 template <int nvars>

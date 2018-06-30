@@ -25,7 +25,7 @@ namespace fvens {
 
 InviscidFlux* create_mutable_inviscidflux(
 		const std::string& type, 
-		const IdealGasPhysics *const p) 
+		const IdealGasPhysics<a_real> *const p) 
 {
 	InviscidFlux *inviflux = nullptr;
 
@@ -71,7 +71,7 @@ InviscidFlux* create_mutable_inviscidflux(
 
 const InviscidFlux* create_const_inviscidflux(
 		const std::string& type,
-		const IdealGasPhysics *const p) 
+		const IdealGasPhysics<a_real> *const p) 
 {
 	return const_cast<const InviscidFlux*>(create_mutable_inviscidflux(type, p));
 }
