@@ -122,9 +122,9 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> u(uarr, locnelem, nvars);
+	Eigen::Map<MVector<a_real>> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
+	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, nvars);
 
 	int step = 0;
 	a_real resi = 1.0;
@@ -333,9 +333,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	ierr = VecGetArray(duvec, &duarr); CHKERRQ(ierr);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> du(duarr, m->gnelem(), nvars);
-	Eigen::Map<MVector> residual(rarr, m->gnelem(), nvars);
-	Eigen::Map<MVector> u(uarr, m->gnelem(), nvars);
+	Eigen::Map<MVector<a_real>> du(duarr, m->gnelem(), nvars);
+	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
+	Eigen::Map<MVector<a_real>> u(uarr, m->gnelem(), nvars);
 
 	std::ofstream convout;
 	if(config.lognres)
@@ -574,9 +574,9 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> u(uarr, locnelem, nvars);
+	Eigen::Map<MVector<a_real>> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector> residual(rarr, locnelem, nvars);
+	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, nvars);
 
 
 	int step = 0;
@@ -584,7 +584,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	a_real dtmin=0;      //< Time step
 
 	// Stage solution vector
-	MVector ustage(m->gnelem(),nvars);
+	MVector<a_real> ustage(m->gnelem(),nvars);
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 		for(int ivar = 0; ivar < nvars; ivar++)

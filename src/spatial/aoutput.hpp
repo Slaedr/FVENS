@@ -20,7 +20,7 @@ public:
 	/** \param[in] u The field variables
 	 * \param[in] volfile The name of the file to be written.
 	 */
-	virtual void exportVolumeData(const MVector& u, const std::string volfile) const = 0;
+	virtual void exportVolumeData(const MVector<a_real>& u, const std::string volfile) const = 0;
 
 	/// Exports data on surfaces
 	/** \param[in] u The multi-vector containing field variables.
@@ -28,7 +28,7 @@ public:
 	 * \param[in] obcm A list of `other' boundary face markers at which some other output is needed.
 	 * \param[in] basename The base name for the files that will be written.
 	 */
-	virtual void exportSurfaceData(const MVector& u, const std::vector<int> wbcm,
+	virtual void exportSurfaceData(const MVector<a_real>& u, const std::vector<int> wbcm,
 			const std::vector<int> obcm, const std::string basename) const = 0;
 
 protected:
@@ -52,7 +52,7 @@ public:
 	/** For each cell, writes out the coordinates of the cell-centre,
 	 * density, velocities, pressure, temperature and Mach number.
 	 */
-	void exportVolumeData(const MVector& u, const std::string volfile) const;
+	void exportVolumeData(const MVector<a_real>& u, const std::string volfile) const;
 
 	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
@@ -61,9 +61,9 @@ public:
 	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
 	 *                   Cp and Csf, in that order
 	 */
-	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector& u,
-	                                                    const GradArray<NVARS>& grad,
-	                                                    const int iwbcm, MVector& output) const;
+	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector<a_real>& u,
+	                                                    const GradArray<a_real,NVARS>& grad,
+	                                                    const int iwbcm, MVector<a_real>& output) const;
 
 	/// Export surface data
 	/** We compute pressure and skin-friction coefficients for wall boundaries, and
@@ -71,7 +71,7 @@ public:
 	 * We also compute lift and drag for wall boundaries.
 	 * \sa Output::exportSurfaceData
 	 */
-	void exportSurfaceData(const MVector& u, const std::vector<int> wbcm,
+	void exportSurfaceData(const MVector<a_real>& u, const std::vector<int> wbcm,
 			const std::vector<int> obcm, const std::string basename) const;
 
 protected:

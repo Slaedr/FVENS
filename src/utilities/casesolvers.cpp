@@ -97,7 +97,7 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 				m, scalars, scalarnames, velocities, "velocity");
 	}
 	
-	MVector umat; umat.resize(m.gnelem(),NVARS);
+	MVector<a_real> umat; umat.resize(m.gnelem(),NVARS);
 	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(*u, &uarr); 
 	petsc_throw(ierr, "Petsc VecGetArrayRead error");
@@ -117,8 +117,8 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 		std::cout << e.what() << std::endl;
 	}
 	
-	MVector output; output.resize(m.gnelem(),NDIM+2);
-	GradArray<NVARS> grad;
+	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
+	GradArray<a_real,NVARS> grad;
 	grad.resize(m.gnelem());
 	prob->getGradients(umat, grad);
 	const std::tuple<a_real,a_real,a_real> fnls 

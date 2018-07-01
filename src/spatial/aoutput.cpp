@@ -21,7 +21,7 @@ FlowOutput::FlowOutput(const Spatial<NVARS> *const fv,
 {
 }
 
-void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
+void FlowOutput::exportVolumeData(const MVector<a_real>& u, std::string volfile) const
 {
 	std::ofstream fout;
 	open_file_toWrite(volfile+"-vol.out", fout);
@@ -49,10 +49,10 @@ void FlowOutput::exportVolumeData(const MVector& u, std::string volfile) const
 	fout.close();
 }
 
-std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData (const MVector& u,
-                                                                 const GradArray<NVARS>& grad,
+std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData (const MVector<a_real>& u,
+                                                                 const GradArray<a_real,NVARS>& grad,
                                                                  const int iwbcm,
-                                                                 MVector& output) const
+                                                                 MVector<a_real>& output) const
 {
 	a_int facecoun = 0;			// face iteration counter for this boundary marker
 	a_real totallen = 0;		// total area of the surface with this boundary marker
@@ -160,11 +160,11 @@ std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData (const MVector& 
 
 /** \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
  */
-void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm, 
+void FlowOutput::exportSurfaceData(const MVector<a_real>& u, const std::vector<int> wbcm, 
 		std::vector<int> obcm, const std::string basename) const
 {
 	// Get conserved variables' gradients
-	GradArray<NVARS> grad;
+	GradArray<a_real,NVARS> grad;
 	grad.resize(m->gnelem());
 
 	space->getGradients(u, grad);
@@ -187,7 +187,7 @@ void FlowOutput::exportSurfaceData(const MVector& u, const std::vector<int> wbcm
 		std::ofstream fout; 
 		open_file_toWrite(fname, fout);
 		
-		MVector output(nwbfaces[im], 2+NDIM);
+		MVector<a_real> output(nwbfaces[im], 2+NDIM);
 
 		//a_int facecoun = 0;			// face iteration counter for this boundary marker
 		//a_real totallen = 0;		// total area of the surface with this boundary marker
