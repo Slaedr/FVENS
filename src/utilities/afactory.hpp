@@ -54,14 +54,14 @@ const GradientScheme<a_real,nvars>* create_const_gradientscheme(const std::strin
  * the cell-centred values and cell-centred gradients.
  * \param param A parameter that controls the behaviour of some limiters.
  */
-SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
+SolutionReconstruction<a_real>* create_mutable_reconstruction(const std::string& type,
                                                       const UMesh2dh<a_real> *const m,
                                                       const amat::Array2d<a_real>& rc,
                                                       const amat::Array2d<a_real> *const gr,
                                                       const a_real param);
 
 /// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
-const SolutionReconstruction* create_const_reconstruction(const std::string& type,
+const SolutionReconstruction<a_real>* create_const_reconstruction(const std::string& type,
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param);
 

@@ -232,7 +232,7 @@ protected:
 	const GradientScheme<a_real,NVARS> *const gradcomp;
 
 	/// Reconstruction context
-	const SolutionReconstruction *const lim;
+	const SolutionReconstruction<a_real> *const lim;
 
 	/// The different boundary conditions required for all the boundaries
 	const std::map<int,const FlowBC<a_real>*> bcs;

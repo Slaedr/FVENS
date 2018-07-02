@@ -16,24 +16,25 @@ namespace fvens {
 /** \note Face values at boundary faces are only computed for the left (interior) side. 
  * Right side values for boundary faces need to computed elsewhere using boundary conditions.
  */
+template <typename scalar>
 class SolutionReconstruction
 {
 protected:
-	const UMesh2dh<a_real> *const m;            ///< Mesh context
-	const amat::Array2d<a_real>& ri;            ///< coords of cell centers of cells
-	const amat::Array2d<a_real> *const gr;      ///< coords of Gauss quadrature points of each face
+	const UMesh2dh<scalar> *const m;            ///< Mesh context
+	const amat::Array2d<scalar>& ri;            ///< coords of cell centers of cells
+	const amat::Array2d<scalar> *const gr;      ///< coords of Gauss quadrature points of each face
 	const int ng;                               ///< Number of Gauss points
 
 public:
-	SolutionReconstruction (const UMesh2dh<a_real> *const  mesh,          ///< Mesh context
-	                        const amat::Array2d<a_real>& c_centres,       ///< Cell centres
-	                        const amat::Array2d<a_real>* gauss_r);        ///< Coords of Gauss points
+	SolutionReconstruction (const UMesh2dh<scalar> *const  mesh,          ///< Mesh context
+	                        const amat::Array2d<scalar>& c_centres,       ///< Cell centres
+	                        const amat::Array2d<scalar>* gauss_r);        ///< Coords of Gauss points
 
-	virtual void compute_face_values(const MVector<a_real>& unknowns, 
-	                                 const amat::Array2d<a_real>& unknow_ghost,
-	                                 const GradArray<a_real,NVARS>& grads,
-	                                 amat::Array2d<a_real>& uface_left,
-	                                 amat::Array2d<a_real>& uface_right) const = 0;
+	virtual void compute_face_values(const MVector<scalar>& unknowns, 
+	                                 const amat::Array2d<scalar>& unknow_ghost,
+	                                 const GradArray<scalar,NVARS>& grads,
+	                                 amat::Array2d<scalar>& uface_left,
+	                                 amat::Array2d<scalar>& uface_right) const = 0;
 
 	virtual ~SolutionReconstruction();
 };
@@ -42,19 +43,26 @@ public:
 /// based on computed derivatives but without limiter.
 /** ug (cell centered flow variables at ghost cells) are not used for this
  */
-class LinearUnlimitedReconstruction : public SolutionReconstruction
+template <typename scalar>
+class LinearUnlimitedReconstruction : public SolutionReconstruction<scalar>
 {
 public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
-	LinearUnlimitedReconstruction(const UMesh2dh<a_real> *const mesh,
-	                              const amat::Array2d<a_real>& c_centres, 
-	                              const amat::Array2d<a_real>* gauss_r);
+	LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
+	                              const amat::Array2d<scalar>& c_centres, 
+	                              const amat::Array2d<scalar>* gauss_r);
 
-	void compute_face_values(const MVector<a_real>& unknowns, 
-	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<a_real,NVARS>& grads,
-	                         amat::Array2d<a_real>& uface_left,
-	                         amat::Array2d<a_real>& uface_right) const;
+	void compute_face_values(const MVector<scalar>& unknowns, 
+	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const GradArray<scalar,NVARS>& grads,
+	                         amat::Array2d<scalar>& uface_left,
+	                         amat::Array2d<scalar>& uface_right) const;
+
+protected:
+	using SolutionReconstruction<scalar>::m;
+	using SolutionReconstruction<scalar>::ri;
+	using SolutionReconstruction<scalar>::gr;
+	using SolutionReconstruction<scalar>::ng;
 };
 
 /// Computes state at left and right sides of each face based on WENO-limited derivatives 
@@ -64,41 +72,53 @@ public:
  * Note that we do not take the 'oscillation indicator' as the square of the magnitude of 
  * the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
  */
-class WENOReconstruction : public SolutionReconstruction
+template <typename scalar>
+class WENOReconstruction : public SolutionReconstruction<scalar>
 {
 	const a_real gamma;               ///< Exponent for oscillation indicator
 	const a_real lambda;              ///< Weight of central stencil relative to biased stencils
 	const a_real epsilon;             ///< Small constant to avoid division by zero
 public:
-	WENOReconstruction(const UMesh2dh<a_real> *const mesh,
-	                   const amat::Array2d<a_real>& c_centres, 
-	                   const amat::Array2d<a_real>* gauss_r,
+	WENOReconstruction(const UMesh2dh<scalar> *const mesh,
+	                   const amat::Array2d<scalar>& c_centres, 
+	                   const amat::Array2d<scalar>* gauss_r,
 	                   const a_real central_weight);
 
-	void compute_face_values(const MVector<a_real>& unknowns, 
-	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<a_real,NVARS>& grads,
-	                         amat::Array2d<a_real>& uface_left,
-	                         amat::Array2d<a_real>& uface_right) const;
+	void compute_face_values(const MVector<scalar>& unknowns, 
+	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const GradArray<scalar,NVARS>& grads,
+	                         amat::Array2d<scalar>& uface_left,
+	                         amat::Array2d<scalar>& uface_right) const;
+protected:
+	using SolutionReconstruction<scalar>::m;
+	using SolutionReconstruction<scalar>::ri;
+	using SolutionReconstruction<scalar>::gr;
+	using SolutionReconstruction<scalar>::ng;
 };
 
 /// Provides common functionality for computing face values using MUSCL reconstruciton
 /** The MUSCL reconstruction for unstructured grids is based on \cite lohner2008.
  */
-class MUSCLReconstruction : public SolutionReconstruction
+template <typename scalar>
+class MUSCLReconstruction : public SolutionReconstruction<scalar>
 {
 public:
-	MUSCLReconstruction(const UMesh2dh<a_real> *const mesh,
-	                    const amat::Array2d<a_real>& c_centres, 
-	                    const amat::Array2d<a_real>* gauss_r);
+	MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
+	                    const amat::Array2d<scalar>& c_centres, 
+	                    const amat::Array2d<scalar>* gauss_r);
     
-	virtual void compute_face_values(const MVector<a_real>& unknowns, 
-	                                 const amat::Array2d<a_real>& unknow_ghost, 
-	                                 const GradArray<a_real,NVARS>& grads,
-	                                 amat::Array2d<a_real>& uface_left,
-	                                 amat::Array2d<a_real>& uface_right) const = 0;
+	virtual void compute_face_values(const MVector<scalar>& unknowns, 
+	                                 const amat::Array2d<scalar>& unknow_ghost, 
+	                                 const GradArray<scalar,NVARS>& grads,
+	                                 amat::Array2d<scalar>& uface_left,
+	                                 amat::Array2d<scalar>& uface_right) const = 0;
 
 protected:
+	using SolutionReconstruction<scalar>::m;
+	using SolutionReconstruction<scalar>::ri;
+	using SolutionReconstruction<scalar>::gr;
+	using SolutionReconstruction<scalar>::ng;
+
 	const a_real eps;                       ///< Small number
 	const a_real k;                         ///< MUSCL order parameter
 
@@ -107,9 +127,9 @@ protected:
 	 * If the gradient of the left cell is given, the backward-biased difference is computed;
 	 * if the gradient of the right cell is given, the forward-biased difference is computed.
 	 */
-	a_real computeBiasedDifference(const a_real *const ri, const a_real *const rj,
-	                               const a_real ui, const a_real uj,
-	                               const a_real *const grads) const;
+	scalar computeBiasedDifference(const scalar *const ri, const scalar *const rj,
+	                               const scalar ui, const scalar uj,
+	                               const scalar *const grads) const;
 
 	/// Computes the MUSCL reconstructed face value on the left, given the limiter value
 	/** \param ui Left cell-centred value
@@ -118,8 +138,8 @@ protected:
 	 * \param phi The limiter value
 	 * \return The left state at the face between cells i and j
 	 */
-	a_real musclReconstructLeft(const a_real ui, const a_real uj, 
-	                            const a_real deltam, const a_real phi) const;
+	scalar musclReconstructLeft(const scalar ui, const scalar uj, 
+	                            const scalar deltam, const scalar phi) const;
 	
 	/// Computes the MUSCL reconstructed face value on the right, given the limiter value
 	/** \param ui Left cell-centred value
@@ -128,62 +148,85 @@ protected:
 	 * \param phi The limiter value
 	 * \return The right state at the face between cells i and j
 	 */
-	a_real musclReconstructRight(const a_real ui, const a_real uj, 
-	                             const a_real deltap, const a_real phi) const;
+	scalar musclReconstructRight(const scalar ui, const scalar uj, 
+	                             const scalar deltap, const scalar phi) const;
 };
 
 /// Computes face values using MUSCL reconstruciton with Van-Albada limiter
-class MUSCLVanAlbada : public MUSCLReconstruction
+template <typename scalar>
+class MUSCLVanAlbada : public MUSCLReconstruction<scalar>
 {
 public:
-	MUSCLVanAlbada(const UMesh2dh<a_real> *const mesh,
-	               const amat::Array2d<a_real>& c_centres, 
-	               const amat::Array2d<a_real>* gauss_r);
+	MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
+	               const amat::Array2d<scalar>& c_centres, 
+	               const amat::Array2d<scalar>* gauss_r);
     
-	void compute_face_values(const MVector<a_real>& unknowns, 
-	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<a_real,NVARS>& grads,
-	                         amat::Array2d<a_real>& uface_left,
-	                         amat::Array2d<a_real>& uface_right) const;
+	void compute_face_values(const MVector<scalar>& unknowns, 
+	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const GradArray<scalar,NVARS>& grads,
+	                         amat::Array2d<scalar>& uface_left,
+	                         amat::Array2d<scalar>& uface_right) const;
+protected:
+	using SolutionReconstruction<scalar>::m;
+	using SolutionReconstruction<scalar>::ri;
+	using SolutionReconstruction<scalar>::gr;
+	using SolutionReconstruction<scalar>::ng;
+	using MUSCLReconstruction<scalar>::computeBiasedDifference;
+	using MUSCLReconstruction<scalar>::musclReconstructLeft;
+	using MUSCLReconstruction<scalar>::musclReconstructRight;
+	using MUSCLReconstruction<scalar>::eps;
+	using MUSCLReconstruction<scalar>::k;
 };
 
 /// Non-differentiable multidimensional slope limiter for linear reconstruction
-class BarthJespersenLimiter : public SolutionReconstruction
+template <typename scalar>
+class BarthJespersenLimiter : public SolutionReconstruction<scalar>
 {
 public:
-	BarthJespersenLimiter(const UMesh2dh<a_real> *const mesh, 
-	                      const amat::Array2d<a_real>& c_centres, 
-	                      const amat::Array2d<a_real>* gauss_r);
+	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
+	                      const amat::Array2d<scalar>& c_centres, 
+	                      const amat::Array2d<scalar>* gauss_r);
     
-	void compute_face_values(const MVector<a_real>& unknowns, 
-	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<a_real,NVARS>& grads,
-	                         amat::Array2d<a_real>& uface_left,
-	                         amat::Array2d<a_real>& uface_right) const;
+	void compute_face_values(const MVector<scalar>& unknowns, 
+	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const GradArray<scalar,NVARS>& grads,
+	                         amat::Array2d<scalar>& uface_left,
+	                         amat::Array2d<scalar>& uface_right) const;
+protected:
+	using SolutionReconstruction<scalar>::m;
+	using SolutionReconstruction<scalar>::ri;
+	using SolutionReconstruction<scalar>::gr;
+	using SolutionReconstruction<scalar>::ng;
 };
 
 /// Differentiable modification of Barth-Jespersen limiter
-class VenkatakrishnanLimiter: public SolutionReconstruction
+template <typename scalar>
+class VenkatakrishnanLimiter: public SolutionReconstruction<scalar>
 {
 	/// Parameter for adjusting limiting vs convergence
 	const a_real K;
 
 	/// List of characteristic length of cells
-	std::vector<a_real> clength;
+	std::vector<scalar> clength;
 
 public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
 	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
-	VenkatakrishnanLimiter(const UMesh2dh<a_real> *const mesh, 
-	                       const amat::Array2d<a_real>& c_centres, 
-	                       const amat::Array2d<a_real>* gauss_r, a_real k_param);
+	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh, 
+	                       const amat::Array2d<scalar>& c_centres, 
+	                       const amat::Array2d<scalar>* gauss_r, const a_real k_param);
     
-	void compute_face_values(const MVector<a_real>& unknowns, 
-	                         const amat::Array2d<a_real>& unknow_ghost, 
-	                         const GradArray<a_real,NVARS>& grads,
-	                         amat::Array2d<a_real>& uface_left,
-	                         amat::Array2d<a_real>& uface_right) const;
+	void compute_face_values(const MVector<scalar>& unknowns, 
+	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const GradArray<scalar,NVARS>& grads,
+	                         amat::Array2d<scalar>& uface_left,
+	                         amat::Array2d<scalar>& uface_right) const;
+protected:
+	using SolutionReconstruction<scalar>::m;
+	using SolutionReconstruction<scalar>::ri;
+	using SolutionReconstruction<scalar>::gr;
+	using SolutionReconstruction<scalar>::ng;
 };
 
 } // end namespace

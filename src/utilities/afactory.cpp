@@ -127,35 +127,35 @@ template const GradientScheme<a_real,1>* create_const_gradientscheme<1>(
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
 
-SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
+SolutionReconstruction<a_real>* create_mutable_reconstruction(const std::string& type,
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param)
 {
-	SolutionReconstruction * reconst = nullptr;
+	SolutionReconstruction<a_real> * reconst = nullptr;
 
 	if(type == "NONE")
 	{
-		reconst = new LinearUnlimitedReconstruction(m, rc, gr);
+		reconst = new LinearUnlimitedReconstruction<a_real>(m, rc, gr);
 		std::cout << " ReconstructionFactory: Unlimited linear reconstruction selected.\n";
 	}
 	else if(type == "WENO")
 	{
-		reconst = new WENOReconstruction(m, rc, gr, param);
+		reconst = new WENOReconstruction<a_real>(m, rc, gr, param);
 		std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
 	}
 	else if(type == "VANALBADA")
 	{
-		reconst = new MUSCLVanAlbada(m, rc, gr);
+		reconst = new MUSCLVanAlbada<a_real>(m, rc, gr);
 		std::cout << " ReconstructionFactory: Van Albada MUSCL reconstruction selected.\n";
 	}
 	else if(type == "BARTHJESPERSEN")
 	{
-		reconst = new BarthJespersenLimiter(m, rc, gr);
+		reconst = new BarthJespersenLimiter<a_real>(m, rc, gr);
 		std::cout << " ReconstructionFactory: Barth-Jespersen linear reconstruction selected.\n";
 	}
 	else if(type == "VENKATAKRISHNAN")
 	{
-		reconst = new VenkatakrishnanLimiter(m, rc, gr, param);
+		reconst = new VenkatakrishnanLimiter<a_real>(m, rc, gr, param);
 		std::cout << " ReconstructionFactory: Venkatakrishnan linear reconstruction selected.\n";
 	}
 	else {
@@ -165,7 +165,7 @@ SolutionReconstruction* create_mutable_reconstruction(const std::string& type,
 	return reconst;
 }
 
-const SolutionReconstruction* create_const_reconstruction(const std::string& type,
+const SolutionReconstruction<a_real>* create_const_reconstruction(const std::string& type,
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
 		const amat::Array2d<a_real> *const gr, const a_real param)
 {

@@ -10,41 +10,47 @@
 namespace fvens {
 
 /// Reconstructs a face value
-static inline a_real linearExtrapolate(
-		const a_real ucell,                          ///< Relevant cell centred value
-		const Eigen::Array<a_real,NDIM,NVARS>& grad, ///< Gradients
+template <typename scalar>
+static inline scalar linearExtrapolate(
+		const scalar ucell,                          ///< Relevant cell centred value
+		const Eigen::Array<scalar,NDIM,NVARS>& grad, ///< Gradients
 		const int ivar,                              ///< Index of physical variable to be reconstructed
-		const a_real lim,                            ///< Limiter value
-		const a_real *const gp,                      ///< Quadrature point coords
-		const a_real *const rc                       ///< Cell centre coords
+		const scalar lim,                            ///< Limiter value
+		const scalar *const gp,                      ///< Quadrature point coords
+		const scalar *const rc                       ///< Cell centre coords
 	)
 {
-	a_real uface = ucell;
+	scalar uface = ucell;
 	for(int idim = 0; idim < NDIM; idim++)
 		uface += lim*grad(idim,ivar)*(gp[idim] - rc[idim]);
 	return uface;
 }
 
-SolutionReconstruction::SolutionReconstruction (const UMesh2dh<a_real> *const mesh, 
-		const amat::Array2d<a_real>& c_centres, 
-		const amat::Array2d<a_real>* gauss_r)
+template <typename scalar>
+SolutionReconstruction<scalar>::SolutionReconstruction (const UMesh2dh<scalar> *const mesh, 
+		const amat::Array2d<scalar>& c_centres, 
+		const amat::Array2d<scalar>* gauss_r)
 	: m{mesh}, ri{c_centres}, gr{gauss_r}, ng{gr[0].rows()}
 { }
 
-SolutionReconstruction::~SolutionReconstruction()
+template <typename scalar>
+SolutionReconstruction<scalar>::~SolutionReconstruction()
 { }
 
-LinearUnlimitedReconstruction::LinearUnlimitedReconstruction(const UMesh2dh<a_real> *const mesh,
-                                                             const amat::Array2d<a_real>& c_centres,
-                                                             const amat::Array2d<a_real>* gauss_r)
-	: SolutionReconstruction(mesh, c_centres, gauss_r)
+template <typename scalar>
+LinearUnlimitedReconstruction<scalar>
+::LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
+                                                             const amat::Array2d<scalar>& c_centres,
+                                                             const amat::Array2d<scalar>* gauss_r)
+	: SolutionReconstruction<scalar>(mesh, c_centres, gauss_r)
 { }
 
-void LinearUnlimitedReconstruction::compute_face_values(
-		const MVector<a_real>& u, 
-		const amat::Array2d<a_real>& ug,
-		const GradArray<a_real,NVARS>& grads,
-		amat::Array2d<a_real>& ufl, amat::Array2d<a_real>& ufr) const
+template <typename scalar>
+void LinearUnlimitedReconstruction<scalar>::compute_face_values(
+		const MVector<scalar>& u, 
+		const amat::Array2d<scalar>& ug,
+		const GradArray<scalar,NVARS>& grads,
+		amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
 	// (a) internal faces
 #pragma omp parallel default(shared)
@@ -78,10 +84,11 @@ void LinearUnlimitedReconstruction::compute_face_values(
 	}
 }
 
-WENOReconstruction::WENOReconstruction(const UMesh2dh<a_real> *const mesh,
-                                       const amat::Array2d<a_real>& c_centres,
-                                       const amat::Array2d<a_real>* gauss_r, const a_real l)
-	: SolutionReconstruction(mesh, c_centres, gauss_r),
+template <typename scalar>
+WENOReconstruction<scalar>::WENOReconstruction(const UMesh2dh<scalar> *const mesh,
+                                       const amat::Array2d<scalar>& c_centres,
+                                       const amat::Array2d<scalar>* gauss_r, const a_real l)
+	: SolutionReconstruction<scalar>(mesh, c_centres, gauss_r),
 	  gamma{4.0}, lambda{l}, epsilon{1.0e-5}
 {
 }
@@ -90,19 +97,21 @@ WENOReconstruction::WENOReconstruction(const UMesh2dh<a_real> *const mesh,
 /** \param[in] grad The gradient array
  * \param[in] ivar The index of the physical variable whose gradient magnitude is needed
  */
-static inline a_real gradientMagnitude2(const Eigen::Array<a_real,NDIM,NVARS>& grad, const int ivar)
+template <typename scalar>
+static inline scalar gradientMagnitude2(const Eigen::Array<scalar,NDIM,NVARS>& grad, const int ivar)
 {
-	a_real res = 0;
+	scalar res = 0;
 	for(int j = 0; j < NDIM; j++)
 		res += grad(j,ivar)*grad(j,ivar);
 	return res;
 }
 
-void WENOReconstruction::compute_face_values(const MVector<a_real>& u, 
-                                             const amat::Array2d<a_real>& ug,
-                                             const GradArray<a_real,NVARS>& grads,
-                                             amat::Array2d<a_real>& ufl,
-                                             amat::Array2d<a_real>& ufr) const
+template <typename scalar>
+void WENOReconstruction<scalar>::compute_face_values(const MVector<scalar>& u, 
+                                             const amat::Array2d<scalar>& ug,
+                                             const GradArray<scalar,NVARS>& grads,
+                                             amat::Array2d<scalar>& ufl,
+                                             amat::Array2d<scalar>& ufr) const
 {
 	// first compute limited derivatives at each cell
 
@@ -111,13 +120,13 @@ void WENOReconstruction::compute_face_values(const MVector<a_real>& u,
 	{
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
-			a_real wsum = 0;
-			a_real lgrad[NDIM]; 
+			scalar wsum = 0;
+			scalar lgrad[NDIM]; 
 			zeros(lgrad, NDIM);
 
 			// Central stencil
-			const a_real denom = pow( gradientMagnitude2(grads[ielem],ivar) + epsilon , gamma );
-			const a_real w = lambda / denom;
+			const scalar denom = pow( gradientMagnitude2(grads[ielem],ivar) + epsilon , gamma );
+			const scalar w = lambda / denom;
 			wsum += w;
 			for(int j = 0; j < NDIM; j++)
 				lgrad[j] += w*grads[ielem](j,ivar);
@@ -131,8 +140,8 @@ void WENOReconstruction::compute_face_values(const MVector<a_real>& u,
 				if(jelem >= m->gnelem())
 					continue;
 
-				const a_real denom = pow( gradientMagnitude2(grads[jelem],ivar) + epsilon , gamma );
-				const a_real w = 1.0 / denom;
+				const scalar denom = pow( gradientMagnitude2(grads[jelem],ivar) + epsilon , gamma );
+				const scalar w = 1.0 / denom;
 				wsum += w;
 				for(int j = 0; j < NDIM; j++)
 					lgrad[j] += w*grads[jelem](j,ivar);
@@ -161,46 +170,52 @@ void WENOReconstruction::compute_face_values(const MVector<a_real>& u,
 	}
 }
 
-MUSCLReconstruction::MUSCLReconstruction(const UMesh2dh<a_real> *const mesh,
-		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
-	: SolutionReconstruction(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
+template <typename scalar>
+MUSCLReconstruction<scalar>::MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
+		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>* gauss_r)
+	: SolutionReconstruction<scalar>(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
 { }
 
-inline
-a_real MUSCLReconstruction::computeBiasedDifference(const a_real *const ri, const a_real *const rj,
-		const a_real ui, const a_real uj, const a_real *const grads) const
+template <typename scalar>
+inline scalar MUSCLReconstruction<scalar>::
+computeBiasedDifference(const scalar *const ri, const scalar *const rj,
+                        const scalar ui, const scalar uj, const scalar *const grads) const
 {
-	a_real del = 0;
+	scalar del = 0;
 	for(int idim = 0; idim < NDIM; idim++)
 		del += grads[idim]*(rj[idim]-ri[idim]);
 
 	return 2.0*del - (uj-ui);
 }
 
+template <typename scalar>
 inline
-a_real MUSCLReconstruction::musclReconstructLeft(const a_real ui, const a_real uj, 
-			const a_real deltam, const a_real phi) const
+scalar MUSCLReconstruction<scalar>::musclReconstructLeft(const scalar ui, const scalar uj, 
+			const scalar deltam, const scalar phi) const
 {
 	return ui + phi/4.0*( (1.0-k*phi)*deltam + (1.0+k*phi)*(uj - ui) );
 }
 
+template <typename scalar>
 inline
-a_real MUSCLReconstruction::musclReconstructRight(const a_real ui, const a_real uj, 
-			const a_real deltap, const a_real phi) const
+scalar MUSCLReconstruction<scalar>::musclReconstructRight(const scalar ui, const scalar uj, 
+			const scalar deltap, const scalar phi) const
 {
 	return uj - phi/4.0*( (1.0-k*phi)*deltap + (1.0+k*phi)*(uj - ui) );
 }
 
-MUSCLVanAlbada::MUSCLVanAlbada(const UMesh2dh<a_real> *const mesh,
-		const amat::Array2d<a_real>& r_centres, const amat::Array2d<a_real>* gauss_r)
-	: MUSCLReconstruction(mesh, r_centres, gauss_r)
+template <typename scalar>
+MUSCLVanAlbada<scalar>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
+		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>* gauss_r)
+	: MUSCLReconstruction<scalar>(mesh, r_centres, gauss_r)
 { }
 
-void MUSCLVanAlbada::compute_face_values(const MVector<a_real>& u, 
-                                         const amat::Array2d<a_real>& ug,
-                                         const GradArray<a_real,NVARS>& grads,
-                                         amat::Array2d<a_real>& ufl,
-                                         amat::Array2d<a_real>& ufr) const
+template <typename scalar>
+void MUSCLVanAlbada<scalar>::compute_face_values(const MVector<scalar>& u, 
+                                         const amat::Array2d<scalar>& ug,
+                                         const GradArray<scalar,NVARS>& grads,
+                                         amat::Array2d<scalar>& ufl,
+                                         amat::Array2d<scalar>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -211,14 +226,14 @@ void MUSCLVanAlbada::compute_face_values(const MVector<a_real>& u,
 		for(int i = 0; i < NVARS; i++)
 		{
 			// Note that the copy below is necessary because grads[ielem] is column major
-			a_real grad[NDIM];
+			scalar grad[NDIM];
 			for(int j = 0; j < NDIM; j++)
 				grad[j] = grads[ielem](j,i);
 			
-			const a_real deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
 					u(ielem,i), ug(ied,i), grad);
 			
-			a_real phi_l = (2.0*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
+			scalar phi_l = (2.0*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (ug(ied,i) - u(ielem,i))*(ug(ied,i) - u(ielem,i)) + eps);
 			if( phi_l < 0.0) phi_l = 0.0;
 
@@ -235,22 +250,22 @@ void MUSCLVanAlbada::compute_face_values(const MVector<a_real>& u,
 		for(int i = 0; i < NVARS; i++)
 		{
 			// Note that the copy below is necessary because grads[ielem] is column major
-			a_real gradl[NDIM], gradr[NDIM];
+			scalar gradl[NDIM], gradr[NDIM];
 			for(int j = 0; j < NDIM; j++) {
 				gradl[j] = grads[ielem](j,i);
 				gradr[j] = grads[jelem](j,i);
 			}
 
-			const a_real deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
 					u(ielem,i), u(jelem,i), gradl);
-			const a_real deltap = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+			const scalar deltap = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
 					u(ielem,i), u(jelem,i), gradr);
 			
-			a_real phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
+			scalar phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
 			if( phi_l < 0.0) phi_l = 0.0;
 
-			a_real phi_r = (2*deltap * (u(jelem,i) - u(ielem,i)) + eps) 
+			scalar phi_r = (2*deltap * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltap*deltap + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
 			if( phi_r < 0.0) phi_r = 0.0;
 
@@ -260,43 +275,45 @@ void MUSCLVanAlbada::compute_face_values(const MVector<a_real>& u,
 	}
 }
 
-BarthJespersenLimiter::BarthJespersenLimiter(const UMesh2dh<a_real> *const mesh, 
-                                             const amat::Array2d<a_real>& r_centres,
-                                             const amat::Array2d<a_real>* gauss_r)
-	: SolutionReconstruction(mesh, r_centres, gauss_r)
+template <typename scalar>
+BarthJespersenLimiter<scalar>::BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
+                                             const amat::Array2d<scalar>& r_centres,
+                                             const amat::Array2d<scalar>* gauss_r)
+	: SolutionReconstruction<scalar>(mesh, r_centres, gauss_r)
 {
 }
 
-void BarthJespersenLimiter::compute_face_values(const MVector<a_real>& u, 
-                                                const amat::Array2d<a_real>& ug, 
-                                                const GradArray<a_real,NVARS>& grads,
-                                                amat::Array2d<a_real>& ufl,
-                                                amat::Array2d<a_real>& ufr) const
+template <typename scalar>
+void BarthJespersenLimiter<scalar>::compute_face_values(const MVector<scalar>& u, 
+                                                const amat::Array2d<scalar>& ug, 
+                                                const GradArray<scalar,NVARS>& grads,
+                                                amat::Array2d<scalar>& ufl,
+                                                amat::Array2d<scalar>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
-			a_real duimin=0, duimax=0;
+			scalar duimin=0, duimax=0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
 				const a_int jel = m->gesuel(iel,j);
-				const a_real dui = u(jel,ivar)-u(iel,ivar);
+				const scalar dui = u(jel,ivar)-u(iel,ivar);
 				if(dui > duimax) duimax = dui;
 				if(dui < duimin) duimin = dui;
 			}
 			
-			a_real lim = 1.0;
+			scalar lim = 1.0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
 				const a_int face = m->gelemface(iel,j);
 				
-				const a_real uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
+				const scalar uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
 						&gr[face](0,0), &ri(iel,0));
 				
-				a_real phiik;
-				const a_real diff = uface - u(iel,ivar);
+				scalar phiik;
+				const scalar diff = uface - u(iel,ivar);
 				if(diff>0)
 					phiik = 1 < duimax/diff ? 1 : duimax/diff;
 				else if(diff < 0)
@@ -325,12 +342,13 @@ void BarthJespersenLimiter::compute_face_values(const MVector<a_real>& u,
 	}
 }
 
-VenkatakrishnanLimiter
-::VenkatakrishnanLimiter(const UMesh2dh<a_real> *const mesh,
-                         const amat::Array2d<a_real>& r_centres,
-                         const amat::Array2d<a_real>* gauss_r,
-                         a_real k_param=2.0)
-	: SolutionReconstruction(mesh, r_centres, gauss_r), K{k_param}
+template <typename scalar>
+VenkatakrishnanLimiter<scalar>
+::VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh,
+                         const amat::Array2d<scalar>& r_centres,
+                         const amat::Array2d<scalar>* gauss_r,
+                         const a_real k_param)
+	: SolutionReconstruction<scalar>(mesh, r_centres, gauss_r), K{k_param}
 {
 	std::cout << "  Venkatakrishnan Limiter: Constant K = " << K << std::endl;
 	// compute characteristic length, currently the maximum edge length, of all cells
@@ -340,7 +358,7 @@ VenkatakrishnanLimiter
 	{
 		for(int ifa = 0; ifa < m->gnnode(iel); ifa++)
 		{
-			a_real llen = 0;
+			scalar llen = 0;
 			const int inode = ifa, jnode = (ifa+1) % m->gnnode(iel);
 			for(int idim = 0; idim < 2; idim++)
 				llen += std::pow(m->gcoords(m->ginpoel(iel,inode),idim) 
@@ -352,42 +370,43 @@ VenkatakrishnanLimiter
 	}
 }
 
-void VenkatakrishnanLimiter
-::compute_face_values(const MVector<a_real>& u,
-                      const amat::Array2d<a_real>& ug, 
-                      const GradArray<a_real,NVARS>& grads,
-                      amat::Array2d<a_real>& ufl,
-                      amat::Array2d<a_real>& ufr) const
+template <typename scalar>
+void VenkatakrishnanLimiter<scalar>
+::compute_face_values(const MVector<scalar>& u,
+                      const amat::Array2d<scalar>& ug, 
+                      const GradArray<scalar,NVARS>& grads,
+                      amat::Array2d<scalar>& ufl,
+                      amat::Array2d<scalar>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		const a_real eps2 = std::pow(K*clength[iel], 3);
+		const scalar eps2 = std::pow(K*clength[iel], 3);
 
 		for(int ivar = 0; ivar < NVARS; ivar++)
 		{
-			a_real duimin=0, duimax=0;
+			scalar duimin=0, duimax=0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
 				const a_int jel = m->gesuel(iel,j);
-				const a_real dui = u(jel,ivar)-u(iel,ivar);
+				const scalar dui = u(jel,ivar)-u(iel,ivar);
 				if(dui > duimax) duimax = dui;
 				if(dui < duimin) duimin = dui;
 			}
 			
-			a_real lim = 1.0;
+			scalar lim = 1.0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
 				const a_int face = m->gelemface(iel,j);
 				
-				const a_real uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
+				const scalar uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
 						&gr[face](0,0), &ri(iel,0));
 				
-				const a_real dm = uface - u(iel,ivar);
+				const scalar dm = uface - u(iel,ivar);
 
 				// Venkatakrishnan modification
-				const a_real dp = dm < 0 ? duimin : duimax;
-				const a_real phiik = (dp*dp + 2*dp*dm + eps2)/(dp*dp + dp*dm + 2*dm*dm + eps2);
+				const scalar dp = dm < 0 ? duimin : duimax;
+				const scalar phiik = (dp*dp + 2*dp*dm + eps2)/(dp*dp + dp*dm + 2*dm*dm + eps2);
 
 				if(phiik < lim)
 					lim = phiik;
@@ -409,6 +428,12 @@ void VenkatakrishnanLimiter
 		}
 	}
 }
+
+template class LinearUnlimitedReconstruction<a_real>;
+template class WENOReconstruction<a_real>;
+template class MUSCLVanAlbada<a_real>;
+template class BarthJespersenLimiter<a_real>;
+template class VenkatakrishnanLimiter<a_real>;
 
 } // end namespace
 
