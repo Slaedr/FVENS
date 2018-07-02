@@ -53,7 +53,7 @@ public:
 	 * \param[in] spatial Spatial discretization context
 	 * \param[in] conf Reference to temporal discretization configuration settings
 	 */
-	SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf);
+	SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf);
 
 	/// Get timing data
 	TimingData getTimingData() const;
@@ -64,7 +64,7 @@ public:
 	virtual ~SteadySolver() {}
 
 protected:
-	const Spatial<nvars> *const space;
+	const Spatial<a_real,nvars> *const space;
 	const SteadySolverConfig& config;
 	Vec rvec;
 	TimingData tdata;
@@ -85,7 +85,7 @@ public:
 	/// Sets the spatial context and problem configuration, and allocates required data
 	/** \param x A PETSc Vec from which the residual vector is duplicated.
 	 */
-	SteadyForwardEulerSolver(const Spatial<nvars> *const euler, const Vec x, 
+	SteadyForwardEulerSolver(const Spatial<a_real,nvars> *const euler, const Vec x, 
 			const SteadySolverConfig& conf);
 	
 	~SteadyForwardEulerSolver();
@@ -118,7 +118,7 @@ public:
 	 * \param[in] conf Temporal discretization settings
 	 * \param[in] ksp The PETSc top-level solver context
 	 */
-	SteadyBackwardEulerSolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf,
+	SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf,
 		KSP ksp);
 	
 	~SteadyBackwardEulerSolver();
@@ -160,7 +160,7 @@ template <int nvars>
 class UnsteadySolver
 {
 protected:
-	const Spatial<nvars> * space;
+	const Spatial<a_real,nvars> * space;
 	Vec uvec;
 	Vec rvec;
 	const int order;               ///< Deisgn order of accuracy in time
@@ -175,7 +175,7 @@ public:
 	 * \param[in] soln The solution vector to use and update
 	 * \param[in] temporal_order Design order of accuracy in time
 	 */
-	UnsteadySolver(const Spatial<nvars> *const spatial, Vec soln,
+	UnsteadySolver(const Spatial<a_real,nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file);
 
 	/// Get timing data
@@ -194,7 +194,7 @@ template<int nvars>
 class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
-	TVDRKSolver(const Spatial<nvars> *const spatial, Vec soln,
+	TVDRKSolver(const Spatial<a_real,nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file, const double cfl_num);
 
 	~TVDRKSolver();

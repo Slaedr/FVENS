@@ -49,10 +49,12 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts,
  *   and contains timing data of the preconditioner on exit.
  * \return Performance data for the run
  */
-TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
-		const SteadySolverConfig& maintconf, const int nbswps, const int naswps,
-		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
-		Blasted_data_list& bctx);
+TimingData run_sweeps(const Spatial<a_real,NVARS> *const startprob,
+                      const Spatial<a_real,NVARS> *const prob,
+                      const SteadySolverConfig& maintconf, const int nbswps, const int naswps,
+                      KSP *ksp, Vec u, Mat A, Mat M,
+                      MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
+                      Blasted_data_list& bctx);
 
 }
 

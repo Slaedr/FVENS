@@ -32,7 +32,7 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m);
  * \param m The mesh context
  */
 template <typename scalar>
-StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh<scalar>& m);
+StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, UMesh2dh<scalar>& m);
 
 /// Divides mesh cells into levels within each of which no cell is coupled to another
 /** Returns a list of cell indices corresponding to the start of each level.

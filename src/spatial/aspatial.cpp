@@ -30,11 +30,11 @@ namespace fvens {
  * \sa compute_ghost_cell_coords_about_midpoint
  * \sa compute_ghost_cell_coords_about_face
  */
-template<int nvars>
-Spatial<nvars>::Spatial(const UMesh2dh<a_real> *const mesh) : m(mesh)
+template<typename scalar, int nvars>
+Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
 	rc.resize(m->gnelem()+m->gnbface(), NDIM);
-	gr = new amat::Array2d<a_real>[m->gnaface()];
+	gr = new amat::Array2d<scalar>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++)
 		gr[i].resize(NGAUSS, NDIM);
 
@@ -47,12 +47,12 @@ Spatial<nvars>::Spatial(const UMesh2dh<a_real> *const mesh) : m(mesh)
 			rc(ielem,idim) = 0;
 			for(int inode = 0; inode < m->gnnode(ielem); inode++)
 				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / (a_real)(m->gnnode(ielem));
+			rc(ielem,idim) = rc(ielem,idim) / (scalar)(m->gnnode(ielem));
 		}
 	}
 
-	a_real x1, y1, x2, y2;
-	amat::Array2d<a_real> rchg(m->gnbface(),NDIM);
+	scalar x1, y1, x2, y2;
+	amat::Array2d<scalar> rchg(m->gnbface(),NDIM);
 
 	compute_ghost_cell_coords_about_midpoint(rchg);
 	//compute_ghost_cell_coords_about_face(rchg);
@@ -74,27 +74,27 @@ Spatial<nvars>::Spatial(const UMesh2dh<a_real> *const mesh) : m(mesh)
 		y2 = m->gcoords(m->gintfac(ied,3),1);
 		for(int ig = 0; ig < NGAUSS; ig++)
 		{
-			gr[ied](ig,0) = x1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (a_real)(ig+1.0)/(a_real)(NGAUSS+1.0) * (y2-y1);
+			gr[ied](ig,0) = x1 + (scalar)(ig+1.0)/(scalar)(NGAUSS+1.0) * (x2-x1);
+			gr[ied](ig,1) = y1 + (scalar)(ig+1.0)/(scalar)(NGAUSS+1.0) * (y2-y1);
 		}
 	}
 }
 
-template<int nvars>
-Spatial<nvars>::~Spatial()
+template<typename scalar, int nvars>
+Spatial<scalar,nvars>::~Spatial()
 {
 	delete [] gr;
 }
 
-template<int nvars>
-void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg)
+template<typename scalar, int nvars>
+void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg)
 {
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		a_int ielem = m->gintfac(iface,0);
 		a_int ip1 = m->gintfac(iface,2);
 		a_int ip2 = m->gintfac(iface,3);
-		a_real midpoint[NDIM];
+		scalar midpoint[NDIM];
 
 		for(int idim = 0; idim < NDIM; idim++)
 		{
@@ -109,26 +109,26 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_re
 /** The ghost cell is a reflection of the boundary cell about the boundary-face.
  * It is NOT the reflection about the midpoint of the boundary-face.
  */
-template<int nvars>
-void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg)
+template<typename scalar, int nvars>
+void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg)
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
-		const a_real nx = m->gfacemetric(ied,0);
-		const a_real ny = m->gfacemetric(ied,1);
+		const scalar nx = m->gfacemetric(ied,0);
+		const scalar ny = m->gfacemetric(ied,1);
 
-		const a_real xi = rc(ielem,0);
-		const a_real yi = rc(ielem,1);
+		const scalar xi = rc(ielem,0);
+		const scalar yi = rc(ielem,1);
 
-		const a_real x1 = m->gcoords(m->gintfac(ied,2),0);
-		const a_real x2 = m->gcoords(m->gintfac(ied,3),0);
-		const a_real y1 = m->gcoords(m->gintfac(ied,2),1);
-		const a_real y2 = m->gcoords(m->gintfac(ied,3),1);
+		const scalar x1 = m->gcoords(m->gintfac(ied,2),0);
+		const scalar x2 = m->gcoords(m->gintfac(ied,3),0);
+		const scalar y1 = m->gcoords(m->gintfac(ied,2),1);
+		const scalar y2 = m->gcoords(m->gintfac(ied,3),1);
 
 		// find coordinates of the point on the face that is the midpoint of the line joining
 		// the real cell centre and the ghost cell centre
-		a_real xs,ys;
+		scalar xs,ys;
 
 		// check if nx != 0 and ny != 0
 		if(fabs(nx)>A_SMALL_NUMBER && fabs(ny)>A_SMALL_NUMBER)		
@@ -152,9 +152,8 @@ void Spatial<nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<a_real>&
 	}
 }
 
-template <int nvars>
-template <typename scalar>
-void Spatial<nvars>::getFaceGradient_modifiedAverage(const a_int iface,
+template <typename scalar, int nvars>
+void Spatial<scalar,nvars>::getFaceGradient_modifiedAverage(const a_int iface,
 		const scalar *const ucl, const scalar *const ucr,
 		const scalar gradl[NDIM][nvars], const scalar gradr[NDIM][nvars], scalar grad[NDIM][nvars])
 	const
@@ -190,8 +189,8 @@ void Spatial<nvars>::getFaceGradient_modifiedAverage(const a_int iface,
 	}
 }
 
-template <int nvars>
-void Spatial<nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
+template <typename scalar, int nvars>
+void Spatial<scalar,nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
 		const a_real *const ucl, const a_real *const ucr,
 		const a_real *const dul, const a_real *const dur,
 		a_real grad[NDIM][nvars], a_real dgradl[NDIM][nvars][nvars], a_real dgradr[NDIM][nvars][nvars])
@@ -230,7 +229,7 @@ FlowFV_base::FlowFV_base(const UMesh2dh<a_real> *const mesh,
                          const FlowPhysicsConfig& pconf, 
                          const FlowNumericsConfig& nconf)
 	: 
-	Spatial<NVARS>(mesh), 
+	Spatial<a_real,NVARS>(mesh), 
 	pconfig{pconf},
 	nconfig{nconf},
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
@@ -587,7 +586,7 @@ void FlowFV<secondOrderRequested,constVisc>
 	 */
 	
 	a_real grad[NDIM][NVARS];
-	getFaceGradient_modifiedAverage<a_real>(iface, ucl, ucr, gradl, gradr, grad);
+	getFaceGradient_modifiedAverage(iface, ucl, ucr, gradl, gradr, grad);
 
 	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
 	 * primitive-2 face gradients and conserved face variables.
@@ -1252,7 +1251,7 @@ Diffusion<nvars>::Diffusion(const UMesh2dh<a_real> *const mesh,
 								void(const a_real *const, const a_real, const a_real *const,
 								     a_real *const)
                             > sourcefunc)
-	: Spatial<nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
+	: Spatial<a_real,nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
 {
 	h.resize(m->gnelem());
 	for(a_int iel = 0; iel < m->gnelem(); iel++) {
@@ -1434,7 +1433,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 		}
 
 		a_real gradf[NDIM][nvars];
-		Spatial<nvars>::template getFaceGradient_modifiedAverage<a_real>
+		/*Spatial<nvars>::template */getFaceGradient_modifiedAverage
 			(iface, &uarr[lelem*nvars], &ug(iface,0), gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)

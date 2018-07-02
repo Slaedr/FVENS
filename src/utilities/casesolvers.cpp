@@ -51,7 +51,7 @@ int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+	const Spatial<a_real,NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
 	prob->initializeUnknowns(*u);
@@ -138,7 +138,7 @@ SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 { }
 
 /// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
-int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
+int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 	
@@ -150,7 +150,7 @@ int SteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<NVARS> *const startprob
+	const Spatial<a_real,NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(m, pconf, nconfstart);
 
 	std::cout << "***\n";
@@ -313,7 +313,7 @@ UnsteadyFlowCase::UnsteadyFlowCase(const FlowParserOptions& options)
 
 /** \todo Implement an unsteady integrator factory and use that here.
  */
-int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
+int UnsteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 
@@ -334,7 +334,7 @@ int UnsteadyFlowCase::execute(const Spatial<NVARS> *const prob, Vec u) const
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<NVARS> *const startprob
+	const Spatial<a_real,NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(m, pconf, nconfstart);
 
 	std::cout << "***\n";

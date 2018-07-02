@@ -14,7 +14,7 @@ template <short nvars>
 class Output
 {
 public:
-	Output(const Spatial<nvars> *const fv);
+	Output(const Spatial<a_real,nvars> *const fv);
 
 	/// Exports data for the entire domain
 	/** \param[in] u The field variables
@@ -32,7 +32,7 @@ public:
 			const std::vector<int> obcm, const std::string basename) const = 0;
 
 protected:
-	const Spatial<nvars> *const space;
+	const Spatial<a_real,nvars> *const space;
 	const UMesh2dh<a_real> *const m;
 };
 
@@ -46,7 +46,7 @@ public:
 	/// Sets required data
 	/** \param[in] angleOfAttack The angle of attack in radians
 	 */
-	FlowOutput(const Spatial<NVARS> *const fv,
+	FlowOutput(const Spatial<a_real,NVARS> *const fv,
 			const IdealGasPhysics<a_real> *const physics, const a_real angleOfAttack);
 	
 	/** For each cell, writes out the coordinates of the cell-centre,

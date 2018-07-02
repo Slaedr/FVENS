@@ -11,11 +11,11 @@
 namespace fvens {
 
 template <short nvars>
-Output<nvars>::Output(const Spatial<nvars> *const fv)
+Output<nvars>::Output(const Spatial<a_real,nvars> *const fv)
 	: space(fv), m(space->mesh())
 { }
 
-FlowOutput::FlowOutput(const Spatial<NVARS> *const fv,
+FlowOutput::FlowOutput(const Spatial<a_real,NVARS> *const fv,
                        const IdealGasPhysics<a_real> *const physics, const a_real aoa)
 	: Output<NVARS>(fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
 {

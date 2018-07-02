@@ -10,7 +10,7 @@
 namespace fvens {
 
 template <typename scalar>
-StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd, UMesh2dh<scalar>& m)
+StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, UMesh2dh<scalar>& m)
 {
 	// The implementation must be changed for the multi-process case
 	StatusCode ierr = 0;
@@ -122,7 +122,7 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m)
 
 template StatusCode preprocessMesh(UMesh2dh<a_real>& m);
 
-template StatusCode reorderMesh(const char *const ordering, const Spatial<1>& sd,
+template StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd,
                                 UMesh2dh<a_real>& m);
 template std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m);
 

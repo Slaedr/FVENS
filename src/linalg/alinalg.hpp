@@ -51,7 +51,7 @@ public:
 	MatrixFreeSpatialJacobian();
 
 	/// Set the spatial dscretization whose Jacobian is needed
-	void set_spatial(const Spatial<nvars> *const space);
+	void set_spatial(const Spatial<a_real,nvars> *const space);
 
 	/// Allocate storage for work vectors using the (possibly matrix-free) Mat as a template
 	StatusCode setup_work_storage(const Mat system_matrix);
@@ -71,7 +71,7 @@ public:
 
 protected:
 	/// Spatial discretization context
-	const Spatial<nvars>* spatial;
+	const Spatial<a_real,nvars>* spatial;
 
 	/// step length for finite difference Jacobian
 	a_real eps;
@@ -113,7 +113,8 @@ bool isMatrixFree(Mat);
  * \param[in,out] bctx The BLASTed contexts
  */
 template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<nvars> *const startprob, Blasted_data_list& bctx);
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const startprob,
+                         Blasted_data_list& bctx);
 
 #endif
 

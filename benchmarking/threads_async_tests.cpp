@@ -49,9 +49,9 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
 
 	std::cout << "Setting up main spatial scheme.\n";
-	const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+	const Spatial<a_real,NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<NVARS> *const startprob
+	const Spatial<a_real,NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
 	std::cout << "\n***\n";
 
@@ -261,7 +261,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	return ierr;
 }
 
-TimingData run_sweeps(const Spatial<NVARS> *const startprob, const Spatial<NVARS> *const prob,
+TimingData run_sweeps(const Spatial<a_real,NVARS> *const startprob, const Spatial<a_real,NVARS> *const prob,
 		const SteadySolverConfig& maintconf, const int nbswps, const int naswps,
 		KSP *ksp, Vec u, Mat A, Mat M, MatrixFreeSpatialJacobian<NVARS>& mfjac, const PetscBool mf_flg,
 		Blasted_data_list& bctx)

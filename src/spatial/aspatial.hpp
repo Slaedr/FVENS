@@ -38,7 +38,7 @@
 namespace fvens {
 
 /// Base class for finite volume spatial discretization
-template<int nvars>
+template<typename scalar, int nvars>
 class Spatial
 {
 public:
@@ -46,7 +46,7 @@ public:
 	/** Computes and stores cell centre coordinates, ghost cells' centres, and 
 	 * quadrature point coordinates.
 	 */
-	Spatial(const UMesh2dh<a_real> *const mesh);
+	Spatial(const UMesh2dh<scalar> *const mesh);
 
 	virtual ~Spatial();
 	
@@ -83,30 +83,30 @@ public:
 			amat::Array2d<a_real>& vector) const = 0;
 
 	/// Exposes access to the mesh context
-	const UMesh2dh<a_real>* mesh() const
+	const UMesh2dh<scalar>* mesh() const
 	{
 		return m;
 	}
 
 protected:
 	/// Mesh context
-	const UMesh2dh<a_real> *const m;
+	const UMesh2dh<scalar> *const m;
 
 	/// Cell centers of both real cells and ghost cells
 	/** The first nelem rows correspond to real cells, 
 	 * the next nelem+nbface rows are ghost cell centres, indexed by nelem+iface for face iface.
 	 */
-	amat::Array2d<a_real> rc;
+	amat::Array2d<scalar> rc;
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
 	/// naface x nguass x ndim (in that order)
-	amat::Array2d<a_real>* gr;
+	amat::Array2d<scalar>* gr;
 	
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
-	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<a_real>& rchg);
+	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);
 
 	/// computes ghost cell centers assuming symmetry about the face
-	void compute_ghost_cell_coords_about_face(amat::Array2d<a_real>& rchg);
+	void compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg);
 
 	/// Computes a unique face gradient from cell-centred gradients using the modified average method
 	/** \param iface The \ref intfac index of the face at which the gradient is to be computed
@@ -116,7 +116,6 @@ protected:
 	 * \param gradr Right cell-centred gradients
 	 * \param[out] grad Face gradients
 	 */
-	template<typename scalar>
 	void getFaceGradient_modifiedAverage(const a_int iface,
 		const scalar *const ucl, const scalar *const ucr,
 		const scalar gradl[NDIM][nvars], const scalar gradr[NDIM][nvars], scalar grad[NDIM][nvars])
@@ -170,7 +169,7 @@ struct FlowNumericsConfig
 /** This is meant to be a template-parameter-free abstract class encapsulating a spatial discretization
  * for a flow problem.
  */
-class FlowFV_base : public Spatial<NVARS>
+class FlowFV_base : public Spatial<a_real,NVARS>
 {
 public:
 	/// Sets data and initializes the numerics
@@ -209,6 +208,12 @@ public:
 	void getGradients(const MVector<a_real>& u, GradArray<a_real,NVARS>& grads) const;
 
 protected:
+
+	using Spatial<a_real,NVARS>::m;
+	using Spatial<a_real,NVARS>::rc;
+	using Spatial<a_real,NVARS>::gr;
+	using Spatial<a_real,NVARS>::getFaceGradient_modifiedAverage;
+
 	/// Problem specification
 	const FlowPhysicsConfig& pconfig;
 
@@ -351,7 +356,7 @@ protected:
 
 /// Spatial discretization of diffusion operator with constant difusivity
 template <int nvars>
-class Diffusion : public Spatial<nvars>
+class Diffusion : public Spatial<a_real,nvars>
 {
 public:
 	Diffusion(const UMesh2dh<a_real> *const mesh, const a_real diffcoeff, const a_real bvalue,
@@ -382,9 +387,11 @@ public:
 	virtual ~Diffusion();
 
 protected:
-	using Spatial<nvars>::m;
-	using Spatial<nvars>::rc;
-	using Spatial<nvars>::gr;
+	using Spatial<a_real,nvars>::m;
+	using Spatial<a_real,nvars>::rc;
+	using Spatial<a_real,nvars>::gr;
+	using Spatial<a_real,nvars>::getFaceGradient_modifiedAverage;
+
 	const a_real diffusivity;		///< Diffusion coefficient (eg. kinematic viscosity)
 	const a_real bval;				///< Dirichlet boundary value
 	
@@ -433,17 +440,18 @@ public:
 	~DiffusionMA();
 
 protected:
-	using Diffusion<nvars>::postprocess_point;
-	using Spatial<nvars>::m;
-	using Spatial<nvars>::rc;
-	using Spatial<nvars>::gr;
-	using Spatial<nvars>::getFaceGradient_modifiedAverage;
-	using Spatial<nvars>::getFaceGradientAndJacobian_thinLayer;
+	using Spatial<a_real,nvars>::m;
+	using Spatial<a_real,nvars>::rc;
+	using Spatial<a_real,nvars>::gr;
+	using Spatial<a_real,nvars>::getFaceGradient_modifiedAverage;
+	using Spatial<a_real,nvars>::getFaceGradientAndJacobian_thinLayer;
+
 	using Diffusion<nvars>::diffusivity;
 	using Diffusion<nvars>::bval;
 	using Diffusion<nvars>::source;
 	using Diffusion<nvars>::h;
-	
+
+	using Diffusion<nvars>::postprocess_point;
 	using Diffusion<nvars>::compute_boundary_state;
 	using Diffusion<nvars>::compute_boundary_states;
 	

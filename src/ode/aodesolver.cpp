@@ -65,7 +65,7 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 }
 
 template <int nvars>
-SteadySolver<nvars>::SteadySolver(const Spatial<nvars> *const spatial, const SteadySolverConfig& conf)
+SteadySolver<nvars>::SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf)
 	: space{spatial}, config{conf}, 
 	  tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false}
 { }
@@ -77,9 +77,9 @@ TimingData SteadySolver<nvars>::getTimingData() const {
 
 
 template<int nvars>
-SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(
-		const Spatial<nvars> *const spatial, const Vec uvec,
-		const SteadySolverConfig& conf)
+SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
+                                                          const Vec uvec,
+                                                          const SteadySolverConfig& conf)
 
 	: SteadySolver<nvars>(spatial, conf)
 {
@@ -227,10 +227,10 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 /** By default, the Jacobian is stored in a block sparse row format.
  */
 template <int nvars>
-SteadyBackwardEulerSolver<nvars>::SteadyBackwardEulerSolver(
-		const Spatial<nvars> *const spatial, 
-		const SteadySolverConfig& conf,	
-		KSP ksp)
+SteadyBackwardEulerSolver<nvars>::
+SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial, 
+                          const SteadySolverConfig& conf,	
+                          KSP ksp)
 
 	: SteadySolver<nvars>(spatial, conf), solver{ksp}
 {
@@ -532,14 +532,14 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 }
 
 template <int nvars>
-UnsteadySolver<nvars>::UnsteadySolver(const Spatial<nvars> *const spatial, Vec soln,
+UnsteadySolver<nvars>::UnsteadySolver(const Spatial<a_real,nvars> *const spatial, Vec soln,
 		const int temporal_order, const std::string log_file)
 	: space(spatial), uvec(soln), order{temporal_order}, cputime{0.0}, walltime{0.0},
 	  logfile{log_file}
 { }
 
 template <int nvars>
-TVDRKSolver<nvars>::TVDRKSolver(const Spatial<nvars> *const spatial, 
+TVDRKSolver<nvars>::TVDRKSolver(const Spatial<a_real,nvars> *const spatial, 
 		Vec soln, const int temporal_order, const std::string log_file, const double cfl_num)
 	: UnsteadySolver<nvars>(spatial, soln, temporal_order, log_file), cfl{cfl_num},
 	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
