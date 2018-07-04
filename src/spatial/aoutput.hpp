@@ -49,6 +49,23 @@ public:
 	FlowOutput(const FlowFV_base *const fv,
 			const IdealGasPhysics<a_real> *const physics, const a_real angleOfAttack);
 	
+	/// Compute norm of cell-centered entropy production
+	a_real compute_entropy_cell(const Vec uvec) const;
+
+	/// Compute nodal quantities to export
+	/** Based on area-weighted averaging which takes into account ghost cells as well.
+	 * Density, Mach number, pressure and temperature are the exported scalars,
+	 * and velocity is exported as well.
+	 */
+	StatusCode postprocess_point(const Vec uvec,
+	                             amat::Array2d<a_real>& scalars,
+	                             amat::Array2d<a_real>& velocities) const;
+
+	/// Compute cell-centred quantities to export \deprecated Use postprocess_point instead.
+	StatusCode postprocess_cell(const Vec uvec,
+	                            amat::Array2d<a_real>& scalars, 
+	                            amat::Array2d<a_real>& velocities) const;
+
 	/** For each cell, writes out the coordinates of the cell-centre,
 	 * density, velocities, pressure, temperature and Mach number.
 	 */
@@ -68,6 +85,7 @@ protected:
 	const FlowFV_base *const space;
 	using Output<NVARS>::m;
 	const IdealGasPhysics<a_real> *const phy;
+	const a_real angleOfAttack;
 	const a_real av[NDIM];				///< Unit vector in the direction of freestream flow
 };
 

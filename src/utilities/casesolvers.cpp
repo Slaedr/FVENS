@@ -85,18 +85,6 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	ierr = execute(prob, *u);
 	fvens_throw(ierr, "Could not solve steady case! Error code " + std::to_string(ierr));
 
-	const a_real entropy = prob->compute_entropy_cell(*u);
-
-	if(vtu_output_needed) {
-		amat::Array2d<a_real> scalars;
-		amat::Array2d<a_real> velocities;
-		prob->postprocess_point(*u, scalars, velocities);
-
-		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
-		writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
-				m, scalars, scalarnames, velocities, "velocity");
-	}
-	
 	MVector<a_real> umat; umat.resize(m.gnelem(),NVARS);
 	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(*u, &uarr); 
@@ -110,11 +98,23 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(prob, &phy, opts.alpha);
 
+	const a_real entropy = out.compute_entropy_cell(*u);
+
 	try {
 		out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
 	} 
 	catch(std::exception& e) {
 		std::cout << e.what() << std::endl;
+	}
+	
+	if(vtu_output_needed) {
+		amat::Array2d<a_real> scalars;
+		amat::Array2d<a_real> velocities;
+		out.postprocess_point(*u, scalars, velocities);
+
+		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
+		writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
+		                                  m, scalars, scalarnames, velocities, "velocity");
 	}
 	
 	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);

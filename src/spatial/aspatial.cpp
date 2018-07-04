@@ -458,119 +458,6 @@ std::tuple<a_real,a_real,a_real> FlowFV_base::computeSurfaceData (const MVector<
 	return std::make_tuple(Cl, Cdp, Cdf);
 }
 
-StatusCode FlowFV_base::postprocess_point(const Vec uvec,
-		amat::Array2d<a_real>& scalars,
-		amat::Array2d<a_real>& velocities) const
-{
-	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
-	scalars.resize(m->gnpoin(),4);
-	velocities.resize(m->gnpoin(),NDIM);
-
-	amat::Array2d<a_real> areasum(m->gnpoin(),1);
-	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
-	up.zeros();
-	areasum.zeros();
-
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
-
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(int ivar = 0; ivar < NVARS; ivar++)
-			{
-				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
-				areasum(m->ginpoel(ielem,inode)) += m->garea(ielem);
-			}
-	}
-
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < NVARS; ivar++)
-			up(ipoin,ivar) /= areasum(ipoin);
-	
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-	{
-		scalars(ipoin,0) = up(ipoin,0);
-
-		for(int idim = 0; idim < NDIM; idim++)
-			velocities(ipoin,idim) = up(ipoin,idim+1)/up(ipoin,0);
-		const a_real vmag2 = dimDotProduct(&velocities(ipoin,0),&velocities(ipoin,0));
-
-		scalars(ipoin,2) = physics.getPressureFromConserved(&up(ipoin,0));
-		a_real c = physics.getSoundSpeedFromConserved(&up(ipoin,0));
-		scalars(ipoin,1) = sqrt(vmag2)/c;
-		scalars(ipoin,3) = physics.getTemperatureFromConserved(&up(ipoin,0));
-	}
-
-	compute_entropy_cell(uvec);
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	std::cout << "FlowFV: postprocess_point(): Done.\n";
-	return ierr;
-}
-
-StatusCode FlowFV_base::postprocess_cell(const Vec uvec, 
-		amat::Array2d<a_real>& scalars, 
-		amat::Array2d<a_real>& velocities) const
-{
-	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
-	scalars.resize(m->gnelem(), 3);
-	velocities.resize(m->gnelem(), NDIM);
-	
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
-
-	for(a_int iel = 0; iel < m->gnelem(); iel++) {
-		scalars(iel,0) = u(iel,0);
-	}
-
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
-	{
-		velocities(iel,0) = u(iel,1)/u(iel,0);
-		velocities(iel,1) = u(iel,2)/u(iel,0);
-		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
-		scalars(iel,2) = physics.getPressureFromConserved(&uarr[iel*NVARS]);
-		a_real c = physics.getSoundSpeedFromConserved(&uarr[iel*NVARS]);
-		scalars(iel,1) = sqrt(vmag2)/c;
-	}
-	compute_entropy_cell(uvec);
-	
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	std::cout << "FlowFV: postprocess_cell(): Done.\n";
-	return ierr;
-}
-
-a_real FlowFV_base::compute_entropy_cell(const Vec uvec) const
-{
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr);
-
-	a_real sinf = physics.getEntropyFromConserved(&uinf[0]);
-
-	amat::Array2d<a_real> s_err(m->gnelem(),1);
-	a_real error = 0;
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
-	{
-		s_err(iel) = (physics.getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
-		error += s_err(iel)*s_err(iel)*m->garea(iel);
-	}
-	error = sqrt(error);
-
-	a_real h = 1.0/sqrt(m->gnelem());
- 
-	std::cout << "FlowFV:   " << log10(h) << "  " 
-		<< std::setprecision(10) << log10(error) << std::endl;
-
-	ierr = VecRestoreArrayRead(uvec, &uarr);
-	(void)ierr;
-	return error;
-}
-
 template<bool secondOrderRequested, bool constVisc>
 FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<a_real> *const mesh,
                                                const FlowPhysicsConfig& pconf, 
@@ -1420,40 +1307,6 @@ void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& inst
 }
 
 template<int nvars>
-StatusCode Diffusion<nvars>::postprocess_point(const Vec uvec, amat::Array2d<a_real>& up,
-		amat::Array2d<a_real>& vec) const
-{
-	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
-	
-	std::vector<a_real> areasum(m->gnpoin(),0);
-	up.resize(m->gnpoin(), nvars);
-	up.zeros();
-	//areasum.zeros();
-
-	StatusCode ierr = 0;
-	const PetscScalar* uarr;
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
-
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int inode = 0; inode < m->gnnode(ielem); inode++)
-			for(int ivar = 0; ivar < nvars; ivar++)
-			{
-				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
-				areasum[m->ginpoel(ielem,inode)] += m->garea(ielem);
-			}
-	}
-
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
-		for(int ivar = 0; ivar < nvars; ivar++)
-			up(ipoin,ivar) /= areasum[ipoin];
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	return ierr;
-}
-
-template<int nvars>
 DiffusionMA<nvars>::DiffusionMA(const UMesh2dh<a_real> *const mesh, 
 		const a_real diffcoeff, const a_real bvalue,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
@@ -1702,9 +1555,45 @@ void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
 	gradcomp->compute_gradients(u, ug, grads);
 }
 
+template<int nvars>
+StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec uvec,
+                                    amat::Array2d<a_real>& up)
+{
+	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
+	
+	std::vector<a_real> areasum(m->gnpoin(),0);
+	up.resize(m->gnpoin(), nvars);
+	up.zeros();
+	//areasum.zeros();
+
+	StatusCode ierr = 0;
+	const PetscScalar* uarr;
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
+
+	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	{
+		for(int inode = 0; inode < m->gnnode(ielem); inode++)
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				up(m->ginpoel(ielem,inode),ivar) += u(ielem,ivar)*m->garea(ielem);
+				areasum[m->ginpoel(ielem,inode)] += m->garea(ielem);
+			}
+	}
+
+	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+		for(int ivar = 0; ivar < nvars; ivar++)
+			up(ipoin,ivar) /= areasum[ipoin];
+
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	return ierr;
+}
+
 // template instantiations
 
 template class Diffusion<1>;
 template class DiffusionMA<1>;
+template StatusCode scalar_postprocess_point<1>(const UMesh2dh<a_real> *const m, const Vec uvec,
+                                                amat::Array2d<a_real>& up);
 
 }	// end namespace

@@ -78,10 +78,6 @@ public:
 	 * \param[in|out] u Vector to store the initial data in
 	 */
 	virtual StatusCode initializeUnknowns(Vec u) const = 0;
-	
-	/// Compute nodal quantities to export
-	virtual StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
-			amat::Array2d<a_real>& vector) const = 0;
 
 	/// Exposes access to the mesh context
 	const UMesh2dh<scalar>* mesh() const
@@ -199,23 +195,6 @@ public:
 	                                                    const GradArray<a_real,NVARS>& grad,
 	                                                    const int iwbcm,
 	                                                    MVector<a_real>& output) const;
-
-	/// Compute cell-centred quantities to export \deprecated Use postprocess_point instead.
-	StatusCode postprocess_cell(const Vec u, amat::Array2d<a_real>& scalars, 
-	                            amat::Array2d<a_real>& velocities) const;
-	
-	/// Compute nodal quantities to export
-	/** Based on area-weighted averaging which takes into account ghost cells as well.
-	 * Density, Mach number, pressure and temperature are the exported scalars,
-	 * and velocity is exported as well.
-	 */
-	StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
-	                             amat::Array2d<a_real>& velocities) const;
-
-	/// Compute norm of cell-centered entropy production
-	/** Call after computing pressure etc \sa postprocess_cell
-	 */
-	a_real compute_entropy_cell(const Vec u) const;
 
 	/// Computes gradients of converved variables
 	void getGradients(const MVector<a_real>& u, GradArray<a_real,NVARS>& grads) const;
@@ -383,12 +362,6 @@ public:
 	 */
 	StatusCode initializeUnknowns(Vec u) const;
 	
-	/// Compute nodal quantities to export
-	/** \param vec Dummy argument, not used
-	 */
-	StatusCode postprocess_point(const Vec u, amat::Array2d<a_real>& scalars, 
-			amat::Array2d<a_real>& vec) const;
-	
 	virtual StatusCode compute_residual(const Vec u, Vec residual, 
 			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
 	
@@ -464,12 +437,15 @@ protected:
 	using Diffusion<nvars>::source;
 	using Diffusion<nvars>::h;
 
-	using Diffusion<nvars>::postprocess_point;
 	using Diffusion<nvars>::compute_boundary_state;
 	using Diffusion<nvars>::compute_boundary_states;
 	
 	const GradientScheme<a_real,nvars> *const gradcomp;
 };
+
+template<int nvars>
+StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec uvec,
+                                    amat::Array2d<a_real>& up);
 
 }	// end namespace
 #endif
