@@ -6,6 +6,7 @@
 #include <iostream>
 #include "ameshutils.hpp"
 #include "linalg/alinalg.hpp"
+#include "spatial/diffusion.hpp"
 
 namespace fvens {
 

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include "spatial/diffusion.hpp"
 #include "linalg/alinalg.hpp"
 #include "spatial/aoutput.hpp"
 #include "ode/aodesolver.hpp"
