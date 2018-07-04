@@ -122,7 +122,7 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	grad.resize(m.gnelem());
 	prob->getGradients(umat, grad);
 	const std::tuple<a_real,a_real,a_real> fnls 
-		{ out.computeSurfaceData(umat, grad, opts.lwalls[0], output)};
+		{ prob->computeSurfaceData(umat, grad, opts.lwalls[0], output)};
 
 	if(opts.vol_output_reqd == "YES")
 		out.exportVolumeData(umat, opts.volnameprefix);

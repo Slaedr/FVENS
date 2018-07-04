@@ -46,24 +46,13 @@ public:
 	/// Sets required data
 	/** \param[in] angleOfAttack The angle of attack in radians
 	 */
-	FlowOutput(const Spatial<a_real,NVARS> *const fv,
+	FlowOutput(const FlowFV_base *const fv,
 			const IdealGasPhysics<a_real> *const physics, const a_real angleOfAttack);
 	
 	/** For each cell, writes out the coordinates of the cell-centre,
 	 * density, velocities, pressure, temperature and Mach number.
 	 */
 	void exportVolumeData(const MVector<a_real>& u, const std::string volfile) const;
-
-	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
-	/** \param[in] u The multi-vector containing conserved variables
-	 * \param[in] grad Gradients of converved variables at cell-centres
-	 * \param[in] iwbcm The marker of the boundary on which the computation is to be done
-	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
-	 *                   Cp and Csf, in that order
-	 */
-	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector<a_real>& u,
-	                                                    const GradArray<a_real,NVARS>& grad,
-	                                                    const int iwbcm, MVector<a_real>& output) const;
 
 	/// Export surface data
 	/** We compute pressure and skin-friction coefficients for wall boundaries, and
@@ -75,7 +64,8 @@ public:
 			const std::vector<int> obcm, const std::string basename) const;
 
 protected:
-	using Output<NVARS>::space;
+	//using Output<NVARS>::space;
+	const FlowFV_base *const space;
 	using Output<NVARS>::m;
 	const IdealGasPhysics<a_real> *const phy;
 	const a_real av[NDIM];				///< Unit vector in the direction of freestream flow

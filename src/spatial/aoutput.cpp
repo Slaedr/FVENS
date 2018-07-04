@@ -15,9 +15,9 @@ Output<nvars>::Output(const Spatial<a_real,nvars> *const fv)
 	: space(fv), m(space->mesh())
 { }
 
-FlowOutput::FlowOutput(const Spatial<a_real,NVARS> *const fv,
+FlowOutput::FlowOutput(const FlowFV_base *const fv,
                        const IdealGasPhysics<a_real> *const physics, const a_real aoa)
-	: Output<NVARS>(fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
+	: Output<NVARS>(fv), space(fv), phy(physics), av{std::cos(aoa) ,std::sin(aoa)}
 {
 }
 
@@ -47,115 +47,6 @@ void FlowOutput::exportVolumeData(const MVector<a_real>& u, std::string volfile)
 	}
 
 	fout.close();
-}
-
-std::tuple<a_real,a_real,a_real> FlowOutput::computeSurfaceData (const MVector<a_real>& u,
-                                                                 const GradArray<a_real,NVARS>& grad,
-                                                                 const int iwbcm,
-                                                                 MVector<a_real>& output) const
-{
-	a_int facecoun = 0;			// face iteration counter for this boundary marker
-	a_real totallen = 0;		// total area of the surface with this boundary marker
-	a_real Cdf=0, Cdp=0, Cl=0;
-	
-	const a_real pinf = phy->getFreestreamPressure();
-
-	// unit vector normal to the free-stream flow direction
-	a_real flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
-
-	// iterate over faces having this boundary marker
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
-	{
-		if(m->gintfacbtags(iface,0) == iwbcm)
-		{
-			const a_int lelem = m->gintfac(iface,0);
-			a_real n[NDIM];
-			for(int j = 0; j < NDIM; j++)
-				n[j] = m->gfacemetric(iface,j);
-			const a_real len = m->gfacemetric(iface,2);
-			totallen += len;
-
-			// coords of face center
-			a_int ijp[NDIM];
-			ijp[0] = m->gintfac(iface,2);
-			ijp[1] = m->gintfac(iface,3);
-			a_real coord[NDIM];
-			for(int j = 0; j < NDIM; j++) 
-			{
-				coord[j] = 0;
-				for(int inofa = 0; inofa < m->gnnofa(); inofa++)
-					coord[j] += m->gcoords(ijp[inofa],j);
-				coord[j] /= m->gnnofa();
-				
-				output(facecoun,j) = coord[j];
-			}
-
-			/** Pressure coefficient: 
-			 * \f$ C_p = (p-p_\infty)/(\frac12 rho_\infty * v_\infty^2) \f$
-			 * = 2(p* - p_inf*) where *'s indicate non-dimensional values.
-			 * We note that p_inf* = 1/(gamma Minf^2) in our non-dimensionalization.
-			 */
-			output(facecoun, NDIM) = (phy->getPressureFromConserved(&u(lelem,0)) - pinf)*2.0;
-
-			/** Skin friction coefficient \f% C_f = \tau_w / (\frac12 \rho v_\infty^2) \f$.
-			 * 
-			 * We can define \f$ \tau_w \f$, the wall shear stress, as
-			 * \f$ \tau_w = (\mathbf{T} \hat{\mathbf{n}}).\hat{\mathbf{t}} \f$
-			 * where \f$ \mathbf{\Tau} \f$ is the viscous stress tensor, 
-			 * \f$ \hat{\mathbf{n}} \f$ is the unit normal to the face and 
-			 * \f$ \hat{\mathbf{t}} \f$ is a consistent unit tangent to the face.
-			 * 
-			 * Note that because of our non-dimensionalization,
-			 * \f$ C_f = 2 \tau_w \f$.
-			 *
-			 * Note that finally the wall shear stress becomes
-			 * \f$ \tau_w = \mu (\nabla\mathbf{u}+\nabla\mathbf{u}^T) \hat{\mathbf{n}}
-			 *                                           .\hat{\mathbf{t}} \f$.
-			 *
-			 * Note that if n is (n1,n2), t is chosen as (n2,-n1).
-			 */
-
-			// non-dim viscosity / Re_inf
-			const a_real muhat = phy->getViscosityCoeffFromConserved(&u(lelem,0));
-
-			// velocity gradient tensor
-			a_real gradu[NDIM][NDIM];
-			gradu[0][0] = (grad[lelem](0,1)*u(lelem,0)-u(lelem,1)*grad[lelem](0,0))
-							/ (u(lelem,0)*u(lelem,0));
-			gradu[0][1] = (grad[lelem](1,1)*u(lelem,0)-u(lelem,1)*grad[lelem](1,0))
-							/ (u(lelem,0)*u(lelem,0));
-			gradu[1][0] = (grad[lelem](0,2)*u(lelem,0)-u(lelem,2)*grad[lelem](0,0))
-							/ (u(lelem,0)*u(lelem,0));
-			gradu[1][1] = (grad[lelem](1,2)*u(lelem,0)-u(lelem,2)*grad[lelem](1,0))
-							/ (u(lelem,0)*u(lelem,0));
-			
-			const a_real tauw = 
-				muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
-				+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
-
-			output(facecoun, NDIM+1) = 2.0*tauw;
-
-			// add contributions to Cdp, Cdf and Cl
-			
-			// face normal dot free-stream direction
-			const a_real ndotf = n[0]*av[0]+n[1]*av[1];
-			// face normal dot "up" direction perpendicular to free stream
-			const a_real ndotnf = n[0]*flownormal[0]+n[1]*flownormal[1];
-			// face tangent dot free-stream direction
-			const a_real tdotf = n[1]*av[0]-n[0]*av[1];
-
-			Cdp += output(facecoun,NDIM)*ndotf*len;
-			Cdf += output(facecoun,NDIM+1)*tdotf*len;
-			Cl += output(facecoun,NDIM)*ndotnf*len;
-
-			facecoun++;
-		}
-	}
-
-	// Normalize drag and lift by reference area
-	Cdp /= totallen; Cdf /= totallen; Cl /= totallen;
-
-	return std::make_tuple(Cl, Cdp, Cdf);
 }
 
 /** \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
@@ -196,7 +87,7 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u, const std::vector<i
 		fout << "#  x \t y \t Cp  \t Cf \n";
 
 		// iterate over faces having this boundary marker
-		std::tie(Cl, Cdp, Cdf) = computeSurfaceData(u, grad, wbcm[im], output);
+		std::tie(Cl, Cdp, Cdf) = space->computeSurfaceData(u, grad, wbcm[im], output);
 
 		// write out the output
 

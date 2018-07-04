@@ -30,7 +30,7 @@ for ifile in range(len(sys.argv)-1):
         plt.title(names[j])
         plt.xlabel("Coordinate " + str(plotaxis))
         plt.ylabel(names[j])
-        plt.grid('on')
+        plt.grid(True)
         #plt.legend()
         plt.show()
 

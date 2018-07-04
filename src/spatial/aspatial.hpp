@@ -22,6 +22,7 @@
 #define ASPATIAL_H 1
 
 #include <array>
+#include <tuple>
 
 #include "aconstants.hpp"
 
@@ -186,6 +187,18 @@ public:
 	 * \param[in,out] u Vector to store the initial data in
 	 */
 	StatusCode initializeUnknowns(Vec u) const;
+
+	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
+	/** \param[in] u The multi-vector containing conserved variables
+	 * \param[in] grad Gradients of converved variables at cell-centres
+	 * \param[in] iwbcm The marker of the boundary on which the computation is to be done
+	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
+	 *                   Cp and Csf, in that order
+	 */
+	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector<a_real>& u,
+	                                                    const GradArray<a_real,NVARS>& grad,
+	                                                    const int iwbcm,
+	                                                    MVector<a_real>& output) const;
 
 	/// Compute cell-centred quantities to export \deprecated Use postprocess_point instead.
 	StatusCode postprocess_cell(const Vec u, amat::Array2d<a_real>& scalars, 
