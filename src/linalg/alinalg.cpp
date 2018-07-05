@@ -137,7 +137,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	// aux <- u + eps/xnorm * x
 	ierr = VecAXPY(aux, 1.0, u); CHKERRQ(ierr);
 	// y <- -r(u + eps/xnorm * x)
-	ierr = spatial->compute_residual(aux, y, false, dummy); CHKERRQ(ierr);
+	ierr = spatial->assemble_residual(aux, y, false, dummy); CHKERRQ(ierr);
 	// y <- -(-r(u + eps/xnorm * x)) + (-r(u)) = r(u + eps/xnorm * x) - r(u)
 	ierr = VecAXPBY(y, 1.0, -1.0, res); CHKERRQ(ierr);
 	

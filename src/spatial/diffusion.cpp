@@ -73,10 +73,10 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<int nvars>
-StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
-                                          Vec rvec, 
-                                          const bool gettimesteps, 
-										  std::vector<a_real>& dtm) const
+StatusCode DiffusionMA<nvars>::assemble_residual(const Vec uvec,
+                                                Vec rvec, 
+                                                const bool gettimesteps, 
+                                                std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
 
@@ -87,9 +87,25 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, nvars);
+
+	ierr = compute_residual(uarr, rarr, gettimesteps, dtm); CHKERRQ(ierr);
+	
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
+	return ierr;
+}
+
+template<int nvars>
+StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
+                                                a_real *const __restrict rarr, 
+                                                const bool gettimesteps, 
+                                                std::vector<a_real>& dtm) const
+{
+	StatusCode ierr = 0;
+
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), nvars);
+	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
@@ -189,8 +205,6 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec,
 			residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
 	}
 	
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 	return ierr;
 }
 

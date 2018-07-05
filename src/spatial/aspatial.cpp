@@ -344,6 +344,39 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 }
 
 template <typename scalar>
+StatusCode FlowFV_base<scalar>::assemble_residual(const Vec uvec, 
+                                                  Vec __restrict rvec, 
+                                                  const bool gettimesteps,
+                                                  std::vector<a_real>& dtm) const
+{
+	StatusCode ierr = 0;
+	amat::Array2d<a_real> integ, ug, uleft, uright;	
+	integ.resize(m->gnelem(), 1);
+	ug.resize(m->gnbface(),NVARS);
+	uleft.resize(m->gnaface(), NVARS);
+	uright.resize(m->gnaface(), NVARS);
+	GradArray<a_real,NVARS> grads;
+
+	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % NVARS == 0);
+	locnelem /= NVARS;
+	assert(locnelem == m->gnelem());
+	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
+	//assert(locnelem == dtsz);
+
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+
+	compute_residual(uarr, rarr, gettimesteps, dtm);
+	
+	VecRestoreArrayRead(uvec, &uarr);
+	VecRestoreArray(rvec, &rarr);
+	//VecRestoreArray(dtmvec, &dtm);
+	return ierr;
+}
+
+template <typename scalar>
 static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa) {
 	std::array<scalar,NDIM> dir;
 	for(int i = 0; i < NDIM; i++) dir[i] = 0;
@@ -847,8 +880,8 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const 
 }
 
 template<bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uvec, 
-		Vec __restrict rvec, 
+StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real *const uarr, 
+		a_real *const __restrict rarr, 
 		const bool gettimesteps, std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
@@ -859,19 +892,8 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 	uright.resize(m->gnaface(), NVARS);
 	GradArray<a_real,NVARS> grads;
 
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % NVARS == 0);
-	locnelem /= NVARS;
-	assert(locnelem == m->gnelem());
-	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	//assert(locnelem == dtsz);
-
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, locnelem, NVARS);
-	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, NVARS);
-	//ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), NVARS);
 
 #pragma omp parallel default(shared)
 	{
@@ -1060,9 +1082,6 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const Vec uv
 			}
 	} // end parallel region
 	
-	VecRestoreArrayRead(uvec, &uarr);
-	VecRestoreArray(rvec, &rarr);
-	//VecRestoreArray(dtmvec, &dtm);
 	return ierr;
 }
 

@@ -150,7 +150,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 		// update residual
-		space->compute_residual(uvec, rvec, true, dtm);
+		space->assemble_residual(uvec, rvec, true, dtm);
 
 		a_real errmass = 0;
 
@@ -382,7 +382,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		
 		// update residual and local time steps
-		ierr = space->compute_residual(uvec, rvec, true, dtm); CHKERRQ(ierr);
+		ierr = space->assemble_residual(uvec, rvec, true, dtm); CHKERRQ(ierr);
 
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
@@ -606,7 +606,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			}
 
 			// update residual
-			space->compute_residual(uvec, rvec, true, dtm);
+			space->assemble_residual(uvec, rvec, true, dtm);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)
