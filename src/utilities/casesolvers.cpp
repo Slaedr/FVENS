@@ -77,7 +77,8 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	const FlowFV_base *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+	const FlowFV_base<a_real> *const prob
+		= create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
 	prob->initializeUnknowns(*u);

@@ -225,11 +225,12 @@ void Spatial<scalar,nvars>::getFaceGradientAndJacobian_thinLayer(const a_int ifa
 	}
 }
 
-FlowFV_base::FlowFV_base(const UMesh2dh<a_real> *const mesh,
-                         const FlowPhysicsConfig& pconf, 
-                         const FlowNumericsConfig& nconf)
+template <typename scalar>
+FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
+                                 const FlowPhysicsConfig& pconf, 
+                                 const FlowNumericsConfig& nconf)
 	: 
-	Spatial<a_real,NVARS>(mesh), 
+	Spatial<scalar,NVARS>(mesh), 
 	pconfig{pconf},
 	nconfig{nconf},
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
@@ -241,7 +242,7 @@ FlowFV_base::FlowFV_base(const UMesh2dh<a_real> *const mesh,
 	gradcomp {create_const_gradientscheme<NVARS>(nconfig.gradientscheme, m, rc)},
 	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)},
 
-	bcs {create_const_flowBCs<a_real>(pconf.bcconf, physics,uinf)}
+	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
 
 {
 	std::cout << " FlowFV: Boundary markers:\n";
@@ -256,7 +257,8 @@ FlowFV_base::FlowFV_base(const UMesh2dh<a_real> *const mesh,
 		<< pconfig.bcconf.adiabaticwall_vel << '\n';
 }
 
-FlowFV_base::~FlowFV_base()
+template <typename scalar>
+FlowFV_base<scalar>::~FlowFV_base()
 {
 	delete gradcomp;
 	delete inviflux;
@@ -268,7 +270,8 @@ FlowFV_base::~FlowFV_base()
 	}
 }
 
-StatusCode FlowFV_base::initializeUnknowns(Vec u) const
+template <typename scalar>
+StatusCode FlowFV_base<scalar>::initializeUnknowns(Vec u) const
 {
 	StatusCode ierr = 0;
 	PetscScalar * uloc;
@@ -291,8 +294,9 @@ StatusCode FlowFV_base::initializeUnknowns(Vec u) const
 	return ierr;
 }
 
-void FlowFV_base::compute_boundary_states(const amat::Array2d<a_real>& ins, 
-                                          amat::Array2d<a_real>& bs ) const
+template <typename scalar>
+void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& ins, 
+                                                  amat::Array2d<scalar>& bs ) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -307,26 +311,29 @@ void FlowFV_base::compute_boundary_states(const amat::Array2d<a_real>& ins,
 	}
 }
 
-void FlowFV_base::compute_boundary_state(const int ied, 
-                                         const a_real *const ins, 
-                                         a_real *const gs        ) const
+template <typename scalar>
+void FlowFV_base<scalar>::compute_boundary_state(const int ied, 
+                                         const scalar *const ins, 
+                                         scalar *const gs        ) const
 {
-	const std::array<a_real,NDIM> n = m->gnormal(ied);
+	const std::array<scalar,NDIM> n = m->gnormal(ied);
 	bcs.at(m->gintfacbtags(ied,0))->computeGhostState(ins, &n[0], gs);
 }
 
-void FlowFV_base::compute_boundary_Jacobian(const int ied,
-                                            const a_real *const ins,
-                                            a_real *const gs, a_real *const dgs) const
+template <typename scalar>
+void FlowFV_base<scalar>::compute_boundary_Jacobian(const int ied,
+                                            const scalar *const ins,
+                                            scalar *const gs, scalar *const dgs) const
 {
-	const std::array<a_real,NDIM> n = m->gnormal(ied);
+	const std::array<scalar,NDIM> n = m->gnormal(ied);
 	bcs.at(m->gintfacbtags(ied,0))->computeGhostStateAndJacobian(ins, &n[0], gs, dgs);
 }
 
-void FlowFV_base::getGradients(const MVector<a_real>& u,
-                               GradArray<a_real,NVARS>& grads) const
+template <typename scalar>
+void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
+                               GradArray<scalar,NVARS>& grads) const
 {
-	amat::Array2d<a_real> ug(m->gnbface(),NVARS);
+	amat::Array2d<scalar> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
@@ -336,8 +343,9 @@ void FlowFV_base::getGradients(const MVector<a_real>& u,
 	gradcomp->compute_gradients(u, ug, grads);
 }
 
-static inline std::array<a_real,NDIM> flowDirectionVector(const a_real aoa) {
-	std::array<a_real,NDIM> dir;
+template <typename scalar>
+static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa) {
+	std::array<scalar,NDIM> dir;
 	for(int i = 0; i < NDIM; i++) dir[i] = 0;
 
 	dir[0] = cos(aoa);
@@ -346,22 +354,25 @@ static inline std::array<a_real,NDIM> flowDirectionVector(const a_real aoa) {
 	return dir;
 }
 
-std::tuple<a_real,a_real,a_real> FlowFV_base::computeSurfaceData (const MVector<a_real>& u,
-                                                                 const GradArray<a_real,NVARS>& grad,
-                                                                 const int iwbcm,
-                                                                 MVector<a_real>& output) const
+template <typename scalar>
+std::tuple<scalar,scalar,scalar>
+FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
+                                         const GradArray<scalar,NVARS>& grad,
+                                         const int iwbcm,
+                                         MVector<scalar>& output) const
 {
 	// unit vector in the direction of flow
-	const std::array<a_real,NDIM> av = flowDirectionVector(pconfig.aoa); 
+	const std::array<scalar,NDIM> av = flowDirectionVector(pconfig.aoa); 
 
 	a_int facecoun = 0;			// face iteration counter for this boundary marker
-	a_real totallen = 0;		// total area of the surface with this boundary marker
-	a_real Cdf=0, Cdp=0, Cl=0;
+	scalar totallen = 0;		// total area of the surface with this boundary marker
+	scalar Cdf=0, Cdp=0, Cl=0;
 	
-	const a_real pinf = physics.getFreestreamPressure();
+	const scalar pinf = physics.getFreestreamPressure();
 
 	// unit vector normal to the free-stream flow direction
-	a_real flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
+	// TODO: Generalize to 3D
+	scalar flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
 
 	// iterate over faces having this boundary marker
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -369,17 +380,17 @@ std::tuple<a_real,a_real,a_real> FlowFV_base::computeSurfaceData (const MVector<
 		if(m->gintfacbtags(iface,0) == iwbcm)
 		{
 			const a_int lelem = m->gintfac(iface,0);
-			a_real n[NDIM];
+			scalar n[NDIM];
 			for(int j = 0; j < NDIM; j++)
 				n[j] = m->gfacemetric(iface,j);
-			const a_real len = m->gfacemetric(iface,2);
+			const scalar len = m->gfacemetric(iface,2);
 			totallen += len;
 
 			// coords of face center
 			a_int ijp[NDIM];
 			ijp[0] = m->gintfac(iface,2);
 			ijp[1] = m->gintfac(iface,3);
-			a_real coord[NDIM];
+			scalar coord[NDIM];
 			for(int j = 0; j < NDIM; j++) 
 			{
 				coord[j] = 0;
@@ -416,10 +427,10 @@ std::tuple<a_real,a_real,a_real> FlowFV_base::computeSurfaceData (const MVector<
 			 */
 
 			// non-dim viscosity / Re_inf
-			const a_real muhat = physics.getViscosityCoeffFromConserved(&u(lelem,0));
+			const scalar muhat = physics.getViscosityCoeffFromConserved(&u(lelem,0));
 
 			// velocity gradient tensor
-			a_real gradu[NDIM][NDIM];
+			scalar gradu[NDIM][NDIM];
 			gradu[0][0] = (grad[lelem](0,1)*u(lelem,0)-u(lelem,1)*grad[lelem](0,0))
 							/ (u(lelem,0)*u(lelem,0));
 			gradu[0][1] = (grad[lelem](1,1)*u(lelem,0)-u(lelem,1)*grad[lelem](1,0))
@@ -429,7 +440,7 @@ std::tuple<a_real,a_real,a_real> FlowFV_base::computeSurfaceData (const MVector<
 			gradu[1][1] = (grad[lelem](1,2)*u(lelem,0)-u(lelem,2)*grad[lelem](1,0))
 							/ (u(lelem,0)*u(lelem,0));
 			
-			const a_real tauw = 
+			const scalar tauw = 
 				muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
 				+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 
@@ -438,11 +449,11 @@ std::tuple<a_real,a_real,a_real> FlowFV_base::computeSurfaceData (const MVector<
 			// add contributions to Cdp, Cdf and Cl
 			
 			// face normal dot free-stream direction
-			const a_real ndotf = n[0]*av[0]+n[1]*av[1];
+			const scalar ndotf = n[0]*av[0]+n[1]*av[1];
 			// face normal dot "up" direction perpendicular to free stream
-			const a_real ndotnf = n[0]*flownormal[0]+n[1]*flownormal[1];
+			const scalar ndotnf = n[0]*flownormal[0]+n[1]*flownormal[1];
 			// face tangent dot free-stream direction
-			const a_real tdotf = n[1]*av[0]-n[0]*av[1];
+			const scalar tdotf = n[1]*av[0]-n[0]*av[1];
 
 			Cdp += output(facecoun,NDIM)*ndotf*len;
 			Cdf += output(facecoun,NDIM+1)*tdotf*len;
@@ -462,7 +473,7 @@ template<bool secondOrderRequested, bool constVisc>
 FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<a_real> *const mesh,
                                                const FlowPhysicsConfig& pconf, 
                                                const FlowNumericsConfig& nconf)
-	: FlowFV_base(mesh, pconf, nconf)
+	: FlowFV_base<a_real>(mesh, pconf, nconf)
 {
 	if(secondOrderRequested)
 		std::cout << "FlowFV: Second order solution requested.\n";
@@ -1249,6 +1260,8 @@ void FlowFV<order2,constVisc>::compute_jacobian(const MVector<a_real>& u,
 
 // For doffusion equation
 template class Spatial<a_real,1>;
+
+template class FlowFV_base<a_real>;
 
 template class FlowFV<true,true>;
 template class FlowFV<false,true>;

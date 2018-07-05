@@ -172,7 +172,7 @@ const SolutionReconstruction<a_real>* create_const_reconstruction(const std::str
 	return create_mutable_reconstruction(type, m, rc, gr, param);
 }
 
-FlowFV_base* create_mutable_flowSpatialDiscretization(
+FlowFV_base<a_real>* create_mutable_flowSpatialDiscretization(
 	const UMesh2dh<a_real> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
@@ -189,7 +189,7 @@ FlowFV_base* create_mutable_flowSpatialDiscretization(
 			return new FlowFV<false,false>(m, pconf, nconf);
 }
 
-const FlowFV_base* create_const_flowSpatialDiscretization(
+const FlowFV_base<a_real>* create_const_flowSpatialDiscretization(
 	const UMesh2dh<a_real> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)

@@ -166,11 +166,12 @@ struct FlowNumericsConfig
 /** This is meant to be a template-parameter-free abstract class encapsulating a spatial discretization
  * for a flow problem.
  */
-class FlowFV_base : public Spatial<a_real,NVARS>
+template <typename scalar>
+class FlowFV_base : public Spatial<scalar,NVARS>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV_base(const UMesh2dh<a_real> *const mesh,              ///< Mesh context
+	FlowFV_base(const UMesh2dh<scalar> *const mesh,              ///< Mesh context
 	            const FlowPhysicsConfig& pconfig,        ///< Physical data defining the problem
 	            const FlowNumericsConfig& nconfig        ///< Options defining the numerical method
 	            );
@@ -190,21 +191,25 @@ public:
 	 * \param[in] iwbcm The marker of the boundary on which the computation is to be done
 	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
 	 *                   Cp and Csf, in that order
+	 * \return A tuple containing Cl, Cd_p and Cd_sf.
+	 *
+	 * \todo Write unit tests
+	 * \todo Generalize to 3D
 	 */
-	std::tuple<a_real,a_real,a_real> computeSurfaceData(const MVector<a_real>& u,
-	                                                    const GradArray<a_real,NVARS>& grad,
+	std::tuple<scalar,scalar,scalar> computeSurfaceData(const MVector<scalar>& u,
+	                                                    const GradArray<scalar,NVARS>& grad,
 	                                                    const int iwbcm,
-	                                                    MVector<a_real>& output) const;
+	                                                    MVector<scalar>& output) const;
 
 	/// Computes gradients of converved variables
-	void getGradients(const MVector<a_real>& u, GradArray<a_real,NVARS>& grads) const;
+	void getGradients(const MVector<scalar>& u, GradArray<scalar,NVARS>& grads) const;
 
 protected:
 
-	using Spatial<a_real,NVARS>::m;
-	using Spatial<a_real,NVARS>::rc;
-	using Spatial<a_real,NVARS>::gr;
-	using Spatial<a_real,NVARS>::getFaceGradient_modifiedAverage;
+	using Spatial<scalar,NVARS>::m;
+	using Spatial<scalar,NVARS>::rc;
+	using Spatial<scalar,NVARS>::gr;
+	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
 
 	/// Problem specification
 	const FlowPhysicsConfig& pconfig;
@@ -213,26 +218,26 @@ protected:
 	const FlowNumericsConfig& nconfig;
 
 	/// Analytical flux vector computation
-	const IdealGasPhysics<a_real> physics;
+	const IdealGasPhysics<scalar> physics;
 	
-	const std::array<a_real,NVARS> uinf;                    ///< Free-stream/reference condition
+	const std::array<scalar,NVARS> uinf;                    ///< Free-stream/reference condition
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
 	 */
-	const InviscidFlux<a_real> *const inviflux;
+	const InviscidFlux<scalar> *const inviflux;
 
 	/// Numerical inviscid flux context for the Jacobian
-	const InviscidFlux<a_real> *const jflux;
+	const InviscidFlux<scalar> *const jflux;
 
 	/// Gradient computation context
-	const GradientScheme<a_real,NVARS> *const gradcomp;
+	const GradientScheme<scalar,NVARS> *const gradcomp;
 
 	/// Reconstruction context
-	const SolutionReconstruction<a_real> *const lim;
+	const SolutionReconstruction<scalar> *const lim;
 
 	/// The different boundary conditions required for all the boundaries
-	const std::map<int,const FlowBC<a_real>*> bcs;
+	const std::map<int,const FlowBC<scalar>*> bcs;
 
 	/// Computes flow variables at all boundaries (either Gauss points or ghost cell centers) 
 	/// using the interior state provided
@@ -242,15 +247,15 @@ protected:
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
-			amat::Array2d<a_real>& bounstates) const;
+	void compute_boundary_states(const amat::Array2d<scalar>& instates, 
+			amat::Array2d<scalar>& bounstates) const;
 
 	/// Computes ghost cell state across one face
 	/** \param[in] ied Face id in face data structure intfac
 	 * \param[in] ins Interior state of conserved variables
 	 * \param[in,out] gs Ghost state of conserved variables
 	 */
-	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const gs) const;
+	void compute_boundary_state(const int ied, const scalar *const ins, scalar *const gs) const;
 
 	/// Computes the Jacobian of the ghost state w.r.t. the interior state
 	/** The output array dgs is zeroed first, so any previous content will be lost. 
@@ -260,8 +265,8 @@ protected:
 	 * \param[in,out] dgs Derivatives of ghost state of conserved variables w.r.t.
 	 *   the interior state ins, NVARS x NVARS stored in a row-major 1D array
 	 */
-	void compute_boundary_Jacobian(const int ied, const a_real *const ins, 
-			a_real *const gs, a_real *const dgs) const;
+	void compute_boundary_Jacobian(const int ied, const scalar *const ins, 
+			scalar *const gs, scalar *const dgs) const;
 };
 
 /// Computes the integrated fluxes and their Jacobians for compressible flow
@@ -273,7 +278,7 @@ template <
 	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
 	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
 >
-class FlowFV : public FlowFV_base
+class FlowFV : public FlowFV_base<a_real>
 {
 public:
 	/// Sets data and initializes the numerics

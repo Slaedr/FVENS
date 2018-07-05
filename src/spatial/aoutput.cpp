@@ -15,7 +15,7 @@ Output<nvars>::Output(const Spatial<a_real,nvars> *const fv)
 	: space(fv), m(space->mesh())
 { }
 
-FlowOutput::FlowOutput(const FlowFV_base *const fv,
+FlowOutput::FlowOutput(const FlowFV_base<a_real> *const fv,
                        const IdealGasPhysics<a_real> *const physics, const a_real aoa)
 	: Output<NVARS>(fv), space(fv), phy(physics), angleOfAttack{aoa},
 	av{std::cos(aoa) ,std::sin(aoa)}
@@ -35,10 +35,10 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
-		{
-			s_err(iel) = (phy->getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
-			error += s_err(iel)*s_err(iel)*m->garea(iel);
-		}
+	{
+		s_err(iel) = (phy->getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
+		error += s_err(iel)*s_err(iel)*m->garea(iel);
+	}
 	error = sqrt(error);
 
 	a_real h = 1.0/sqrt(m->gnelem());
@@ -282,8 +282,8 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u, const std::vector<i
 }
 
 void writeScalarsVectorToVtu_CellData(std::string fname, const fvens::UMesh2dh<a_real>& m, 
-		const amat::Array2d<double>& x, std::string scaname[], 
-		const amat::Array2d<double>& y, std::string vecname)
+                                      const amat::Array2d<double>& x, std::string scaname[], 
+                                      const amat::Array2d<double>& y, std::string vecname)
 {
 	int elemcode;
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";
@@ -408,8 +408,8 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const fvens::UMesh2dh<a
 }
 
 void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh2dh<a_real>& m, 
-		const amat::Array2d<double>& x, std::string scaname[], 
-		const amat::Array2d<double>& y, std::string vecname)
+                                       const amat::Array2d<double>& x, std::string scaname[], 
+                                       const amat::Array2d<double>& y, std::string vecname)
 {
 	int elemcode;
 	std::cout << "aoutput: Writing vtu output to " << fname << "\n";

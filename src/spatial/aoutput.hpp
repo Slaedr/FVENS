@@ -46,7 +46,7 @@ public:
 	/// Sets required data
 	/** \param[in] angleOfAttack The angle of attack in radians
 	 */
-	FlowOutput(const FlowFV_base *const fv,
+	FlowOutput(const FlowFV_base<a_real> *const fv,
 			const IdealGasPhysics<a_real> *const physics, const a_real angleOfAttack);
 	
 	/// Compute norm of cell-centered entropy production
@@ -82,7 +82,7 @@ public:
 
 protected:
 	//using Output<NVARS>::space;
-	const FlowFV_base *const space;
+	const FlowFV_base<a_real> *const space;
 	using Output<NVARS>::m;
 	const IdealGasPhysics<a_real> *const phy;
 	const a_real angleOfAttack;
@@ -96,13 +96,13 @@ protected:
  * \param fname is the output vtu file name
  */
 void writeScalarsVectorToVtu_CellData(std::string fname, const UMesh2dh<a_real>& m, 
-		const amat::Array2d<double>& x, std::string scaname[], 
-		const amat::Array2d<double>& y, std::string vecname);
+                                      const amat::Array2d<double>& x, std::string scaname[], 
+                                      const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes nodal data to VTU file
 void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh2dh<a_real>& m, 
-		const amat::Array2d<double>& x, std::string scaname[], 
-		const amat::Array2d<double>& y, std::string vecname);
+                                       const amat::Array2d<double>& x, std::string scaname[], 
+                                       const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
