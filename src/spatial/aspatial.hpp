@@ -194,10 +194,11 @@ public:
 	 *   floating point type. This may not be the template parameter to this class.
 	 *
 	 * \note For non-standard scalar types (like std::complex or ADOL-C's adouble), this function
-	 *   needs to be reimplementated.
+	 *   needs to be reimplementated in an appropriate sub-class.
 	 */
-	StatusCode assemble_residual(const Vec u, Vec residual, 
-	                             const bool gettimesteps, std::vector<a_real>& dtm) const;
+	virtual StatusCode assemble_residual(const Vec u, Vec residual, 
+	                                     const bool gettimesteps,
+	                                     std::vector<a_real>& dtm) const;
 
 	/// Computes the [right hand side](@ref residual)
 	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is 
@@ -324,7 +325,7 @@ public:
 	/// Computes the residual Jacobian as a PETSc martrix
 	/** Computes the Jacobian of r(u), where the 
 	 */
-	StatusCode compute_jacobian(const Vec u, Mat A) const;
+	virtual StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 protected:
 	/// Computes viscous flux across a face
