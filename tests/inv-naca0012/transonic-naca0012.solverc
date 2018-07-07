@@ -8,6 +8,5 @@
 
 -ksp_type fgmres
 -ksp_rtol 1e-1
--ksp_max_it 50
+-ksp_max_it 30
 -pc_type sor
-
