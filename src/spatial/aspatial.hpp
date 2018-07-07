@@ -243,16 +243,14 @@ protected:
 
 	/// Analytical flux vector computation
 	const IdealGasPhysics<scalar> physics;
-	
-	const std::array<scalar,NVARS> uinf;                    ///< Free-stream/reference condition
+
+	/// Free-stream/reference condition
+	const std::array<scalar,NVARS> uinf;
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
 	 */
 	const InviscidFlux<scalar> *const inviflux;
-
-	/// Numerical inviscid flux context for the Jacobian
-	const InviscidFlux<scalar> *const jflux;
 
 	/// Gradient computation context
 	const GradientScheme<scalar,NVARS> *const gradcomp;
@@ -294,19 +292,26 @@ protected:
 };
 
 /// Computes the integrated fluxes and their Jacobians for compressible flow
-/** Note about BCs: normal velocity is assumed zero at all walls.
- * \note Make sure compute_topological(), compute_face_data() and compute_jacobians() 
- * have been called on the mesh object prior to initialzing an object of this class.
+/** \note Make sure [mesh proprocessing](\ref preprocessMesh) has been completed
+ * prior to initialzing an object of this class.
+ * 
+ * This class also includes (as protected members) clones of some objects from the base class prefixed
+ * with 'j' (such as \ref jphy). These objects are used in the computation of approximate Jacobians
+ * and only use the basic real type, not the generic scalar used for computing the fluxes. These
+ * objects, except the one for numerical inviscid flux \ref jflux, are meant to be logically
+ * equivalent to the corresponding objects for the fluxes in the base flow class with only a change in
+ * the scalar type.
  */
 template <
+	typename scalar,
 	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
 	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
 >
-class FlowFV : public FlowFV_base<a_real>
+class FlowFV : public FlowFV_base<scalar>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV(const UMesh2dh<a_real> *const mesh,                  ///< Mesh context
+	FlowFV(const UMesh2dh<scalar> *const mesh,                  ///< Mesh context
 		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
 		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
 	);
@@ -319,7 +324,7 @@ public:
 	 * Invokes flux calculation and adds the fluxes to the residual vector,
 	 * and also computes local time steps.
 	 */
-	StatusCode compute_residual(const a_real *const u, a_real *const residual,
+	StatusCode compute_residual(const scalar *const u, scalar *const residual,
 	                            const bool gettimesteps, std::vector<a_real>& dtm) const;
 
 	/// Computes the residual Jacobian as a PETSc martrix
@@ -328,6 +333,40 @@ public:
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 protected:
+	using Spatial<scalar,NVARS>::m;
+	using Spatial<scalar,NVARS>::rc;
+	using Spatial<scalar,NVARS>::gr;
+	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
+	using Spatial<scalar,NVARS>::getFaceGradientAndJacobian_thinLayer;
+	using FlowFV_base<scalar>::pconfig;
+	using FlowFV_base<scalar>::nconfig;
+	using FlowFV_base<scalar>::physics;
+	using FlowFV_base<scalar>::inviflux;
+	using FlowFV_base<scalar>::gradcomp;
+	using FlowFV_base<scalar>::lim;
+	using FlowFV_base<scalar>::bcs;
+	using FlowFV_base<scalar>::compute_boundary_states;
+
+	/// Gas physics to use for computing analytical Jacobian
+	/** This should usually be same as \ref physics used for the flux computation. This has been
+	 * provided so that analytical Jacobians can be constructed when the scalar is not double or float,
+	 * if need be.
+	 */
+	const IdealGasPhysics<a_real> jphy;
+
+	/// Free-stream/reference condition for Jacobian
+	const std::array<a_real,NVARS> juinf;
+
+	/// Numerical inviscid flux context for computing an analytical Jacobian
+	/** See \ref jphy for the reason this is provided.
+	 * This may implement a numerical flux function mathematically distint from the
+	 * \ref FlowFV_base::inviflux object used for the fluxes (right hand side).
+	 */
+	const InviscidFlux<a_real> *const jflux;
+
+	/// Boundary conditions objects used for building the Jacobian
+	const std::map<int,const FlowBC<a_real>*> jbcs;
+
 	/// Computes viscous flux across a face
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index
@@ -345,15 +384,15 @@ protected:
 	 * but ul and ur are always used.
 	 */
 	void computeViscousFlux(
-			const a_int iface, const a_real *const ucell_l, const a_real *const ucell_r,
-			const amat::Array2d<a_real>& ug,
-			const GradArray<a_real,NVARS>& grads,
-			const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
-			a_real *const vflux) const;
+			const a_int iface, const scalar *const ucell_l, const scalar *const ucell_r,
+			const amat::Array2d<scalar>& ug,
+			const GradArray<scalar,NVARS>& grads,
+			const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+			scalar *const vflux) const;
 
 	/// Compues the first-order "thin-layer" viscous flux Jacobian
 	/** This is the same sign as is needed in the residual; note that the viscous flux Jacobian is
-	 * added to the output matrices - they are not zeroed or directly assigned to.
+	 * added to the output matrices - the latter are not zeroed nor directly assigned to.
 	 * The outputs vfluxi and vfluxj still need to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] ul Cell-centred conserved variable on left

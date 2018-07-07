@@ -172,29 +172,37 @@ const SolutionReconstruction<a_real>* create_const_reconstruction(const std::str
 	return create_mutable_reconstruction(type, m, rc, gr, param);
 }
 
-FlowFV_base<a_real>* create_mutable_flowSpatialDiscretization(
-	const UMesh2dh<a_real> *const m,
+template <typename scalar>
+FlowFV_base<scalar>* create_mutable_flowSpatialDiscretization(
+	const UMesh2dh<scalar> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
 {
 	if(nconf.order2)
 		if(pconf.const_visc)
-			return new FlowFV<true,true>(m, pconf, nconf);
+			return new FlowFV<scalar,true,true>(m, pconf, nconf);
 		else
-			return new FlowFV<true,false>(m, pconf, nconf);
+			return new FlowFV<scalar,true,false>(m, pconf, nconf);
 	else
 		if(pconf.const_visc)
-			return new FlowFV<false,true>(m, pconf, nconf);
+			return new FlowFV<scalar,false,true>(m, pconf, nconf);
 		else
-			return new FlowFV<false,false>(m, pconf, nconf);
+			return new FlowFV<scalar,false,false>(m, pconf, nconf);
 }
 
-const FlowFV_base<a_real>* create_const_flowSpatialDiscretization(
-	const UMesh2dh<a_real> *const m,
+template <typename scalar>
+const FlowFV_base<scalar>* create_const_flowSpatialDiscretization(
+	const UMesh2dh<scalar> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
 {
-	return create_mutable_flowSpatialDiscretization(m, pconf, nconf);
+	return create_mutable_flowSpatialDiscretization<scalar>(m, pconf, nconf);
 }
+
+template
+const FlowFV_base<a_real>*
+create_const_flowSpatialDiscretization<a_real>(const UMesh2dh<a_real> *const m,
+                                               const FlowPhysicsConfig& pconf,
+                                               const FlowNumericsConfig& nconf);
 
 }

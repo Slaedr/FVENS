@@ -237,7 +237,6 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	uinf(physics.compute_freestream_state(pconfig.aoa)),
 
 	inviflux {create_const_inviscidflux(nconfig.conv_numflux, &physics)}, 
-	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &physics)},
 
 	gradcomp {create_const_gradientscheme<NVARS>(nconfig.gradientscheme, m, rc)},
 	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)},
@@ -262,7 +261,6 @@ FlowFV_base<scalar>::~FlowFV_base()
 {
 	delete gradcomp;
 	delete inviflux;
-	delete jflux;
 	delete lim;
 	// delete BCs
 	for(auto it = bcs.begin(); it != bcs.end(); it++) {
@@ -502,11 +500,15 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 	return std::make_tuple(Cl, Cdp, Cdf);
 }
 
-template<bool secondOrderRequested, bool constVisc>
-FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<a_real> *const mesh,
-                                               const FlowPhysicsConfig& pconf, 
-                                               const FlowNumericsConfig& nconf)
-	: FlowFV_base<a_real>(mesh, pconf, nconf)
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *const mesh,
+                                                      const FlowPhysicsConfig& pconf, 
+                                                      const FlowNumericsConfig& nconf)
+	: FlowFV_base<scalar>(mesh, pconf, nconf),
+	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
+	juinf(jphy.compute_freestream_state(pconfig.aoa)),
+	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &jphy)},
+		   jbcs {create_const_flowBCs<a_real>(pconf.bcconf, jphy, juinf)}
 {
 	if(secondOrderRequested)
 		std::cout << "FlowFV: Second order solution requested.\n";
@@ -514,18 +516,24 @@ FlowFV<secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<a_real> *const mes
 		std::cout << " FLowFV: Using constant viscosity.\n";
 }
 
-template<bool secondOrderRequested, bool constVisc>
-FlowFV<secondOrderRequested,constVisc>::~FlowFV()
-{ }
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
+{
+	delete jflux;
+	// delete BCs
+	for(auto it = jbcs.begin(); it != jbcs.end(); it++) {
+		delete it->second;
+	}
+}
 
-template<bool secondOrderRequested, bool constVisc>
-void FlowFV<secondOrderRequested,constVisc>
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+void FlowFV<scalar,secondOrderRequested,constVisc>
 ::computeViscousFlux(const a_int iface,
-                     const a_real *const ucell_l, const a_real *const ucell_r,
-                     const amat::Array2d<a_real>& ug,
-                     const GradArray<a_real,NVARS>& grads,
-                     const amat::Array2d<a_real>& ul, const amat::Array2d<a_real>& ur,
-                     a_real *const __restrict vflux) const
+                     const scalar *const ucell_l, const scalar *const ucell_r,
+                     const amat::Array2d<scalar>& ug,
+                     const GradArray<scalar,NVARS>& grads,
+                     const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+                     scalar *const __restrict vflux) const
 {
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int relem = m->gintfac(iface,1);
@@ -535,9 +543,9 @@ void FlowFV<secondOrderRequested,constVisc>
 	 */
 
 	// cell-centred left and right states
-	a_real ucl[NVARS], ucr[NVARS];
+	scalar ucl[NVARS], ucr[NVARS];
 	// left and right gradients; zero for first order scheme
-	a_real gradl[NDIM][NVARS], gradr[NDIM][NVARS];
+	scalar gradl[NDIM][NVARS], gradr[NDIM][NVARS];
 	
 	for(int i = 0; i < NVARS; i++) 
 	{
@@ -638,7 +646,7 @@ void FlowFV<secondOrderRequested,constVisc>
 	 * This is the only finite-volume part of this function, rest is physics and chain rule.
 	 */
 	
-	a_real grad[NDIM][NVARS];
+	scalar grad[NDIM][NVARS];
 	getFaceGradient_modifiedAverage(iface, ucl, ucr, gradl, gradr, grad);
 
 	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
@@ -646,16 +654,16 @@ void FlowFV<secondOrderRequested,constVisc>
 	 */
 	
 	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const a_real muRe = constVisc ? 
+	const scalar muRe = constVisc ? 
 			physics.getConstantViscosityCoeff() 
 		:
 			0.5*( physics.getViscosityCoeffFromConserved(&ul(iface,0))
 			+ physics.getViscosityCoeffFromConserved(&ur(iface,0)) );
 	
 	// Non-dimensional thermal conductivity
-	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
+	const scalar kdiff = physics.getThermalConductivityFromViscosity(muRe); 
 
-	a_real stress[NDIM][NDIM];
+	scalar stress[NDIM][NDIM];
 	for(int i = 0; i < NDIM; i++)
 		for(int j = 0; j < NDIM; j++)
 			stress[i][j] = 0;
@@ -672,14 +680,14 @@ void FlowFV<secondOrderRequested,constVisc>
 	}
 
 	// for the energy dissipation, compute avg velocities first
-	a_real vavg[NDIM];
+	scalar vavg[NDIM];
 	for(int j = 0; j < NDIM; j++)
 		vavg[j] = 0.5*( ul(iface,j+1)/ul(iface,0) + ur(iface,j+1)/ur(iface,0) );
 
 	vflux[NVARS-1] = 0;
 	for(int i = 0; i < NDIM; i++)
 	{
-		a_real comp = 0;
+		scalar comp = 0;
 		
 		for(int j = 0; j < NDIM; j++)
 			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction etc)
@@ -694,8 +702,8 @@ void FlowFV<secondOrderRequested,constVisc>
 	 */
 }
 
-template<bool secondOrder, bool constVisc>
-void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface,
+template<typename scalar, bool secondOrder, bool constVisc>
+void FlowFV<scalar,secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
@@ -708,11 +716,11 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 		dupl[k] = 0;
 	}
 
-	physics.getPrimitive2FromConserved(ul, upl);
-	physics.getPrimitive2FromConserved(ur, upr);
+	jphy.getPrimitive2FromConserved(ul, upl);
+	jphy.getPrimitive2FromConserved(ur, upr);
 
-	physics.getJacobianPrimitive2WrtConserved(ul, dupl);
-	physics.getJacobianPrimitive2WrtConserved(ur, dupr);
+	jphy.getJacobianPrimitive2WrtConserved(ul, dupl);
+	jphy.getJacobianPrimitive2WrtConserved(ur, dupr);
 	
 	// gradient, in each direction, of each variable
 	a_real grad[NDIM][NVARS];
@@ -735,13 +743,13 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 	
 	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
 	const a_real muRe = constVisc ? 
-			physics.getConstantViscosityCoeff() 
+			jphy.getConstantViscosityCoeff() 
 		:
-			0.5*( physics.getViscosityCoeffFromConserved(ul)
-			+ physics.getViscosityCoeffFromConserved(ur) );
+			0.5*( jphy.getViscosityCoeffFromConserved(ul)
+			+ jphy.getViscosityCoeffFromConserved(ur) );
 	
 	// Non-dimensional thermal conductivity
-	const a_real kdiff = physics.getThermalConductivityFromViscosity(muRe); 
+	const a_real kdiff = jphy.getThermalConductivityFromViscosity(muRe); 
 
 	a_real dmul[NVARS], dmur[NVARS], dkdl[NVARS], dkdr[NVARS];
 	for(int k = 0; k < NVARS; k++) {
@@ -749,14 +757,14 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 	}
 
 	if(!constVisc) {
-		physics.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
-		physics.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
+		jphy.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
+		jphy.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
 		for(int k = 0; k < NVARS; k++) {
 			dmul[k] *= 0.5;
 			dmur[k] *= 0.5;
 		}
-		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
-		physics.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
+		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
+		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
 	}
 	
 	a_real stress[NDIM][NDIM], dstressl[NDIM][NDIM][NVARS], dstressr[NDIM][NDIM][NVARS];
@@ -770,8 +778,8 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 			}
 		}
 	
-	physics.getJacobianStress(muRe, dmul, grad, dgradl, stress, dstressl);
-	physics.getJacobianStress(muRe, dmur, grad, dgradr, stress, dstressr);
+	jphy.getJacobianStress(muRe, dmul, grad, dgradl, stress, dstressl);
+	jphy.getJacobianStress(muRe, dmur, grad, dgradr, stress, dstressr);
 
 	vflux[0] = 0;
 	
@@ -843,17 +851,17 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface
 	}
 }
 
-template<bool secondOrder, bool constVisc>
-void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const a_int iface,
+template<typename scalar, bool secondOrder, bool constVisc>
+void FlowFV<scalar,secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const a_int iface,
 		const a_real *const ul, const a_real *const ur,
 		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
 	// compute non-dimensional viscosity and thermal conductivity
 	const a_real muRe = constVisc ? 
-			physics.getConstantViscosityCoeff() 
+			jphy.getConstantViscosityCoeff() 
 		:
-			0.5*( physics.getViscosityCoeffFromConserved(ul)
-			+ physics.getViscosityCoeffFromConserved(ur) );
+			0.5*( jphy.getViscosityCoeffFromConserved(ul)
+			+ jphy.getViscosityCoeffFromConserved(ur) );
 	
 	const a_real rho = 0.5*(ul[0]+ur[0]);
 
@@ -879,21 +887,21 @@ void FlowFV<secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const 
 	}
 }
 
-template<bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real *const uarr, 
-		a_real *const __restrict rarr, 
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *const uarr, 
+		scalar *const __restrict rarr, 
 		const bool gettimesteps, std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
-	amat::Array2d<a_real> integ, ug, uleft, uright;	
+	amat::Array2d<scalar> integ, ug, uleft, uright;	
 	integ.resize(m->gnelem(), 1);
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
-	GradArray<a_real,NVARS> grads;
+	GradArray<scalar,NVARS> grads;
 
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
-	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<MVector<scalar>> residual(rarr, m->gnelem(), NVARS);
 
 #pragma omp parallel default(shared)
 	{
@@ -923,7 +931,7 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
 
-		MVector<a_real> up(m->gnelem(), NVARS);
+		MVector<scalar> up(m->gnelem(), NVARS);
 
 		// convert everything to primitive variables
 #pragma omp parallel default(shared)
@@ -993,13 +1001,13 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real
 #pragma omp for
 		for(a_int ied = 0; ied < m->gnaface(); ied++)
 		{
-			a_real n[NDIM];
+			scalar n[NDIM];
 			n[0] = m->gfacemetric(ied,0);
 			n[1] = m->gfacemetric(ied,1);
-			a_real len = m->gfacemetric(ied,2);
+			scalar len = m->gfacemetric(ied,2);
 			const int lelem = m->gintfac(ied,0);
 			const int relem = m->gintfac(ied,1);
-			a_real fluxes[NVARS];
+			scalar fluxes[NVARS];
 
 			inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, fluxes);
 
@@ -1010,8 +1018,8 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real
 			if(pconfig.viscous_sim) 
 			{
 				// get viscous fluxes
-				a_real vflux[NVARS];
-				const a_real *const urt = (ied < m->gnbface()) ? nullptr : &uarr[relem*NVARS];
+				scalar vflux[NVARS];
+				const scalar *const urt = (ied < m->gnbface()) ? nullptr : &uarr[relem*NVARS];
 				computeViscousFlux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright, 
 						vflux);
 
@@ -1035,17 +1043,17 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real
 			if(gettimesteps) 
 			{
 				//calculate speeds of sound
-				const a_real ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
-				const a_real cj = physics.getSoundSpeedFromConserved(&uright(ied,0));
+				const scalar ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
+				const scalar cj = physics.getSoundSpeedFromConserved(&uright(ied,0));
 				//calculate normal velocities
-				const a_real vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
-				const a_real vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
+				const scalar vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
+				const scalar vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
 
-				a_real specradi = (fabs(vni)+ci)*len, specradj = (fabs(vnj)+cj)*len;
+				scalar specradi = (fabs(vni)+ci)*len, specradj = (fabs(vnj)+cj)*len;
 
 				if(pconfig.viscous_sim) 
 				{
-					a_real mui, muj;
+					scalar mui, muj;
 					if(constVisc) {
 						mui = physics.getConstantViscosityCoeff();
 						muj = physics.getConstantViscosityCoeff();
@@ -1054,8 +1062,8 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real
 						mui = physics.getViscosityCoeffFromConserved(&uleft(ied,0));
 						muj = physics.getViscosityCoeffFromConserved(&uright(ied,0));
 					}
-					a_real coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
-					a_real coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
+					scalar coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
+					scalar coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
 					
 					specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
 					if(relem < m->gnelem())
@@ -1085,8 +1093,8 @@ StatusCode FlowFV<secondOrderRequested,constVisc>::compute_residual(const a_real
 	return ierr;
 }
 
-template<bool order2, bool constVisc>
-StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) const
+template<typename scalar, bool order2, bool constVisc>
+StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) const
 {
 	StatusCode ierr = 0;
 
@@ -1097,15 +1105,15 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	//Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		a_real n[NDIM];
+		/*a_real n[NDIM];
 		n[0] = m->gfacemetric(iface,0);
-		n[1] = m->gfacemetric(iface,1);
+		n[1] = m->gfacemetric(iface,1);*/
+		const std::array<a_real,NDIM> n = m->gnormal(iface);
 		const a_real len = m->gfacemetric(iface,2);
 		
 		a_real uface[NVARS];
@@ -1113,9 +1121,11 @@ StatusCode FlowFV<order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) con
 		Matrix<a_real,NVARS,NVARS,RowMajor> left;
 		Matrix<a_real,NVARS,NVARS,RowMajor> right;
 		
-		compute_boundary_Jacobian(iface, &uarr[lelem*NVARS], uface, &drdl(0,0));	
+		//compute_boundary_Jacobian(iface, &uarr[lelem*NVARS], uface, &drdl(0,0));	
+		bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(&uarr[lelem*NVARS], &n[0],
+		                                                               uface, &drdl(0,0));
 		
-		jflux->get_jacobian(&uarr[lelem*NVARS], uface, n, &left(0,0), &right(0,0));
+		jflux->get_jacobian(&uarr[lelem*NVARS], uface, &n[0], &left(0,0), &right(0,0));
 
 		if(pconfig.viscous_sim) {
 			//computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], uface, 
@@ -1193,10 +1203,10 @@ template class Spatial<a_real,1>;
 
 template class FlowFV_base<a_real>;
 
-template class FlowFV<true,true>;
-template class FlowFV<false,true>;
-template class FlowFV<true,false>;
-template class FlowFV<false,false>;
+template class FlowFV<a_real,true,true>;
+template class FlowFV<a_real,false,true>;
+template class FlowFV<a_real,true,false>;
+template class FlowFV<a_real,false,false>;
 
 
 
