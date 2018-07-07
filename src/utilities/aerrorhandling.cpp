@@ -19,4 +19,8 @@ Numerical_error::Numerical_error(const std::string& msg)
 	: std::logic_error(msg)
 { }
 
+Tolerance_error::Tolerance_error(const std::string& msg) 
+	: Numerical_error(msg)
+{ }
+
 }

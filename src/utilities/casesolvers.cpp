@@ -83,7 +83,12 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
 	prob->initializeUnknowns(*u);
 
-	ierr = execute(prob, *u);
+	try {
+		ierr = execute(prob, *u);
+	}
+	catch (Tolerance_error& e) {
+		std::cout << e.what() << std::endl;
+	}
 	fvens_throw(ierr, "Could not solve steady case! Error code " + std::to_string(ierr));
 
 	MVector<a_real> umat; umat.resize(m.gnelem(),NVARS);
@@ -245,8 +250,14 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 
 		mfjac.set_spatial(startprob);
 
-		// solve the starter problem to get the initial solution
-		ierr = starttime->solve(u); CHKERRQ(ierr);
+		// Solve the starter problem to get the initial solution
+		// If the starting solve does not converge to the required tolerance, don't throw and
+		// move on.
+		try {
+			ierr = starttime->solve(u); CHKERRQ(ierr);
+		} catch (Tolerance_error& e) {
+			std::cout << e.what() << std::endl;
+		}
 	}
 
 	// Reset the KSP - could be advantageous for some types of algebraic solvers

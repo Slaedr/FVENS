@@ -9,6 +9,7 @@
 #include <fstream>
 #include <petscvec.h>
 
+#include "utilities/aerrorhandling.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
@@ -87,7 +88,12 @@ skin-friction drag respectively");
 		
 		std::string meshs = std::to_string(imesh) + ".msh";
 		
-		const FlowSolutionFunctionals fnls = case1.run_output(meshs, false, &u);
+		FlowSolutionFunctionals fnls;
+		try {
+			fnls = case1.run_output(meshs, false, &u);
+		} catch (Tolerance_error& e) {
+			std::cout << e.what() << std::endl;
+		}
 
 		std::cout << "CL Cdp CDsf = " << fnls.CL << " " << fnls.CDp << " " << fnls.CDsf << std::endl;
 		

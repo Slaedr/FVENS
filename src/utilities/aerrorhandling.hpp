@@ -18,6 +18,13 @@ public:
 	/// Construct a numerical error with a message
 	Numerical_error(const std::string& msg);
 };
+
+/// Exception thrown when some solver does not meet the required tolerance
+class Tolerance_error : public Numerical_error
+{
+public:
+	Tolerance_error(const std::string& msg);
+};
 	
 /// An exception to throw for errors from PETSc; takes a custom message
 class Petsc_exception : public std::runtime_error

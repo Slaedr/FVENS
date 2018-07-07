@@ -45,7 +45,7 @@ pseudotime
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  50.0
+		cfl_min                  30.0
 		cfl_max                  1000.0
 		tolerance                1e-7
 		max_timesteps            500
@@ -55,7 +55,7 @@ pseudotime
 	initialization {	
 		cfl_min                  50.0
 		cfl_max                  500.0
-		tolerance                1e-1
+		tolerance                5e-2
 		max_timesteps            100
 	}
 }

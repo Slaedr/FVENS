@@ -3,6 +3,7 @@
 #include <string>
 #include <petscvec.h>
 
+#include "utilities/aerrorhandling.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
@@ -48,7 +49,12 @@ int main(int argc, char *argv[])
 		// Mesh file suffix
 		std::string meshs = std::to_string(imesh) + ".msh";
 
-		const FlowSolutionFunctionals fnls = case1.run_output(meshs, false, &u);
+		FlowSolutionFunctionals fnls;
+		try {
+			fnls = case1.run_output(meshs, false, &u);
+		} catch(Numerical_error& e) {
+			std::cout << e.what() << std::endl;
+		}
 
 		const a_real h = fnls.meshSizeParameter;
 		const a_real err = fnls.entropy;

@@ -318,14 +318,14 @@ void FlowFV_base<scalar>::compute_boundary_state(const int ied,
 	bcs.at(m->gintfacbtags(ied,0))->computeGhostState(ins, &n[0], gs);
 }
 
-template <typename scalar>
-void FlowFV_base<scalar>::compute_boundary_Jacobian(const int ied,
-                                            const scalar *const ins,
-                                            scalar *const gs, scalar *const dgs) const
-{
-	const std::array<scalar,NDIM> n = m->gnormal(ied);
-	bcs.at(m->gintfacbtags(ied,0))->computeGhostStateAndJacobian(ins, &n[0], gs, dgs);
-}
+// template <typename scalar>
+// void FlowFV_base<scalar>::compute_boundary_Jacobian(const int ied,
+//                                             const scalar *const ins,
+//                                             scalar *const gs, scalar *const dgs) const
+// {
+// 	const std::array<scalar,NDIM> n = m->gnormal(ied);
+// 	bcs.at(m->gintfacbtags(ied,0))->computeGhostStateAndJacobian(ins, &n[0], gs, dgs);
+// }
 
 template <typename scalar>
 void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,

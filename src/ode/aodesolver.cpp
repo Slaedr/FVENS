@@ -502,11 +502,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		if(mpirank == 0) {
 			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
 		}
+		throw Tolerance_error("Steady backward Euler did not converge to specified tolerance!");
 	}
 	else {
 		if(mpirank == 0) {
 			std::cout << "! SteadyBackwardEulerSolver: solve(): Blew up!\n";
 		}
+		throw Numerical_error("Steady backward Euler blew up!");
 	}
 
 	// print timing data
