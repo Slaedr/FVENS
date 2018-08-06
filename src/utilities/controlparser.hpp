@@ -16,6 +16,15 @@
 
 namespace fvens {
 
+/// Definition of boundary condition at one particular boundary
+struct FlowBCConfig
+{
+	int bc_tag;                   ///< Boundary marker in mesh file
+	BCType bc_type;               ///< Type of boundary
+	std::vector<a_real> bc_vals;  ///< Boundary value(s)
+	std::vector<int> bc_opts;     ///< Other info needed by boundary condition
+};
+
 /// Data read from a control file for flow problems
 struct FlowParserOptions
 {
@@ -40,11 +49,11 @@ struct FlowParserOptions
 		Minf, alpha, Reinf, Tinf,            ///< Free-stream flow properties
 		Pr, gamma,                           ///< Non-dimensional constants Prandtl no., adia. index
 		limiter_param,                       ///< Parameter controlling some limiters
-		twalltemp, twallvel,                 ///< Isothermal wall temperature and tang. velocity
+	/*twalltemp, twallvel,                 ///< Isothermal wall temperature and tang. velocity
 		adiawallvel,                         ///< Adiabatic wall tangential velocity magnitude
 		subsonicinflow_ptot,                 ///< Total pressure at subsonic inflow
 		subsonicinflow_ttot,                 ///< Total temperature at subsonic inflow
-		tpwalltemp, tpwallpressure, tpwallvel,  ///< Deprecated
+		tpwalltemp, tpwallpressure, tpwallvel,*/  ///< Deprecated
 		final_time,                          ///< Physical time upto which to simulate
 		phy_timestep,                        ///< Constant physical time step for unsteady implicit
 		phy_cfl;                             ///< CFL used only by unsteady explicit solvers
@@ -53,17 +62,19 @@ struct FlowParserOptions
 		rampstart, rampend, 
 		firstmaxiter, 
 		firstrampstart, firstrampend,
-		farfield_marker, inout_marker,
+	/*farfield_marker, inout_marker,
 		subsonicinflow_marker,
 		slipwall_marker, isothermalwall_marker,
 		adiabaticwall_marker,  
 		isothermalpressurewall_marker,          ///< Deprecated
 		extrap_marker, 
 		periodic_marker, 
-		periodic_axis, 
+		periodic_axis, */
 		num_out_walls,                    ///< Number of wall boundary markers where output is needed
 		num_out_others,                   ///< Number of other boundaru markers where output is needed
 		time_order;                       ///< Desired order of accuracy in time
+
+	std::vector<FlowBCConfig> bcconf;     ///< All info about boundary conditions
 	
 	short soln_init_type, 
 		  usestarter;                     ///< Whether to start with a first-order solver initially

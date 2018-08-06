@@ -39,6 +39,9 @@ std::vector<T> parseStringToVector(const std::string str)
 	return vec;
 }
 
+/// Parse options related to boundary conditions
+static std::vector<FlowBCConfig> parse_BC_options(pt::ptree infopts);
+
 FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
                                          const po::variables_map cmdvars)
 {
