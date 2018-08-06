@@ -17,11 +17,15 @@ enum BCType {
 	SLIP_WALL_BC,
 	FARFIELD_BC,
 	INFLOW_OUTFLOW_BC,
+	SUBSONIC_INFLOW_BC,
 	EXTRAPOLATION_BC,
 	PERIODIC_BC,
 	ISOTHERMAL_WALL_BC,
 	ADIABATIC_WALL_BC
 };
+
+/// Converts a string (lower case) to the corresponding BCType
+BCType getBCTypeFromString(const std::string bct);
 
 /// Collection of options describing boundary conditions
 struct FlowBCConfig {

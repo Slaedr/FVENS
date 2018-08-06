@@ -422,4 +422,26 @@ std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& con
                                                          const IdealGasPhysics<a_real>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
 
+BCType getBCTypeFromString(const std::string bct)
+{
+	if(bct == "slipwall")
+		return SLIP_WALL_BC;
+	else if(bct == "isothermalwall")
+		return ISOTHERMAL_WALL_BC;
+	else if(bct == "adiabaticwall")
+		return ADIABATIC_WALL_BC;
+	else if(bct == "farfield")
+		return FARFIELD_BC;
+	else if(bct == "inflowoutflow")
+		return INFLOW_OUTFLOW_BC;
+	else if(bct == "extrapolation")
+		return EXTRAPOLATION_BC;
+	else if(bct == "subsonicinflow")
+		return SUBSONIC_INFLOW_BC;
+	else if(bct == "periodic")
+		return PERIODIC_BC;
+	else
+		throw std::runtime_error("BC type not available!");
+}
+
 }

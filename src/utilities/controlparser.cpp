@@ -40,7 +40,7 @@ std::vector<T> parseStringToVector(const std::string str)
 }
 
 /// Parse options related to boundary conditions
-static std::vector<FlowBCConfig> parse_BC_options(pt::ptree infopts);
+static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts);
 
 FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
                                          const po::variables_map cmdvars)
@@ -246,6 +246,54 @@ FlowNumericsConfig firstorder_spatial_numerics_config(const FlowParserOptions& o
 	const FlowNumericsConfig nconf {opts.invflux, opts.invfluxjac, 
 		"NONE", "NONE", 1.0 , false};
 	return nconf;
+}
+
+/* In the bc section of the control file, the various boundary conditions are given in sections
+ * called 'bc0', 'bc1' etc. numbered consecutively from 0.
+ * Each BC has the fields 'type' (string), 'marker' (int),
+ * 'boundary_values' (string of space-seperated real numbers),
+ * 'options' (string of space-separated integers).
+ */
+static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts)
+{
+	const std::string c_bcs = "bc";
+
+	bool found = true;
+	int ibc = 0;
+	std::vector<FlowBCConfig> bcvec;
+
+	while(found) {
+		auto bc = infopts.get_optional<std::string>(c_bcs+".bc"+std::to_string(ibc));
+
+		if(bc) {
+			FlowBCConfig bconf;
+
+			std::string bctype = boost::to_lower_copy<std::string>
+				(infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+".type"));
+			bconf.bc_type = getBCTypeFromString(bctype);
+			bconf.bc_tag = infopts.get<int>(c_bcs+".bc"+std::to_string(ibc)+".marker");
+
+			// Read arrays of boundary values and options
+			std::string bvals = infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+
+			                                             ".boundary_values");
+			std::stringstream bvstream(bvals);
+			a_real val;
+			while(bvstream >> val)
+				bconf.bc_vals.push_back(val);
+
+			std::string opts = infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+
+			                                            ".options");
+			std::stringstream bostream(opts);
+			int vali;
+			while(bostream >> vali)
+				bconf.bc_opts.push_back(vali);
+
+			bcvec.push_back(bconf);
+			ibc++;
+		}
+		else
+			found = false;
+	}
 }
 
 }
