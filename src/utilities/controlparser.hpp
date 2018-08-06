@@ -16,15 +16,6 @@
 
 namespace fvens {
 
-/// Definition of boundary condition at one particular boundary
-struct FlowBCConfig
-{
-	int bc_tag;                   ///< Boundary marker in mesh file
-	BCType bc_type;               ///< Type of boundary
-	std::vector<a_real> bc_vals;  ///< Boundary value(s)
-	std::vector<int> bc_opts;     ///< Other info needed by boundary condition
-};
-
 /// Data read from a control file for flow problems
 struct FlowParserOptions
 {

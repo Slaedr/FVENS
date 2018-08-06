@@ -382,45 +382,92 @@ template class Adiabaticwall2D<a_real>;
 template class Isothermalwall2D<a_real>;
 template class Extrapolation<a_real>;
 
+// template <typename scalar>
+// std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+//                                                          const IdealGasPhysics<scalar>& physics,
+//                                                          const std::array<a_real,NVARS>& uinf)
+// {
+// 	std::map<int,const FlowBC<scalar>*> bcmap;
+
+// 	const FlowBC<scalar>* iobc = new InOutFlow<scalar>(conf.inflowoutflow_id, physics, uinf);
+// 	bcmap[conf.inflowoutflow_id] = iobc;
+
+// 	const FlowBC<scalar>* ibc = new InFlow<scalar>(conf.subsonicinflow_id, physics,
+// 	                                               conf.subsonicinflow_ptot, conf.subsonicinflow_ttot);
+// 	bcmap[conf.subsonicinflow_id] = ibc;
+
+// 	const FlowBC<scalar>* fbc = new Farfield<scalar>(conf.farfield_id, physics, uinf);
+// 	bcmap[conf.farfield_id] = fbc;
+
+// 	const FlowBC<scalar>* ebc = new Extrapolation<scalar>(conf.extrapolation_id, physics);
+// 	bcmap[conf.extrapolation_id] = ebc;
+
+// 	const FlowBC<scalar>* slipbc = new Slipwall<scalar>(conf.slipwall_id, physics);
+// 	bcmap[conf.slipwall_id] = slipbc;
+
+// 	const FlowBC<scalar>* adiabc = new Adiabaticwall2D<scalar>(conf.adiabaticwall_id, physics,
+// 	                                                           conf.adiabaticwall_vel);
+// 	bcmap[conf.adiabaticwall_id] = adiabc;
+
+// 	const FlowBC<scalar>* isotbc = new Isothermalwall2D<scalar>(conf.isothermalwall_id, physics,
+// 	                                                            conf.isothermalwall_vel,
+// 	                                                            conf.isothermalwall_temp);
+// 	bcmap[conf.isothermalwall_id] = isotbc;
+
+// 	return bcmap;
+// }
+
+// template
+// std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
+//                                                          const IdealGasPhysics<a_real>& physics,
+//                                                          const std::array<a_real,NVARS>& uinf);
+
 template <typename scalar>
-std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<scalar>& physics,
                                                          const std::array<a_real,NVARS>& uinf)
 {
 	std::map<int,const FlowBC<scalar>*> bcmap;
 
-	const FlowBC<scalar>* iobc = new InOutFlow<scalar>(conf.inflowoutflow_id, physics, uinf);
-	bcmap[conf.inflowoutflow_id] = iobc;
+	for(auto itbc = conf.begin(); itbc != conf.end(); itbc++) {
+		const FlowBC<scalar>* bc;
 
-	const FlowBC<scalar>* ibc = new InFlow<scalar>(conf.subsonicinflow_id, physics,
-	                                               conf.subsonicinflow_ptot, conf.subsonicinflow_ttot);
-	bcmap[conf.subsonicinflow_id] = ibc;
+		switch(itbc->bc_type) {
+		case SLIP_WALL_BC:
+			bc = new Slipwall<scalar>(itbc->bc_tag, physics);
+			break;
+		case FARFIELD_BC:
+			bc = new Farfield<scalar>(itbc->bc_tag, physics, uinf);
+			break;
+		case INFLOW_OUTFLOW_BC:
+			bc = new InOutFlow<scalar>(itbc->bc_tag, physics, uinf);
+			break;
+		case SUBSONIC_INFLOW_BC:
+			bc = new InFlow<scalar>(itbc->bc_tag, physics, itbc->bc_vals[0], itbc->bc_vals[1]);
+			break;
+		case EXTRAPOLATION_BC:
+			bc = new Extrapolation<scalar>(itbc->bc_tag, physics);
+			break;
+		case ADIABATIC_WALL_BC:
+			bc = new Adiabaticwall2D<scalar>(itbc->bc_tag, physics, itbc->bc_vals[0]);
+			break;
+		case ISOTHERMAL_WALL_BC:
+			bc = new Isothermalwall2D<scalar>(itbc->bc_tag, physics, itbc->bc_vals[0],
+			                                  itbc->bc_vals[1]);
+			break;
+		default:
+			throw std::runtime_error("BC type not implemented yet!");
+		}
 
-	const FlowBC<scalar>* fbc = new Farfield<scalar>(conf.farfield_id, physics, uinf);
-	bcmap[conf.farfield_id] = fbc;
-
-	const FlowBC<scalar>* ebc = new Extrapolation<scalar>(conf.extrapolation_id, physics);
-	bcmap[conf.extrapolation_id] = ebc;
-
-	const FlowBC<scalar>* slipbc = new Slipwall<scalar>(conf.slipwall_id, physics);
-	bcmap[conf.slipwall_id] = slipbc;
-
-	const FlowBC<scalar>* adiabc = new Adiabaticwall2D<scalar>(conf.adiabaticwall_id, physics,
-	                                                           conf.adiabaticwall_vel);
-	bcmap[conf.adiabaticwall_id] = adiabc;
-
-	const FlowBC<scalar>* isotbc = new Isothermalwall2D<scalar>(conf.isothermalwall_id, physics,
-	                                                            conf.isothermalwall_vel,
-	                                                            conf.isothermalbaricwall_temp);
-	bcmap[conf.isothermalwall_id] = isotbc;
-
+		bcmap[itbc->bc_tag] = bc;
+	}
 	return bcmap;
 }
 
 template
-std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
+std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<a_real>& physics,
-                                                         const std::array<a_real,NVARS>& uinf);
+                                                         const std::array<a_real,NVARS>& uinf)
 
 BCType getBCTypeFromString(const std::string bct)
 {

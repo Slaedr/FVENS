@@ -1,5 +1,6 @@
 /** \file abc.hpp
  * \brief Boundary conditions management
+ * \todo TODO: Do something about periodic boundary conditions
  * \author Aditya Kashi
  * \date 2018-05
  */
@@ -27,25 +28,36 @@ enum BCType {
 /// Converts a string (lower case) to the corresponding BCType
 BCType getBCTypeFromString(const std::string bct);
 
-/// Collection of options describing boundary conditions
-struct FlowBCConfig {
-	int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
-	int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
-	int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
-	int slipwall_id;                  ///< Marker for slip wall
-	int farfield_id;                  ///< Marker for far-field boundary
-	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
-	int subsonicinflow_id;            ///< Marker for subsonic inflow
-	int extrapolation_id;             ///< Marker for an extrapolation boundary
-	int periodic_id;                  ///< Marker for periodic boundary
-	a_real subsonicinflow_ptot;       ///< Total non-dimensional pressure at subsonic inflow
-	a_real subsonicinflow_ttot;       ///< Total temperature at subsonic inflow
-	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
-	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
-	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
-	a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
-	a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
+/// Definition of boundary condition at one particular boundary
+/** This is essentially raw data read from the control file.
+ */
+struct FlowBCConfig
+{
+	int bc_tag;                   ///< Boundary marker in mesh file
+	BCType bc_type;               ///< Type of boundary
+	std::vector<a_real> bc_vals;  ///< Boundary value(s)
+	std::vector<int> bc_opts;     ///< Other info needed by boundary condition
 };
+
+/// Collection of options describing boundary conditions
+// struct FlowBCConfig {
+// 	int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
+// 	int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
+// 	int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
+// 	int slipwall_id;                  ///< Marker for slip wall
+// 	int farfield_id;                  ///< Marker for far-field boundary
+// 	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
+// 	int subsonicinflow_id;            ///< Marker for subsonic inflow
+// 	int extrapolation_id;             ///< Marker for an extrapolation boundary
+// 	int periodic_id;                  ///< Marker for periodic boundary
+// 	a_real subsonicinflow_ptot;       ///< Total non-dimensional pressure at subsonic inflow
+// 	a_real subsonicinflow_ttot;       ///< Total temperature at subsonic inflow
+// 	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
+// 	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
+// 	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
+// 	a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
+// 	a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
+// };
 
 /// Abstract class for storing the details and providing functionality for one type if BC
 /** Each FlowBC (derived class) object is associated with an integer [tag](\ref UMesh2dh::bface)
@@ -133,7 +145,7 @@ protected:
 	using FlowBC<scalar>::phy;
 };
 
-/// Normal inflow BC with total pressure and total temperature specified
+/// Normal subsonic inflow BC with total pressure and total temperature specified
 /** There are two sources: \cite carlson_bcs section 2.7, and \cite blazek, section 8.4.
  * This is mainly based on the latter (Blazek). One difference though is that here,
  * the flow is constrained normal to the boundary.
@@ -303,7 +315,7 @@ protected:
  * \param uinf Free-stream state in conserved variables
  */
 template <typename scalar>
-std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
+std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<scalar>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
 

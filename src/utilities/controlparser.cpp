@@ -40,7 +40,8 @@ std::vector<T> parseStringToVector(const std::string str)
 }
 
 /// Parse options related to boundary conditions
-static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts);
+static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
+                                                  const std::string bc_keyword);
 
 FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[],
                                          const po::variables_map cmdvars)
@@ -78,15 +79,15 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 
 	// options that possibly repeat
 	// BCs
-	const std::string slipwall_m = "slipwall_marker";
-	const std::string farfield_m = "farfield_marker";
-	const std::string inoutflow_m = "inflow_outflow_marker";
-	const std::string subsonicinflow_m = "subsonic_inflow_marker";
-	const std::string extrap_m = "extrapolation_marker";
-	const std::string periodic_m = "periodic_marker";
-	const std::string periodic_axis = "periodic_axis";
-	const std::string isothermalwall_m = "isothermal_wall_marker";
-	const std::string adiabaticwall_m = "adiabatic_wall_marker";
+	// const std::string slipwall_m = "slipwall_marker";
+	// const std::string farfield_m = "farfield_marker";
+	// const std::string inoutflow_m = "inflow_outflow_marker";
+	// const std::string subsonicinflow_m = "subsonic_inflow_marker";
+	// const std::string extrap_m = "extrapolation_marker";
+	// const std::string periodic_m = "periodic_marker";
+	// const std::string periodic_axis = "periodic_axis";
+	// const std::string isothermalwall_m = "isothermal_wall_marker";
+	// const std::string adiabaticwall_m = "adiabatic_wall_marker";
 	// Pseudotime settings
 	const std::string pt_step_type = "pseudotime_stepping_type";
 	const std::string pt_cflmin = "cfl_min";
@@ -122,29 +123,31 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 		opts.useconstvisc = infopts.get(c_flowconds+".use_constant_viscosity",false);
 	}
 
-	opts.slipwall_marker = infopts.get(c_bcs+"."+slipwall_m,-1);
-	opts.farfield_marker = infopts.get(c_bcs+"."+farfield_m,-1);
-	opts.inout_marker = infopts.get(c_bcs+"."+inoutflow_m,-1);
-	opts.subsonicinflow_marker = infopts.get(c_bcs+"."+subsonicinflow_m,-1);
-	if(opts.subsonicinflow_marker >= 0) {
-		opts.subsonicinflow_ptot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_pressure");
-		opts.subsonicinflow_ttot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_temperature");
-	}
-	opts.extrap_marker = infopts.get(c_bcs+"."+extrap_m,-1);
-	opts.periodic_marker = infopts.get(c_bcs+"."+periodic_m,-1);
-	if(opts.periodic_marker >= 0) {
-		opts.periodic_axis = infopts.get<int>(c_bcs+"."+periodic_axis);
-	}
-	if(opts.viscsim) {
-		opts.isothermalwall_marker = infopts.get(c_bcs+"."+isothermalwall_m,-1);
-		if(opts.isothermalwall_marker >= 0) {
-			opts.twalltemp = infopts.get<a_real>(c_bcs+".isothermal_wall_temperature");
-			opts.twallvel = infopts.get<a_real>(c_bcs+".isothermal_wall_velocity");
-		}
-		opts.adiabaticwall_marker = infopts.get(c_bcs+"."+adiabaticwall_m,-1);
-		if(opts.adiabaticwall_marker >= 0)
-			opts.adiawallvel = infopts.get<a_real>(c_bcs+".adiabatic_wall_velocity");
-	}
+	// opts.slipwall_marker = infopts.get(c_bcs+"."+slipwall_m,-1);
+	// opts.farfield_marker = infopts.get(c_bcs+"."+farfield_m,-1);
+	// opts.inout_marker = infopts.get(c_bcs+"."+inoutflow_m,-1);
+	// opts.subsonicinflow_marker = infopts.get(c_bcs+"."+subsonicinflow_m,-1);
+	// if(opts.subsonicinflow_marker >= 0) {
+	// 	opts.subsonicinflow_ptot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_pressure");
+	// 	opts.subsonicinflow_ttot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_temperature");
+	// }
+	// opts.extrap_marker = infopts.get(c_bcs+"."+extrap_m,-1);
+	// opts.periodic_marker = infopts.get(c_bcs+"."+periodic_m,-1);
+	// if(opts.periodic_marker >= 0) {
+	// 	opts.periodic_axis = infopts.get<int>(c_bcs+"."+periodic_axis);
+	// }
+	// if(opts.viscsim) {
+	// 	opts.isothermalwall_marker = infopts.get(c_bcs+"."+isothermalwall_m,-1);
+	// 	if(opts.isothermalwall_marker >= 0) {
+	// 		opts.twalltemp = infopts.get<a_real>(c_bcs+".isothermal_wall_temperature");
+	// 		opts.twallvel = infopts.get<a_real>(c_bcs+".isothermal_wall_velocity");
+	// 	}
+	// 	opts.adiabaticwall_marker = infopts.get(c_bcs+"."+adiabaticwall_m,-1);
+	// 	if(opts.adiabaticwall_marker >= 0)
+	// 		opts.adiawallvel = infopts.get<a_real>(c_bcs+".adiabatic_wall_velocity");
+	// }
+
+	opts.bcconf = parse_BC_options(infopts, c_bcs);
 
 	auto optlwalls = infopts.get_optional<std::string>(c_bcs+".listof_output_wall_boundaries");
 	if(optlwalls)
@@ -254,10 +257,9 @@ FlowNumericsConfig firstorder_spatial_numerics_config(const FlowParserOptions& o
  * 'boundary_values' (string of space-seperated real numbers),
  * 'options' (string of space-separated integers).
  */
-static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts)
+static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
+                                                  const std::string c_bcs)
 {
-	const std::string c_bcs = "bc";
-
 	bool found = true;
 	int ibc = 0;
 	std::vector<FlowBCConfig> bcvec;
