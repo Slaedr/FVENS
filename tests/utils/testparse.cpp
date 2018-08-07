@@ -16,10 +16,13 @@ namespace po = boost::program_options;
 FlowParserOptions parse_solution_file(std::ifstream& inf)
 {
 	FlowParserOptions pd;
+	pd.bcconf.resize(2);
 	a_real tempalpha;
 	inf >> pd.meshfile >> pd.vtu_output_file >> pd.logfile >> pd.lognres
-	    >> pd.flowtype >> pd.gamma >> tempalpha >> pd.Minf >> pd.slipwall_marker >> pd.farfield_marker
-	    >> pd.num_out_walls >> pd.surfnameprefix >> pd.vol_output_reqd
+	    >> pd.flowtype >> pd.gamma >> tempalpha >> pd.Minf;
+	pd.bcconf[0].bc_type = SLIP_WALL_BC; inf >> pd.bcconf[0].bc_tag;
+	pd.bcconf[1].bc_type = FARFIELD_BC; inf >> pd.bcconf[1].bc_tag;
+	inf >> pd.num_out_walls >> pd.surfnameprefix >> pd.vol_output_reqd
 	    >> pd.sim_type >> pd.invflux >> pd.gradientmethod >> pd.limiter
 	    >> pd.pseudotimetype >> pd.initcfl >> pd.endcfl >> pd.tolerance >> pd.maxiter
 	    >> pd.firstinitcfl >> pd.firstendcfl >> pd.firsttolerance >> pd.firstmaxiter;
@@ -37,8 +40,8 @@ void compare(const FlowParserOptions& opts, const FlowParserOptions& exsol)
 	assert(opts.gamma == exsol.gamma);
 	assert(opts.alpha == exsol.alpha);
 	assert(opts.Minf == exsol.Minf);
-	assert(opts.slipwall_marker == exsol.slipwall_marker);
-	assert(opts.farfield_marker == exsol.farfield_marker);
+	assert(opts.bcconf[0].bc_tag == exsol.bcconf[0].bc_tag);
+	assert(opts.bcconf[1].bc_tag == exsol.bcconf[1].bc_tag);
 	assert(opts.num_out_walls == exsol.num_out_walls);
 	assert(opts.surfnameprefix == exsol.surfnameprefix);
 	assert(opts.vol_output_reqd == exsol.vol_output_reqd);

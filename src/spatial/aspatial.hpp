@@ -148,7 +148,7 @@ struct FlowPhysicsConfig
 	a_real aoa;                         ///< Angle of attack in radians 
 	bool viscous_sim;                   ///< Whether to include viscous effects
 	bool const_visc;                    ///< Whether to use constant viscosity
-	FlowBCConfig bcconf;                ///< Boundary condition specification
+	std::vector<FlowBCConfig> bcconf;   ///< Boundary condition specification
 };
 
 /// Collection of options related to the spatial discretization scheme

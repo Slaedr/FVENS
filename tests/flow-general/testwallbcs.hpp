@@ -30,6 +30,7 @@ public:
 	int testWalls(const a_real *const u) const;
 
 protected:
+	using FlowFV_base<a_real>::bcs;
 	using FlowFV<a_real,true,false>::compute_boundary_state;
 	using FlowFV<a_real,true,false>::inviflux;
 };

@@ -29,6 +29,7 @@ class FlowCase
 public:
 	/// Construct a flow case with parsed options
 	/** \param opts Parsed options from a control file
+	 * Also sets up the global bijective map between BC types (\ref BCType) and BC type strings
 	 */
 	FlowCase(const FlowParserOptions& options);
 

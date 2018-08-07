@@ -59,12 +59,12 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	opts.viscsim = false;
 	opts.order2 = true;
 	opts.Reinf=0; opts.Tinf=0; opts.Pr=0; 
-	opts.twalltemp=0; opts.twallvel = 0;
-	opts.tpwalltemp=0; opts.tpwallpressure=0; opts.tpwallvel=0; 
-	opts.adiawallvel = 0;
-	opts.isothermalwall_marker=-1; 
-	opts.isothermalpressurewall_marker=-1; 
-	opts.adiabaticwall_marker=-1;
+	// opts.twalltemp=0; opts.twallvel = 0;
+	// opts.tpwalltemp=0; opts.tpwallpressure=0; opts.tpwallvel=0; 
+	// opts.adiawallvel = 0;
+	// opts.isothermalwall_marker=-1; 
+	// opts.isothermalpressurewall_marker=-1; 
+	// opts.adiabaticwall_marker=-1;
 	opts.time_integrator = "NONE";
 
 	// Define string constants used as keywords in the control file
@@ -226,13 +226,14 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts)
 	const FlowPhysicsConfig pconf { 
 		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
 		opts.viscsim, opts.useconstvisc,
-			FlowBCConfig {opts.isothermalwall_marker, opts.adiabaticwall_marker,
-				opts.isothermalpressurewall_marker,
-				opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
-				opts.subsonicinflow_marker, 
-				opts.extrap_marker, opts.periodic_marker,
-				opts.subsonicinflow_ptot, opts.subsonicinflow_ttot,
-				opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel}
+			// FlowBCConfig {opts.isothermalwall_marker, opts.adiabaticwall_marker,
+			// 	opts.isothermalpressurewall_marker,
+			// 	opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
+			// 	opts.subsonicinflow_marker, 
+			// 	opts.extrap_marker, opts.periodic_marker,
+			// 	opts.subsonicinflow_ptot, opts.subsonicinflow_ttot,
+			// 	opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel}
+		opts.bcconf
 	};
 	return pconf;
 }
@@ -296,6 +297,8 @@ static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
 		else
 			found = false;
 	}
+
+	return bcvec;
 }
 
 }

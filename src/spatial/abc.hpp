@@ -9,24 +9,16 @@
 #define FVENS_BC_H
 
 #include <map>
+#include "abctypes.hpp"
 #include "physics/aphysics.hpp"
 
 namespace fvens {
 
-/// The types of boundary condition a boundary face can have
-enum BCType {
-	SLIP_WALL_BC,
-	FARFIELD_BC,
-	INFLOW_OUTFLOW_BC,
-	SUBSONIC_INFLOW_BC,
-	EXTRAPOLATION_BC,
-	PERIODIC_BC,
-	ISOTHERMAL_WALL_BC,
-	ADIABATIC_WALL_BC
-};
-
 /// Converts a string (lower case) to the corresponding BCType
 BCType getBCTypeFromString(const std::string bct);
+
+/// Converts a BC type into a string
+std::string getStringFromBCType(const BCType type);
 
 /// Definition of boundary condition at one particular boundary
 /** This is essentially raw data read from the control file.
@@ -73,7 +65,7 @@ public:
 	/** \param bc_tag The boundary marker tag for which we want this BC to apply
 	 * \param gasphysics Context describing some properties of the gas
 	 */
-	FlowBC(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics);
+	FlowBC(const BCType btype, const int bc_tag, const IdealGasPhysics<scalar>& gasphysics);
 
 	virtual ~FlowBC();
 
@@ -98,9 +90,12 @@ public:
 	                                          scalar *const __restrict ug,
 	                                          scalar *const __restrict dugdui) const = 0;
 
+	/// Type of boundary condition
+	const BCType bctype;
+
 protected:
 	/// Tag index of mesh faces on which this BC is to be applied
-	int btag;
+	const int btag;
 
 	/// Thermodynamic and some mechanical properties of the fluid
 	const IdealGasPhysics<scalar>& phy;

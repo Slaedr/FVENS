@@ -22,6 +22,7 @@
 #include <iomanip>
 #include "utilities/afactory.hpp"
 #include "aspatial.hpp"
+#include "abctypemap.hpp"
 
 namespace fvens {
 
@@ -244,16 +245,20 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
 
 {
-	std::cout << " FlowFV: Boundary markers:\n";
-	std::cout << "  Farfield " << pconfig.bcconf.farfield_id 
-		<< ", inflow/outflow " << pconfig.bcconf.inflowoutflow_id
-		<< ", slip wall " << pconfig.bcconf.slipwall_id;
-	std::cout << "  Extrapolation " << pconfig.bcconf.extrapolation_id 
-		<< ", Periodic " << pconfig.bcconf.periodic_id << '\n';
-	std::cout << "  Isothermal " << pconfig.bcconf.isothermalwall_id;
-	std::cout << "  Adiabatic " << pconfig.bcconf.adiabaticwall_id;
-	std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
-		<< pconfig.bcconf.adiabaticwall_vel << '\n';
+	// std::cout << " FlowFV: Boundary markers:\n";
+	// std::cout << "  Farfield " << pconfig.bcconf.farfield_id 
+	// 	<< ", inflow/outflow " << pconfig.bcconf.inflowoutflow_id
+	// 	<< ", slip wall " << pconfig.bcconf.slipwall_id;
+	// std::cout << "  Extrapolation " << pconfig.bcconf.extrapolation_id 
+	// 	<< ", Periodic " << pconfig.bcconf.periodic_id << '\n';
+	// std::cout << "  Isothermal " << pconfig.bcconf.isothermalwall_id;
+	// std::cout << "  Adiabatic " << pconfig.bcconf.adiabaticwall_id;
+	// std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
+	// 	<< pconfig.bcconf.adiabaticwall_vel << '\n';
+	std::cout << " FlowFV_base: Boundary conditions:\n";
+	for(auto it = pconfig.bcconf.begin(); it != pconfig.bcconf.end(); it++) {
+		std::cout << bcTypeMap.left.find(it->bc_type)->second << '\n';
+	}
 }
 
 template <typename scalar>
@@ -301,11 +306,11 @@ void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& i
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
 	
-		if(m->gintfacbtags(ied,0) == pconfig.bcconf.periodic_id)
-		{
-			for(int i = 0; i < NVARS; i++)
-				bs(ied,i) = ins(m->gperiodicmap(ied), i);
-		}
+		// if(m->gintfacbtags(ied,0) == pconfig.bcconf.periodic_id)
+		// {
+		// 	for(int i = 0; i < NVARS; i++)
+		// 		bs(ied,i) = ins(m->gperiodicmap(ied), i);
+		// }
 	}
 }
 
@@ -317,15 +322,6 @@ void FlowFV_base<scalar>::compute_boundary_state(const int ied,
 	const std::array<scalar,NDIM> n = m->gnormal(ied);
 	bcs.at(m->gintfacbtags(ied,0))->computeGhostState(ins, &n[0], gs);
 }
-
-// template <typename scalar>
-// void FlowFV_base<scalar>::compute_boundary_Jacobian(const int ied,
-//                                             const scalar *const ins,
-//                                             scalar *const gs, scalar *const dgs) const
-// {
-// 	const std::array<scalar,NDIM> n = m->gnormal(ied);
-// 	bcs.at(m->gintfacbtags(ied,0))->computeGhostStateAndJacobian(ins, &n[0], gs, dgs);
-// }
 
 template <typename scalar>
 void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,

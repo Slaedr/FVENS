@@ -10,8 +10,9 @@
 namespace fvens {
 
 template <typename scalar>
-FlowBC<scalar>::FlowBC(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
-	: btag{bc_tag}, phy{gasphysics}
+FlowBC<scalar>::FlowBC(const BCType btype, const int bc_tag,
+                       const IdealGasPhysics<scalar>& gasphysics)
+	: bctype{btype}, btag{bc_tag}, phy{gasphysics}
 { }
 
 template <typename scalar>
@@ -19,9 +20,10 @@ FlowBC<scalar>::~FlowBC()
 { }
 
 template <typename scalar>
-InOutFlow<scalar>::InOutFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
+InOutFlow<scalar>::InOutFlow(const int bc_tag,
+                             const IdealGasPhysics<scalar>& gasphysics,
                              const std::array<scalar,NVARS>& u_far)
-	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
+	: FlowBC<scalar>(INFLOW_OUTFLOW_BC, bc_tag, gasphysics), uinf(u_far)
 { }
 
 template <typename scalar>
@@ -120,7 +122,7 @@ void InOutFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, co
 template <typename scalar>
 InFlow<scalar>::InFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                        const scalar t_pressure, const scalar t_temp)
-	: FlowBC<scalar>(bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
+	: FlowBC<scalar>(SUBSONIC_INFLOW_BC, bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
 { }
 
 /** Assumes the flow at the boundary is isentropic. Uses the the fact that the stagnation speed
@@ -165,7 +167,7 @@ void InFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, const
 template <typename scalar>
 Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                            const std::array<scalar,NVARS>& u_far)
-	: FlowBC<scalar>(bc_tag, gasphysics), uinf(u_far)
+	: FlowBC<scalar>(FARFIELD_BC, bc_tag, gasphysics), uinf(u_far)
 { }
 
 template <typename scalar>
@@ -189,7 +191,7 @@ void Farfield<scalar>::computeGhostStateAndJacobian(const scalar *const ins, con
 
 template <typename scalar>
 Slipwall<scalar>::Slipwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
-	: FlowBC<scalar>(bc_tag, gasphysics)
+	: FlowBC<scalar>(SLIP_WALL_BC, bc_tag, gasphysics)
 { }
 
 template <typename scalar>
@@ -243,7 +245,7 @@ void Slipwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins, con
 template <typename scalar>
 Adiabaticwall2D<scalar>::Adiabaticwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                                          const a_real wall_tangential_velocity)
-	: FlowBC<scalar>(bc_tag, gasphysics), tangvel{wall_tangential_velocity}
+	: FlowBC<scalar>(ADIABATIC_WALL_BC, bc_tag, gasphysics), tangvel{wall_tangential_velocity}
 { }
 
 template <typename scalar>
@@ -285,7 +287,7 @@ void Adiabaticwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const i
 template <typename scalar>
 Isothermalwall2D<scalar>::Isothermalwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                                            const a_real wtv, const a_real temp)
-	: FlowBC<scalar>(bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
+	: FlowBC<scalar>(ISOTHERMAL_WALL_BC, bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
 { }
 
 template <typename scalar>
@@ -348,7 +350,7 @@ void Isothermalwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const 
 
 template <typename scalar>
 Extrapolation<scalar>::Extrapolation(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
-	: FlowBC<scalar>(bc_tag, gasphysics)
+	: FlowBC<scalar>(EXTRAPOLATION_BC, bc_tag, gasphysics)
 { }
 
 template <typename scalar>
@@ -467,7 +469,7 @@ std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowB
 template
 std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<a_real>& physics,
-                                                         const std::array<a_real,NVARS>& uinf)
+                                                         const std::array<a_real,NVARS>& uinf);
 
 BCType getBCTypeFromString(const std::string bct)
 {
@@ -489,6 +491,31 @@ BCType getBCTypeFromString(const std::string bct)
 		return PERIODIC_BC;
 	else
 		throw std::runtime_error("BC type not available!");
+}
+
+std::string getStringFromBCType(const BCType bct)
+{
+	std::string bstr;
+	if(bct == SLIP_WALL_BC)
+		bstr = "slipwall";
+	else if(bct == ISOTHERMAL_WALL_BC)
+		bstr = "isothermalwall";
+	// else if(bct == "adiabaticwall")
+	// 	bstr = ADIABATIC_WALL_BC;
+	// else if(bct == "farfield")
+	// 	bstr = FARFIELD_BC;
+	// else if(bct == "inflowoutflow")
+	// 	bstr = INFLOW_OUTFLOW_BC;
+	// else if(bct == "extrapolation")
+	// 	bstr = EXTRAPOLATION_BC;
+	// else if(bct == "subsonicinflow")
+	// 	bstr = SUBSONIC_INFLOW_BC;
+	// else if(bct == "periodic")
+	// 	bstr = PERIODIC_BC;
+	else
+		throw std::runtime_error("BC type not available!");
+
+	return bstr;
 }
 
 }

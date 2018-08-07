@@ -15,6 +15,7 @@
 #include "utilities/afactory.hpp"
 #include "utilities/aerrorhandling.hpp"
 #include "spatial/aoutput.hpp"
+#include "spatial/abctypemap.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"
 
@@ -24,7 +25,10 @@
 
 namespace fvens {
 
-FlowCase::FlowCase(const FlowParserOptions& options) : opts{options} { }
+FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
+{
+	setBCTypeMap();
+}
 
 /// Prepare a mesh for use in a fluid simulation
 UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
@@ -35,7 +39,13 @@ UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
 	m.readMesh(meshfile);
 	int ierr = preprocessMesh(m); 
 	fvens_throw(ierr, "Mesh could not be preprocessed!");
-	m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
+
+	// check if there are any periodic boundaries
+	for(auto it = opts.bcconf.begin(); it != opts.bcconf.end(); it++) {
+		if(it->bc_type == PERIODIC_BC)
+			m.compute_periodic_map(it->bc_opts[0], it->bc_opts[1]);
+	}
+
 	return m;
 }
 
