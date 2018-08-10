@@ -23,7 +23,7 @@ boost::bimap<BCType, std::string> createBCTypeMap()
 	bmp.insert(rel_entry(ADIABATIC_WALL_BC, "adiabaticwall"));
 	bmp.insert(rel_entry(FARFIELD_BC, "farfield"));
 	bmp.insert(rel_entry(INFLOW_OUTFLOW_BC, "inflowoutflow"));
-	bmp.insert(rel_entry(SUBSONIC_INFLOW_BC, "subsonicinflow"));
+	bmp.insert(rel_entry(SUBSONIC_INFLOW_BC, "subsonic_inflow"));
 	bmp.insert(rel_entry(EXTRAPOLATION_BC, "extrapolation"));
 	bmp.insert(rel_entry(PERIODIC_BC, "periodic"));
 

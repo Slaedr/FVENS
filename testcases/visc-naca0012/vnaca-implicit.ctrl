@@ -34,13 +34,19 @@ flow_conditions
 bc
 {
 	;; Markers in the mesh file corresponding to each kind of boundary.
-	 ; Currently, there can only be one marker of each type.
-	 ; Some boundary conditions require boundary values
-	inflow_outflow_marker        4
+	 ; Some boundary conditions require boundary values and some require options as well
+	 
+	bc0 {
+		type                     inflowoutflow
+		marker                    4
+	}
 	
-	adiabatic_wall_marker        2
-	;; Non-dimensional velocity
-	adiabatic_wall_velocity      0.0
+	bc1 {
+		type                    adiabaticwall
+		marker                   2
+		;; Non-dimensional tangential velocity at the wall
+		boundary_values          0.0
+	}
 	
 	;; List of boundary markers at which surface output is required
 	 ; and are to be treated as walls, ie, CL and CD are computed

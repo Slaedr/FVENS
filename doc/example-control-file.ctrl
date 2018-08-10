@@ -33,28 +33,39 @@ flow_conditions
 
 bc
 {
-	;; Markers in the mesh file corresponding to each kind of boundary.
-	 ; Currently, there can only be one marker of each type.
-	 ; Some boundary conditions require boundary values
-	farfield_marker              4
+	;; Markers in the mesh file and type of boundary condition corresponding to each kind of boundary.
+	 ; Some boundary conditions require boundary values and others require options as well
+	 
+	bc0 {
+		type                     farfield
+		marker                    4
+	}
 
-	;; Subsonic inflow boundary
-	subsonic_inflow_marker            3
-	;; Non-dimensional total pressure at inflow
-	 ; Non-dimensionalized by free-stream density times square of free-stream velocity
-	subsonic_inflow_total_pressure    2.0
-	;; Total temperature in Kelvin at inflow
-	subsonic_inflow_total_temperature 373.0
+	bc1 {
+		type                     subsonic_inflow
+		marker                    3
+		
+		;; Non-dimensional total pressure at inflow,
+		 ; non-dimensionalized by free-stream density times square of free-stream velocity
+		 ; and total temperature in Kelvin at inflow (in that order)
+		boundary_values           2.0  373.0
+	}
 	
-	adiabatic_wall_marker        5
-	;; Non-dimensional velocity
-	adiabatic_wall_velocity      20.0
+	bc2 {
+		type                    adiabaticwall
+		marker                   5
+		
+	    ;; Non-dimensional velocity tangential to the wall
+		boundary_values         20.0
+	}
 	
-	isothermal_wall_marker       7
-	;; Temperature in Kelvin
-	isothermal_wall_temperature  290.0
-	;; Non-dimensional velocity
-	isothermal_wall_velocity     10.0
+	bc3 {
+		type                   isothermalwall
+		marker                  7
+		
+		;; Non-dimensional tangential velocity and temperature in Kelvin (in that order
+		boundary_values       10.0  290.0
+	}
 	
 	;; List of boundary markers at which surface output is required
 	 ; and are to be treated as walls, ie, CL and CD are computed

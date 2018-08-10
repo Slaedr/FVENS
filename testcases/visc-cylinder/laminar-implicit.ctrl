@@ -32,9 +32,18 @@ flow_conditions
 bc
 {
 	inflow_outflow_marker        4
+	bc0 {
+		type                     inflowoutflow
+		marker                   4
+	}
 	
 	adiabatic_wall_marker        2
 	adiabatic_wall_velocity      0.0
+	bc1 {
+		type                     adiabaticwall
+		marker                   2
+		boundary_values          0.0
+	}
 	
 	listof_output_wall_boundaries    2
 	

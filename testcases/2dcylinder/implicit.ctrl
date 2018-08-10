@@ -15,8 +15,14 @@ flow_conditions {
 
 bc
 {
-	slipwall_marker           2
-	farfield_marker           4
+	bc0 {
+		type            slipwall
+		marker          2
+	}
+	bc1 {
+		type            farfield
+		marker          4
+	}
 	
 	;; List of boundary markers at which surface output is required
 	;;  and are to be treated as walls, ie, CL and CD are computed
