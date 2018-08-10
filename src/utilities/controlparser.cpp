@@ -1,11 +1,25 @@
 /** \file controlparser.cpp
  * \brief Control file parsing
  * \author Aditya Kashi
- * \date 2017-10
+ *
+ * This file is part of FVENS.
+ *   FVENS is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   FVENS is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "controlparser.hpp"
 #include "aerrorhandling.hpp"
+#include "spatial/abctypemap.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <sstream>
@@ -59,12 +73,6 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	opts.viscsim = false;
 	opts.order2 = true;
 	opts.Reinf=0; opts.Tinf=0; opts.Pr=0; 
-	// opts.twalltemp=0; opts.twallvel = 0;
-	// opts.tpwalltemp=0; opts.tpwallpressure=0; opts.tpwallvel=0; 
-	// opts.adiawallvel = 0;
-	// opts.isothermalwall_marker=-1; 
-	// opts.isothermalpressurewall_marker=-1; 
-	// opts.adiabaticwall_marker=-1;
 	opts.time_integrator = "NONE";
 
 	// Define string constants used as keywords in the control file
@@ -78,16 +86,6 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	const std::string c_pseudotime = "pseudotime";
 
 	// options that possibly repeat
-	// BCs
-	// const std::string slipwall_m = "slipwall_marker";
-	// const std::string farfield_m = "farfield_marker";
-	// const std::string inoutflow_m = "inflow_outflow_marker";
-	// const std::string subsonicinflow_m = "subsonic_inflow_marker";
-	// const std::string extrap_m = "extrapolation_marker";
-	// const std::string periodic_m = "periodic_marker";
-	// const std::string periodic_axis = "periodic_axis";
-	// const std::string isothermalwall_m = "isothermal_wall_marker";
-	// const std::string adiabaticwall_m = "adiabatic_wall_marker";
 	// Pseudotime settings
 	const std::string pt_step_type = "pseudotime_stepping_type";
 	const std::string pt_cflmin = "cfl_min";
@@ -122,30 +120,6 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 		opts.Pr = infopts.get<a_real>(c_flowconds+".Prandtl_number");
 		opts.useconstvisc = infopts.get(c_flowconds+".use_constant_viscosity",false);
 	}
-
-	// opts.slipwall_marker = infopts.get(c_bcs+"."+slipwall_m,-1);
-	// opts.farfield_marker = infopts.get(c_bcs+"."+farfield_m,-1);
-	// opts.inout_marker = infopts.get(c_bcs+"."+inoutflow_m,-1);
-	// opts.subsonicinflow_marker = infopts.get(c_bcs+"."+subsonicinflow_m,-1);
-	// if(opts.subsonicinflow_marker >= 0) {
-	// 	opts.subsonicinflow_ptot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_pressure");
-	// 	opts.subsonicinflow_ttot = infopts.get<a_real>(c_bcs+".subsonic_inflow_total_temperature");
-	// }
-	// opts.extrap_marker = infopts.get(c_bcs+"."+extrap_m,-1);
-	// opts.periodic_marker = infopts.get(c_bcs+"."+periodic_m,-1);
-	// if(opts.periodic_marker >= 0) {
-	// 	opts.periodic_axis = infopts.get<int>(c_bcs+"."+periodic_axis);
-	// }
-	// if(opts.viscsim) {
-	// 	opts.isothermalwall_marker = infopts.get(c_bcs+"."+isothermalwall_m,-1);
-	// 	if(opts.isothermalwall_marker >= 0) {
-	// 		opts.twalltemp = infopts.get<a_real>(c_bcs+".isothermal_wall_temperature");
-	// 		opts.twallvel = infopts.get<a_real>(c_bcs+".isothermal_wall_velocity");
-	// 	}
-	// 	opts.adiabaticwall_marker = infopts.get(c_bcs+"."+adiabaticwall_m,-1);
-	// 	if(opts.adiabaticwall_marker >= 0)
-	// 		opts.adiawallvel = infopts.get<a_real>(c_bcs+".adiabatic_wall_velocity");
-	// }
 
 	opts.bcconf = parse_BC_options(infopts, c_bcs);
 
@@ -225,15 +199,7 @@ FlowPhysicsConfig extract_spatial_physics_config(const FlowParserOptions& opts)
 {
 	const FlowPhysicsConfig pconf { 
 		opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr, opts.alpha,
-		opts.viscsim, opts.useconstvisc,
-			// FlowBCConfig {opts.isothermalwall_marker, opts.adiabaticwall_marker,
-			// 	opts.isothermalpressurewall_marker,
-			// 	opts.slipwall_marker, opts.farfield_marker, opts.inout_marker,
-			// 	opts.subsonicinflow_marker, 
-			// 	opts.extrap_marker, opts.periodic_marker,
-			// 	opts.subsonicinflow_ptot, opts.subsonicinflow_ttot,
-			// 	opts.twalltemp, opts.twallvel, opts.adiawallvel, opts.tpwalltemp, opts.tpwallvel}
-		opts.bcconf
+		opts.viscsim, opts.useconstvisc, opts.bcconf
 	};
 	return pconf;
 }
@@ -254,9 +220,10 @@ FlowNumericsConfig firstorder_spatial_numerics_config(const FlowParserOptions& o
 
 /* In the bc section of the control file, the various boundary conditions are given in sections
  * called 'bc0', 'bc1' etc. numbered consecutively from 0.
- * Each BC has the fields 'type' (string), 'marker' (int),
- * 'boundary_values' (string of space-seperated real numbers),
- * 'options' (string of space-separated integers).
+ * Each BC has the fields 'type' (string), 'marker' (int).
+ * Some BCs have one or both of the following fields:
+ * - 'boundary_values' (string of space-seperated real numbers),
+ * - 'options' (string of space-separated integers).
  */
 static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
                                                   const std::string c_bcs)
@@ -273,23 +240,27 @@ static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
 
 			std::string bctype = boost::to_lower_copy<std::string>
 				(infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+".type"));
-			bconf.bc_type = getBCTypeFromString(bctype);
+			std::cout << "Reading " <<  ibc << " '" << bctype << "'" << std::endl;
+			bconf.bc_type = bcTypeMap.right.at(bctype);
+			std::cout << "Read" << std::endl;
+			std::cout << "BC type = " << bcTypeMap.left.at(bconf.bc_type) << std::endl;
 			bconf.bc_tag = infopts.get<int>(c_bcs+".bc"+std::to_string(ibc)+".marker");
 
-			// Read arrays of boundary values and options
-			std::string bvals = infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+
-			                                             ".boundary_values");
-			std::stringstream bvstream(bvals);
-			a_real val;
-			while(bvstream >> val)
-				bconf.bc_vals.push_back(val);
+			// Read array of boundary values
+			if(bconf.bc_type == ADIABATIC_WALL_BC  ||
+			   bconf.bc_type == ISOTHERMAL_WALL_BC ||
+			   bconf.bc_type == SUBSONIC_INFLOW_BC)   {
+				std::string bvals = infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+
+				                                             ".boundary_values");
+				bconf.bc_vals = parseStringToVector<a_real>(bvals);
+			}
 
-			std::string opts = infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+
-			                                            ".options");
-			std::stringstream bostream(opts);
-			int vali;
-			while(bostream >> vali)
-				bconf.bc_opts.push_back(vali);
+			// array of options
+			if(bconf.bc_type == PERIODIC_BC) {
+				std::string bcopts = infopts.get<std::string>(c_bcs +".bc"+std::to_string(ibc)+
+				                                              ".options");
+				bconf.bc_opts = parseStringToVector<int>(bcopts);
+			}
 
 			bcvec.push_back(bconf);
 			ibc++;

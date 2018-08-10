@@ -5,7 +5,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 
 add_library(fvens_parsing_errh utilities/aoptionparser.cpp
   utilities/controlparser.cpp
-  utilities/aerrorhandling.cpp)
+  utilities/aerrorhandling.cpp
+  spatial/abctypemap.cpp)
 target_link_libraries(fvens_parsing_errh ${PETSC_LIB} ${Boost_LIBRARIES})
 if(CXX_COMPILER_INTEL)
   target_compile_options(fvens_parsing_errh PRIVATE "-Wno-return-type")
@@ -14,7 +15,7 @@ endif()
 add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
 	ode/aodesolver.cpp linalg/alinalg.cpp 
 	spatial/aspatial.cpp spatial/areconstruction.cpp spatial/agradientschemes.cpp 
-	spatial/anumericalflux.cpp spatial/aoutput.cpp spatial/abc.cpp spatial/abctypemap.cpp
+	spatial/anumericalflux.cpp spatial/aoutput.cpp spatial/abc.cpp 
 	spatial/diffusion.cpp
 	physics/aphysics.cpp 
 	mesh/ameshutils.cpp mesh/amesh2dh.cpp utilities/aarray2d.cpp)

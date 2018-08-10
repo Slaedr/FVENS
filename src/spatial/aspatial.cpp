@@ -245,16 +245,6 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
 
 {
-	// std::cout << " FlowFV: Boundary markers:\n";
-	// std::cout << "  Farfield " << pconfig.bcconf.farfield_id 
-	// 	<< ", inflow/outflow " << pconfig.bcconf.inflowoutflow_id
-	// 	<< ", slip wall " << pconfig.bcconf.slipwall_id;
-	// std::cout << "  Extrapolation " << pconfig.bcconf.extrapolation_id 
-	// 	<< ", Periodic " << pconfig.bcconf.periodic_id << '\n';
-	// std::cout << "  Isothermal " << pconfig.bcconf.isothermalwall_id;
-	// std::cout << "  Adiabatic " << pconfig.bcconf.adiabaticwall_id;
-	// std::cout << " FlowFV: Adiabatic wall tangential velocity = " 
-	// 	<< pconfig.bcconf.adiabaticwall_vel << '\n';
 	std::cout << " FlowFV_base: Boundary conditions:\n";
 	for(auto it = pconfig.bcconf.begin(); it != pconfig.bcconf.end(); it++) {
 		std::cout << bcTypeMap.left.find(it->bc_type)->second << '\n';
@@ -920,8 +910,6 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 	if(secondOrderRequested)
 	{
 		// for storing cell-centred gradients at interior cells and ghost cells
-		/*dudx.resize(m->gnelem()+m->gnbface(), NVARS);
-		dudy.resize(m->gnelem()+m->gnbface(), NVARS);*/
 		grads.resize(m->gnelem());
 
 		// get cell average values at ghost cells using BCs
@@ -1106,9 +1094,6 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		/*a_real n[NDIM];
-		n[0] = m->gfacemetric(iface,0);
-		n[1] = m->gfacemetric(iface,1);*/
 		const std::array<a_real,NDIM> n = m->gnormal(iface);
 		const a_real len = m->gfacemetric(iface,2);
 		
@@ -1117,7 +1102,6 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 		Matrix<a_real,NVARS,NVARS,RowMajor> left;
 		Matrix<a_real,NVARS,NVARS,RowMajor> right;
 		
-		//compute_boundary_Jacobian(iface, &uarr[lelem*NVARS], uface, &drdl(0,0));	
 		bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(&uarr[lelem*NVARS], &n[0],
 		                                                               uface, &drdl(0,0));
 		

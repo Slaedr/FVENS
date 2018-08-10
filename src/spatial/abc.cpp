@@ -2,6 +2,20 @@
  * \brief Boundary conditions management
  * \author Aditya Kashi
  * \date 2018-05
+ *
+ * This file is part of FVENS.
+ *   FVENS is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   FVENS is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <iostream>
@@ -52,7 +66,6 @@ void InOutFlow<scalar>::computeGhostState(const scalar *const ins, const scalar 
 			gs[0] = ins[0];
 			for(int i = 1; i < NDIM+1; i++)
 				gs[i] = ins[i];
-			//gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
 			gs[NDIM+1] = phy.getEnergyFromPressure(pinf, ins[0],
 			                                       dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
 		}
@@ -384,46 +397,6 @@ template class Adiabaticwall2D<a_real>;
 template class Isothermalwall2D<a_real>;
 template class Extrapolation<a_real>;
 
-// template <typename scalar>
-// std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const FlowBCConfig& conf,
-//                                                          const IdealGasPhysics<scalar>& physics,
-//                                                          const std::array<a_real,NVARS>& uinf)
-// {
-// 	std::map<int,const FlowBC<scalar>*> bcmap;
-
-// 	const FlowBC<scalar>* iobc = new InOutFlow<scalar>(conf.inflowoutflow_id, physics, uinf);
-// 	bcmap[conf.inflowoutflow_id] = iobc;
-
-// 	const FlowBC<scalar>* ibc = new InFlow<scalar>(conf.subsonicinflow_id, physics,
-// 	                                               conf.subsonicinflow_ptot, conf.subsonicinflow_ttot);
-// 	bcmap[conf.subsonicinflow_id] = ibc;
-
-// 	const FlowBC<scalar>* fbc = new Farfield<scalar>(conf.farfield_id, physics, uinf);
-// 	bcmap[conf.farfield_id] = fbc;
-
-// 	const FlowBC<scalar>* ebc = new Extrapolation<scalar>(conf.extrapolation_id, physics);
-// 	bcmap[conf.extrapolation_id] = ebc;
-
-// 	const FlowBC<scalar>* slipbc = new Slipwall<scalar>(conf.slipwall_id, physics);
-// 	bcmap[conf.slipwall_id] = slipbc;
-
-// 	const FlowBC<scalar>* adiabc = new Adiabaticwall2D<scalar>(conf.adiabaticwall_id, physics,
-// 	                                                           conf.adiabaticwall_vel);
-// 	bcmap[conf.adiabaticwall_id] = adiabc;
-
-// 	const FlowBC<scalar>* isotbc = new Isothermalwall2D<scalar>(conf.isothermalwall_id, physics,
-// 	                                                            conf.isothermalwall_vel,
-// 	                                                            conf.isothermalwall_temp);
-// 	bcmap[conf.isothermalwall_id] = isotbc;
-
-// 	return bcmap;
-// }
-
-// template
-// std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const FlowBCConfig& conf,
-//                                                          const IdealGasPhysics<a_real>& physics,
-//                                                          const std::array<a_real,NVARS>& uinf);
-
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<scalar>& physics,
@@ -470,52 +443,5 @@ template
 std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<a_real>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
-
-BCType getBCTypeFromString(const std::string bct)
-{
-	if(bct == "slipwall")
-		return SLIP_WALL_BC;
-	else if(bct == "isothermalwall")
-		return ISOTHERMAL_WALL_BC;
-	else if(bct == "adiabaticwall")
-		return ADIABATIC_WALL_BC;
-	else if(bct == "farfield")
-		return FARFIELD_BC;
-	else if(bct == "inflowoutflow")
-		return INFLOW_OUTFLOW_BC;
-	else if(bct == "extrapolation")
-		return EXTRAPOLATION_BC;
-	else if(bct == "subsonicinflow")
-		return SUBSONIC_INFLOW_BC;
-	else if(bct == "periodic")
-		return PERIODIC_BC;
-	else
-		throw std::runtime_error("BC type not available!");
-}
-
-std::string getStringFromBCType(const BCType bct)
-{
-	std::string bstr;
-	if(bct == SLIP_WALL_BC)
-		bstr = "slipwall";
-	else if(bct == ISOTHERMAL_WALL_BC)
-		bstr = "isothermalwall";
-	// else if(bct == "adiabaticwall")
-	// 	bstr = ADIABATIC_WALL_BC;
-	// else if(bct == "farfield")
-	// 	bstr = FARFIELD_BC;
-	// else if(bct == "inflowoutflow")
-	// 	bstr = INFLOW_OUTFLOW_BC;
-	// else if(bct == "extrapolation")
-	// 	bstr = EXTRAPOLATION_BC;
-	// else if(bct == "subsonicinflow")
-	// 	bstr = SUBSONIC_INFLOW_BC;
-	// else if(bct == "periodic")
-	// 	bstr = PERIODIC_BC;
-	else
-		throw std::runtime_error("BC type not available!");
-
-	return bstr;
-}
 
 }

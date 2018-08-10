@@ -20,12 +20,27 @@ flow_conditions
 
 bc
 {
-	slipwall_marker              3
-	farfield_marker              4
-	inflow_outflow_marker        5
+	bc0 {
+		type                     slipwall
+		marker                   3
+	}
 	
-	adiabatic_wall_marker        2
-	adiabatic_wall_velocity      0.0
+	bc1 {
+		type                     farfield
+		marker                   4
+	}
+	
+	bc2 {
+		type                     inflowoutflow
+		marker                   5
+	}
+	
+	bc3 {
+		type                     adiabaticwall
+		marker                   2
+		; Tangential velocity at wall
+		boundary_values          0.0
+	}
 	
 	listof_output_wall_boundaries    2
 	listof_output_other_boundaries   5

@@ -31,14 +31,28 @@ flow_conditions
 
 bc
 {
-	periodic_marker        4
+	bc0 {
+		type               periodic
+		marker             4
+		; periodic axis
+		options
+	}
 	
-	isothermal_wall_marker        3
-	isothermal_wall_velocity      1.0
-	isothermal_wall_temperature  294.0
+	bc1 {
+		type               isothermalwall
+		marker             3
+		; Wall tangential velocity and temperature in that order
+		boundary_values    "1.0  294.0"
+	}
 	
 	adiabatic_wall_marker         2
 	adiabatic_wall_velocity       0.0
+	bc2 {
+		type               adiabaticwall
+		marker             2
+		; Wall tangential velocity
+		boundary_values    "0.0"
+	}
 }
 
 time {

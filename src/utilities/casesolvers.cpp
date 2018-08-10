@@ -15,7 +15,6 @@
 #include "utilities/afactory.hpp"
 #include "utilities/aerrorhandling.hpp"
 #include "spatial/aoutput.hpp"
-#include "spatial/abctypemap.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"
 
@@ -27,7 +26,6 @@ namespace fvens {
 
 FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
 {
-	setBCTypeMap();
 }
 
 /// Prepare a mesh for use in a fluid simulation

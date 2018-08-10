@@ -3,6 +3,20 @@
  * \todo TODO: Do something about periodic boundary conditions
  * \author Aditya Kashi
  * \date 2018-05
+ *
+ * This file is part of FVENS.
+ *   FVENS is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   FVENS is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef FVENS_BC_H
@@ -14,12 +28,6 @@
 
 namespace fvens {
 
-/// Converts a string (lower case) to the corresponding BCType
-BCType getBCTypeFromString(const std::string bct);
-
-/// Converts a BC type into a string
-std::string getStringFromBCType(const BCType type);
-
 /// Definition of boundary condition at one particular boundary
 /** This is essentially raw data read from the control file.
  */
@@ -30,26 +38,6 @@ struct FlowBCConfig
 	std::vector<a_real> bc_vals;  ///< Boundary value(s)
 	std::vector<int> bc_opts;     ///< Other info needed by boundary condition
 };
-
-/// Collection of options describing boundary conditions
-// struct FlowBCConfig {
-// 	int isothermalwall_id;            ///< Boundary marker for isothermal no-slip wall
-// 	int adiabaticwall_id;             ///< Marker for adiabatic no-slip wall
-// 	int isothermalbaricwall_id;       ///< Marker for isothermal fixed-pressure no-slip wall
-// 	int slipwall_id;                  ///< Marker for slip wall
-// 	int farfield_id;                  ///< Marker for far-field boundary
-// 	int inflowoutflow_id;             ///< Marker for inflow/outflow boundary
-// 	int subsonicinflow_id;            ///< Marker for subsonic inflow
-// 	int extrapolation_id;             ///< Marker for an extrapolation boundary
-// 	int periodic_id;                  ///< Marker for periodic boundary
-// 	a_real subsonicinflow_ptot;       ///< Total non-dimensional pressure at subsonic inflow
-// 	a_real subsonicinflow_ttot;       ///< Total temperature at subsonic inflow
-// 	a_real isothermalwall_temp;       ///< Temperature at isothermal wall
-// 	a_real isothermalwall_vel;        ///< Tangential velocity at isothermal wall 
-// 	a_real adiabaticwall_vel;         ///< Tangential velocity at adiabatic wall
-// 	a_real isothermalbaricwall_temp;  ///< Temperature at isothermal fixed-pressure wall
-// 	a_real isothermalbaricwall_vel;   ///< Tangential velocity at isothermal pressure wall
-// };
 
 /// Abstract class for storing the details and providing functionality for one type if BC
 /** Each FlowBC (derived class) object is associated with an integer [tag](\ref UMesh2dh::bface)

@@ -403,6 +403,5 @@ protected:
 			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
 };
 
-
 }	// end namespace
 #endif

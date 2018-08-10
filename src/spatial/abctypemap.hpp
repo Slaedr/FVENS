@@ -12,10 +12,7 @@
 namespace fvens {
 
 /// Global bi-directional map for getting from the type enum to type string and vice-versa
-extern boost::bimap<BCType, std::string> bcTypeMap;
-
-/// Call this function somewhere to initialize \ref bcTypeMap
-void setBCTypeMap();
+extern const boost::bimap<BCType, std::string> bcTypeMap;
 
 }
 #endif

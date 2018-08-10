@@ -38,7 +38,13 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	UMesh2dh<a_real> m;
 	m.readMesh(opts.meshfile);
 	CHKERRQ(preprocessMesh(m));
-	m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
+	// check if there are any periodic boundaries
+	//m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
+	for(auto it = opts.bcconf.begin(); it != opts.bcconf.end(); it++) {
+		if(it->bc_type == PERIODIC_BC)
+			m.compute_periodic_map(it->bc_opts[0], it->bc_opts[1]);
+	}
+
 	std::cout << "\n***\n";
 
 	// physical configuration

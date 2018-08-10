@@ -25,14 +25,22 @@ flow_conditions {
 
 bc
 {
-	farfield_marker              4
-	
-	adiabatic_wall_marker        2
-	adiabatic_wall_velocity      0.0
-	
-	isothermal_wall_marker       3
-	isothermal_wall_temperature  290.0
-	isothermal_wall_velocity     0.0
+	bc0 {
+		type                    farfield
+		marker                  4
+	}
+	bc1 {
+		type                    adiabaticwall
+		marker                  2
+		; Wall tangential velocity
+		boundary_values         "0.0"
+	}
+	bc2 {
+		type                    isothermalwall
+		marker                  3
+		; Wall tangential velocity and temperature in that order:
+		boundary_values         0.0  290.0
+	}
 	
 	listof_output_wall_boundaries    2
 	

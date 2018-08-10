@@ -19,7 +19,7 @@ class TestFlowFV : public FlowFV<a_real,true,false>
 {
 public:
 	TestFlowFV(const UMesh2dh<a_real> *const mesh, const FlowPhysicsConfig& pconf,
-			const FlowNumericsConfig& nconf)
+	           const FlowNumericsConfig& nconf)
 		: FlowFV<a_real,true,false>(mesh, pconf, nconf)
 	{ }
 	

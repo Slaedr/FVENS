@@ -2,6 +2,20 @@
  * \brief Routines to solve a single fluid dynamics case
  * \author Aditya Kashi
  * \date 2018-04
+ *
+ * This file is part of FVENS.
+ *   FVENS is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   FVENS is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef FVENS_CASESOLVERS_H
@@ -29,7 +43,6 @@ class FlowCase
 public:
 	/// Construct a flow case with parsed options
 	/** \param opts Parsed options from a control file
-	 * Also sets up the global bijective map between BC types (\ref BCType) and BC type strings
 	 */
 	FlowCase(const FlowParserOptions& options);
 
