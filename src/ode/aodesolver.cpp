@@ -495,6 +495,26 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			<< ", rel residual " << resi/initres << std::endl;
 	}
 
+	// print timing data
+	if(mpirank == 0) {
+		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters;
+		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
+		std::cout << " \t\tWall time = " << tdata.ode_walltime << ", CPU time = " 
+		          << tdata.ode_cputime << "\n";
+		std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
+		std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
+	}
+
+#ifdef _OPENMP
+	tdata.num_threads = omp_get_max_threads();
+#endif
+	tdata.lin_walltime = linwtime; 
+	tdata.lin_cputime = linctime;
+
+	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
+
 	tdata.converged = false;
 	if(step < config.maxiter && (resi/initres <= config.tol))
 		tdata.converged = true;
@@ -510,26 +530,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		throw Numerical_error("Steady backward Euler blew up!");
 	}
-
-	// print timing data
-	if(mpirank == 0) {
-		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters;
-		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-		std::cout << " \t\tWall time = " << tdata.ode_walltime << ", CPU time = " 
-			<< tdata.ode_cputime << "\n";
-		std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
-		std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
-	}
-
-#ifdef _OPENMP
-	tdata.num_threads = omp_get_max_threads();
-#endif
-	tdata.lin_walltime = linwtime; 
-	tdata.lin_cputime = linctime;
-
-	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 	return ierr;
 }
 
