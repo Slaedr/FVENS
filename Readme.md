@@ -33,7 +33,8 @@ The following libraries and programs are required:
 - [Boost](http://www.boost.org/), present in the default package repositories of all GNU/Linux distributions
 - The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs a variable called `EIGEN3_ROOT` to be set to the top-level Eigen directory
 - [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
-- [Gmsh](http://gmsh.info/) is required for building some of the tests. It is available in most GNU/Linux distributions' official repositories.
+- [Gmsh](http://gmsh.info/) is required for building some of the tests. It is available in most GNU/Linux distributions' official repositories. If it is not present in a standard directory, one can pass
+`-DCMAKE_PREFIX_PATH=/path/to/top-level/gmsh-dir` in the `cmake` command line (see below).
 - Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory.
 
 The variables needed can either be passed as arguments to CMake during configuration (see below) or set as environment variables. OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
@@ -55,15 +56,15 @@ where '\<N\>' should be replaced by the number of threads to use for building. T
 
 To run the tests, run `make test` or `ctest` in the `build` directory.
 
-To build the Doxygen documentation, please type the following command in the doc/ directory:
+To build the Doxygen documentation, type the following command in the doc/ directory:
 
 		doxygen fvens_doxygen.cfg
 
-Of course, this requires you to have [Doxygen](http://www.stack.nl/~dimitri/doxygen/index.html) installed. This will generate HTML documentation, which can be accessed through doc/html/index.htm.
+This requires you to have [Doxygen](http://www.stack.nl/~dimitri/doxygen/index.html) installed. It will generate HTML documentation, which can be accessed through doc/html/index.htm.
 
 Browsing the code
 -----------------
-A tags file is built when the code is built (if ctags is available), which makes navigation in Vim convenient. Using tags in Vim or [Spacemacs](http://spacemacs.org/) is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags).
+A tags file is built when the code is built (if ctags is available), which makes navigation convenient. Using tags in Vim or [Spacemacs](http://spacemacs.org/) is [easy](http://vim.wikia.com/wiki/Browsing_programs_with_tags).
 
 Running
 -------

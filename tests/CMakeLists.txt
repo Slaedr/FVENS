@@ -55,6 +55,7 @@ add_subdirectory(flow-general)
 #add_subdirectory(isentropic-vortex)
 
 add_subdirectory(inv-2dcyl)
+add_subdirectory(inv-gaussianbump)
 add_subdirectory(inv-naca0012)
 
 add_subdirectory(visc-flatplate)

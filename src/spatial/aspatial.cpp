@@ -247,7 +247,7 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 {
 	std::cout << " FlowFV_base: Boundary conditions:\n";
 	for(auto it = pconfig.bcconf.begin(); it != pconfig.bcconf.end(); it++) {
-		std::cout << bcTypeMap.left.find(it->bc_type)->second << '\n';
+		std::cout << "  " << bcTypeMap.left.find(it->bc_type)->second << '\n';
 	}
 }
 

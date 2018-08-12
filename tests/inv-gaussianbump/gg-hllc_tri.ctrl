@@ -1,0 +1,10 @@
+#include "@CMAKE_SOURCE_DIR@/tests/inv-gaussianbump/base.ctrl"
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    hllc
+	gradient_method                  greengauss
+	limiter                          none
+}
+
+

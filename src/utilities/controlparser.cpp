@@ -240,10 +240,7 @@ static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
 
 			std::string bctype = boost::to_lower_copy<std::string>
 				(infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+".type"));
-			std::cout << "Reading " <<  ibc << " '" << bctype << "'" << std::endl;
 			bconf.bc_type = bcTypeMap.right.at(bctype);
-			std::cout << "Read" << std::endl;
-			std::cout << "BC type = " << bcTypeMap.left.at(bconf.bc_type) << std::endl;
 			bconf.bc_tag = infopts.get<int>(c_bcs+".bc"+std::to_string(ibc)+".marker");
 
 			// Read array of boundary values

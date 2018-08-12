@@ -1,0 +1,77 @@
+io {
+	mesh_file                    "../testcases/inviscid-gaussianbump/grids/gaussian_channel1.msh"
+	solution_output_file         "ibump.vtu"
+	log_file_prefix              "ibump-log"
+	convergence_history_required false
+}
+
+flow_conditions {
+	;; euler or navierstokes flow
+	flow_type               euler
+	adiabatic_index         1.4
+	angle_of_attack         0.0
+	freestream_Mach_number  0.2
+}
+
+bc
+{
+	bc0 {
+		type            slipwall
+		marker          2
+	}
+	bc1 {
+		type              inflowoutflow
+		marker            3
+		;; Total pressure (non-dimensionalized by reference pressure, ie, density * velocity^2)
+		 ; and total temperature (non-dimensionalized by free-stream temperature)
+		boundary_values   19.0  1.1
+	}
+	bc2 {
+		;; At outflows, pressure is taken as the free-stream pressure defined by the Mach number given in flow_conditions, while
+		 ;  the other quantities are taken from the interior state.
+		 ; At inflows, the free-stream condition defined in flow_conditions are imposed as the ghost state
+		type            inflowoutflow
+		marker          4
+	}
+	
+	;; List of boundary markers at which surface output is required
+	;;  and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "ibump"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    hllc
+	gradient_method                  leastsquares
+	limiter                          none
+}
+
+;; Psuedo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    explicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  0.2
+		cfl_max                  0.2
+		tolerance                1e-5
+		max_timesteps            500000
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	initialization {	
+		cfl_min                  0.5
+		cfl_max                  0.5
+		tolerance                1e-1
+		max_timesteps            5000
+	}
+}
+
