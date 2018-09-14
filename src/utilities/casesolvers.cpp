@@ -7,7 +7,6 @@
 #include <iostream>
 #include <iomanip>
 #include <tuple>
-#include <omp.h>
 #include <petscksp.h>
 
 #include "casesolvers.hpp"

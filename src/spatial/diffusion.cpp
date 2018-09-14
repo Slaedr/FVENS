@@ -63,7 +63,7 @@ DiffusionMA<nvars>::DiffusionMA(const UMesh2dh<a_real> *const mesh,
 	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
 		const std::string grad_scheme)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
-	  gradcomp {create_const_gradientscheme<nvars>(grad_scheme, m, rc)}
+	  gradcomp {create_const_gradientscheme<a_real,nvars>(grad_scheme, m, rc)}
 { }
 
 template<int nvars>

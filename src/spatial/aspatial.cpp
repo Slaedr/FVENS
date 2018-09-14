@@ -237,10 +237,10 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
 	uinf(physics.compute_freestream_state(pconfig.aoa)),
 
-	inviflux {create_const_inviscidflux(nconfig.conv_numflux, &physics)}, 
+	inviflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux, &physics)}, 
 
-	gradcomp {create_const_gradientscheme<NVARS>(nconfig.gradientscheme, m, rc)},
-	lim {create_const_reconstruction(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)},
+	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, rc)},
+	lim {create_const_reconstruction<scalar>(nconfig.reconstruction, m, rc, gr, nconfig.limiter_param)},
 
 	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
 
@@ -493,7 +493,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
 	: FlowFV_base<scalar>(mesh, pconf, nconf),
 	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
 	juinf(jphy.compute_freestream_state(pconfig.aoa)),
-	jflux {create_const_inviscidflux(nconfig.conv_numflux_jac, &jphy)},
+	jflux {create_const_inviscidflux<a_real>(nconfig.conv_numflux_jac, &jphy)},
 		   jbcs {create_const_flowBCs<a_real>(pconf.bcconf, jphy, juinf)}
 {
 	if(secondOrderRequested)

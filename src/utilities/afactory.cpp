@@ -23,44 +23,45 @@
 
 namespace fvens {
 
-InviscidFlux<a_real>* create_mutable_inviscidflux(
+template <typename scalar>
+InviscidFlux<scalar>* create_mutable_inviscidflux(
 		const std::string& type, 
-		const IdealGasPhysics<a_real> *const p) 
+		const IdealGasPhysics<scalar> *const p) 
 {
-	InviscidFlux<a_real> *inviflux = nullptr;
+	InviscidFlux<scalar> *inviflux = nullptr;
 
 	if(type == "VANLEER") {
-		inviflux = new VanLeerFlux<a_real>(p);
+		inviflux = new VanLeerFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using Van Leer fluxes." << std::endl;
 	}
 	else if(type == "ROE")
 	{
-		inviflux = new RoeFlux<a_real>(p);
+		inviflux = new RoeFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using Roe fluxes." << std::endl;
 	}
 	else if(type == "HLL")
 	{
-		inviflux = new HLLFlux<a_real>(p);
+		inviflux = new HLLFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using HLL fluxes." << std::endl;
 	}
 	else if(type == "HLLC")
 	{
-		inviflux = new HLLCFlux<a_real>(p);
+		inviflux = new HLLCFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using HLLC fluxes." << std::endl;
 	}
 	else if(type == "LLF")
 	{
-		inviflux = new LocalLaxFriedrichsFlux<a_real>(p);
+		inviflux = new LocalLaxFriedrichsFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using LLF fluxes." << std::endl;
 	}
 	else if(type == "AUSM")
 	{
-		inviflux = new AUSMFlux<a_real>(p);
+		inviflux = new AUSMFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using AUSM fluxes." << std::endl;
 	}
 	else if(type == "AUSMPLUS")
 	{
-		inviflux = new AUSMPlusFlux<a_real>(p);
+		inviflux = new AUSMPlusFlux<scalar>(p);
 		std::cout << " InviscidFluxFactory: Using AUSM+ fluxes." << std::endl;
 	}
 	else
@@ -69,93 +70,103 @@ InviscidFlux<a_real>* create_mutable_inviscidflux(
 	return inviflux;
 }
 
-const InviscidFlux<a_real>* create_const_inviscidflux(
+template <typename scalar>
+const InviscidFlux<scalar>* create_const_inviscidflux(
 		const std::string& type,
-		const IdealGasPhysics<a_real> *const p) 
+		const IdealGasPhysics<scalar> *const p) 
 {
-	return const_cast<const InviscidFlux<a_real>*>(create_mutable_inviscidflux(type, p));
+	return const_cast<const InviscidFlux<scalar>*>(create_mutable_inviscidflux(type, p));
 }
 
-template <int nvars>
-GradientScheme<a_real,nvars>* create_mutable_gradientscheme(
+// instantiations
+template InviscidFlux<a_real>* create_mutable_inviscidflux(
 		const std::string& type, 
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) 
+		const IdealGasPhysics<a_real> *const p);
+template const InviscidFlux<a_real>* create_const_inviscidflux(
+		const std::string& type, 
+		const IdealGasPhysics<a_real> *const p);
+
+template <typename scalar, int nvars>
+GradientScheme<scalar,nvars>* create_mutable_gradientscheme(
+		const std::string& type, 
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc) 
 {
-	GradientScheme<a_real,nvars> * gradcomp = nullptr;
+	GradientScheme<scalar,nvars> * gradcomp = nullptr;
 
 	if(type == "LEASTSQUARES")
 	{
-		gradcomp = new WeightedLeastSquaresGradients<a_real,nvars>(m, rc);
+		gradcomp = new WeightedLeastSquaresGradients<scalar,nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
 	}
 	else if(type == "GREENGAUSS")
 	{
-		gradcomp = new GreenGaussGradients<a_real,nvars>(m, rc);
+		gradcomp = new GreenGaussGradients<scalar,nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used.\n";
 	}
 	else {
-		gradcomp = new ZeroGradients<a_real,nvars>(m, rc);
+		gradcomp = new ZeroGradients<scalar,nvars>(m, rc);
 		std::cout << " GradientSchemeFactory: No gradient computation.\n";
 	}
 
 	return gradcomp;
 }
 
-template <int nvars>
-const GradientScheme<a_real,nvars>* create_const_gradientscheme(
+template <typename scalar, int nvars>
+const GradientScheme<scalar,nvars>* create_const_gradientscheme(
 		const std::string& type, 
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) 
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc) 
 {
-	return create_mutable_gradientscheme<nvars>(type, m, rc);
+	return create_mutable_gradientscheme<scalar,nvars>(type, m, rc);
 }
 
 // template instantiations
-template GradientScheme<a_real,NVARS>* create_mutable_gradientscheme<NVARS>(
+template GradientScheme<a_real,NVARS>* create_mutable_gradientscheme<a_real,NVARS>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
-template const GradientScheme<a_real,NVARS>* create_const_gradientscheme<NVARS>(
+template const GradientScheme<a_real,NVARS>* create_const_gradientscheme<a_real,NVARS>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
-template GradientScheme<a_real,1>* create_mutable_gradientscheme<1>(
+template GradientScheme<a_real,1>* create_mutable_gradientscheme<a_real,1>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
-template const GradientScheme<a_real,1>* create_const_gradientscheme<1>(
+template const GradientScheme<a_real,1>* create_const_gradientscheme<a_real,1>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc);
 
 
-SolutionReconstruction<a_real>* create_mutable_reconstruction(const std::string& type,
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-		const amat::Array2d<a_real> *const gr, const a_real param)
+template <typename scalar>
+SolutionReconstruction<scalar>* create_mutable_reconstruction(const std::string& type,
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
+		const amat::Array2d<scalar> *const gr, const a_real param)
 {
-	SolutionReconstruction<a_real> * reconst = nullptr;
+	SolutionReconstruction<scalar> * reconst = nullptr;
 
 	if(type == "NONE")
 	{
-		reconst = new LinearUnlimitedReconstruction<a_real>(m, rc, gr);
+		reconst = new LinearUnlimitedReconstruction<scalar>(m, rc, gr);
 		std::cout << " ReconstructionFactory: Unlimited linear reconstruction selected.\n";
 	}
 	else if(type == "WENO")
 	{
-		reconst = new WENOReconstruction<a_real>(m, rc, gr, param);
+		reconst = new WENOReconstruction<scalar>(m, rc, gr, param);
 		std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
 	}
 	else if(type == "VANALBADA")
 	{
-		reconst = new MUSCLVanAlbada<a_real>(m, rc, gr);
+		reconst = new MUSCLVanAlbada<scalar>(m, rc, gr);
 		std::cout << " ReconstructionFactory: Van Albada MUSCL reconstruction selected.\n";
 	}
 	else if(type == "BARTHJESPERSEN")
 	{
-		reconst = new BarthJespersenLimiter<a_real>(m, rc, gr);
+		reconst = new BarthJespersenLimiter<scalar>(m, rc, gr);
 		std::cout << " ReconstructionFactory: Barth-Jespersen linear reconstruction selected.\n";
 	}
 	else if(type == "VENKATAKRISHNAN")
 	{
-		reconst = new VenkatakrishnanLimiter<a_real>(m, rc, gr, param);
+		reconst = new VenkatakrishnanLimiter<scalar>(m, rc, gr, param);
 		std::cout << " ReconstructionFactory: Venkatakrishnan linear reconstruction selected.\n";
 	}
 	else {
@@ -165,12 +176,22 @@ SolutionReconstruction<a_real>* create_mutable_reconstruction(const std::string&
 	return reconst;
 }
 
-const SolutionReconstruction<a_real>* create_const_reconstruction(const std::string& type,
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-		const amat::Array2d<a_real> *const gr, const a_real param)
+template <typename scalar>
+const SolutionReconstruction<scalar>* create_const_reconstruction(const std::string& type,
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
+		const amat::Array2d<scalar> *const gr, const a_real param)
 {
-	return create_mutable_reconstruction(type, m, rc, gr, param);
+	return create_mutable_reconstruction<scalar>(type, m, rc, gr, param);
 }
+
+// template instantiations
+template SolutionReconstruction<a_real>* create_mutable_reconstruction(const std::string& type,
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
+		const amat::Array2d<a_real> *const gr, const a_real param);
+template const SolutionReconstruction<a_real>* create_const_reconstruction(const std::string& type,
+		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
+		const amat::Array2d<a_real> *const gr, const a_real param);
+
 
 template <typename scalar>
 FlowFV_base<scalar>* create_mutable_flowSpatialDiscretization(

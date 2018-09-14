@@ -1,14 +1,11 @@
 #include <iostream>
-#include <iomanip>
 #include <string>
-#include <petscksp.h>
+#include <petscvec.h>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
-#include "linalg/alinalg.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
-#include "utilities/afactory.hpp"
 #include "utilities/casesolvers.hpp"
 
 using namespace fvens;

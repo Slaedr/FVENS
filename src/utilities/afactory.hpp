@@ -32,38 +32,54 @@
 namespace fvens {
 
 /// Returns a new inviscid numerical flux context
-InviscidFlux<a_real>* create_mutable_inviscidflux(const std::string& type, 
-		const IdealGasPhysics<a_real> *const p) ;
+template <typename scalar>
+InviscidFlux<scalar>* create_mutable_inviscidflux(const std::string& type, 
+		const IdealGasPhysics<scalar> *const p) ;
 
 /// Returns a new immutable inviscid flux context
-const InviscidFlux<a_real>* create_const_inviscidflux(const std::string& type, 
-		const IdealGasPhysics<a_real> *const p) ;
+template <typename scalar>
+const InviscidFlux<scalar>* create_const_inviscidflux(const std::string& type, 
+		const IdealGasPhysics<scalar> *const p) ;
 
 /// Returns a newly-created gradient computation context
-template <int nvars>
-GradientScheme<a_real,nvars>* create_mutable_gradientscheme(const std::string& type, 
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) ;
+/** \param type Type of gradient scheme
+ * \param m Mesh context. Currently its scalar type has to be same as that of the gradients etc
+ * \param rc Array of cell centres all cells (including ghost cells); this must also currently have
+ *   the same scalar type as the gradients.
+ */
+template <typename scalar, int nvars>
+GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& type, 
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc) ;
 
 /// Returns a newly-created immutable gradient computation context
-template <int nvars>
-const GradientScheme<a_real,nvars>* create_const_gradientscheme(const std::string& type, 
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc) ;
+/** Parameters are as explained for \ref create_mutable_gradientscheme
+ */
+template <typename scalar, int nvars>
+const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::string& type, 
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc) ;
 
 /// Returns a solution reconstruction context
 /** Solution reconstruction here means computing the values of the conserved variables at faces from
  * the cell-centred values and cell-centred gradients.
+ * \param type Type of scheme to use for reconstructing the solution
+ * \param m Mesh context. Currently its scalar type has to be same as that of the gradients etc.
+ * \param rc Array of cell centres all cells (including ghost cells); this must also currently have
+ *   the same scalar type as the gradients.
+ * \param gr Coordinates of quadrature points at each face. They're generally the face centres.
  * \param param A parameter that controls the behaviour of some limiters.
  */
-SolutionReconstruction<a_real>* create_mutable_reconstruction(const std::string& type,
-                                                      const UMesh2dh<a_real> *const m,
-                                                      const amat::Array2d<a_real>& rc,
-                                                      const amat::Array2d<a_real> *const gr,
+template <typename scalar>
+SolutionReconstruction<scalar>* create_mutable_reconstruction(const std::string& type,
+                                                      const UMesh2dh<scalar> *const m,
+                                                      const amat::Array2d<scalar>& rc,
+                                                      const amat::Array2d<scalar> *const gr,
                                                       const a_real param);
 
 /// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
-const SolutionReconstruction<a_real>* create_const_reconstruction(const std::string& type,
-		const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-		const amat::Array2d<a_real> *const gr, const a_real param);
+template <typename scalar>
+const SolutionReconstruction<scalar>* create_const_reconstruction(const std::string& type,
+		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
+		const amat::Array2d<scalar> *const gr, const a_real param);
 
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.

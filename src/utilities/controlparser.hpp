@@ -7,7 +7,6 @@
 #ifndef FVENS_CONTROL_PARSER_H
 #define FVENS_CONTROL_PARSER_H
 
-#include <fstream>
 #include <vector>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>

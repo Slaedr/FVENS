@@ -24,7 +24,6 @@
 #include <string>
 #include <petscvec.h>
 #include "utilities/controlparser.hpp"
-#include "utilities/aoptionparser.hpp"
 
 namespace fvens {
 
