@@ -25,7 +25,7 @@ else()
 	  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/grids/dom${imesh}.msh
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	  COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/grids
-	  COMMAND ${GMSH_EXEC} -setnumber refine ${imeshp1} -2
+	  COMMAND ${GMSH_EXEC} -setnumber refine ${imeshp1} -2 -format msh2
 	  -o ${CMAKE_CURRENT_BINARY_DIR}/grids/dom${imesh}.msh -v 2 grids/dom.geo
 	  MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/grids/dom.geo"
 	  )

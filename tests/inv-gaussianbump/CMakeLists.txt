@@ -28,7 +28,7 @@ else()
 	  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/grids/channel${imesh}.msh
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	  COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/grids
-	  COMMAND ${GMSH_EXEC} -setnumber ref ${imeshp1} -2
+	  COMMAND ${GMSH_EXEC} -setnumber ref ${imeshp1} -2 -format msh2
 	    -o ${CMAKE_CURRENT_BINARY_DIR}/grids/channel${imesh}.msh
 	    -v 2
 	    gaussian_channel.geo
