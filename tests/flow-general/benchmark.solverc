@@ -2,21 +2,21 @@
 #-log_view
 -options_left
 
--fvens_log_file speedup_sweeps
+-fvens_log_file 2dcyl-speedup_sweeps
 
 -benchmark_type speedup_sweeps
 -benchmark_num_repeat 2
--threads_sequence 2,4
+-threads_sequence 4,6
 -async_build_sweep_sequence 1,1
 -async_apply_sweep_sequence 1,2
 
--mesh_reorder rcm
+#-mesh_reorder rcm
 
 -mat_type baij
 
 -ksp_type fgmres
 -ksp_rtol 1e-1
--ksp_max_it 70
+-ksp_max_it 50
 -pc_type bjacobi
 -sub_pc_type shell
 

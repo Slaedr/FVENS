@@ -3,6 +3,11 @@
 add_executable(e_testflow_wallbcs testd_wallbcs.cpp testwallbcs.cpp)
 target_link_libraries(e_testflow_wallbcs fvens_base)
 
+if(WITH_BLASTED)
+  add_executable(check_bench_output testbench.cpp)
+  configure_file(testbench.sh testbench.sh)
+endif(WITH_BLASTED)
+
 # Tests
 
 add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -52,8 +57,8 @@ add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURREN
 if(WITH_BLASTED)
   add_test(NAME Benchmark_Euler_Blasted_run
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-	  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/bench_threads_async
-	  ${CMAKE_CURRENT_SOURCE_DIR}/small-2dcylinder.ctrl 
+	  COMMAND ${SEQEXEC} ${SEQTASKS} sh testbench.sh
+	  ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.ctrl 
 	  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.solverc
-	  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh )
+	  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad3.msh )
 endif()

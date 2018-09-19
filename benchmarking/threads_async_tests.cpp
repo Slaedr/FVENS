@@ -27,6 +27,38 @@ using namespace fvens;
 /// Set -blasted_async_sweeps in the default Petsc options database and throw if not successful
 static void set_blasted_sweeps(const int nbswp, const int naswp);
 
+static void writeHeaderToFile(std::ofstream& outf, const int width)
+{
+	outf << '#' << std::setw(width) << "threads"
+	     << std::setw(width) << "b&a-sweeps"
+	     << std::setw(width+5) << "factor-speedup" << std::setw(width+5) << "apply-speedup"
+	     << std::setw(width+5) << "total-speedup" << std::setw(width+5) << "total-deviate"
+	     << std::setw(width) << "cpu-time" << std::setw(width+6) << "total-lin-iters"
+	     << std::setw(width+4) << "avg-lin-iters"
+	     << std::setw(width+1) << "time-steps"<< std::setw(width/2+1) << "conv?"
+	     << std::setw(width) << "nl-speedup"
+	     << "\n#---\n";
+}
+
+static void writeTimingToFile(std::ofstream& outf, const int w, const bool comment,
+                              const TimingData& tdata, const int numthreads,
+                              const int nbswps, const int naswps,
+                              const double factorspeedup, const double applyspeedup,
+                              const double precspeedup, const double precdeviate,
+                              const double preccputime, const double fvens_wall_spdp)
+{
+	outf << (comment ? '#' : ' ') << std::setw(w) << numthreads
+	     << std::setw(w/2) << nbswps << std::setw(w/2) << naswps
+	     << std::setw(w+5) << factorspeedup << std::setw(w+5) << applyspeedup
+	     << std::setw(w+5) << precspeedup << std::setw(w+5) << precdeviate
+	     << std::setw(w) << preccputime
+	     << std::setw(w+6) << tdata.total_lin_iters << std::setw(w+4) << tdata.avg_lin_iters
+	     << std::setw(w+1) << tdata.num_timesteps
+	     << std::setw(w/2+1) << (tdata.converged ? 1 : 0)
+	     << std::setw(w) << fvens_wall_spdp
+	     << (comment ? "\n#---\n" : "\n") << std::flush;
+}
+
 StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat,
                                const std::vector<int>& threads_seq,
                                const std::vector<int>& bswpseq, const std::vector<int>& aswpseq,
@@ -154,26 +186,19 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	const double factor_basewtime = bctx.factorwalltime;
 	const double apply_basewtime = bctx.applywalltime;
 	const double prec_basewtime = bctx.factorwalltime + bctx.applywalltime;
+	const double ode_basewtime = tdata.ode_walltime;
 
+	// Field width in the report file
 	const int w = 11;
+
 	if(mpirank == 0) {
 		outf << "# Base preconditioner wall time = " << prec_basewtime << "; factor time = "
-			<< factor_basewtime << ", apply time = "<< apply_basewtime << "\n#---\n#";
-		outf << std::setw(w) << "threads"
-			<< std::setw(w) << "b&a-sweeps"
-			<< std::setw(w+5) << "factor-speedup" << std::setw(w+5) << "apply-speedup" << std::setw(w+5)
-			<< "total-speedup"
-			<< std::setw(w) << "cpu-time" 
-			<< std::setw(w+6) << "total-lin-iters" << std::setw(w+5) << "avg-lin-iters"
-			<< std::setw(w+1) << "time-steps"<< std::setw(w) << "converged?" << "\n#---\n";
+		     << factor_basewtime << ", apply time = "<< apply_basewtime
+		     << ", nonlinear solve time = " << ode_basewtime << "\n#---\n";
 
-		outf << "#" <<std::setw(w) << 1 
-			<< std::setw(w/2) << 1 << std::setw(w/2) << 1 
-			<< std::setw(w+5) << 1.0 << std::setw(w+5) << 1.0 << std::setw(w+5) << 1.0
-			<< std::setw(w) << bctx.factorcputime + bctx.applycputime
-			<< std::setw(w+6) << tdata.total_lin_iters
-			<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
-			<< std::setw(w) << (tdata.converged ? 1 : 0) << "\n#---\n" << std::flush;
+		writeHeaderToFile(outf,w);
+		writeTimingToFile(outf, w, true,tdata, 1, 1,1, 1.0, 1.0, 1.0,
+		                  0.0, bctx.factorcputime+bctx.applycputime, 1.0);
 	}
 
 	for(int numthreads : threads_seq)
@@ -186,6 +211,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 		{
 			TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
 			double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
+			std::vector<double> precwalltimearr(numrepeat);
 
 			int irpt;
 			for(irpt = 0; irpt < numrepeat; irpt++) 
@@ -224,6 +250,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 				applywalltime += bctx.applywalltime;
 				precwalltime += bctx.factorwalltime + bctx.applywalltime;
 				preccputime += bctx.factorcputime + bctx.applycputime;
+				precwalltimearr[irpt] = bctx.factorwalltime + bctx.applywalltime;
 			}
 
 			tdata.lin_walltime /= (double)irpt;
@@ -238,16 +265,16 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			precwalltime /= (double)irpt;
 			preccputime /= (double)irpt;
 
+			double precdeviate = 0;
+			for(int j = 0; j < irpt; j++)
+				precdeviate += (precwalltimearr[j]-precwalltime)*(precwalltimearr[j]*precwalltime);
+			precdeviate = std::sqrt(precdeviate/(double)irpt);
+
 			if(mpirank == 0) {
-				outf << ' ' << std::setw(w) << numthreads 
-					<< std::setw(w/2) << bswpseq[i] << std::setw(w/2) << aswpseq[i]
-					<< std::setw(w+5) << factor_basewtime/factorwalltime
-					<< std::setw(w+5) << apply_basewtime/applywalltime
-					<< std::setw(w+5) << prec_basewtime/precwalltime
-					<< std::setw(w) << preccputime
-					<< std::setw(w+6) << tdata.total_lin_iters
-					<< std::setw(w+5) << tdata.avg_lin_iters << std::setw(w+1) << tdata.num_timesteps 
-					<< std::setw(w) << (tdata.converged ? 1:0) << '\n' << std::flush;
+				writeTimingToFile(outf, w, false,tdata, numthreads, bswpseq[i], aswpseq[i],
+				                  factor_basewtime/factorwalltime,apply_basewtime/applywalltime,
+				                  prec_basewtime/precwalltime, precdeviate, preccputime,
+				                  ode_basewtime/tdata.ode_walltime);
 			}
 		}
 	}

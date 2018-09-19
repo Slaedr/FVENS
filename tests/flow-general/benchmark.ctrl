@@ -1,7 +1,7 @@
 io {
 	mesh_file                    "from-cmd"
 	solution_output_file         "2dcyl.vtu"
-	log_file_prefix              "2dcyl-log"
+	log_file_prefix              "2dcyl-test-bench"
 	convergence_history_required false
 }
 
@@ -54,7 +54,7 @@ pseudotime
 	main {
 		cfl_min                  250.0
 		cfl_max                  1000.0
-		tolerance                1e-2
+		tolerance                1e-3
 		max_timesteps            400
 	}
 	
