@@ -10,10 +10,8 @@
 #include <array>
 #include "mesh/amesh2dh.hpp"
 
+namespace fvens{
 namespace fvens_tests {
-
-using fvens::a_real;
-using fvens::a_int;
 
 /// Physical configuration for the isentropic vortex problem
 struct IsenVortexConfig {
@@ -35,11 +33,14 @@ public:
 	IsentropicVortexProblem(const IsenVortexConfig config);
 
 	/// Computes initial condition and exact solution for a given mesh and final time
-	void getInitialConditionAndExactSolution(const acfd::UMesh2dh& mesh, const a_real time,
+	void getInitialConditionAndExactSolution(const UMesh2dh<a_real>& mesh, const a_real time,
 	                                         a_real *const u, a_real *const uexact) const;
 
 protected:
+	/// Parameters defining the problem
 	IsenVortexConfig conf;
+
+	/// Free-stream pressure
 	a_real pinf;
 
 	/// Computes vortex intensity at a given location
@@ -56,5 +57,6 @@ protected:
 	                      a_real *const u) const;
 };
 
+}
 }
 #endif

@@ -6,6 +6,7 @@
 #include "isentropicvortex.hpp"
 #include <cmath>
 
+namespace fvens {
 namespace fvens_tests {
 
 IsentropicVortexProblem::IsentropicVortexProblem(const IsenVortexConfig config)
@@ -27,8 +28,8 @@ inline std::array<a_real,2> IsentropicVortexProblem::computeVelocity(const std::
 			conf.Minf*std::sin(conf.aoa) + r[0]/conf.clength*omega};
 }
 
-inline void IsentropicVortexProblem::computeFlowState
-	(const std::array<a_real,2> r, a_real *const u) const
+inline
+void IsentropicVortexProblem::computeFlowState(const std::array<a_real,2> r, a_real *const u) const
 {
 	const a_real omega = computeOmega(r);
 	const a_real dT = -(conf.gamma-1)/2.0*omega*omega;
@@ -42,7 +43,7 @@ inline void IsentropicVortexProblem::computeFlowState
 }
 
 void IsentropicVortexProblem::getInitialConditionAndExactSolution
-	(const acfd::UMesh2dh& m, const a_real time, a_real *const u, a_real *const uexact) const
+(const UMesh2dh<a_real>& m, const a_real time, a_real *const u, a_real *const uexact) const
 {
 	for(a_int iel = 0; iel < m.gnelem(); iel++) {
 
@@ -63,4 +64,5 @@ void IsentropicVortexProblem::getInitialConditionAndExactSolution
 	}
 }
 
+}
 }

@@ -3,12 +3,15 @@
 #include <string>
 #include <petscvec.h>
 
+#include "spatial/aoutput.hpp"
+#include "mesh/ameshutils.hpp"
+#include "ode/aodesolver.hpp"
 #include "linalg/alinalg.hpp"
 #include "utilities/casesolvers.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/aerrorhandling.hpp"
-#include "spatial/aoutput.hpp"
-#include "mesh/ameshutils.hpp"
+#include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
 #include "isentropicvortex.hpp"
 
 #ifdef USE_BLASTED
@@ -98,11 +101,14 @@ int main(int argc, char *argv[])
 		std::string meshi = opts.meshfile + std::to_string(imesh) + ".msh";
 		// Set up mesh
 
-		UMesh2dh m;
+		UMesh2dh<a_real> m;
 		m.readMesh(meshi);
 		int ierr = preprocessMesh(m); 
-		acfd::fvens_throw(ierr, "Mesh could not be preprocessed!");
-		m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
+		fvens_throw(ierr, "Mesh could not be preprocessed!");
+		//m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
+		for(size_t i = 0; i < opts.bcconf.size(); i++)
+			if(opts.bcconf[i].bc_type == PERIODIC_BC)
+				m.compute_periodic_map(opts.bcconf[i].bc_opts[0], opts.bcconf[i].bc_opts[1]);
 
 		// Check periodic map
 		/*m.compute_boundary_maps();
@@ -113,7 +119,8 @@ int main(int argc, char *argv[])
 		std::cout << "\n***\n";
 
 		std::cout << "Setting up main spatial scheme.\n";
-		const Spatial<NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+		const Spatial<a_real,NVARS> *const prob
+			= create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 		Vec u, uexact;
 		ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*4, &u); CHKERRQ(ierr);
@@ -131,10 +138,13 @@ int main(int argc, char *argv[])
 
 		std::cout << "***\n";
 		
-		a_real err;
 		// get the FlowFV to compute the entropy error
-		const FlowFV_base* fprob = reinterpret_cast<const FlowFV_base*>(prob);
-		err = fprob->compute_entropy_cell(u);
+		const FlowFV_base<a_real>* fprob = reinterpret_cast<const FlowFV_base<a_real>*>(prob);
+		//err = fprob->compute_entropy_cell(u);
+		IdealGasPhysics<a_real> phy{opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr};
+		FlowOutput flowoutput(fprob, &phy, opts.alpha);
+
+		const a_real err = flowoutput.compute_entropy_cell(u);
 		const double h = 1.0/sqrt(m.gnelem());
 		std::cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << std::endl;
 		lh[imesh] = log10(h);
@@ -144,7 +154,7 @@ int main(int argc, char *argv[])
 
 		amat::Array2d<a_real> scalars;
 		amat::Array2d<a_real> velocities;
-		prob->postprocess_point(u, scalars, velocities);
+		flowoutput.postprocess_point(u, scalars, velocities);
 
 		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 		writeScalarsVectorToVtu_PointData(opts.vtu_output_file+std::to_string(imesh)+".vtu",
