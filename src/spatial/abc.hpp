@@ -110,7 +110,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 * \param ufar Far-field state
 	 */
-	InOutFlow(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	InOutFlow(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
 	          const std::array<scalar,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -142,7 +142,7 @@ public:
 	 * \param totalpressure Non-dimensional total pressure at inflow
 	 * \param totaltemperature Total temperature at inflow
 	 */
-	InFlow(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	InFlow(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
 	       const scalar totalpressure, const scalar totaltemperature); 
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -170,7 +170,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 * \param ufar Far-field state
 	 */
-	Farfield(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	Farfield(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
 	         const std::array<scalar,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -196,7 +196,7 @@ public:
 	/// Setup extrapolation BC
 	/** \sa FlowBC::FlowBC
 	 */
-	Extrapolation(const int face_id, const IdealGasPhysics<scalar>& gasphysics);
+	Extrapolation(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -245,7 +245,7 @@ public:
 	/// Setup adiabatic no-slip wall BC 
 	/** \sa FlowBC::FlowBC
 	 */
-	Adiabaticwall2D(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	Adiabaticwall2D(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
 	                const a_real wall_tangential_velocity);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -271,7 +271,7 @@ public:
 	/// Setup adiabatic no-slip wall BC 
 	/** \sa FlowBC::FlowBC
 	 */
-	Adiabaticwall(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	Adiabaticwall(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
 	              const std::array<a_real,NDIM> wall_velocity);
 
 	/// Computes the ghost state given the interior state and normal vector
@@ -298,7 +298,7 @@ public:
 	/// Setup isothermal no-slip wall BC 
 	/** \sa FlowBC::FlowBC
 	 */
-	Isothermalwall2D(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	Isothermalwall2D(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
 	                 const a_real wall_tangential_velocity, const a_real wall_temperature);
 
 	/// Computes the ghost state given the interior state and normal vector
