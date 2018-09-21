@@ -911,7 +911,8 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 		return;
 	}
 
-	periodicmap.resize(nbface,-1);
+	// this is used to keep track of faces we've visited
+	std::vector<a_int> periodicmap(nbface,-1);
 	
 	const int ax = 1-axis;  //< The axis along which we'll compare the faces' locations
 
@@ -940,6 +941,11 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 					{
 						periodicmap[iface] = jface;
 						periodicmap[jface] = iface;
+
+						// the ghost cell at iface is same as the interior cell at jface
+						//  and vice versa
+						intfac(iface,1) = intfac(jface,0);
+						intfac(jface,1) = intfac(iface,0);
 						break;
 					}
 				}

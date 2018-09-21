@@ -6,6 +6,7 @@
 #include "mesh/ameshutils.hpp"
 
 #undef NDEBUG
+#include <cassert>
 
 using namespace fvens;
 
@@ -39,20 +40,14 @@ int test_periodic_map(UMesh2dh<a_real>& m, const int bcm, const int axis)
 	m.compute_boundary_maps();
 
 	const int numfaces = 5;
-	a_int faces1[] = {8,9,10,11,12};
-	a_int faces2[] = {25,24,23,22,21};
+	const a_int faces1[] = {8,9,10,11,12};
+	const a_int faces2[] = {25,24,23,22,21};
 
 	int ierr = 0;
 
 	for(int i = 0; i < numfaces; i++) {
-		if(m.gperiodicmap(m.gifbmap(faces1[i])) != m.gifbmap(faces2[i])) {
-			ierr = 1;
-			std::cerr << "  Face " << faces1[i] << " failed!\n";
-		}
-		if(m.gperiodicmap(m.gifbmap(faces2[i])) != m.gifbmap(faces1[i])) {
-			ierr = 1;
-			std::cerr << "  Face " << faces1[i] << " failed!\n";
-		}
+		assert(m.gintfac(m.gifbmap(faces1[i]),1) == m.gintfac(m.gifbmap(faces2[i]),0));
+		assert(m.gintfac(m.gifbmap(faces1[i]),0) == m.gintfac(m.gifbmap(faces2[i]),1));
 	}
 
 	return ierr;

@@ -97,9 +97,6 @@ public:
 #endif
 	}
 
-	/// Returns paired faces (\ref intfac) in case of periodic boundaries \sa periodicmap
-	a_int gperiodicmap(const a_int face) const { return periodicmap[face]; }
-
 	/// Get \ref bface index of a face from its \ref intfac index
 	a_int gbifmap(const a_int iface) const { return bifmap(iface); }
 	
@@ -228,12 +225,12 @@ public:
 	void compute_face_data();
 
 	/// Generates the correspondance between the faces of two periodic boundaries
-	/** \sa periodicmap
+	/** Sets the indices of ghost cells to corresponding real cells.
 	 * \note We assume that there exists precisely one matching face for each face on the
 	 *  periodic boundaries, such that their face-centres are aligned.
 	 *
 	 * \warning Requires \ref compute_topological and \ref compute_face_data to have been called
-	 * beforehand, because \ref intfacbtags is needed.
+	 * beforehand, because \ref intfac and \ref intfacbtags is needed.
 	 *
 	 * \param[in] bcm Marker of one set of periodic boundaries
 	 * \param[in] axis The index of the coordinate which is different for the two boundaries
@@ -323,12 +320,6 @@ private:
 	
 	/// Holds face numbers of faces making up an element
 	amat::Array2d<a_int> elemface;
-
-	/// Maps each face of periodic boundaries to the face that it is identified with
-	/** Stores -1 for faces that are not on a periodic bounary.
-	 * Stored according to \ref intfac indices.
-	 */
-	std::vector<a_int> periodicmap;
 	
 	/// Relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
 	/** Computed in \ref compute_boundary_maps.
