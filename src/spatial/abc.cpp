@@ -298,6 +298,45 @@ void Adiabaticwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const i
 }
 
 template <typename scalar>
+Adiabaticwall<scalar>::Adiabaticwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
+                                     const std::array<a_real,NDIM> wall_velocity)
+	: FlowBC<scalar>(ADIABATIC_WALL_BC, bc_tag, gasphysics), wallvel{wall_velocity}
+{ }
+
+template <typename scalar>
+void Adiabaticwall<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                              scalar *const __restrict gs) const
+{
+	gs[0] = ins[0];
+	for(int i= 1; i< NDIM+1; i++)
+		gs[i] =  2.0*ins[0]*wallvel[i] - ins[i];
+	gs[NDIM+1] = ins[NDIM+1];
+}
+
+template <typename scalar>
+void Adiabaticwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins,
+                                                         const scalar *const n,
+                                                         scalar *const __restrict gs,
+                                                         scalar *const __restrict dgs) const
+{
+	for(int k = 0; k < NVARS*NVARS; k++)
+		dgs[k] = 0;
+
+	gs[0] = ins[0];
+	dgs[0] = 1.0;
+
+	for(int i= 1; i< NDIM+1; i++) {
+		gs[i] =  2.0*ins[0]*wallvel[i] - ins[i];
+
+		dgs[i*NVARS+0] = 2.0*wallvel[i];
+		dgs[i*NVARS+i] = -1.0;
+	}
+
+	gs[NVARS-1] = ins[NVARS-1];
+	dgs[NVARS*NVARS-1] = 1.0;
+}
+
+template <typename scalar>
 Isothermalwall2D<scalar>::Isothermalwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                                            const a_real wtv, const a_real temp)
 	: FlowBC<scalar>(ISOTHERMAL_WALL_BC, bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
@@ -394,6 +433,7 @@ template class InFlow<a_real>;
 template class Farfield<a_real>;
 template class Slipwall<a_real>;
 template class Adiabaticwall2D<a_real>;
+template class Adiabaticwall<a_real>;
 template class Isothermalwall2D<a_real>;
 template class Extrapolation<a_real>;
 

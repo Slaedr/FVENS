@@ -263,6 +263,32 @@ protected:
 	const a_real tangvel;
 };
 
+/// General adiabatic wall suitable for geometry in Cartesian coordinates
+template <typename scalar>
+class Adiabaticwall : public FlowBC<scalar>
+{
+public:
+	/// Setup adiabatic no-slip wall BC 
+	/** \sa FlowBC::FlowBC
+	 */
+	Adiabaticwall(const int face_id, const IdealGasPhysics<scalar>& gasphysics,
+	              const std::array<a_real,NDIM> wall_velocity);
+
+	/// Computes the ghost state given the interior state and normal vector
+	void computeGhostState(const scalar *const uin, const scalar *const n,
+	                       scalar *const __restrict ughost) const;
+
+	/// Computes the Jacobian of the ghost state w.r.t. the interior state
+	void computeGhostStateAndJacobian(const scalar *const uin, const scalar *const n,
+	                                  scalar *const __restrict ug,
+	                                  scalar *const __restrict dugdui) const;
+
+protected:
+	using FlowBC<scalar>::btag;
+	using FlowBC<scalar>::phy;
+	const std::array<a_real,NDIM> wallvel;
+};
+
 /// No-slip isothermal wall BC for 2D NS equations
 template <typename scalar>
 class Isothermalwall2D : public FlowBC<scalar>
