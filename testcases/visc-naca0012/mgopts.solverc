@@ -11,13 +11,15 @@
 -ksp_type fgmres
 #-ksp_pc_side right
 -ksp_rtol 1e-1
--ksp_max_it 40
+-ksp_max_it 10
 
 -pc_type gamg
 -pc_gamg_type agg
 -pc_gamg_agg_nsmooths 0
 -pc_gamg_threshold 0.2
 -pc_gamg_reuse_interpolation true
+-pc_gamg_sym_graph false
+-pc_gamg_square_graph 0
 
 -pc_mg_type multiplicative
 -pc_mg_cycle_type v
@@ -29,7 +31,7 @@
 -mg_levels_pc_type bjacobi
 -mg_levels_sub_pc_type sor
 
--mg_coarse_ksp_type gmres
+-mg_coarse_ksp_type richardson
 -mg_coarse_ksp_max_it 6
 -mg_coarse_pc_type bjacobi
 -mg_coarse_sub_pc_type ilu
