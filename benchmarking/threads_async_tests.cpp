@@ -59,6 +59,14 @@ static void writeTimingToFile(std::ofstream& outf, const int w, const bool comme
 	     << (comment ? "\n#---\n" : "\n") << std::flush;
 }
 
+static double std_deviation(const double *const vals, const double avg, const int N) {
+	double deviate = 0;
+	for(int j = 0; j < N; j++)
+		deviate += (vals[j]-avg)*(vals[j]-avg);
+	deviate = std::sqrt(deviate/(double)N);
+	return deviate;
+}
+
 StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat,
                                const std::vector<int>& threads_seq,
                                const std::vector<int>& bswpseq, const std::vector<int>& aswpseq,
@@ -265,10 +273,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			precwalltime /= (double)irpt;
 			preccputime /= (double)irpt;
 
-			double precdeviate = 0;
-			for(int j = 0; j < irpt; j++)
-				precdeviate += (precwalltimearr[j]-precwalltime)*(precwalltimearr[j]*precwalltime);
-			precdeviate = std::sqrt(precdeviate/(double)irpt);
+			const double precdeviate = std_deviation(&precwalltimearr[0], precwalltime, irpt);
 
 			if(mpirank == 0) {
 				writeTimingToFile(outf, w, false,tdata, numthreads, bswpseq[i], aswpseq[i],
