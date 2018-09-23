@@ -300,7 +300,7 @@ void Adiabaticwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const i
 template <typename scalar>
 Adiabaticwall<scalar>::Adiabaticwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
                                      const std::array<a_real,NDIM> wall_velocity)
-	: FlowBC<scalar>(ADIABATIC_WALL_BC, bc_tag, gasphysics), wallvel{wall_velocity}
+	: FlowBC<scalar>(ADIABATIC_WALL_BC, bc_tag, gasphysics), wallvel(wall_velocity)
 { }
 
 template <typename scalar>
