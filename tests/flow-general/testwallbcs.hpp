@@ -10,7 +10,7 @@
 #include <string>
 #include <array>
 #include "utilities/aoptionparser.hpp"
-#include "spatial/aspatial.hpp"
+#include "spatial/flow_spatial.hpp"
 
 namespace fvens {
 namespace fvens_tests {

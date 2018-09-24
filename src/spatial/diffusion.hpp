@@ -5,7 +5,9 @@
 #ifndef FVENS_DIFFUSION_H
 #define FVENS_DIFFUSION_H
 
+#include <vector>
 #include "spatial/aspatial.hpp"
+#include "agradientschemes.hpp"
 
 namespace fvens {
 

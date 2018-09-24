@@ -14,7 +14,8 @@ endif()
 
 add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
 	ode/aodesolver.cpp linalg/alinalg.cpp 
-	spatial/aspatial.cpp spatial/areconstruction.cpp spatial/agradientschemes.cpp 
+	spatial/flow_spatial.cpp spatial/aspatial.cpp spatial/agradientschemes.cpp
+	spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
 	spatial/anumericalflux.cpp spatial/aoutput.cpp spatial/abc.cpp 
 	spatial/diffusion.cpp
 	physics/aphysics.cpp 

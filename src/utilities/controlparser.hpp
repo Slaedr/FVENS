@@ -11,7 +11,7 @@
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include "aconstants.hpp"
-#include "spatial/aspatial.hpp"
+#include "spatial/flow_spatial.hpp"
 
 namespace fvens {
 

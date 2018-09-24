@@ -5,7 +5,7 @@
 #ifndef AOUTPUT_H
 #define AOUTPUT_H 1
 
-#include "aspatial.hpp"
+#include "flow_spatial.hpp"
 
 namespace fvens {
 

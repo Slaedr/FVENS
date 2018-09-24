@@ -27,7 +27,7 @@
 #include "spatial/anumericalflux.hpp"
 #include "spatial/agradientschemes.hpp"
 #include "spatial/areconstruction.hpp"
-#include "spatial/aspatial.hpp"
+#include "spatial/flow_spatial.hpp"
 
 namespace fvens {
 
@@ -68,18 +68,20 @@ const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::strin
  * \param gr Coordinates of quadrature points at each face. They're generally the face centres.
  * \param param A parameter that controls the behaviour of some limiters.
  */
-template <typename scalar>
-SolutionReconstruction<scalar>* create_mutable_reconstruction(const std::string& type,
-                                                      const UMesh2dh<scalar> *const m,
-                                                      const amat::Array2d<scalar>& rc,
-                                                      const amat::Array2d<scalar> *const gr,
-                                                      const a_real param);
+template <typename scalar, int nvars>
+SolutionReconstruction<scalar,nvars>*
+create_mutable_reconstruction(const std::string& type,
+                              const UMesh2dh<scalar> *const m,
+                              const amat::Array2d<scalar>& rc,
+                              const amat::Array2d<scalar> *const gr,
+                              const a_real param);
 
 /// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
-template <typename scalar>
-const SolutionReconstruction<scalar>* create_const_reconstruction(const std::string& type,
-		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
-		const amat::Array2d<scalar> *const gr, const a_real param);
+template <typename scalar, int nvars>
+const SolutionReconstruction<scalar,nvars>*
+create_const_reconstruction(const std::string& type,
+                            const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
+                            const amat::Array2d<scalar> *const gr, const a_real param);
 
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.
