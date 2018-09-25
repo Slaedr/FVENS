@@ -273,7 +273,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 			precwalltime /= (double)irpt;
 			preccputime /= (double)irpt;
 
-			const double precdeviate = std_deviation(&precwalltimearr[0], precwalltime, irpt);
+			const double precdeviate = std_deviation(&precwalltimearr[0], precwalltime, irpt)/precwalltime;
 
 			if(mpirank == 0) {
 				writeTimingToFile(outf, w, false,tdata, numthreads, bswpseq[i], aswpseq[i],
