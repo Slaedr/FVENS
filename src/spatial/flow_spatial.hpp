@@ -184,7 +184,7 @@ protected:
  */
 template <
 	typename scalar,
-	bool secondOrderRequested,      ///< Whether to computes gradients to get a 2nd order solution
+	bool secondOrderRequested,      ///< Whether to compute gradients to get a 2nd order solution
 	bool constVisc                  ///< Whether to use constant viscosity (true) or Sutherland (false)
 >
 class FlowFV : public FlowFV_base<scalar>

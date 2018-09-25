@@ -305,6 +305,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	// get the system and preconditioning matrices
 	Mat M, A;
 	ierr = KSPGetOperators(solver, &A, &M); CHKERRQ(ierr);
+
 	bool ismatrixfree = isMatrixFree(A);
 	MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
 	if(ismatrixfree) {
