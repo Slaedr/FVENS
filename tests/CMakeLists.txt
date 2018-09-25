@@ -48,6 +48,8 @@ add_subdirectory(utils)
 
 add_subdirectory(mesh)
 
+add_subdirectory(finite-volume)
+
 add_subdirectory(heat)
 
 add_subdirectory(flow-general)

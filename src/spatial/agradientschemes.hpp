@@ -23,8 +23,12 @@ protected:
 	const amat::Array2d<scalar>& rc;                     ///< All cell-centres' coordinates
 
 public:
-	GradientScheme(const UMesh2dh<scalar> *const mesh,       ///< Mesh context
-	               const amat::Array2d<scalar>& _rc);        ///< Cell centers 
+	/// Sets needed data
+	/** \param mesh Mesh context
+	 * \param _rc Cell centres of all cells including ghost cells
+	 */
+	GradientScheme(const UMesh2dh<scalar> *const mesh,
+	               const amat::Array2d<scalar>& _rc);
 	
 	virtual ~GradientScheme();
 
