@@ -57,14 +57,26 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 	lur.compute_face_values(u, ug, grads, uleft, uright);
 
 	constexpr a_real a_epsilon = std::numeric_limits<a_real>::epsilon();
+	a_real errnorm = 0;
+	a_real lrerrnorm = 0;
+
+	// Compute RMS errors
 	for(a_int iface = 0; iface < m->gnbface(); iface++) {
-		std::cout << uleft(iface,0) <<  " " << linearfunc(&gr[iface](0,0)) << std::endl;
-		assert(std::fabs(uleft(iface,0) - linearfunc(&gr[iface](0,0))) < 10*a_epsilon);
+		errnorm += std::pow(uleft(iface,0) - linearfunc(&gr[iface](0,0)),2);
 	}
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++) {
-		assert(std::fabs(uleft(iface,0)-uright(iface,0)) < 10*a_epsilon);
-		assert(std::fabs(uleft(iface,0)-linearfunc(&gr[iface](0,0)) < 10*a_epsilon));
+		lrerrnorm += std::pow(uleft(iface,0)-uright(iface,0),2);
+		errnorm += std::pow(uleft(iface,0)-linearfunc(&gr[iface](0,0)),2);
 	}
+
+	errnorm = std::sqrt(errnorm/m->gnaface());
+	lrerrnorm = std::sqrt(lrerrnorm/m->gnaface());
+
+	std::cout << "Error norm = " << errnorm << std::endl;
+	std::cout << "LR error norm = " << lrerrnorm << std::endl;
+
+	assert(errnorm < 10*a_epsilon);
+	assert(lrerrnorm < 10*a_epsilon);
 
 	delete wls;
 	return 0;
