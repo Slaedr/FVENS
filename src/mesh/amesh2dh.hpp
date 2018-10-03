@@ -148,16 +148,13 @@ public:
 
 	/// Reads a mesh file
 	/** The file should be in either the Gmsh 2.0 format, the SU2 format,
-	 * the 2D structured Plot3D file or the rDGFLO Domn format. The file extensions should be
+	 * or the rDGFLO Domn format. The file extensions should be
 	 * - msh for Gmsh 2.0
 	 * - su2 for SU2 format
-	 * - p2d for 2D structured Plot3D
 	 * - domn for rDGFLO Domn file.
 	 *
 	 * \note For an SU2 mesh file, string marker names must be replaced with integers
 	 * before this function is called on it.
-	 *
-	 * \warning The Plot2d read function is incomplete; do not use.
 	 */
 	void readMesh(const std::string mfile);
 
@@ -166,12 +163,6 @@ public:
 
 	/// Reads a grid in the SU2 format
 	void readSU2(const std::string mfile);
-
-	/// Reads a file in the 2D version of the Plot3D structured format
-	/** \todo Complete and test.
-	 */
-	void readPlot2d(const std::string mfile, const int bci0, const int bcimx, 
-			const int bcj0, const int bcjmx);
 
 	/** \brief Reads 'domn' format
 	 * 

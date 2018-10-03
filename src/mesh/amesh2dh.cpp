@@ -203,46 +203,6 @@ void UMesh2dh<scalar>::readDomn(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::readPlot2d(const std::string mfile, const int bci0, const int bcimx,
-		const int bcj0, const int bcjmx)
-{
-	std::ifstream fin;
-	open_file_toRead(mfile, fin);
-
-	a_int imx, jmx, nbl;
-	scalar ddum;
-
-	fin >> nbl; // dummy
-	fin >> imx >> jmx;
-
-	npoin = imx*jmx;
-	nelem = (imx-1)*(jmx-1);
-	nface = 2*(imx-1+jmx-1);
-
-#ifdef DEBUG
-	std::cout << "  Imx, Jmx and Npoin: " << imx << ", " << jmx << ", " << npoin << '\n';
-#endif
-
-	coords.resize(npoin,NDIM);
-
-	for(a_int j = 0; j < jmx; j++)
-		for(a_int i = 0; i < imx; i++)
-		{
-			for(int idim = 0; idim < NDIM; idim++)
-				fin >> coords(j*imx+i,idim);
-			// ignore the 3rd column for a 2D grid; does nothing if NDIM==3
-			for(int idim = NDIM; idim < 3; idim++)
-				fin >> ddum;
-		}
-
-	maxnnode = 4;
-	maxnfael = 4;
-	nnofa = 2;
-
-	fin.close();
-}
-
 /// Reads mesh from Gmsh 2 format file
 template <typename scalar>
 void UMesh2dh<scalar>::readGmsh2(const std::string mfile)

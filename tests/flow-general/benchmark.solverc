@@ -7,8 +7,8 @@
 -benchmark_type speedup_sweeps
 -benchmark_num_repeat 2
 -threads_sequence 4,6
--async_build_sweep_sequence 1,1
--async_apply_sweep_sequence 1,2
+-async_build_sweep_sequence 1
+-async_apply_sweep_sequence 1
 
 #-mesh_reorder rcm
 
@@ -22,3 +22,6 @@
 
 -blasted_pc_type ilu0
 
+-blasted_async_fact_init_type init_original
+-blasted_async_apply_init_type init_zero
+-blasted_thread_chunk_size 128
