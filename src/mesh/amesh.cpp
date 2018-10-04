@@ -26,18 +26,18 @@
 
 namespace fvens {
 
-template <typename scalar>
-UMesh2dh<scalar>::UMesh2dh() 
+template <typename scalar, int ndim>
+UMesh<scalar,ndim>::UMesh() 
 	: isBoundaryMaps{false}
 {  }
 
-template <typename scalar>
-UMesh2dh<scalar>::~UMesh2dh()
+template <typename scalar, int ndim>
+UMesh<scalar,ndim>::~UMesh()
 {
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::readMesh(const std::string mfile)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::readMesh(const std::string mfile)
 {
 	std::vector<std::string> parts;
 	boost::split(parts, mfile, boost::is_any_of("."));
@@ -50,162 +50,9 @@ void UMesh2dh<scalar>::readMesh(const std::string mfile)
 		readGmsh2(mfile);
 }
 
-/** (Deprecated) Reads the RDGFlo 'domn' format.
-   NOTE: Make sure nnofa is mentioned after ndim and ntype in the mesh file. 
-   ntype makes no sense for us now.
-   Can only be used for a linear mesh having all cells of the same shape.
-*/
-template <typename scalar>
-void UMesh2dh<scalar>::readDomn(const std::string mfile)
-{
-	std::ifstream infile(mfile);
-	if(!infile) {
-		std::cout << "UMesh2dh: Could not open domn mesh file!\n";
-		std::abort();
-	}
-
-	int nnode2, nfael2, ndim;
-	
-	// Do file handling here to populate npoin and nelem
-	std::cout << "UMesh2dh: Reading domn mesh file...\n";
-	char ch = '\0'; int dum = 0; double dummy;
-
-	infile >> dum;
-	infile >> ch;
-	for(int i = 0; i < 4; i++)		//skip 4 lines
-		do
-			ch = infile.get();
-		while(ch != '\n');
-	infile >> ndim;
-	infile >> nnode2;
-	infile >> nfael2;
-	infile >> nnofa;
-	infile >> ch;			//get the newline
-	do
-		ch = infile.get();
-	while(ch != '\n');
-	infile >> nelem; infile >> npoin; infile >> nface;
-	infile >> dummy; 				// get time
-	ch = infile.get();			// clear newline
-
-	nnode.resize(nelem,-1);
-	nfael.resize(nelem,-1);
-
-	nbtag = 2;
-	ndtag = 2;
-
-	//std::cout << "\nUTriMesh: Allocating coords..";
-	coords.resize(npoin, NDIM);
-	// temporary array to hold connectivity matrix
-	amat::Array2d<a_int > elms(nelem,nnode2);
-	//std::cout << "UTriMesh: Allocating bface...\n";
-	bface.resize(nface, nnofa + nbtag);
-	
-	//std::cout << "UTriMesh: Allocation done.";
-
-	do
-		ch = infile.get();
-	while(ch != '\n');
-
-	//now populate inpoel
-	for(int i = 0; i < nelem; i++)
-	{
-		//infile >> nnode[i];
-		infile >> dum;
-		nnode[i] = nnode2;
-		//nfael[i] = nnode[i];		// NOTE: assuming linear element
-		nfael[i] = nfael2;
-
-		for(int j = 0; j < nnode[i]; j++)
-			infile >> elms(i,j);
-
-		do
-			ch = infile.get();
-		while(ch != '\n');
-	}
-	std::cout << "UMesh2dh: Populated inpoel.\n";
-
-	maxnnode = 3;
-	for(int i = 0; i < nelem; i++)
-		if(nnode[i] > maxnnode)
-			maxnnode = nnode[i];
-	
-	inpoel.resize(nelem, maxnnode);
-
-	for(int i = 0; i < nelem; i++)
-		for(int j = 0; j < nnode[i]; j++)
-			inpoel(i,j) = elms.get(i,j);
-	
-	//Correct inpoel:
-	for(int i = 0; i < nelem; i++)
-	{
-		for(int j = 0; j < nnode[i]; j++)
-			inpoel(i,j)--;
-	}
-
-	ch = infile.get();
-	do
-		ch = infile.get();
-	while(ch != '\n');
-
-	// populate coords
-	for(int i = 0; i < npoin; i++)
-	{
-		infile >> dum;
-		for(int j = 0; j < NDIM; j++)
-			infile >> coords(i,j);
-	}
-	std::cout << "UMesh2dh: Populated coords.\n";
-
-	// skip initial conditions
-	ch = infile.get();
-	for(int i = 0; i < npoin+2; i++)
-	{
-		do
-			ch = infile.get();
-		while(ch != '\n');
-	}
-	
-	// populate bface
-	for(int i = 0; i < nface; i++)
-	{
-		infile >> dum;
-		for(int j = 0; j < NDIM + nbtag; j++)
-		{
-			infile >> bface(i,j);
-		}
-		if (i==nface-1) break;
-		do
-			ch = infile.get();
-		while(ch!='\n');
-	}
-	std::cout << "UMesh2dh: Populated bface. Done reading mesh.\n";
-	//correct first 2 columns of bface
-	for(int i = 0; i < nface; i++)
-		for(int j = 0; j < 2; j++)
-			bface(i,j)--;
-
-	infile.close();
-
-	vol_regions.resize(nelem, ndtag);
-	vol_regions.zeros();
-	
-	std::cout << "UMesh2dh: Number of elements: " << nelem << ", number of points: " << npoin 
-		<< ", max number of nodes per element: " << maxnnode << std::endl;
-	std::cout << "Number of boundary faces: " << nface << ", Number of dimensions: " << NDIM 
-		<< std::endl;
-	
-	// set flag_bpoin
-	flag_bpoin.resize(npoin,1);
-	flag_bpoin.zeros();
-	for(int i = 0; i < nface; i++)
-		for(int j = 0; j < nnofa; j++)
-			flag_bpoin(bface(i,j)) = 1;
-}
-
 /// Reads mesh from Gmsh 2 format file
-template <typename scalar>
-void UMesh2dh<scalar>::readGmsh2(const std::string mfile)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 {
 	int dum; double dummy; std::string dums; char ch;
 
@@ -218,15 +65,15 @@ void UMesh2dh<scalar>::readGmsh2(const std::string mfile)
 		while(ch != '\n');
 
 	infile >> npoin;
-	coords.resize(npoin,NDIM);
+	coords.resize(npoin,ndim);
 
 	// read coords of points
 	for(int i = 0; i < npoin; i++)
 	{
 		infile >> dum;
-		for(int j = 0; j < NDIM; j++)
+		for(int j = 0; j < ndim; j++)
 			infile >> coords(i,j);
-		if(NDIM < 3) infile >> dummy;
+		if(ndim < 3) infile >> dummy;
 	}
 	infile >> dums;		// get 'endnodes'
 	infile >> dums;		// get 'elements'
@@ -371,7 +218,7 @@ void UMesh2dh<scalar>::readGmsh2(const std::string mfile)
 	inpoel.resize(nelem, maxnnode);
 	vol_regions.resize(nelem, ndtag);
 
-	std::cout << "UMesh2dh: readGmsh2(): No. of points: " << npoin 
+	std::cout << "UMesh: readGmsh2(): No. of points: " << npoin 
 		<< ", number of elements: " << nelem 
 		<< ",\nnumber of boundary faces " << nface 
 		<< ", max no. of nodes per element: " << maxnnode 
@@ -407,23 +254,23 @@ void UMesh2dh<scalar>::readGmsh2(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::readSU2(const std::string mfile)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 {
 	std::string dum;
 	std::ifstream fin;
 	open_file_toRead(mfile, fin);
 
 	std::getline(fin, dum, '='); std::getline(fin,dum);
-	int ndim = std::stoi(dum);
-	if(ndim != NDIM)
-		std::cout << "! UMesh2dh: readSU2: Mesh is not " << NDIM << "-dimensional!\n";
+	int nfiledim = std::stoi(dum);
+	if(nfiledim != ndim)
+		std::cout << "! UMesh: readSU2: Mesh is not " << ndim << "-dimensional!\n";
 
 	// read element node connectivity
 
 	std::getline(fin, dum, '='); std::getline(fin,dum);
 	nelem = std::stoi(dum);
-	std::cout << "UMesh2dh: readSU2: Number of elements = " << nelem << std::endl;
+	std::cout << "UMesh: readSU2: Number of elements = " << nelem << std::endl;
 
 	// Let's just assume a hybrid grid with triangles and quads
 	maxnnode = 4; maxnfael = 4;
@@ -445,7 +292,7 @@ void UMesh2dh<scalar>::readSU2(const std::string mfile)
 				nfael[iel] = 4;
 				break;
 			default:
-				std::cout << "! UMesh2dh: readSU2: Unknown element type!!\n";
+				std::cout << "! UMesh: readSU2: Unknown element type!!\n";
 		}
 
 		for(int i = 0; i < nnode[iel]; i++)
@@ -460,14 +307,14 @@ void UMesh2dh<scalar>::readSU2(const std::string mfile)
 	std::getline(fin, dum, '='); std::getline(fin,dum);
 	npoin = std::stoi(dum);
 #ifdef DEBUG
-	std::cout << "UMesh2dh: readSU2: Number of points = " << npoin << std::endl;
+	std::cout << "UMesh: readSU2: Number of points = " << npoin << std::endl;
 #endif
 
-	coords.resize(npoin,NDIM);
+	coords.resize(npoin,ndim);
 	for(a_int ip = 0; ip < npoin; ip++)
 	{
 		int ddum;
-		for(int j = 0; j < NDIM; j++)
+		for(int j = 0; j < ndim; j++)
 			fin >> coords(ip,j);
 		fin >> ddum;
 	}
@@ -481,7 +328,7 @@ void UMesh2dh<scalar>::readSU2(const std::string mfile)
 	std::getline(fin, dum, '='); std::getline(fin,dum);
 	int nbmarkers = std::stoi(dum);
 #ifdef DEBUG
-	std::cout << "UMesh2dh: readSU2: Number of BC markers = " << nbmarkers << std::endl;
+	std::cout << "UMesh: readSU2: Number of BC markers = " << nbmarkers << std::endl;
 #endif
 	
 	std::vector<std::vector<std::vector<a_int>>> bfacs(nbmarkers);
@@ -517,7 +364,7 @@ void UMesh2dh<scalar>::readSU2(const std::string mfile)
 
 	fin.close();
 
-	std::cout << "UMesh2dh: readSU2: Number of boundary faces = " << nface << std::endl;
+	std::cout << "UMesh: readSU2: Number of boundary faces = " << nface << std::endl;
 
 	bface.resize(nface,nnofa+nbtag);
 	a_int count=0;
@@ -542,8 +389,8 @@ void UMesh2dh<scalar>::readSU2(const std::string mfile)
 			flag_bpoin(bface(i,j)) = 1;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::reorder_cells(const PetscInt *const permvec)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
 {
 	// reorder inpoel, nnode, nfael, vol_regions
 	const amat::Array2d<a_int> tempelems = inpoel;
@@ -565,10 +412,10 @@ void UMesh2dh<scalar>::reorder_cells(const PetscInt *const permvec)
  * it gives the boundary node number (according to bpointsb) of each local node of a bface.
  * \note Only for linear meshes.
  */
-template <typename scalar>
-void UMesh2dh<scalar>::compute_boundary_points()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_boundary_points()
 {
-	std::cout << "UMesh2dh: compute_boundary_points(): Calculating bpointsb structure"<< std::endl;
+	std::cout << "UMesh: compute_boundary_points(): Calculating bpointsb structure"<< std::endl;
 
 	// first, get number of boundary points
 
@@ -583,7 +430,7 @@ void UMesh2dh<scalar>::compute_boundary_points()
 	for(int ipoin = 0; ipoin < npoin; ipoin++)
 		nbpoin += flagb(ipoin);
 
-	std::cout << "UMesh2dh: compute_boundary_points(): No. of boundary points = " << nbpoin 
+	std::cout << "UMesh: compute_boundary_points(): No. of boundary points = " << nbpoin 
 		<< std::endl;
 
 	bpointsb.resize(nbpoin,3);
@@ -623,7 +470,7 @@ void UMesh2dh<scalar>::compute_boundary_points()
 			{
 				if(bpointsb(i,0) == p1) ibp = i;
 			}
-			if(ibp==-1) std::cout << "UMesh2dh: compute_boundary_points(): Point not found!" 
+			if(ibp==-1) std::cout << "UMesh: compute_boundary_points(): Point not found!" 
 				<< std::endl;
 			bpointsb(ibp,2) = iface;
 			bfacebp(iface,0) = ibp;
@@ -653,19 +500,19 @@ void UMesh2dh<scalar>::compute_boundary_points()
 	}
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::printmeshstats() const
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::printmeshstats() const
 {
-	std::cout << "UMesh2dh: No. of points: " << npoin << ", no. of elements: " << nelem 
+	std::cout << "UMesh: No. of points: " << npoin << ", no. of elements: " << nelem 
 		<< ", no. of boundary faces " << nface 
 		<< ", max no. of nodes per element: " << maxnnode << ", no. of nodes per face: " << nnofa 
 		<< ", max no. of faces per element: " << maxnfael << std::endl;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::writeGmsh2(const std::string mfile)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
 {
-	std::cout << "UMesh2dh: writeGmsh2(): writing mesh to file " << mfile << std::endl;
+	std::cout << "UMesh: writeGmsh2(): writing mesh to file " << mfile << std::endl;
 	// decide element type first, based on nfael/nnode and nnofa
 	int elm_type = 2;
 	int face_type = 1;
@@ -683,9 +530,9 @@ void UMesh2dh<scalar>::writeGmsh2(const std::string mfile)
 	for(int ip = 0; ip < npoin; ip++)
 	{
 		outf << ip+1;
-		for(int j = 0; j < NDIM; j++)
+		for(int j = 0; j < ndim; j++)
 			outf << " " << coords(ip,j);
-		for(int j = 3-NDIM; j > 0; j--)
+		for(int j = 3-ndim; j > 0; j--)
 			outf << " " << 0.0;
 		outf << '\n';
 	}
@@ -747,25 +594,25 @@ void UMesh2dh<scalar>::writeGmsh2(const std::string mfile)
 	outf.close();
 }
 
-// Computes areas of linear triangles and quads
-template <typename scalar>
-void UMesh2dh<scalar>::compute_areas()
+// Computes volumes of linear triangles and quads
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_volumes()
 {
-	area.resize(nelem,1);
+	volume.resize(nelem,1);
 	for(a_int i = 0; i < nelem; i++)
 	{
 		if(nnode[i] == 3)
-			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
+			volume(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
 				- gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0) 
 				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) 
 				- gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
 		else if(nnode[i]==4)
 		{
-			area(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
+			volume(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
 				- gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)
 				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) 
 				- gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
-			area(i,0) += 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,2),1) 
+			volume(i,0) += 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,2),1) 
 				- gcoords(ginpoel(i,3),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,2),0)
 				- gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1) 
 				- gcoords(ginpoel(i,3),0)*gcoords(ginpoel(i,2),1));
@@ -773,25 +620,25 @@ void UMesh2dh<scalar>::compute_areas()
 	}
 }
 	
-template <typename scalar>
-void UMesh2dh<scalar>::compute_cell_centres(std::vector<scalar>& centres) const
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_cell_centres(std::vector<scalar>& centres) const
 {
 	for(a_int i = 0; i < nelem; i++)
 	{
-		for(int idim = 0; idim < NDIM; idim++) {
-			centres[i*NDIM+idim] = 0;
+		for(int idim = 0; idim < ndim; idim++) {
+			centres[i*ndim+idim] = 0;
 			for(int j = 0; j < nnode[i]; j++)
-				centres[i*NDIM+idim] += coords(inpoel(i,j),idim);
-			centres[i*NDIM+idim] /= nnode[i];
+				centres[i*ndim+idim] += coords(inpoel(i,j),idim);
+			centres[i*ndim+idim] /= nnode[i];
 		}
 	}
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::compute_topological()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_topological()
 {
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Calculating and storing topological info...\n";
+	std::cout << "UMesh: compute_topological(): Calculating and storing topological info...\n";
 #endif
 
 	compute_elementsSurroundingPoints();
@@ -799,7 +646,7 @@ void UMesh2dh<scalar>::compute_topological()
 	compute_faceConnectivity();
 
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Done." << std::endl;
+	std::cout << "UMesh: compute_topological(): Done." << std::endl;
 #endif
 }
 
@@ -807,8 +654,8 @@ void UMesh2dh<scalar>::compute_topological()
  * when normal is calculated as
  * 		nx = y2 - y1, ny = -(x2-x1).
  */
-template <typename scalar>
-void UMesh2dh<scalar>::compute_face_data()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_face_data()
 {
 	int i, j, p1, p2;
 
@@ -835,7 +682,7 @@ void UMesh2dh<scalar>::compute_face_data()
 		p2 = intfac(ied,3);
 		
 		if(nbface != nface) { 
-			std::cout <<"UMesh2dh: Calculation of number of boundary faces is wrong!" << std::endl; 
+			std::cout <<"UMesh: Calculation of number of boundary faces is wrong!" << std::endl; 
 			break; 
 		}
 		for(i = 0; i < nface; i++)
@@ -854,20 +701,20 @@ void UMesh2dh<scalar>::compute_face_data()
 		}
 	}
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_face_data(): Done.\n";
+	std::cout << "UMesh: compute_face_data(): Done.\n";
 #endif
 }
 
 /// This function is only valid in 2D
-template <typename scalar>
-void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_periodic_map(const int bcm, const int axis)
 {
 	if(bcm < 0) {
-		std::cout << " UMesh2dh: No periodic boundary specified.\n";
+		std::cout << " UMesh: No periodic boundary specified.\n";
 		return;
 	}
 	if(axis < 0) {
-		std::cout << " UMesh2dh: No periodic axis specified.\n";
+		std::cout << " UMesh: No periodic axis specified.\n";
 		return;
 	}
 
@@ -914,8 +761,8 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 	}
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::compute_boundary_maps()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_boundary_maps()
 {
 	// iterate over bfaces and find corresponding intfac face for each bface
 	bifmap.resize(nbface,1);
@@ -977,8 +824,8 @@ void UMesh2dh<scalar>::compute_boundary_maps()
 	isBoundaryMaps = true;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::writeBoundaryMapsToFile(std::string mapfile)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::writeBoundaryMapsToFile(std::string mapfile)
 {
 	if(isBoundaryMaps == false) {
 		std::cout << "UMesh2d: writeBoundaryMapsToFile(): ! Boundary maps not available!" 
@@ -997,8 +844,8 @@ void UMesh2dh<scalar>::writeBoundaryMapsToFile(std::string mapfile)
 	ofile.close();
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::readBoundaryMapsFromFile(std::string mapfile)
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::readBoundaryMapsFromFile(std::string mapfile)
 {
 	std::ifstream ofile(mapfile);
 	std::string dum; int sz;
@@ -1019,8 +866,8 @@ void UMesh2dh<scalar>::readBoundaryMapsFromFile(std::string mapfile)
 	isBoundaryMaps = true;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::compute_intfacbtags()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_intfacbtags()
 {
 	/// Populate intfacbtags with boundary markers of corresponding bfaces
 
@@ -1044,12 +891,12 @@ void UMesh2dh<scalar>::compute_intfacbtags()
  * NOTE: Make sure to execute [compute_topological()](@ref compute_topological) 
  * before calling this function.
  */
-template <typename scalar>
-UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
+template <typename scalar, int ndim>
+UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 {
 	std::cout << "UMesh2d: convertLinearToQuadratic(): Producing quadratic mesh from linear mesh" 
 		<< std::endl;
-	UMesh2dh<scalar> q;
+	UMesh<scalar,ndim> q;
 	if(nnofa != 2) 
 	{ 
 		std::cout << "! UMesh2d: convertLinearToQuadratic(): Mesh is not linear!!" 
@@ -1098,13 +945,13 @@ UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
 	q.nbtag = nbtag;
 	q.ndtag = ndtag;
 
-	q.coords.resize(q.npoin, NDIM);
+	q.coords.resize(q.npoin, ndim);
 	q.inpoel.resize(q.nelem, q.maxnnode);
 	q.bface.resize(q.nface, q.nnofa+q.nbtag);
 
 	/// Next, we copy over low-order mesh data to the new mesh.
 	for(int i = 0; i < npoin; i++)
-		for(int j = 0; j < NDIM; j++)
+		for(int j = 0; j < ndim; j++)
 			q.coords(i,j) = coords(i,j);
 
 	for(int i = 0; i < nelem; i++)
@@ -1131,7 +978,7 @@ UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
 		int p2 = intfac(ied,3);
 		int lp1 = -100000;
 
-		for(int idim = 0; idim < NDIM; idim++)
+		for(int idim = 0; idim < ndim; idim++)
 			q.coords(npoin+ied*parm,idim) = (coords(p1,idim) + coords(p2,idim))/2.0;
 
 		for(int inode = 0; inode < nnode[ielem]; inode++)
@@ -1165,7 +1012,7 @@ UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
 		int lp1 = -100000;
 		int lp2 = -100000;
 
-		for(int idim = 0; idim < NDIM; idim++)
+		for(int idim = 0; idim < ndim; idim++)
 			q.coords(npoin+ied*parm,idim) = (coords(p1,idim) + coords(p2,idim))/2.0;
 
 		// First look at left element
@@ -1213,7 +1060,7 @@ UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
 				q.inpoel(iel,q.nnode[iel]-1) = numpoin+iel;
 		}
 	}
-	std::cout << "UMesh2dh: convertLinearToQuadratic(): Done." << std::endl;
+	std::cout << "UMesh: convertLinearToQuadratic(): Done." << std::endl;
 	//q.inpoel.mprint();
 	return q;
 }
@@ -1221,10 +1068,10 @@ UMesh2dh<scalar> UMesh2dh<scalar>::convertLinearToQuadratic()
 /**	Converts all quadrilaterals in a linear mesh into triangles, 
  * and returns the fully triangular mesh.
  */
-template <typename scalar>
-UMesh2dh<scalar> UMesh2dh<scalar>::convertQuadToTri() const
+template <typename scalar, int ndim>
+UMesh<scalar,ndim> UMesh<scalar,ndim>::convertQuadToTri() const
 {
-	UMesh2dh<scalar> tm;
+	UMesh<scalar,ndim> tm;
 	std::vector<std::vector<int>> elms;
 	std::vector<std::vector<int>> volregs;
 	std::vector<int> vr(ndtag, -1);
@@ -1295,8 +1142,8 @@ UMesh2dh<scalar> UMesh2dh<scalar>::convertQuadToTri() const
 	return tm;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::compute_elementsSurroundingPoints()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_elementsSurroundingPoints()
 {
 	//std::cout << "UMesh2d: compute_topological(): Elements surrounding points\n";
 	esup_p.resize(npoin+1,1);
@@ -1340,11 +1187,11 @@ void UMesh2dh<scalar>::compute_elementsSurroundingPoints()
 	esup_p(0,0) = 0;
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::compute_elementsSurroundingElements()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_elementsSurroundingElements()
 {
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Elements surrounding elements...\n";
+	std::cout << "UMesh: compute_topological(): Elements surrounding elements...\n";
 #endif
 	//amat::Array2d<int> lpoin(npoin,1);
 	esuel.resize(nelem, maxnfael);
@@ -1421,11 +1268,11 @@ void UMesh2dh<scalar>::compute_elementsSurroundingElements()
 	}
 }
 
-template <typename scalar>
-void UMesh2dh<scalar>::compute_faceConnectivity()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_faceConnectivity()
 {
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
+	std::cout << "UMesh: compute_topological(): Computing intfac..." << std::endl;
 #endif
 	nbface = naface = 0;
 	// first run: calculate nbface
@@ -1441,7 +1288,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 			}
 		}
 	}
-	std::cout << "UMesh2dh: compute_topological(): Number of boundary faces = " 
+	std::cout << "UMesh: compute_topological(): Number of boundary faces = " 
 		<< nbface << std::endl;
 	// calculate number of internal faces
 	naface = nbface;
@@ -1453,7 +1300,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 			if(je > ie && je < nelem) naface++;
 		}
 	}
-	std::cout << "UMesh2dh: compute_topological(): Number of all faces = " << naface << std::endl;
+	std::cout << "UMesh: compute_topological(): Number of all faces = " << naface << std::endl;
 
 	//allocate intfac and elemface
 	intfac.resize(naface,nnofa+2);
@@ -1512,11 +1359,11 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 /** \todo: There is an issue with psup for some boundary nodes 
  * belonging to elements of different types. Correct this.
  */
-template <typename scalar>
-void UMesh2dh<scalar>::compute_pointsSurroundingPoints()
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 {
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Points surrounding points\n";
+	std::cout << "UMesh: compute_topological(): Points surrounding points\n";
 #endif
 	psup_p.resize(npoin+1,1);
 	psup_p.zeros();
@@ -1543,7 +1390,7 @@ void UMesh2dh<scalar>::compute_pointsSurroundingPoints()
 				if(inpoel(ielem,jnode) == ip) inode = jnode;
 #ifdef DEBUG
 			if(inode == -1) {
-				std::cout << " ! UMesh2dh: compute_topological(): ";
+				std::cout << " ! UMesh: compute_topological(): ";
 				std::cout << "inode not found while computing psup!\n";
 			}
 #endif
@@ -1603,7 +1450,7 @@ void UMesh2dh<scalar>::compute_pointsSurroundingPoints()
 				if(inpoel(ielem,jnode) == ip) inode = jnode;
 #ifdef DEBUG
 			if(inode == -1) {
-				std::cout << " ! UMesh2dh: compute_topological(): ";
+				std::cout << " ! UMesh: compute_topological(): ";
 				std::cout << "inode not found while computing psup!\n";
 			}
 #endif
@@ -1641,6 +1488,6 @@ void UMesh2dh<scalar>::compute_pointsSurroundingPoints()
 	}
 }
 
-template class UMesh2dh<a_real>;
+template class UMesh<a_real>;
 
 } // end namespace

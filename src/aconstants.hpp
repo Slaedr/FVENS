@@ -22,9 +22,6 @@
 /// A small number likely smaller than most convergence tolerances
 #define A_SMALL_NUMBER 1e-12
 
-/// Number of spatial dimensions in the problem
-#define NDIM 2
-
 /// Number of coupled variables for compressible flow computations
 #define NVARS 4
 

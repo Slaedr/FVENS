@@ -1,10 +1,10 @@
-/** @file amesh2dh.hpp
- * @brief Contains a class to handle 2D hybrid meshes containing triangles and quadrangles
+/** @file amesh.hpp
+ * @brief Contains a class to handle 2D or 3D hybrid meshes
  * @author Aditya Kashi
  */
 
-#ifndef AMESH2DH_H
-#define AMESH2DH_H
+#ifndef BLASTED_AMESH_H
+#define BLASTED_AMESH_H
 
 #include <vector>
 #include "aconstants.hpp"
@@ -12,14 +12,14 @@
 
 namespace fvens {
 
-/// Hybrid unstructured mesh class supporting triangular and quadrangular elements
-template <typename scalar>
-class UMesh2dh
+/// Hybrid unstructured mesh class supporting various types of cells in both 2D and 3D
+template <typename scalar, int ndim>
+class UMesh
 {
 public:
-	UMesh2dh();
+	UMesh();
 
-	~UMesh2dh();
+	~UMesh();
 	
 	/* Functions to get mesh data are defined right here so as to enable inlining.
 	 */
@@ -46,16 +46,10 @@ public:
 	}
 
 	/// Returns elements surrounding points; to be used with \ref gesup_p
-	a_int gesup(const a_int i) const { return esup.get(i); }
+	//a_int gesup(const a_int i) const { return esup.get(i); }
 
 	/// Returns the index for \ref gesup to access the list of elems surrounding point i
-	a_int gesup_p(const a_int i) const { return esup_p.get(i); }
-
-	/// Returns points surrounding points; to be used with \ref gpsup_p
-	a_int gpsup(const a_int i) const { return psup.get(i); }
-
-	/// Returns the index for \ref gpsup to access the list of points surrounding point i
-	a_int gpsup_p(const a_int i) const { return psup_p.get(i); }
+	//a_int gesup_p(const a_int i) const { return esup_p.get(i); }
 
 	/// Returns the element adjacent to a given element corresponding to the given local face
 	/** Note that the local face number `j' would be the one between local node j and 
@@ -74,8 +68,7 @@ public:
 	 * \param i An integer which specifies what information is returned:
 	 *  - 0: Left cell index
 	 *  - 1: Right cell index (or for a boundary face, \ref nelem + face index)
-	 *  - 2: Global index of `first' or `starting' node of the face
-	 *  - 3: Global index of the `second' or `ending' node of the face
+	 *  - 2,3...: Global indices of nodes of the face (in orientation order)
 	 */
 	a_int gintfac(const a_int face, const int i) const { return intfac.get(face,i); }
 
@@ -83,9 +76,9 @@ public:
 	int gintfacbtags(const a_int face, const int i) const { return intfacbtags.get(face,i); }
 
 	/// Returns the measure of a cell
-	scalar garea(const a_int ielem) const { return area.get(ielem,0); }
+	scalar gvol(const a_int ielem) const { return volume.get(ielem,0); }
 
-	/// Returns the components of the unit normal or the length of a face \sa facemetric
+	/// Returns the components of the unit normal or the measure of a face \sa facemetric
 	scalar gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
 	/// Returns the unit normal vector as a fixed-size array for a given face of \ref intfac
@@ -164,14 +157,6 @@ public:
 	/// Reads a grid in the SU2 format
 	void readSU2(const std::string mfile);
 
-	/** \brief Reads 'domn' format
-	 * 
-	 * \note Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
-	 * \deprecated Please use Gmsh format instead.
-	*/
-	[[deprecated("Please use Gmsh files instead")]]
-	void readDomn(const std::string mfile);
-
 	/// Re-orders calls according to some permutation vector
 	/** \warning If reordering is needed, this function must be called immediately after reading
 	 * the mesh.
@@ -189,7 +174,7 @@ public:
 	void writeGmsh2(const std::string mfile);
 	
 	/// Computes areas of linear triangles and quads
-	void compute_areas();
+	void compute_volumes();
 
 	/// Computes locations of cell centres
 	/** \param[out] centres Should be logically of size nelem x NDIM.
@@ -225,7 +210,7 @@ public:
 	 *
 	 * \param[in] bcm Marker of one set of periodic boundaries
 	 * \param[in] axis The index of the coordinate which is different for the two boundaries
-	 *   0 for x, 1 for y. It's the axis along which the geometry is periodic.
+	 *   0 for x, 1 for y, 2 for z. Its the axis along which the geometry is periodic.
 	 */
 	void compute_periodic_map(const int bcm, const int axis);
 
@@ -247,12 +232,44 @@ public:
 	 * \note Make sure to execute [compute_topological()](@ref compute_topological) 
 	 * before calling this function.
 	*/
-	UMesh2dh convertLinearToQuadratic();
+	UMesh convertLinearToQuadratic();
 
 	/// Converts quads in a mesh to triangles
-	UMesh2dh convertQuadToTri() const;
+	UMesh convertQuadToTri() const;
 
 private:
+
+	/// Available cell and face types
+	enum MEntityType {LINE,TRIANGLE,QUADRANGLE,TETRAHEDRON,PYRAMID,PRISM,HEXAHEDRON};
+
+	/// A generic entity topology that's useless by itself
+	/** This is used to refer to an entity topology without knowing its type.
+	 */
+	struct MGenEntityTopology
+	{
+		MEntityType type;
+		int nVertices;
+		int nFaces;
+	};
+
+	/// A description of the topology of a specific entity type
+	template <int nFace, int maxVerticesPerFace>
+	struct MEntityTopology : public MGenEntityTopology
+	{
+		Eigen::Array<int,nFace,maxVerticesPerFace,RowMajor> localFaceMap;
+	};
+
+	/// A subset of mesh entities having the same type
+	struct MEntitySubSet
+	{
+		/// Beginning index of the subset in the relavant array of entities
+		a_int start;
+		/// Ending index plus one in the relavant array of entities
+		a_int end;
+		/// The (unique) topology of entities in this subset
+		const MEntityTopology& topo;
+	};
+
 	a_int npoin;                    ///< Number of nodes
 	a_int nelem;                    ///< Number of elements
 	a_int nface;                    ///< Number of boundary faces
@@ -260,7 +277,7 @@ private:
 	int maxnnode;                   ///< Maximum number of nodes per element for any element
 	std::vector<int> nfael;         ///< number of faces to an element for each element
 	int maxnfael;                   ///< Maximum number of faces per element for any element
-	int nnofa;                      ///< number of nodes in a face
+	std::vector<int> nnofa;         ///< number of nodes in a face for each face
 	a_int naface;                   ///< total number of (internal and boundary) faces
 	a_int nbface;                   ///< number of boundary faces as calculated \sa compute_topological
 	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
@@ -336,12 +353,12 @@ private:
 	/// Stores boundary-points numbers (defined by bpointsb) of the two points making up a bface
 	amat::Array2d<int > bfacebp;
 
-	/// Contains area of each element (either triangle or quad)
-	amat::Array2d<scalar> area;	
+	/// Contains volume of each element
+	amat::Array2d<scalar> volume;	
 
 	/// Stores lengths and unit normals for linear mesh faces
-	/** For each face, the first two entries are x- and y-components of the unit normal,
-	 * the third component is the length.
+	/** For each face, the first two/three entries the components of the unit normal,
+	 * the third component is the measure of the face.
 	 * The unit normal points towards the cell with greater index.
 	 */
 	amat::Array2d<scalar> facemetric;
