@@ -274,6 +274,8 @@ private:
 	/** \name LFM Local face maps for different types of cells
 	 * Given a local face index and the index of a node of that face, they store the index of that
 	 * node in the cell.
+	 * Note that the ordering here is such that all faces `point' towards the exterior of the cell
+	 * by the right-hand rule.
 	 */
 	///@{
 	static const int triLFM[3][2];       ///< Triangle
