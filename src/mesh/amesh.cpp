@@ -27,6 +27,47 @@
 namespace fvens {
 
 template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::triNnofa = 2;
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::quadNnofa = 2;
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::tetNnofa = 3;
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::pyrNnofa[5] = {4,3,3,3,3};
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::prismNnofa[5] = {3,3,4,4,4};
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::hexNnofa = 4;
+
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::triLFM[3][2] = {{0,1}, {1,2}, {2,0}};
+
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::quadLFM[4][2] = {
+	{0,1}, {1,2}, {2,3}, {3,0}
+};
+
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::tetLFM[4][3] = {
+	{1,2,3}, {0,3,2}, {0,1,3}, {0,2,1}
+};
+
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::pyrLFM[5][4] = {
+	{0,3,2,1}, {0,1,4,-1}, {1,2,4,-1}, {3,4,2,-1}, {0,4,3,-1}
+};
+
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::prismLFM[5][4] = {
+	{0,2,1}, {5,3,4}, {1,2,5,4}, {0,3,5,2}, {0,1,4,3}
+};
+
+template <typename scalar, int ndim>
+const int UMesh<scalar,ndim>::hexLFM[6][4] = {
+	{0,3,2,1}, {4,5,6,7}, {0,1,5,4}, {3,7,6,2}, {1,2,6,5}, {0,4,7,3}
+};
+
+template <typename scalar, int ndim>
 UMesh<scalar,ndim>::UMesh() 
 	: isBoundaryMaps{false}
 {  }
@@ -44,8 +85,6 @@ void UMesh<scalar,ndim>::readMesh(const std::string mfile)
 
 	if(parts[parts.size()-1] == "su2")
 		readSU2(mfile);
-	/*else if(parts[parts.size()-1] == "domn")
-	  readDomn(mfile);*/
 	else
 		readGmsh2(mfile);
 }

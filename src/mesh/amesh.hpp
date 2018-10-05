@@ -16,6 +16,8 @@ namespace fvens {
 template <typename scalar, int ndim>
 class UMesh
 {
+	static_assert(ndim == 2 || ndim == 3, "Only 2D or 3D problems!");
+
 public:
 	UMesh();
 
@@ -31,7 +33,7 @@ public:
 	}
 
 	/// Returns global node indices corresponding to local node indices of an element
-	a_int ginpoel(const a_int elemnum, const int localnodenum) const
+	a_int gelemnode(const a_int elemnum, const int localnodenum) const
 	{
 		return inpoel.get(elemnum, localnodenum);
 	}
@@ -82,12 +84,11 @@ public:
 	scalar gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
 	/// Returns the unit normal vector as a fixed-size array for a given face of \ref intfac
-	std::array<scalar,NDIM> gnormal(const a_int iface) const {
-#if NDIM == 2
+	std::array<scalar,ndim> gnormal(const a_int iface) const {
+		if(ndim == 2)
 			return {facemetric.get(iface,0), facemetric.get(iface,1)};
-#else
+		else
 			return {facemetric.get(iface,0), facemetric.get(iface,1), facemetric.get(iface,2)};
-#endif
 	}
 
 	/// Get \ref bface index of a face from its \ref intfac index
@@ -112,16 +113,16 @@ public:
 	a_int gnbface() const { return nbface; }
 
 	/// Returns the number of nodes in an element
-	int gnnode(const int ielem) const { return nnode[ielem]; }
+	int gnnodeElem(const int ielem) const { return nnode[ielem]; }
 
 	/// Returns the total number of faces, both boundary and internal ('Get Number of All FACEs')
 	a_int gnaface() const {return naface; }
 
 	/// Returns the number of faces bounding an element
-	int gnfael(const int ielem) const { return nfael[ielem]; }
+	int gnfaceElem(const int ielem) const { return nfael[ielem]; }
 
 	/// Returns the number of nodes per face
-	int gnnofa() const { return nnofa; }
+	int gnnodeFace(const a_int iface) const { return nnofa[iface]; }
 
 	/// Returns the number of boundary tags available for boundary faces
 	int gnbtag() const{ return nbtag; }
@@ -256,7 +257,7 @@ private:
 	template <int nFace, int maxVerticesPerFace>
 	struct MEntityTopology : public MGenEntityTopology
 	{
-		Eigen::Array<int,nFace,maxVerticesPerFace,RowMajor> localFaceMap;
+		amat::Array2d<int>> localFaceMap;
 	};
 
 	/// A subset of mesh entities having the same type
@@ -269,6 +270,31 @@ private:
 		/// The (unique) topology of entities in this subset
 		const MEntityTopology& topo;
 	};
+
+	/** \name LFM Local face maps for different types of cells
+	 * Given a local face index and the index of a node of that face, they store the index of that
+	 * node in the cell.
+	 */
+	///@{
+	static const int triLFM[3][2];       ///< Triangle
+	static const int quadLFM[4][2];      ///< Quadrangle
+	static const int tetLFM[4][3];       ///< Tetrahedron
+	static const int pyrLFM[5][4];       ///< Pyramid
+	static const int prismLFM[5][4];     ///< (Triangular) Prism
+	static const int hexLFM[6][4];       ///< Hexahedron
+	///@}
+
+	/** \name elemNnofa Number of nodes in each local face, in the same order as arrays in \ref LFM
+	 * However, if all faces contain the same number of nodes, we just store one number.
+	 */
+	///@{
+	static const int triNnofa;
+	static const int quadNnofa;
+	static const int tetNnofa;
+	static const int pyrNnofa[5];
+	static const int prismNnofa[5];
+	static const int hexNnofa;
+	///@}
 
 	a_int npoin;                    ///< Number of nodes
 	a_int nelem;                    ///< Number of elements
