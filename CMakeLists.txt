@@ -305,6 +305,9 @@ endif()
 enable_testing()
 add_subdirectory(tests)
 
+# Non-automated test cases
+add_subdirectory(testcases)
+
 # Benchmarking
 add_subdirectory(benchmarking)
 

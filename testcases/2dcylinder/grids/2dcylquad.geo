@@ -1,6 +1,6 @@
 // flow past cylinder
 
-refine = 16;
+//refine = 16;
 
 // actual boundary
 srad = 0.5;
