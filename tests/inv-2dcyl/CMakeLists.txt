@@ -29,4 +29,4 @@ add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad
   ${CMAKE_CURRENT_BINARY_DIR}/inv-cyl-ls-hllc_quad.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv_cyl.solverc
   --number_of_meshes 4
-  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad)
+  --mesh_file ../../testcases/2dcylinder/grids/2dcylquad)

@@ -4,12 +4,17 @@ foreach(imesh 0 1 2 3)
 	configure_file(${MESHBASE}${imesh}.msh ${MESHBASE}${imesh}.msh COPYONLY)
 endforeach(imesh)
 
+# Copy Gmsh source file in case user wants to generate more meshes
+configure_file(2dcylquad.geo 2dcylquad.geo COPYONLY)
+
 # Generate meshes
 if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")
   message(WARNING "Testcases: 2dcylinder meshes not built because Gmsh was not found")
 else()
 
   set(2dcylinder_meshfiles
+  	${CMAKE_CURRENT_BINARY_DIR}/2dcylquad0.msh
+  	${CMAKE_CURRENT_BINARY_DIR}/2dcylquad1.msh
 	${CMAKE_CURRENT_BINARY_DIR}/2dcylquad2.msh 
 	${CMAKE_CURRENT_BINARY_DIR}/2dcylquad3.msh 
 	${CMAKE_CURRENT_BINARY_DIR}/2dcylquad4.msh 
@@ -31,6 +36,26 @@ else()
 #	  )
 #  endforeach(imeshh)
 
+  add_custom_command(
+    COMMENT "Building grid needed for testcase 2dcylinder"
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/2dcylquad0.msh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${GMSH_EXEC} -setnumber refine 1 -2 -format msh2
+      -o ${CMAKE_CURRENT_BINARY_DIR}/2dcylquad0.msh
+      -v 2
+      2dcylquad.geo
+    MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/2dcylquad.geo"
+    )
+  add_custom_command(
+    COMMENT "Building grid needed for testcase 2dcylinder"
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/2dcylquad1.msh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${GMSH_EXEC} -setnumber refine 2 -2 -format msh2
+      -o ${CMAKE_CURRENT_BINARY_DIR}/2dcylquad1.msh
+      -v 2
+      2dcylquad.geo
+    MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/2dcylquad.geo"
+    )
   add_custom_command(
     COMMENT "Building grid needed for testcase 2dcylinder"
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/2dcylquad2.msh

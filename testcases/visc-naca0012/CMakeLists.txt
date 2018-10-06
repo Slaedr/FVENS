@@ -4,3 +4,9 @@ configure_file(opts.solverc opts.solverc COPYONLY)
 configure_file(mgopts.solverc mgopts.solverc COPYONLY)
 
 add_subdirectory(grids)
+
+add_test(NAME SpatialFlow_NS_NACA0012_LeastSquares_Roe_ResidualConvergence
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${SEQEXEC} ${SEQTASKS} ../../tests/e_testflow laminar-implicit.ctrl
+  -options_file opts.solverc
+  --mesh_file grids/NACA0012_lam_hybrid_1.msh)

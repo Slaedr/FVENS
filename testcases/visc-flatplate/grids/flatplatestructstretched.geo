@@ -1,5 +1,7 @@
 // flow past cylinder
 
+// INPUT: Set nummeshes on the command line
+
 // (1D) Refine factor
 ref = 2;
 
@@ -58,3 +60,20 @@ Physical Line(4) = {6,5,4};
 Physical Line(5) = {3};
 
 Physical Surface(1) = {1,2};
+
+// Mesh
+Mesh 2;
+
+Mesh.Format = 1;
+Mesh.MshFileVersion = 2;
+
+Save "flatplatestructstretched0.msh";
+
+RefineMesh;
+Save "flatplatestructstretched1.msh";
+
+RefineMesh;
+Save "flatplatestructstretched2.msh";
+
+//RefineMesh;
+//Save "flatplatestructstretched3.msh";

@@ -1,14 +1,14 @@
 // flow past cylinder
 
 // refinement factor
-refine = 1;
+//refine = 4;
 
 // actual boundary
 srad = 1.0;
 // for partition
 prad = 3/2.0 * srad;
 // far field
-ffs = 20.0;
+ffs = 30.0;
 // mesh size at far field
 hf = 3.0/refine;
 

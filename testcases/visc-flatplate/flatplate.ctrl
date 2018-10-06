@@ -1,6 +1,6 @@
 
 io {
-	mesh_file                    "../testcases/visc-flatplate/grids/flatplatestruct2.msh"
+	mesh_file                    "testcases/visc-flatplate/grids/flatplatestruct2.msh"
 	solution_output_file         "flatplate.vtu"
 	log_file_prefix              "flatplate"
 	convergence_history_required false

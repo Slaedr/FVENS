@@ -8,14 +8,14 @@ ffs = 40*srad;
 hc = 0.1;
 hf = 0.2;
 // (1D) Refine factor
-ref = 8;    // for weak0
+ref = 1;    // for weak0
 // number of points tangential
 nt = 8*ref;
 // number of points radial
 nr = 16*ref;
 // progression ratio
-r = 1.02;		// original
-//r= 1.3;		// for refinement by splitting
+//r = 1.02;		// original
+r= 1.3;		// for refinement by splitting
 
 //center
 Point(1) = { 0,   0,  0, hc};

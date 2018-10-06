@@ -11,7 +11,7 @@
 -ksp_type fgmres
 -ksp_pc_side right
 -ksp_rtol 1e-1
--ksp_max_it 70
+-ksp_max_it 60
 
 -pc_type bjacobi
 -sub_pc_type ilu

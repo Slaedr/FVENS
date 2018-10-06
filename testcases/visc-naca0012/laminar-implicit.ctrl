@@ -2,7 +2,7 @@
  ; Steady case
 
 io {
-	mesh_file                    "../testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh"
+	mesh_file                    "testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh"
 	solution_output_file         "visc-naca.vtu"
 	log_file_prefix              "visc-naca"
 	convergence_history_required true
@@ -84,7 +84,7 @@ pseudotime
 		cfl_min                  200.0
 		cfl_max                  2000.0
 		tolerance                1e-6
-		max_timesteps            500
+		max_timesteps            80
 	}
 	
 	;; The solver which computes an initial guess for the main solver
