@@ -1,5 +1,5 @@
 io {
-	mesh_file                    "../testcases/naca0012/grids/NACA0012_inv.su2"
+	mesh_file                    "testcases/naca0012/grids/NACA0012_inv.su2"
 	solution_output_file         "naca.vtu"
 	log_file_prefix              "naca-log"
 	convergence_history_required false

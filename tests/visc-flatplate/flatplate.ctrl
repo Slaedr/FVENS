@@ -67,7 +67,7 @@ pseudotime
 	
 	main {
 		cfl_min                  100.0
-		cfl_max                  2000.0
+		cfl_max                  4000.0
 		tolerance                1e-5
 		max_timesteps            500
 	}

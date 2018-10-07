@@ -31,9 +31,9 @@ Building
 --------
 The following libraries and programs are required:
 - [Boost](http://www.boost.org/), present in the default package repositories of all GNU/Linux distributions
-- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (preferably the development version, or version 3.3.4) - needs a variable called `EIGEN3_ROOT` to be set to the top-level Eigen directory
-- [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
-- [Gmsh](http://gmsh.info/) is required for building some of the tests. It is available in most GNU/Linux distributions' official repositories. If it is not present in a standard directory, one can pass
+- The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) matrix library (version 3.3.5 or newer) - needs a variable called `EIGEN3_ROOT` to be set to the top-level Eigen directory
+- [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 or newer for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
+- [Gmsh](http://gmsh.info/) 3.0 or later is required for building many of the grids for test cases. It is available in most GNU/Linux distributions' official repositories. If it is not present in a standard directory and has not been added to the `PATH` variable, one can pass
 `-DCMAKE_PREFIX_PATH=/path/to/top-level/gmsh-dir` in the `cmake` command line (see below).
 - Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory.
 
@@ -68,10 +68,10 @@ A tags file is built when the code is built (if ctags is available), which makes
 
 Running
 -------
-The executables should be called with the paths to a control file (required) and a PETSc options file as input. Set `OMP_NUM_THREADS` to the number of threads you want to use.
+The executables should be called with the paths to a control file (required) and a PETSc options file as input. Set `OMP_NUM_THREADS` to the number of threads you want to use, or all available CPU threads will usually be used.
 
 		export OMP_NUM_THREADS=4
-		./fvens_steady /path/to/testcases/2dcylinder/implicit.control -options_file /path/to/testcases/2dcylinder/opts.petscrc
+		./fvens_steady testcases/2dcylinder/implicit.ctrl -options_file testcases/2dcylinder/opts.solverc
 
 Make sure to set the paths of input and output files appropriately in the control file (see the next section below).
 

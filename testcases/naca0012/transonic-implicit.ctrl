@@ -1,12 +1,11 @@
 io {
-	mesh_file                    "../testcases/naca0012/grids/NACA0012_inv.su2"
+	mesh_file                    "testcases/naca0012/grids/NACA0012_inv.su2"
 	solution_output_file         "naca.vtu"
 	log_file_prefix              "naca-log"
 	convergence_history_required false
 }
 
 flow_conditions {
-	;; euler or navierstokes flow
 	flow_type               euler
 	adiabatic_index         1.4
 	angle_of_attack         1.25
@@ -37,8 +36,7 @@ time {
 }
 
 spatial_discretization {
-	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
-	inviscid_flux                    hllc
+	inviscid_flux                    roe
 	gradient_method                  leastsquares
 	limiter                          weno
 	limiter_parameter                20.0
@@ -51,16 +49,16 @@ pseudotime
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  20.0
-		cfl_max                  200.0
+		cfl_min                  50.0
+		cfl_max                  500.0
 		tolerance                1e-7
 		max_timesteps            2000
 	}
 	
 	;; The solver which computes an initial guess for the main solver
 	initialization {	
-		cfl_min                  20.0
-		cfl_max                  200.0
+		cfl_min                  25.0
+		cfl_max                  500.0
 		tolerance                1e-1
 		max_timesteps            100
 	}
