@@ -17,6 +17,11 @@
  *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** \class UMesh
+ * \todo Possible optimizations:
+ * - Store inpoel in a list of vectors and allocate exactly as much memory as needed
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -124,8 +129,11 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	infile >> nelm;
 	amat::Array2d<a_int > elms(nelm,width_elms);
 	nface = 0; nelem = 0;
+	maxnnofa = 2;
+	int maxnnobfa = 2;       //< Max nodes in any boundary face
 	std::vector<int> nnodes(nelm,0);
 	std::vector<int> nfaels(nelm,0);
+	std::vector<int> nnofas(nelm,0);
 	//std::cout << "UMesh2d: readGmsh2(): Total number of elms is " << nelm << std::endl;
 
 	for(int i = 0; i < nelm; i++)
@@ -138,99 +146,171 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 		 */
 		switch(elmtype)
 		{
-			case(1): // linear edge
-				nnofa = 2;
+		case(1): // linear edge
+			if(ndim == 2) {
+				nnofas[i] = 2;
 				infile >> nbtags;
 				if(nbtags > nbtag) nbtag = nbtags;
 				for(int j = 0; j < nbtags; j++)
 					infile >> elms(i,j+nnofa);		// get tags
-				for(int j = 0; j < nnofa; j++)
+				for(int j = 0; j < 2; j++)
 					infile >> elms(i,j);			// get node numbers
 				nface++;
-				break;
-			case(8): // quadratic edge
-				nnofa = 3;
+			}
+			break;
+		case(8): // quadratic edge
+			if(ndim == 2) {
+				nnofas[i] = 3;
+				if(maxnnofa < nnofas[i])
+					maxnnofa = nnofas[i];
+				if(maxnnobfa < nnofas[i])
+					maxnnobfa = nnofas[i];
 				infile >> nbtags;
 				if(nbtags > nbtag) nbtag = nbtags;
 				for(int j = 0; j < nbtags; j++)
 					infile >> elms(i,j+nnofa);		// get tags
-				for(int j = 0; j < nnofa; j++)
+				for(int j = 0; j < 3; j++)
 					infile >> elms(i,j);			// get node numbers
 				nface++;
-				break;
-			case(2): // linear triangles
-				nnodes[i] = 3;
-				nfaels[i] = 3;
-				nnofa = 2;
-				infile >> ntags;
-				if(ntags > ndtag) ndtag = ntags;
-				for(int j = 0; j < ntags; j++)
-					infile >> elms(i,j+nnodes[i]);		// get tags
-				for(int j = 0; j < nnodes[i]; j++)
-					infile >> elms(i,j);			// get node numbers
+			}
+			break;
+		case(2): // linear triangles
+			nnodes[i] = 3;
+			nfaels[i] = 3;
+			infile >> ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(ndim == 2) {
 				nelem++;
-				break;
-			case(3):	// linear quads
-				nnodes[i] = 4;
-				nfaels[i] = 4;
-				nnofa = 2;
-				infile >> ntags;
 				if(ntags > ndtag) ndtag = ntags;
-				for(int j = 0; j < ntags; j++)
-					infile >> elms(i,j+nnodes[i]);		// get tags
-				for(int j = 0; j < nnodes[i]; j++)
-					infile >> elms(i,j);			// get node numbers
+			} else {
+				nnofas[i] = 3;
+				nface++;
+				if(ntags > nbtag)
+					nbtag = ntags;
+				if(maxnnofa < nnofas[i])
+					maxnnofa = nnofas[i];
+				if(maxnnobfa < nnofas[i])
+					maxnnobfa = nnofas[i];
+			}
+			break;
+		case(3):	// linear quads
+			nnodes[i] = 4;
+			nfaels[i] = 4;
+			infile >> ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(ndim == 2) {
 				nelem++;
-				break;
-			case(9):	// quadratic triangles
-				nnodes[i] = 6;
-				nfaels[i] = 3;
-				nnofa = 3;
-				infile >> ntags;
 				if(ntags > ndtag) ndtag = ntags;
-				for(int j = 0; j < ntags; j++)
-					infile >> elms(i,j+nnodes[i]);		// get tags
-				for(int j = 0; j < nnodes[i]; j++)
-					infile >> elms(i,j);			// get node numbers
+			} else {
+				nnofas[i] = 4;
+				nface++;
+				if(ntags > nbtag) nbtag = ntags;
+				if(maxnnofa < nnofas[i])
+					maxnnofa = nnofas[i];
+				if(maxnnobfa < nnofas[i])
+					maxnnobfa = nnofas[i];
+			}
+			break;
+		case(9):	// quadratic triangles
+			nnodes[i] = 6;
+			nfaels[i] = 3;
+			infile >> ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(ndim == 2) {
 				nelem++;
-				break;
-			case(16):	// quadratic quad (8 nodes)
-				nnodes[i] = 8;
-				nfaels[i] = 4;
-				nnofa = 3;
-				infile >> ntags;
 				if(ntags > ndtag) ndtag = ntags;
-				for(int j = 0; j < ntags; j++)
-					infile >> elms(i,j+nnodes[i]);		// get tags
-				for(int j = 0; j < nnodes[i]; j++)
-					infile >> elms(i,j);			// get node numbers
+			} else {
+				nnofas[i] = 6;
+				nface++;
+				if(ntags > nbtag) nbtag = ntags;
+				if(maxnnofa < nnofas[i])
+					maxnnofa = nnofas[i];
+				if(maxnnobfa < nnofas[i])
+					maxnnobfa = nnofas[i];
+			}
+			break;
+		case(10):	// quadratic quad (9 nodes)
+			nnodes[i] = 9;
+			nfaels[i] = 4;
+			infile >> ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(ndim == 2) {
 				nelem++;
-				break;
-			case(10):	// quadratic quad (9 nodes)
-				nnodes[i] = 9;
-				nfaels[i] = 4;
-				nnofa = 3;
-				infile >> ntags;
 				if(ntags > ndtag) ndtag = ntags;
-				for(int j = 0; j < ntags; j++)
-					infile >> elms(i,j+nnodes[i]);		// get tags
-				for(int j = 0; j < nnodes[i]; j++)
-					infile >> elms(i,j);			// get node numbers
-				nelem++;
-				break;
-			default:
-				std::cout << "! UMesh2d: readGmsh2(): Element type not recognized.";
-				std::cout << " Setting as linear triangle." << std::endl;
-				nnodes[i] = 3;
-				nfaels[i] = 3;
-				nnofa = 2;
-				infile >> ntags;
-				if(ntags > ndtag) ndtag = ntags;
-				for(int j = 0; j < ntags; j++)
-					infile >> elms(i,j+nnodes[i]);		// get tags
-				for(int j = 0; j < nnodes[i]; j++)
-					infile >> elms(i,j);			// get node numbers
-				nelem++;
+			} else {
+				nnofas[i] = 9;
+				nface++;
+				if(ntags > nbtag) nbtag = ntags;
+				if(maxnnofa < nnofas[i])
+					maxnnofa = nnofas[i];
+				if(maxnnobfa < nnofas[i])
+					maxnnobfa = nnofas[i];
+			}
+			break;
+		case(4): // linear tets
+			nnodes[i] = 4;
+			nfaels[i] = 4;
+			infile >> ntags;
+			if(ntags > ndtag) ndtag = ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			nelem++;
+			break;
+		case(5): // linear hex
+			nnodes[i] = 8;
+			nfaels[i] = 6;
+			infile >> ntags;
+			if(ntags > ndtag) ndtag = ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(maxnnofa < 4)
+				maxnnofa = 4;
+			nelem++;
+			break;
+		case(6): // linear prism
+			nnodes[i] = 6;
+			nfaels[i] = 5;
+			infile >> ntags;
+			if(ntags > ndtag) ndtag = ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(maxnnofa < 4)
+				maxnnofa = 4;
+			nelem++;
+			break;
+		case(7): // linear pyramid
+			nnodes[i] = 5;
+			nfaels[i] = 5;
+			infile >> ntags;
+			if(ntags > ndtag) ndtag = ntags;
+			for(int j = 0; j < ntags; j++)
+				infile >> elms(i,j+nnodes[i]);		// get tags
+			for(int j = 0; j < nnodes[i]; j++)
+				infile >> elms(i,j);			// get node numbers
+			if(maxnnofa < 4)
+				maxnnofa = 4;
+			nelem++;
+			break;
+		default:
+			throw std::runtime_error("! UMesh2d: readGmsh2(): Element type not recognized.");
 		}
 	}
 	/*std::cout << "UMesh2d: readGmsh2(): Done reading elms" << std::endl;
@@ -250,28 +330,36 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			maxnfael = nfaels[i];
 	}
 
-	if(nface > 0)
-		bface.resize(nface, nnofa+nbtag);
-	else std::cout << "UMesh2d: readGmsh2(): NOTE: There is no boundary data!" << std::endl;
+	if(nface > 0) {
+		bface.resize(nface, maxnnobfa+nbtag);
+		// unoccupied positions will be -1
+		for(a_int ib = 0; ib < nface; ib++)
+			for(int j = 0; j < maxnnobfa+nbtag; j++)
+				bface(ib,j) = -1;
+		nnobfa.resize(nface);
+	}
+	else
+		throw std::runtime_error("UMesh2d: readGmsh2(): There is no boundary data!");
 
 	inpoel.resize(nelem, maxnnode);
 	vol_regions.resize(nelem, ndtag);
 
 	std::cout << "UMesh: readGmsh2(): No. of points: " << npoin 
-		<< ", number of elements: " << nelem 
-		<< ",\nnumber of boundary faces " << nface 
-		<< ", max no. of nodes per element: " << maxnnode 
-		<< ",\nno. of nodes per face: " << nnofa 
-		<< ", max faces per element: " << maxnfael << std::endl;
+	          << ", number of elements: " << nelem 
+	          << ",\nnumber of boundary faces " << nface
+	          << ", max no. of nodes per facet " << maxnnofa
+	          << ", max no. of nodes per element: " << maxnnode 
+	          << ", max faces per element: " << maxnfael << std::endl;
 
 	// write into inpoel and bface
-	// the first nface rows to be read are boundary faces
+	// the first nface rows to be read were boundary faces
 	for(int i = 0; i < nface; i++)
 	{
-		for(int j = 0; j < nnofa; j++)
+		nnobfa[i] = nnofas[i];
+		for(int j = 0; j < nnofas[i]; j++)
 			// -1 to correct for the fact that our numbering starts from zero
 			bface(i,j) = elms(i,j)-1;			
-		for(int j = nnofa; j < nnofa+nbtag; j++)
+		for(int j = nnofas[i]; j < nnofas[i]+nbtag; j++)
 			bface(i,j) = elms(i,j);
 	}
 	for(int i = 0; i < nelem; i++)
@@ -289,10 +377,13 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	flag_bpoin.resize(npoin,1);
 	flag_bpoin.zeros();
 	for(int i = 0; i < nface; i++)
-		for(int j = 0; j < nnofa; j++)
-			flag_bpoin(bface(i,j)) = 1;
+		for(int j = 0; j < maxnnobfa; j++)
+			if(bface(i,j) >= 0)
+				flag_bpoin(bface(i,j)) = 1;
 }
 
+/** \todo Generalize to 3D
+ */
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 {
@@ -548,6 +639,8 @@ void UMesh<scalar,ndim>::printmeshstats() const
 		<< ", max no. of faces per element: " << maxnfael << std::endl;
 }
 
+/** \todo Generalize to 3D
+ */
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
 {

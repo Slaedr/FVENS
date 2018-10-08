@@ -305,7 +305,9 @@ private:
 	int maxnnode;                   ///< Maximum number of nodes per element for any element
 	std::vector<int> nfael;         ///< number of faces to an element for each element
 	int maxnfael;                   ///< Maximum number of faces per element for any element
-	std::vector<int> nnofa;         ///< number of nodes in a face for each face
+	int maxnnofa;                   ///< Maximum number of nodes per face for any face
+	std::vector<int> nnofa;         ///< number of nodes in a face for each face in \ref intfac
+	std::vector<int> nnobfa;        ///< Numbef of nodes in each boundary face, ordered as \ref bface
 	a_int naface;                   ///< total number of (internal and boundary) faces
 	a_int nbface;                   ///< number of boundary faces as calculated \sa compute_topological
 	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
