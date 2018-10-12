@@ -108,13 +108,13 @@ protected:
 	/** \param iface The \ref intfac index of the face at which the gradient is to be computed
 	 * \param ucl The left cell-centred state
 	 * \param ucr The right cell-centred state
-	 * \param gradl Left cell-centred gradients
-	 * \param gradr Right cell-centred gradients
+	 * \param gradl Left cell-centred gradients (ndim x nvars flattened array)
+	 * \param gradr Right cell-centred gradients (ndim x nvars flattened array)
 	 * \param[out] grad Face gradients
 	 */
 	void getFaceGradient_modifiedAverage(const a_int iface,
 		const scalar *const ucl, const scalar *const ucr,
-		const scalar gradl[NDIM][nvars], const scalar gradr[NDIM][nvars], scalar grad[NDIM][nvars])
+		const scalar *const gradl, const scalar *const gradr, scalar grad[NDIM][nvars])
 		const;
 
 	/// Computes the thin-layer face gradient and its Jacobian w.r.t. the left and right states

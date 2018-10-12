@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include "physics/viscousphysics.hpp"
 #include "utilities/afactory.hpp"
 #include "abctypemap.hpp"
 #include "flow_spatial.hpp"
@@ -314,121 +315,55 @@ FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
-::computeViscousFlux(const a_int iface,
-                     const scalar *const ucell_l, const scalar *const ucell_r,
-                     const amat::Array2d<scalar>& ug,
-                     const GradArray<scalar,NVARS>& grads,
-                     const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
-                     scalar *const __restrict vflux) const
+::compute_viscous_flux(const a_int iface,
+                       const scalar *const ucell_l, const scalar *const ucell_r,
+                       const amat::Array2d<scalar>& ug,
+                       const GradArray<scalar,NVARS>& grads,
+                       const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+                       scalar *const __restrict vflux) const
 {
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int relem = m->gintfac(iface,1);
-
-	/* Get proper state variables and grads at cell centres
-	 * we start with left- and right- conserved variables, primitive ghost cell-center states and
-	 * either conservative or primitive gradients
-	 */
+	const std::array<scalar,NDIM> normal = m->gnormal(iface);
 
 	// cell-centred left and right states
 	scalar ucl[NVARS], ucr[NVARS];
 	// left and right gradients; zero for first order scheme
-	scalar gradl[NDIM][NVARS], gradr[NDIM][NVARS];
-	
-	for(int i = 0; i < NVARS; i++) 
-	{
-		ucl[i] = ucell_l[i];
-		
-		for(int j = 0; j < NDIM; j++) {
-			gradl[j][i] = 0; 
-			gradr[j][i] = 0;
-		}
-	}
+	scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
+
+	const scalar *in_ucr = nullptr, *in_gradl = nullptr, *in_gradr = nullptr;
 	
 	if(iface < m->gnbface())
 	{
 		// boundary face
-		
 		if(secondOrderRequested)
 		{
-			for(int i = 0; i < NVARS; i++) {
-				ucr[i] = ug(iface,i);
-			}
-	
-			// note: these copies are necessary because we need row-major raw C arrays for
-			// the physics operations later in the function
-			for(int j = 0; j < NDIM; j++)
-				for(int i = 0; i < NVARS; i++) {
-					gradl[j][i] = grads[lelem](j,i);
-				}
-
-			// If gradients are those of primitive variables,
-			// convert cell-centred variables to primitive; we need primitive variables
-			// to compute temperature gradient from primitive gradients.
-			// ug was already primitive, so don't convert ucr.
-			physics.getPrimitiveFromConserved(ucl, ucl);
-			
-			// get one-sided temperature gradients from one-sided primitive gradients
-			// and discard grad p in favor of grad T.
-			for(int j = 0; j < NDIM; j++)
-				gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
-							ucl[NVARS-1], gradl[j][NVARS-1]);
+			in_ucr = &ug(iface,0);
 
 			// Use the same gradients on both sides of a boundary face;
 			// this will amount to just using the one-sided gradient for the modified average
 			// gradient later.
-			for(int i = 0; i < NVARS; i++) {
-				gradr[0][i] = gradl[0][i]; 
-				gradr[1][i] = gradl[1][i];
-			}
+			in_gradl = &grads[lelem](0,0);
+			in_gradr = &grads[lelem](0,0);
 		}
 		else
 		{
-			// if second order was not requested, boundary values are stored in ur, not ug
-			for(int i = 0; i < NVARS; i++) {
-				ucr[i] = ur(iface,i);
-			}
+			// if second order was not requested, ghost cell values are stored in ur, not ug
+			in_ucr = &ur(iface,0);
 		}
 	}
 	else
 	{
-		for(int i = 0; i < NVARS; i++) {
-			ucr[i] = ucell_r[i];
-		}
-
-		if(secondOrderRequested)
-		{
-			for(int j = 0; j < NDIM; j++)
-				for(int i = 0; i < NVARS; i++) {
-					gradl[j][i] = grads[lelem](j,i);
-					gradr[j][i] = grads[relem](j,i);
-				}
-
-			physics.getPrimitiveFromConserved(ucl, ucl);
-			physics.getPrimitiveFromConserved(ucr, ucr);
-			
-			/* get one-sided temperature gradients from one-sided primitive gradients
-			 * and discard grad p in favor of grad T.
-			 */
-			for(int j = 0; j < NDIM; j++) {
-				gradl[j][NVARS-1] = physics.getGradTemperature(ucl[0], gradl[j][0],
-							ucl[NVARS-1], gradl[j][NVARS-1]);
-				gradr[j][NVARS-1] = physics.getGradTemperature(ucr[0], gradr[j][0],
-							ucr[NVARS-1], gradr[j][NVARS-1]);
-			}
+		in_ucr = ucell_r;
+		if(secondOrderRequested) {
+			in_gradl = &grads[lelem](0,0);
+			in_gradr = &grads[relem](0,0);
 		}
 	}
 
-	// convert cell-centred variables to primitive-2
-	if(secondOrderRequested)
-	{
-		ucl[NVARS-1] = physics.getTemperature(ucl[0], ucl[NVARS-1]);
-		ucr[NVARS-1] = physics.getTemperature(ucr[0], ucr[NVARS-1]);
-	}
-	else
-	{
-		physics.getPrimitive2FromConserved(ucl, ucl);
-		physics.getPrimitive2FromConserved(ucr, ucr);
-	}
+	getPrimitive2StateAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
+	                                                                 in_gradl, in_gradr,
+	                                                                 ucl, ucr, gradl, gradr);
 
 	/* Compute modified averages of primitive-2 variables and their gradients.
 	 * This is the only finite-volume part of this function, rest is physics and chain rule.
@@ -440,54 +375,8 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
 	 * primitive-2 face gradients and conserved face variables.
 	 */
-	
-	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const scalar muRe = constVisc ? 
-			physics.getConstantViscosityCoeff() 
-		:
-			0.5*( physics.getViscosityCoeffFromConserved(&ul(iface,0))
-			+ physics.getViscosityCoeffFromConserved(&ur(iface,0)) );
-	
-	// Non-dimensional thermal conductivity
-	const scalar kdiff = physics.getThermalConductivityFromViscosity(muRe); 
-
-	scalar stress[NDIM][NDIM];
-	for(int i = 0; i < NDIM; i++)
-		for(int j = 0; j < NDIM; j++)
-			stress[i][j] = 0;
-	
-	physics.getStressTensor(muRe, grad, stress);
-
-	vflux[0] = 0;
-	
-	for(int i = 0; i < NDIM; i++)
-	{
-		vflux[i+1] = 0;
-		for(int j = 0; j < NDIM; j++)
-			vflux[i+1] -= stress[i][j] * m->gfacemetric(iface,j);
-	}
-
-	// for the energy dissipation, compute avg velocities first
-	scalar vavg[NDIM];
-	for(int j = 0; j < NDIM; j++)
-		vavg[j] = 0.5*( ul(iface,j+1)/ul(iface,0) + ur(iface,j+1)/ur(iface,0) );
-
-	vflux[NVARS-1] = 0;
-	for(int i = 0; i < NDIM; i++)
-	{
-		scalar comp = 0;
-		
-		for(int j = 0; j < NDIM; j++)
-			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction etc)
-		
-		comp += kdiff*grad[i][NVARS-1];         // dissipation by heat flux
-
-		vflux[NVARS-1] -= comp * m->gfacemetric(iface,i);
-	}
-
-	/* vflux is assigned all negative quantities, as should be the case when the residual is
-	 * assumed to be on the left of the equals sign: du/dt + r(u) = 0.
-	 */
+	computeViscousFlux<scalar,NDIM,NVARS,constVisc>(physics, &normal[0], grad,
+	                                                &ul(iface,0), &ur(iface,0), vflux);
 }
 
 template<typename scalar, bool secondOrder, bool constVisc>
@@ -774,12 +663,17 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 	// set right (ghost) state for boundary faces
 	compute_boundary_states(uleft,uright);
 
-	/** Compute fluxes.
-	 * The integral of the maximum magnitude of eigenvalue over each face is also computed:
+	// Compute fluxes.
+	/**
+	 * The integral of the spectral radius of the (one-sided analytical) flux Jacobian over
+	 * each face \f$ f_i \f$ is also computed and summed over for each cell \f$ K \f$:
 	 * \f[
-	 * \int_{f_i} (|v_n| + c) \mathrm{d}l
+	 * \sum_{f_i \in \partial K} \int_{f_i} (|v_n| + c + \lamba_v) \mathrm{d}\gamma
 	 * \f]
-	 * so that time steps can be calculated for explicit time stepping.
+	 * so that time steps can be calculated for explicit time stepping and/or steady problems.
+	 * Note that the reconstructed state is used to compute the spectral radius.
+	 * \f$ \lambda_v \f$ is an estimate of the spectral radius of the viscous flux Jacobian, taken
+	 * from \cite{blazek}.
 	 */
 
 #pragma omp parallel default(shared)
@@ -806,8 +700,8 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 				// get viscous fluxes
 				scalar vflux[NVARS];
 				const scalar *const urt = (ied < m->gnbface()) ? nullptr : &uarr[relem*NVARS];
-				computeViscousFlux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright, 
-						vflux);
+				compute_viscous_flux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright, 
+				                     vflux);
 
 				for(int ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] += vflux[ivar]*len;
@@ -835,7 +729,8 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 				const scalar vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
 				const scalar vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
 
-				scalar specradi = (fabs(vni)+ci)*len, specradj = (fabs(vnj)+cj)*len;
+				scalar specradi = (fabs(vni)+ci)*len;
+				scalar specradj = (fabs(vnj)+cj)*len;
 
 				if(pconfig.viscous_sim) 
 				{
@@ -848,8 +743,8 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 						mui = physics.getViscosityCoeffFromConserved(&uleft(ied,0));
 						muj = physics.getViscosityCoeffFromConserved(&uright(ied,0));
 					}
-					scalar coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
-					scalar coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
+					const scalar coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
+					const scalar coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
 					
 					specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
 					if(relem < m->gnelem())

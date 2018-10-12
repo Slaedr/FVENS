@@ -199,11 +199,14 @@ public:
 
 	/// Convert conserved variables to primitive variables (density, velocities, pressure)
 	/** The input pointers are not assumed restricted, so the two parameters can point to
-	 * the same storage.
+	 * the same storage. The output is assigned to, not updated.
 	 */
 	void getPrimitiveFromConserved(const scalar *const uc, scalar *const up) const;
 	
 	/// Convert conserved variables to primitive-2 variables; depends on non-dimensionalization
+	/** The output is assigned to, not updated. So both input and output can point to the same
+	 * storage.
+	 */
 	void getPrimitive2FromConserved(const scalar *const uc, scalar *const up) const;
 	
 	/// Computes the Jacobian matrix of the conserved-to-primitive-2 transformation

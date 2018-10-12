@@ -254,21 +254,20 @@ protected:
 	 * \param[in] ucell_r Cell-centred conserved variables on right side of the face
 	 *             Note that for boundary faces, this can be NULL because ug is used instead.
 	 * \param[in] ug Ghost cell-centred primitive variables
-	 * \param[in] dudx Cell-centred gradients ("optional")
-	 * \param[in] dudy Cell-centred gradients ("optional", see below)
+	 * \param[in] grads Cell-centred gradients ("optional", see below)
 	 * \param[in] ul Left state of faces (conserved variables)
 	 * \param[in] ul Right state of faces (conserved variables)
 	 * \param[in,out] vflux On output, contains the viscous flux across the face
 	 *
-	 * Note that dudx and dudy can be unallocated if only first-order fluxes are being computed,
+	 * Note that grads can be unallocated if only first-order fluxes are being computed,
 	 * but ul and ur are always used.
 	 */
-	void computeViscousFlux(
-			const a_int iface, const scalar *const ucell_l, const scalar *const ucell_r,
-			const amat::Array2d<scalar>& ug,
-			const GradArray<scalar,NVARS>& grads,
-			const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
-			scalar *const vflux) const;
+	void compute_viscous_flux(const a_int iface,
+	                          const scalar *const ucell_l, const scalar *const ucell_r,
+	                          const amat::Array2d<scalar>& ug,
+	                          const GradArray<scalar,NVARS>& grads,
+	                          const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+	                          scalar *const vflux) const;
 
 	/// Compues the first-order "thin-layer" viscous flux Jacobian
 	/** This is the same sign as is needed in the residual; note that the viscous flux Jacobian is

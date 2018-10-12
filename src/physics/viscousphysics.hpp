@@ -13,6 +13,9 @@ namespace fvens {
 /// Computes primitive-2 variables and temperature grad from conserved variables and primitive grads
 /** The output variables can then be used to compute unique face gradients using
  *   finite volume techniques such as modified averaging, for example.
+ *   
+ * Corresponding input and output variables can point to the same locations.
+ * 
  * \param[in] physics The gas physics context to use
  * \param[in] ucl Cell-centred conserved variables on left side of the face
  * \param[in] ucr Cell-centred conserved variables on right side of the face

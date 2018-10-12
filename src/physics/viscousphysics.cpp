@@ -22,11 +22,10 @@ void getPrimitive2StateAndGradients(const IdealGasPhysics<scalar>& physics,
 	 * primitive gradients
 	 */
 
-	// Left and right cell-centered primitive variables
-	for(int i = 0; i < nvars; i++) {
+	/*for(int i = 0; i < nvars; i++) {
 		uctl[i] = 0;
 		uctr[i] = 0;
-	}
+		}*/
 
 	if(secondOrderRequested)
 	{
