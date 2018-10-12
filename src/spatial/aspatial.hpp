@@ -48,8 +48,12 @@ public:
 	
 	/// Computes the residual and local time steps
 	/** By convention, we need to compute the negative of the nonlinear function whose root
-	 * we want to find. For pseudo time-stepping, the output should be -r(u), where the ODE is
+	 * we want to find. Note that our nonlinear function or residual is defined (for steady problems) as
+	 * the sum (over all cells) of net outgoing fluxes from each cell
+	 * \f$ r(u) = \sum_K \int_{\partial K} F \hat{n} d\gamma \f$ where $f K $f denotes a cell.
+	 * For pseudo time-stepping, the output should be -r(u), where the ODE is
 	 * M du/dt + r(u) = 0.
+	 *
 	 * \param[in] u The state at which the residual is to be computed
 	 * \param[in|out] residual The residual is added to this
 	 * \param[in] gettimesteps Whether time-step computation is required
@@ -58,7 +62,7 @@ public:
 	virtual StatusCode assemble_residual(const Vec u, Vec residual, 
 			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
 	
-	/// Computes the Jacobian matrix of the residual r(u)
+	/// Computes the Jacobian matrix of the residual r(u) \sa assemble_residual
 	/** It is supposed to compute dr/du when we want to solve [M du/dt +] r(u) = 0.
 	 */
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;

@@ -247,13 +247,13 @@ protected:
 	/// Boundary conditions objects used for building the Jacobian
 	const std::map<int,const FlowBC<a_real>*> jbcs;
 
-	/// Computes viscous flux across a face
+	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] ucell_l Cell-centred conserved variables on left side of the face
 	 * \param[in] ucell_r Cell-centred conserved variables on right side of the face
 	 *             Note that for boundary faces, this can be NULL because ug is used instead.
-	 * \param[in] ug Ghost cell-centred conserved variables
+	 * \param[in] ug Ghost cell-centred primitive variables
 	 * \param[in] dudx Cell-centred gradients ("optional")
 	 * \param[in] dudy Cell-centred gradients ("optional", see below)
 	 * \param[in] ul Left state of faces (conserved variables)

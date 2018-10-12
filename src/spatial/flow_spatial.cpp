@@ -325,7 +325,8 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	const a_int relem = m->gintfac(iface,1);
 
 	/* Get proper state variables and grads at cell centres
-	 * we start with all conserved variables and either conservative or primitive gradients
+	 * we start with left- and right- conserved variables, primitive ghost cell-center states and
+	 * either conservative or primitive gradients
 	 */
 
 	// cell-centred left and right states
@@ -388,7 +389,8 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 			}
 		}
 	}
-	else {
+	else
+	{
 		for(int i = 0; i < NVARS; i++) {
 			ucr[i] = ucell_r[i];
 		}
@@ -717,7 +719,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 
 		MVector<scalar> up(m->gnelem(), NVARS);
 
-		// convert everything to primitive variables
+		// convert cell-centered state vectors to primitive variables
 #pragma omp parallel default(shared)
 		{
 #pragma omp for
