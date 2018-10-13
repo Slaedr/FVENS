@@ -281,16 +281,18 @@ protected:
 	 * \param[in,out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
 	 *   NVARS x NVARS array stored as a 1D row-major array
 	 */
-	void computeViscousFluxJacobian(const a_int iface,
-			const a_real *const ul, const a_real *const ur,
-			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
+	void compute_viscous_flux_jacobian(const a_int iface,
+	                                   const a_real *const ul, const a_real *const ur,
+	                                   a_real *const __restrict vfluxi,
+	                                   a_real *const __restrict vfluxj) const;
 
 	/// Computes the spectral radius of the thin-layer Jacobian times the identity matrix
-	/** The inputs are same as \ref computeViscousFluxJacobian.
+	/** The inputs are same as \ref compute_viscous_flux_jacobian
 	 */
-	void computeViscousFluxApproximateJacobian(const a_int iface,
-			const a_real *const ul, const a_real *const ur,
-			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
+	void compute_viscous_flux_approximate_jacobian(const a_int iface,
+	                                               const a_real *const ul, const a_real *const ur,
+	                                               a_real *const __restrict vfluxi,
+	                                               a_real *const __restrict vfluxj) const;
 };
 
 }

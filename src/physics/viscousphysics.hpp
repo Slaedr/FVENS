@@ -57,6 +57,27 @@ void computeViscousFlux(const IdealGasPhysics<scalar>& physics, const scalar *co
                         const scalar *const ul, const scalar *const ur,
                         scalar *const __restrict vflux);
 
+/// Computes the Jacobians of the viscous flux w.r.t. left and right cell-centered states
+/** \todo Test this routine
+ * \param[in] jphysics The physics context to use
+ * \param[in] n Normal vector
+ * \param[in] ul Left conserved state
+ * \param[in] ur Right conserved state
+ * \param[in] grad The unique gradient at the face
+ * \param[in] dgradl The Jacobian of the face gradient w.r.t. left conserved state
+ * \param[in] dgradr The Jacobian of the face gradient w.r.t. right conserved state
+ * \param[in|out] dvfi Jacobian of viscous flux across the face w.r.t. left conserved state
+ * \param[in|out] dvfj Jacobian of viscous flux across the face w.r.t. right conserved state
+ */
+template<typename scalar, int ndim, int nvars, bool constVisc>
+void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphysics,
+                                const scalar *const n,
+                                const scalar *const ul, const scalar *const ur,
+                                const scalar grad[ndim][nvars],
+                                const scalar dgradl[ndim][nvars][nvars],
+                                const scalar dgradr[ndim][nvars][nvars],
+                                scalar *const __restrict dvfi, scalar *const __restrict dvfj);
+
 }
 
 #endif

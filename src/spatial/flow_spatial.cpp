@@ -398,11 +398,11 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 }
 
 template<typename scalar, bool secondOrder, bool constVisc>
-void FlowFV<scalar,secondOrder,constVisc>::computeViscousFluxJacobian(const a_int iface,
-		const a_real *const ul, const a_real *const ur,
-		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
+void FlowFV<scalar,secondOrder,constVisc>
+::compute_viscous_flux_jacobian(const a_int iface,
+                                const a_real *const ul, const a_real *const ur,
+                                a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
-	a_real vflux[NVARS];             // output variable to be differentiated
 	a_real upr[NVARS], upl[NVARS];
 
 	a_real dupr[NVARS*NVARS], dupl[NVARS*NVARS];
@@ -432,124 +432,17 @@ void FlowFV<scalar,secondOrder,constVisc>::computeViscousFluxJacobian(const a_in
 
 	getFaceGradientAndJacobian_thinLayer(iface, upl, upr, dupl, dupr, grad, dgradl, dgradr);
 
-	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
-	 * primitive-2 face gradients and conserved face variables.
-	 */
-	
-	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const a_real muRe = constVisc ? 
-			jphy.getConstantViscosityCoeff() 
-		:
-			0.5*( jphy.getViscosityCoeffFromConserved(ul)
-			+ jphy.getViscosityCoeffFromConserved(ur) );
-	
-	// Non-dimensional thermal conductivity
-	const a_real kdiff = jphy.getThermalConductivityFromViscosity(muRe); 
-
-	a_real dmul[NVARS], dmur[NVARS], dkdl[NVARS], dkdr[NVARS];
-	for(int k = 0; k < NVARS; k++) {
-		dmul[k] = 0; dmur[k] = 0; dkdl[k] = 0; dkdr[k] = 0;
-	}
-
-	if(!constVisc) {
-		jphy.getJacobianSutherlandViscosityWrtConserved(ul, dmul);
-		jphy.getJacobianSutherlandViscosityWrtConserved(ur, dmur);
-		for(int k = 0; k < NVARS; k++) {
-			dmul[k] *= 0.5;
-			dmur[k] *= 0.5;
-		}
-		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
-		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
-	}
-	
-	a_real stress[NDIM][NDIM], dstressl[NDIM][NDIM][NVARS], dstressr[NDIM][NDIM][NVARS];
-	for(int i = 0; i < NDIM; i++)
-		for(int j = 0; j < NDIM; j++) 
-		{
-			stress[i][j] = 0;
-			for(int k = 0; k < NVARS; k++) {
-				dstressl[i][j][k] = 0;
-				dstressr[i][j][k] = 0;
-			}
-		}
-	
-	jphy.getJacobianStress(muRe, dmul, grad, dgradl, stress, dstressl);
-	jphy.getJacobianStress(muRe, dmur, grad, dgradr, stress, dstressr);
-
-	vflux[0] = 0;
-	
-	for(int i = 0; i < NDIM; i++)
-	{
-		vflux[i+1] = 0;
-		for(int j = 0; j < NDIM; j++)
-		{
-			vflux[i+1] -= stress[i][j] * m->gfacemetric(iface,j);
-
-			for(int k = 0; k < NVARS; k++) {
-				dvfi[(i+1)*NVARS+k] += dstressl[i][j][k] * m->gfacemetric(iface,j);
-				dvfj[(i+1)*NVARS+k] -= dstressr[i][j][k] * m->gfacemetric(iface,j);
-			}
-		}
-	}
-
-	// for the energy dissipation, compute avg velocities first
-	a_real vavg[NDIM], dvavgl[NDIM][NVARS], dvavgr[NDIM][NVARS];
-	for(int j = 0; j < NDIM; j++)
-	{
-		vavg[j] = 0.5*( ul[j+1]/ul[0] + ur[j+1]/ur[0] );
-
-		for(int k = 0; k < NVARS; k++) {
-			dvavgl[j][k] = 0;
-			dvavgr[j][k] = 0;
-		}
-		
-		dvavgl[j][0] = -0.5*ul[j+1]/(ul[0]*ul[0]);
-		dvavgr[j][0] = -0.5*ur[j+1]/(ur[0]*ur[0]);
-		
-		dvavgl[j][j+1] = 0.5/ul[0];
-		dvavgr[j][j+1] = 0.5/ur[0];
-	}
-
-	vflux[NVARS-1] = 0;
-	for(int i = 0; i < NDIM; i++)
-	{
-		a_real comp = 0;
-		a_real dcompl[NVARS], dcompr[NVARS];
-		for(int k = 0; k < NVARS; k++) {
-			dcompl[k] = 0;
-			dcompr[k] = 0;
-		}
-		
-		for(int j = 0; j < NDIM; j++) 
-		{
-			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction)
-			
-			for(int k = 0; k < NVARS; k++) {
-				dcompl[k] += dstressl[i][j][k]*vavg[j] + stress[i][j]*dvavgl[j][k];
-				dcompr[k] += dstressr[i][j][k]*vavg[j] + stress[i][j]*dvavgr[j][k];
-			}
-		}
-		
-		comp += kdiff*grad[i][NVARS-1];         // dissipation by heat flux
-
-		for(int k = 0; k < NVARS; k++) {
-			dcompl[k] += dkdl[k]*grad[i][NVARS-1] + kdiff*dgradl[i][NVARS-1][k];
-			dcompr[k] += dkdr[k]*grad[i][NVARS-1] + kdiff*dgradr[i][NVARS-1][k];
-		}
-
-		vflux[NVARS-1] -= comp * m->gfacemetric(iface,i);
-
-		for(int k = 0; k < NVARS; k++) {
-			dvfi[(NVARS-1)*NVARS+k] += dcompl[k] * m->gfacemetric(iface,i);
-			dvfj[(NVARS-1)*NVARS+k] -= dcompr[k] * m->gfacemetric(iface,i);
-		}
-	}
+	const std::array<scalar,NDIM> n = m->gnormal(iface);
+	computeViscousFluxJacobian<scalar,NDIM,NVARS,constVisc>(jphy, &n[0], ul, ur, grad, dgradl, dgradr,
+	                                                        dvfi, dvfj);
 }
 
 template<typename scalar, bool secondOrder, bool constVisc>
-void FlowFV<scalar,secondOrder,constVisc>::computeViscousFluxApproximateJacobian(const a_int iface,
-		const a_real *const ul, const a_real *const ur,
-		a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
+void FlowFV<scalar,secondOrder,constVisc>
+::compute_viscous_flux_approximate_jacobian(const a_int iface,
+                                            const a_real *const ul, const a_real *const ur,
+                                            a_real *const __restrict dvfi,
+                                            a_real *const __restrict dvfj) const
 {
 	// compute non-dimensional viscosity and thermal conductivity
 	const a_real muRe = constVisc ? 
@@ -824,9 +717,9 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 		jflux->get_jacobian(&uarr[lelem*NVARS], uface, &n[0], &left(0,0), &right(0,0));
 
 		if(pconfig.viscous_sim) {
-			//computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], uface, 
+			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface, 
 			//		&left(0,0), &right(0,0));
-			computeViscousFluxJacobian(iface,&uarr[lelem*NVARS],uface, &left(0,0), &right(0,0));
+			compute_viscous_flux_jacobian(iface,&uarr[lelem*NVARS],uface, &left(0,0), &right(0,0));
 		}
 		
 		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
@@ -861,10 +754,10 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 		jflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
 
 		if(pconfig.viscous_sim) {
-			//computeViscousFluxApproximateJacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
+			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
 			//		&L(0,0), &U(0,0));
-			computeViscousFluxJacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
-					&L(0,0), &U(0,0));
+			compute_viscous_flux_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
+			                              &L(0,0), &U(0,0));
 		}
 
 		L *= len; U *= len;
