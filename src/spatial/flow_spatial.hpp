@@ -247,28 +247,27 @@ protected:
 	/// Boundary conditions objects used for building the Jacobian
 	const std::map<int,const FlowBC<a_real>*> jbcs;
 
-	/// Computes viscous flux across a face
+	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index
 	 * \param[in] ucell_l Cell-centred conserved variables on left side of the face
 	 * \param[in] ucell_r Cell-centred conserved variables on right side of the face
 	 *             Note that for boundary faces, this can be NULL because ug is used instead.
-	 * \param[in] ug Ghost cell-centred conserved variables
-	 * \param[in] dudx Cell-centred gradients ("optional")
-	 * \param[in] dudy Cell-centred gradients ("optional", see below)
+	 * \param[in] ug Ghost cell-centred primitive variables
+	 * \param[in] grads Cell-centred gradients ("optional", see below)
 	 * \param[in] ul Left state of faces (conserved variables)
-	 * \param[in] ul Right state of faces (conserved variables)
+	 * \param[in] ur Right state of faces (conserved variables)
 	 * \param[in,out] vflux On output, contains the viscous flux across the face
 	 *
-	 * Note that dudx and dudy can be unallocated if only first-order fluxes are being computed,
+	 * Note that grads can be unallocated if only first-order fluxes are being computed,
 	 * but ul and ur are always used.
 	 */
-	void computeViscousFlux(
-			const a_int iface, const scalar *const ucell_l, const scalar *const ucell_r,
-			const amat::Array2d<scalar>& ug,
-			const GradArray<scalar,NVARS>& grads,
-			const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
-			scalar *const vflux) const;
+	void compute_viscous_flux(const a_int iface,
+	                          const scalar *const ucell_l, const scalar *const ucell_r,
+	                          const amat::Array2d<scalar>& ug,
+	                          const GradArray<scalar,NVARS>& grads,
+	                          const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+	                          scalar *const vflux) const;
 
 	/// Compues the first-order "thin-layer" viscous flux Jacobian
 	/** This is the same sign as is needed in the residual; note that the viscous flux Jacobian is
@@ -282,16 +281,18 @@ protected:
 	 * \param[in,out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
 	 *   NVARS x NVARS array stored as a 1D row-major array
 	 */
-	void computeViscousFluxJacobian(const a_int iface,
-			const a_real *const ul, const a_real *const ur,
-			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
+	void compute_viscous_flux_jacobian(const a_int iface,
+	                                   const a_real *const ul, const a_real *const ur,
+	                                   a_real *const __restrict vfluxi,
+	                                   a_real *const __restrict vfluxj) const;
 
 	/// Computes the spectral radius of the thin-layer Jacobian times the identity matrix
-	/** The inputs are same as \ref computeViscousFluxJacobian.
+	/** The inputs are same as \ref compute_viscous_flux_jacobian
 	 */
-	void computeViscousFluxApproximateJacobian(const a_int iface,
-			const a_real *const ul, const a_real *const ur,
-			a_real *const __restrict vfluxi, a_real *const __restrict vfluxj) const;
+	void compute_viscous_flux_approximate_jacobian(const a_int iface,
+	                                               const a_real *const ul, const a_real *const ur,
+	                                               a_real *const __restrict vfluxi,
+	                                               a_real *const __restrict vfluxj) const;
 };
 
 }

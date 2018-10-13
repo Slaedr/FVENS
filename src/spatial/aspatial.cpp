@@ -168,10 +168,11 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<s
 }
 
 template <typename scalar, int nvars>
-void Spatial<scalar,nvars>::getFaceGradient_modifiedAverage(const a_int iface,
-		const scalar *const ucl, const scalar *const ucr,
-		const scalar gradl[NDIM][nvars], const scalar gradr[NDIM][nvars], scalar grad[NDIM][nvars])
-	const
+void Spatial<scalar,nvars>::
+getFaceGradient_modifiedAverage(const a_int iface,
+                                const scalar *const ucl, const scalar *const ucr,
+                                const scalar *const gradl, const scalar *const gradr,
+                                scalar grad[NDIM][nvars]) const
 {
 	scalar dr[NDIM], dist=0;
 	const a_int lelem = m->gintfac(iface,0);
@@ -191,7 +192,7 @@ void Spatial<scalar,nvars>::getFaceGradient_modifiedAverage(const a_int iface,
 		scalar davg[NDIM];
 		
 		for(int j = 0; j < NDIM; j++)
-			davg[j] = 0.5*(gradl[j][i] + gradr[j][i]);
+			davg[j] = 0.5*(gradl[j*nvars+i] + gradr[j*nvars+i]);
 
 		const scalar corr = (ucr[i]-ucl[i])/dist;
 		

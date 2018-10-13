@@ -60,5 +60,5 @@ if(WITH_BLASTED)
 	  COMMAND ${SEQEXEC} ${SEQTASKS} sh testbench.sh
 	  ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.ctrl 
 	  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.solverc
-	  --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylquad3.msh )
+	  --mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad3.msh )
 endif()
