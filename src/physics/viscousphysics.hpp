@@ -32,11 +32,11 @@ namespace fvens {
  * Note that `primtive 2' variables are density, velocities and temperature.
  */
 template<typename scalar, int ndim, bool secondOrderRequested>
-void getPrimitive2StateAndGradients(const IdealGasPhysics<scalar>& physics,
-                                    const scalar *const ucl, const scalar *const ucr,
-                                    const scalar *const gradl, const scalar *const gradr,
-                                    scalar *const uctl, scalar *const uctr,
-                                    scalar *const gradtl, scalar *const gradtr);
+void getPrimitive2StatesAndGradients(const IdealGasPhysics<scalar>& physics,
+                                     const scalar *const ucl, const scalar *const ucr,
+                                     const scalar *const gradl, const scalar *const gradr,
+                                     scalar *const uctl, scalar *const uctr,
+                                     scalar *const gradtl, scalar *const gradtr);
 
 /// Computes viscous flux across a face at one point
 /** Note that the flux computed here must then be integrated on the face
@@ -46,7 +46,7 @@ void getPrimitive2StateAndGradients(const IdealGasPhysics<scalar>& physics,
  *  
  * \param[in] physics The gas physics context to use
  * \param[in] n Normal vector to the face
- * \param[in] grad Unique gradients of primitive variables at the face quadrature point
+ * \param[in] grad Unique gradients of primitive 2 variables at the face quadrature point
  * \param[in] ul Left state of faces (conserved variables)
  * \param[in] ul Right state of faces (conserved variables)
  * \param[in,out] vflux On output, contains the viscous flux across the face

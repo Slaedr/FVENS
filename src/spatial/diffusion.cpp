@@ -132,15 +132,15 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		const a_int relem = m->gintfac(iface,1);
 		const a_real len = m->gfacemetric(iface,2);
 		
-		/*a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
 		for(int ivar = 0; ivar < nvars; ivar++) {
 			for(int idim = 0; idim < NDIM; idim++) {
 				gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
 				gradr[idim*nvars+ivar] = grads[relem](idim,ivar);
 			}
-			}*/
-		const a_real *const gradl = &grads[lelem](0,0);
-		const a_real *const gradr = &grads[relem](0,0);
+		}
+		// const a_real *const gradl = &grads[lelem](0,0);
+		// const a_real *const gradr = &grads[relem](0,0);
 	
 		a_real gradf[NDIM][nvars];
 		getFaceGradient_modifiedAverage
@@ -168,15 +168,15 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		const a_int lelem = m->gintfac(iface,0);
 		const a_real len = m->gfacemetric(iface,2);
 		
-		/*a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
 		for(int ivar = 0; ivar < nvars; ivar++) {
 			for(int idim = 0; idim < NDIM; idim++) {
 				gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
 				gradr[idim*nvars+ivar] = grads[lelem](idim,ivar);
 			}
-		}*/
-		const a_real *const gradl = &grads[lelem](0,0);
-		const a_real *const gradr = &grads[lelem](0,0);
+		}
+		// const a_real *const gradl = &grads[lelem](0,0);
+		// const a_real *const gradr = &grads[lelem](0,0);
 
 		a_real gradf[NDIM][nvars];
 		getFaceGradient_modifiedAverage

@@ -172,8 +172,7 @@ void Spatial<scalar,nvars>::
 getFaceGradient_modifiedAverage(const a_int iface,
                                 const scalar *const ucl, const scalar *const ucr,
                                 const scalar *const gradl, const scalar *const gradr,
-                                scalar grad[NDIM][nvars])
-	const
+                                scalar grad[NDIM][nvars]) const
 {
 	scalar dr[NDIM], dist=0;
 	const a_int lelem = m->gintfac(iface,0);

@@ -8,11 +8,11 @@
 namespace fvens {
 
 template<typename scalar, int ndim, bool secondOrderRequested>
-void getPrimitive2StateAndGradients(const IdealGasPhysics<scalar>& physics,
-                                    const scalar *const ucl, const scalar *const ucr,
-                                    const scalar *const gradl, const scalar *const gradr,
-                                    scalar *const uctl, scalar *const uctr,
-                                    scalar *const gradtl, scalar *const gradtr)
+void getPrimitive2StatesAndGradients(const IdealGasPhysics<scalar>& physics,
+                                     const scalar *const ucl, const scalar *const ucr,
+                                     const scalar *const gradl, const scalar *const gradr,
+                                     scalar *const uctl, scalar *const uctr,
+                                     scalar *const gradtl, scalar *const gradtr)
 {
 	static_assert(ndim == NDIM, "3D not implemented yet.");
 	constexpr int nvars = ndim+2;
@@ -37,18 +37,18 @@ void getPrimitive2StateAndGradients(const IdealGasPhysics<scalar>& physics,
 
 		for(int i = 0; i < ndim; i++)
 			for(int j = 0; j < nvars; j++) {
-				gradtl[i*ndim+j] = gradl[i*ndim+j];
-				gradtr[i*ndim+j] = gradr[i*ndim+j];
+				gradtl[i*nvars+j] = gradl[i*nvars+j];
+				gradtr[i*nvars+j] = gradr[i*nvars+j];
 			}
 			
 		/* get one-sided temperature gradients from one-sided primitive gradients
 		 * and discard grad p in favor of grad T.
 		 */
 		for(int j = 0; j < ndim; j++) {
-			gradtl[j*ndim+ nvars-1] = physics.getGradTemperature(uctl[0], gradl[j*ndim],
-			                                                     uctl[nvars-1], gradl[j*ndim+nvars-1]);
-			gradtr[j*ndim+ nvars-1] = physics.getGradTemperature(uctr[0], gradr[j*ndim],
-			                                                     uctr[nvars-1], gradr[j*ndim+nvars-1]);
+			gradtl[j*nvars+ nvars-1] = physics.getGradTemperature(uctl[0], gradl[j*nvars],
+			                                                     uctl[nvars-1], gradl[j*nvars+nvars-1]);
+			gradtr[j*nvars+ nvars-1] = physics.getGradTemperature(uctr[0], gradr[j*nvars],
+			                                                     uctr[nvars-1], gradr[j*nvars+nvars-1]);
 		}
 
 		// convert cell-centred variables to primitive-2
@@ -118,17 +118,17 @@ void computeViscousFlux(const IdealGasPhysics<scalar>& physics, const scalar *co
 }
 
 template void
-getPrimitive2StateAndGradients<double,NDIM,true>(const IdealGasPhysics<double>& physics,
-                                                 const double *const ucl, const double *const ucr,
-                                                 const double *const gradl, const double *const gradr,
-                                                 double *const uctl, double *const uctr,
-                                                 double *const gradtl, double *const gradtr);
-template void
-getPrimitive2StateAndGradients<double,NDIM,false>(const IdealGasPhysics<double>& physics,
+getPrimitive2StatesAndGradients<double,NDIM,true>(const IdealGasPhysics<double>& physics,
                                                   const double *const ucl, const double *const ucr,
                                                   const double *const gradl, const double *const gradr,
                                                   double *const uctl, double *const uctr,
                                                   double *const gradtl, double *const gradtr);
+template void
+getPrimitive2StatesAndGradients<double,NDIM,false>(const IdealGasPhysics<double>& physics,
+                                                   const double *const ucl, const double *const ucr,
+                                                   const double *const gradl, const double *const gradr,
+                                                   double *const uctl, double *const uctr,
+                                                   double *const gradtl, double *const gradtr);
 
 template void
 computeViscousFlux<double,NDIM,NVARS,true>(const IdealGasPhysics<double>& physics,

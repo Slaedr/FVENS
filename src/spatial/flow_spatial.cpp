@@ -327,11 +327,12 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	const std::array<scalar,NDIM> normal = m->gnormal(iface);
 
 	// cell-centred left and right states
-	scalar ucl[NVARS], ucr[NVARS];
+	scalar uctl[NVARS], uctr[NVARS];
 	// left and right gradients; zero for first order scheme
 	scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
 
-	const scalar *in_ucr = nullptr, *in_gradl = nullptr, *in_gradr = nullptr;
+	const scalar *in_ucr = nullptr;
+	//const scalar *in_gradl = nullptr, *in_gradr = nullptr;
 	
 	if(iface < m->gnbface())
 	{
@@ -343,8 +344,15 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 			// Use the same gradients on both sides of a boundary face;
 			// this will amount to just using the one-sided gradient for the modified average
 			// gradient later.
-			in_gradl = &grads[lelem](0,0);
-			in_gradr = &grads[lelem](0,0);
+			// NOTE: We can't take the address of a GradArray entry, so we need copies here.
+			// in_gradl = &grads[lelem](0,0);
+			// in_gradr = &grads[lelem](0,0);
+
+			for(int i = 0; i < NDIM; i++)
+				for(int j = 0; j < NVARS; j++) {
+					gradl[i*NVARS+j] = grads[lelem](i,j);
+					gradr[i*NVARS+j] = grads[lelem](i,j);
+				}
 		}
 		else
 		{
@@ -356,25 +364,35 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	{
 		in_ucr = ucell_r;
 		if(secondOrderRequested) {
-			in_gradl = &grads[lelem](0,0);
-			in_gradr = &grads[relem](0,0);
+			// in_gradl = &grads[lelem](0,0);
+			// in_gradr = &grads[relem](0,0);
+			for(int i = 0; i < NDIM; i++)
+				for(int j = 0; j < NVARS; j++) {
+					gradl[i*NVARS+j] = grads[lelem](i,j);
+					gradr[i*NVARS+j] = grads[relem](i,j);
+				}
 		}
 	}
 
-	getPrimitive2StateAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
-	                                                                 in_gradl, in_gradr,
-	                                                                 ucl, ucr, gradl, gradr);
+	// getPrimitive2StateAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
+	//                                                                  in_gradl, in_gradr,
+	//                                                                  uctl, uctr, gradl, gradr);
 
-	/* Compute modified averages of primitive-2 variables and their gradients.
-	 * This is the only finite-volume part of this function, rest is physics and chain rule.
-	 */
-	
+	getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
+	                                                                  gradl, gradr,
+	                                                                  uctl, uctr, gradl, gradr);
+
+	if(!secondOrderRequested) {
+		for(int i = 0; i < NDIM; i++)
+			for(int j = 0; j < NVARS; j++) {
+				gradl[i*NVARS+j] = 0;
+				gradr[i*NVARS+j] = 0;
+			}
+	}
+
 	scalar grad[NDIM][NVARS];
-	getFaceGradient_modifiedAverage(iface, ucl, ucr, gradl, gradr, grad);
+	getFaceGradient_modifiedAverage(iface, uctl, uctr, gradl, gradr, grad);
 
-	/* Finally, compute viscous fluxes from primitive-2 cell-centred variables, 
-	 * primitive-2 face gradients and conserved face variables.
-	 */
 	computeViscousFlux<scalar,NDIM,NVARS,constVisc>(physics, &normal[0], grad,
 	                                                &ul(iface,0), &ur(iface,0), vflux);
 }
@@ -639,6 +657,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 			for(a_int iface = 0; iface < m->gnbface(); iface++) 
 			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+				physics.getConservedFromPrimitive(&ug(iface,0), &ug(iface,0));
 			}
 		}
 	}

@@ -256,7 +256,7 @@ protected:
 	 * \param[in] ug Ghost cell-centred primitive variables
 	 * \param[in] grads Cell-centred gradients ("optional", see below)
 	 * \param[in] ul Left state of faces (conserved variables)
-	 * \param[in] ul Right state of faces (conserved variables)
+	 * \param[in] ur Right state of faces (conserved variables)
 	 * \param[in,out] vflux On output, contains the viscous flux across the face
 	 *
 	 * Note that grads can be unallocated if only first-order fluxes are being computed,
