@@ -19,7 +19,7 @@ else()
 endif()
 
 add_executable(e_testflow_pseudotime flowpseudotime.cpp)
-target_link_libraries(e_testflow_pseudotime fvens_base ${PETSC_LIB})
+target_link_libraries(e_testflow_pseudotime fvens_base ${PETSC_LIB} ${ADOLC_LIB})
 if(WITH_BLASTED)
 	target_link_libraries(e_testflow_pseudotime ${BLASTED_LIB})
 endif()

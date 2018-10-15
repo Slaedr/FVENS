@@ -266,6 +266,7 @@ endif()
 include_directories(${PETSC_DIR}/include ${PETSC_DIR}/${PETSC_ARCH}/include)
 message(STATUS "Building with PETSc found at ${PETSC_LIB}/${PETSC_ARCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
+find_library(ADOLC_LIB NAMES adolc PATHS ${ADOLC_DIR}/lib64)
 
 # ---------------------------------------------------------------------------- #
 

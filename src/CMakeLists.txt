@@ -25,7 +25,7 @@ add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
   spatial/aoutput.cpp spatial/diffusion.cpp
   mesh/ameshutils.cpp mesh/amesh2dh.cpp utilities/aarray2d.cpp
   )
-target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB})
+target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB} ${ADOLC_LIB})
 if(WITH_BLASTED)
   target_link_libraries(fvens_base ${BLASTED_LIB})
 endif()

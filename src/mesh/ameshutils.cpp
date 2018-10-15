@@ -7,6 +7,7 @@
 #include "ameshutils.hpp"
 #include "linalg/alinalg.hpp"
 #include "spatial/diffusion.hpp"
+#include <adolc/adolc.h>
 
 namespace fvens {
 
@@ -15,7 +16,7 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 {
 	// The implementation must be changed for the multi-process case
 	StatusCode ierr = 0;
-	
+
 	Mat A;
 	CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
 	CHKERRQ(MatSetType(A, MATSEQAIJ));
@@ -40,7 +41,7 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 		assert(rinds[i] == cinds[i]);
 
 	m.reorder_cells(rinds);
-	
+
 	CHKERRQ(ISRestoreIndices(rperm, &rinds));
 	ierr = ISDestroy(&rperm); CHKERRQ(ierr);
 	ierr = ISDestroy(&cperm); CHKERRQ(ierr);
@@ -63,14 +64,14 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 		m.compute_topological();
 		m.compute_face_data();
 
-		DiffusionMA<1> sd(&m, 1.0, 0.0, 
+		DiffusionMA<1> sd(&m, 1.0, 0.0,
 			[](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
-			{ sourceterm[0] = 0; }, 
+			{ sourceterm[0] = 0; },
 		"NONE");
 
 		CHKERRQ(reorderMesh(ordstr, sd, m));
 	}
-		
+
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();
@@ -87,9 +88,9 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m)
 	// zeroth level starts at cell 0
 	std::vector<a_int> levels;
 	levels.push_back(0);
-	
+
 	a_int icell = 0;
-	
+
 	std::vector<bool> marked(m.gnelem(), false);
 
 	while(icell < m.gnelem()-1)
@@ -98,7 +99,7 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m)
 		marked[icell] = true;
 
 		// mark all neighbors
-		for(int iface = 0; iface < m.gnfael(icell); iface++) 
+		for(int iface = 0; iface < m.gnfael(icell); iface++)
 		{
 			const int othercell = m.gesuel(icell,iface);
 			if(othercell < m.gnelem())
@@ -125,6 +126,8 @@ template StatusCode preprocessMesh(UMesh2dh<a_real>& m);
 
 template StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd,
                                 UMesh2dh<a_real>& m);
+
 template std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m);
+template std::vector<a_int> levelSchedule(const UMesh2dh<adouble>& m);
 
 }
