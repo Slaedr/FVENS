@@ -13,6 +13,7 @@
 #include "linalg/alinalg.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "spatial/aoutput.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"
@@ -150,6 +151,10 @@ SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 	: FlowCase(options)
 { }
 
+// int SteadyFlowCase::setupSolvers(const Spatial<a_real,NVARS> *const prob, Vec u)
+// {
+// }
+
 /// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
 int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
 {
@@ -181,8 +186,7 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 	// setup matrix-free Jacobian if requested
 	Mat A;
 	MatrixFreeSpatialJacobian<NVARS> mfjac;
-	PetscBool mf_flg = PETSC_FALSE;
-	ierr = PetscOptionsHasName(NULL, NULL, "-matrix_free_jacobian", &mf_flg); CHKERRQ(ierr);
+	const bool mf_flg = parsePetscCmd_isDefined("-matrix_free_jacobian");
 	if(mf_flg) {
 		std::cout << " Allocating matrix-free Jac\n";
 		ierr = setup_matrixfree_jacobian<NVARS>(m, &mfjac, &A); 
@@ -214,9 +218,6 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
 	};
-
-	const SteadySolverConfig temptconf = {false, opts.logfile, opts.firstinitcfl, opts.firstendcfl,
-		opts.firstrampstart, opts.firstrampend, opts.firsttolerance, 1};
 
 	SteadySolver<NVARS> * starttime = nullptr, * time = nullptr;
 
@@ -273,6 +274,7 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 #ifdef USE_BLASTED
 	destroyBlastedDataList(&bctx);
 #endif
+
 	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
 	if(mf_flg) {
 		ierr = KSPSetOperators(ksp, A, M); 
