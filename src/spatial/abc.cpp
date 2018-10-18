@@ -23,26 +23,27 @@
 
 namespace fvens {
 
-template <typename scalar>
-FlowBC<scalar>::FlowBC(const BCType btype, const int bc_tag,
-                       const IdealGasPhysics<scalar>& gasphysics)
-	: bctype{btype}, btag{bc_tag}, phy{gasphysics}
+template <typename scalar, typename j_real>
+FlowBC<scalar,j_real>::FlowBC(const BCType btype, const int bc_tag,
+                              const IdealGasPhysics<scalar>& gasphysics)
+	: bctype{btype}, btag{bc_tag}, phy{gasphysics},
+	  jphy(gasphysics.g, gasphysics.Minf, gasphysics.Tinf, gasphysics.Reinf, gasphysics.Pr)
 { }
 
-template <typename scalar>
-FlowBC<scalar>::~FlowBC()
+template <typename scalar, typename j_real>
+FlowBC<scalar,j_real>::~FlowBC()
 { }
 
-template <typename scalar>
-InOutFlow<scalar>::InOutFlow(const int bc_tag,
-                             const IdealGasPhysics<scalar>& gasphysics,
-                             const std::array<scalar,NVARS>& u_far)
-	: FlowBC<scalar>(INFLOW_OUTFLOW_BC, bc_tag, gasphysics), uinf(u_far)
+template <typename scalar, typename j_real>
+InOutFlow<scalar,j_real>::InOutFlow(const int bc_tag,
+                                    const IdealGasPhysics<scalar>& gasphysics,
+                                    const std::array<a_real,NVARS>& u_far)
+	: FlowBC<scalar,j_real>(INFLOW_OUTFLOW_BC, bc_tag, gasphysics), uinf(u_far)
 { }
 
-template <typename scalar>
-void InOutFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                         scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void InOutFlow<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                 scalar *const __restrict gs) const
 {
 	const scalar vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	const scalar ci = phy.getSoundSpeedFromConserved(ins);
@@ -53,44 +54,45 @@ void InOutFlow<scalar>::computeGhostState(const scalar *const ins, const scalar 
 	 * takes care of signal propagation at the boundary.
 	 */
 	if(Mni <= 0)
-		{
-			for(int i = 0; i < NVARS; i++)
-				gs[i] = uinf[i];
-		}
+	{
+		for(int i = 0; i < NVARS; i++)
+			gs[i] = uinf[i];
+	}
 
 	/* At subsonic outflow, pressure is taken from farfield, the other 3 quantities
 	 * are taken from the interior.
 	 */
 	else if(Mni < 1)
-		{
-			gs[0] = ins[0];
-			for(int i = 1; i < NDIM+1; i++)
-				gs[i] = ins[i];
-			gs[NDIM+1] = phy.getEnergyFromPressure(pinf, ins[0],
-			                                       dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
-		}
+	{
+		gs[0] = ins[0];
+		for(int i = 1; i < NDIM+1; i++)
+			gs[i] = ins[i];
+		gs[NDIM+1] = phy.getEnergyFromPressure(pinf, ins[0],
+		                                       dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
+	}
 		
 	// At supersonic outflow, everything is taken from the interior
 	else
-		{
-			for(int i = 0; i < NVARS; i++)
-				gs[i] = ins[i];
-		}
+	{
+		for(int i = 0; i < NVARS; i++)
+			gs[i] = ins[i];
+	}
 }
 
-template <typename scalar>
-void InOutFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, const scalar *const n,
-                                                     scalar *const __restrict gs,
-                                                     scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void InOutFlow<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins,
+                                                            const j_real *const n,
+                                                            j_real *const __restrict gs,
+                                                            j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 
-	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
-	const a_real ci = phy.getSoundSpeedFromConserved(ins);
-	const a_real Mni = vni/ci;
+	const j_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
+	const j_real ci = jphy.getSoundSpeedFromConserved(ins);
+	const j_real Mni = vni/ci;
 
-	const a_real pinf = phy.getPressureFromConserved(&uinf[0]);
+	const j_real pinf = jphy.getPressureFromConserved(&uinf[0]);
 
 	/* At inflow, ghost cell state is determined by farfield state; the Riemann solver
 	 * takes care of signal propagation at the boundary.
@@ -113,7 +115,7 @@ void InOutFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, co
 			dgs[k*NVARS+k] = 1.0;
 
 		//gs[3] = pinf/(physics.g-1.0) + 0.5*(ins[1]*ins[1]+ins[2]*ins[2])/ins[0];
-		gs[NDIM+1] = phy.getEnergyFromPressure
+		gs[NDIM+1] = jphy.getEnergyFromPressure
 			( pinf, ins[0], dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
 
 		dgs[3*NVARS+0] = -0.5*(ins[1]*ins[1]+ins[2]*ins[2])/(ins[0]*ins[0]);
@@ -132,18 +134,18 @@ void InOutFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, co
 	}
 }
 
-template <typename scalar>
-InFlow<scalar>::InFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                       const scalar t_pressure, const scalar t_temp)
-	: FlowBC<scalar>(SUBSONIC_INFLOW_BC, bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
+template <typename scalar, typename j_real>
+InFlow<scalar,j_real>::InFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
+                              const a_real t_pressure, const a_real t_temp)
+	: FlowBC<scalar,j_real>(SUBSONIC_INFLOW_BC, bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
 { }
 
 /** Assumes the flow at the boundary is isentropic. Uses the the fact that the stagnation speed
  * of sound and the outgoing Riemann invariant are conserved across the face.
  */
-template <typename scalar>
-void InFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                       scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void InFlow<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                              scalar *const __restrict gs) const
 {
 	const scalar ci = phy.getSoundSpeedFromConserved(ins);
 	// Outgoing Riemann invariant
@@ -168,33 +170,33 @@ void InFlow<scalar>::computeGhostState(const scalar *const ins, const scalar *co
 	gs[NDIM+1] = phy.getEnergyFromPressure(pg,gs[0],vgmag*vgmag);
 }
 
-template <typename scalar>
-void InFlow<scalar>::computeGhostStateAndJacobian(const scalar *const ins, const scalar *const n,
-                                                  scalar *const __restrict gs,
-                                                  scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void InFlow<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins, const j_real *const n,
+                                                         j_real *const __restrict gs,
+                                                         j_real *const __restrict dgs) const
 {
 	std::cout << "Not implemented!\n";
 	std::exit(-1);
 }
 
-template <typename scalar>
-Farfield<scalar>::Farfield(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                           const std::array<scalar,NVARS>& u_far)
-	: FlowBC<scalar>(FARFIELD_BC, bc_tag, gasphysics), uinf(u_far)
+template <typename scalar, typename j_real>
+Farfield<scalar,j_real>::Farfield(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
+                                  const std::array<a_real,NVARS>& u_far)
+	: FlowBC<scalar,j_real>(FARFIELD_BC, bc_tag, gasphysics), uinf(u_far)
 { }
 
-template <typename scalar>
-void Farfield<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                         scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void Farfield<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                scalar *const __restrict gs) const
 {
 	for(int i = 0; i < NVARS; i++)
 		gs[i] = uinf[i];
 }
 
-template <typename scalar>
-void Farfield<scalar>::computeGhostStateAndJacobian(const scalar *const ins, const scalar *const n,
-                                                    scalar *const __restrict gs,
-                                                    scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void Farfield<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins, const j_real *const n,
+                                                           j_real *const __restrict gs,
+                                                           j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
@@ -202,14 +204,14 @@ void Farfield<scalar>::computeGhostStateAndJacobian(const scalar *const ins, con
 		gs[i] = uinf[i];
 }
 
-template <typename scalar>
-Slipwall<scalar>::Slipwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
-	: FlowBC<scalar>(SLIP_WALL_BC, bc_tag, gasphysics)
+template <typename scalar, typename j_real>
+Slipwall<scalar,j_real>::Slipwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
+	: FlowBC<scalar,j_real>(SLIP_WALL_BC, bc_tag, gasphysics)
 { }
 
-template <typename scalar>
-void Slipwall<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                         scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void Slipwall<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                scalar *const __restrict gs) const
 {
 	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	gs[0] = ins[0];
@@ -219,16 +221,16 @@ void Slipwall<scalar>::computeGhostState(const scalar *const ins, const scalar *
 }
 
 /// \todo Make this dimension-independent
-template <typename scalar>
-void Slipwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins, const scalar *const n,
-                                                    scalar *const __restrict gs,
-                                                    scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void Slipwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins, const j_real *const n,
+                                                           j_real *const __restrict gs,
+                                                           j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 
-	const scalar vni = dimDotProduct(&ins[1],n)/ins[0];
-	scalar dvni[NVARS];
+	const j_real vni = dimDotProduct(&ins[1],n)/ins[0];
+	j_real dvni[NVARS];
 	dvni[0] = -vni/ins[0];
 	for(int i = 1; i < NDIM+1; i++)
 		dvni[i] = n[i-1]/ins[0];
@@ -255,15 +257,16 @@ void Slipwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins, con
 	dgs[3*NVARS+3] = 1.0;
 }
 
-template <typename scalar>
-Adiabaticwall2D<scalar>::Adiabaticwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                                         const a_real wall_tangential_velocity)
-	: FlowBC<scalar>(ADIABATIC_WALL_BC, bc_tag, gasphysics), tangvel{wall_tangential_velocity}
+template <typename scalar, typename j_real>
+Adiabaticwall2D<scalar,j_real>::Adiabaticwall2D(const int bc_tag,
+                                                const IdealGasPhysics<scalar>& gasphysics,
+                                                const a_real wall_tangential_velocity)
+	: FlowBC<scalar,j_real>(ADIABATIC_WALL_BC, bc_tag, gasphysics), tangvel{wall_tangential_velocity}
 { }
 
-template <typename scalar>
-void Adiabaticwall2D<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                              scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void Adiabaticwall2D<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                       scalar *const __restrict gs) const
 {
 	const a_real tangMomentum = tangvel * ins[0];
 	gs[0] = ins[0];
@@ -272,16 +275,16 @@ void Adiabaticwall2D<scalar>::computeGhostState(const scalar *const ins, const s
 	gs[3] = ins[3];
 }
 
-template <typename scalar>
-void Adiabaticwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const ins,
-                                                           const scalar *const n,
-                                                           scalar *const __restrict gs,
-                                                           scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void Adiabaticwall2D<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins,
+                                                                  const j_real *const n,
+                                                                  j_real *const __restrict gs,
+                                                                  j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 
-	const a_real tangMomentum = tangvel * ins[0];
+	const j_real tangMomentum = tangvel * ins[0];
 	gs[0] = ins[0];
 	dgs[0] = 1.0;
 
@@ -297,15 +300,15 @@ void Adiabaticwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const i
 	dgs[3*NVARS+3] = 1.0;
 }
 
-template <typename scalar>
-Adiabaticwall<scalar>::Adiabaticwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                                     const std::array<a_real,NDIM> wall_velocity)
-	: FlowBC<scalar>(ADIABATIC_WALL_BC, bc_tag, gasphysics), wallvel(wall_velocity)
+template <typename scalar, typename j_real>
+Adiabaticwall<scalar,j_real>::Adiabaticwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
+                                            const std::array<a_real,NDIM> wall_velocity)
+	: FlowBC<scalar,j_real>(ADIABATIC_WALL_BC, bc_tag, gasphysics), wallvel(wall_velocity)
 { }
 
-template <typename scalar>
-void Adiabaticwall<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                              scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void Adiabaticwall<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                     scalar *const __restrict gs) const
 {
 	gs[0] = ins[0];
 	for(int i= 1; i< NDIM+1; i++)
@@ -313,11 +316,11 @@ void Adiabaticwall<scalar>::computeGhostState(const scalar *const ins, const sca
 	gs[NDIM+1] = ins[NDIM+1];
 }
 
-template <typename scalar>
-void Adiabaticwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins,
-                                                         const scalar *const n,
-                                                         scalar *const __restrict gs,
-                                                         scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void Adiabaticwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins,
+                                                                const j_real *const n,
+                                                                j_real *const __restrict gs,
+                                                                j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
@@ -336,15 +339,16 @@ void Adiabaticwall<scalar>::computeGhostStateAndJacobian(const scalar *const ins
 	dgs[NVARS*NVARS-1] = 1.0;
 }
 
-template <typename scalar>
-Isothermalwall2D<scalar>::Isothermalwall2D(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                                           const a_real wtv, const a_real temp)
-	: FlowBC<scalar>(ISOTHERMAL_WALL_BC, bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
+template <typename scalar, typename j_real>
+Isothermalwall2D<scalar,j_real>::Isothermalwall2D(const int bc_tag,
+                                                  const IdealGasPhysics<scalar>& gasphysics,
+                                                  const a_real wtv, const a_real temp)
+	: FlowBC<scalar,j_real>(ISOTHERMAL_WALL_BC, bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
 { }
 
-template <typename scalar>
-void Isothermalwall2D<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                              scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void Isothermalwall2D<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                        scalar *const __restrict gs) const
 {
 	// pressure in the interior cell
 	const a_real p = phy.getPressureFromConserved(ins);
@@ -360,18 +364,18 @@ void Isothermalwall2D<scalar>::computeGhostState(const scalar *const ins, const 
 	gs[3] = phy.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 }
 
-template <typename scalar>
-void Isothermalwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const ins,
-                                                            const scalar *const n,
-                                                            scalar *const __restrict gs,
-                                                            scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void Isothermalwall2D<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins,
+                                                                   const j_real *const n,
+                                                                   j_real *const __restrict gs,
+                                                                   j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;
 
 	/// \todo Fix isothermal BC Jacobian
 	// FIXME: Wrong Jacobian
-	const a_real tangMomentum = tangvel * ins[0];
+	const j_real tangMomentum = tangvel * ins[0];
 	gs[0] = ins[0];
 	dgs[0] = 1.0;
 
@@ -383,42 +387,42 @@ void Isothermalwall2D<scalar>::computeGhostStateAndJacobian(const scalar *const 
 	dgs[2*NVARS+0] = -2.0*tangvel*n[0];
 	dgs[2*NVARS+2] = -1.0;
 
-	const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
-	gs[3] = phy.getEnergyFromTemperature(walltemperature, ins[0], vmag2);
+	const j_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]);
+	gs[3] = jphy.getEnergyFromTemperature(walltemperature, ins[0], vmag2);
 
-	a_real dvmag2[NVARS]; // derivative of vmag2 w.r.t. ins
+	j_real dvmag2[NVARS]; // derivative of vmag2 w.r.t. ins
 	dvmag2[0] = -2.0*dimDotProduct(&gs[1],&gs[1])/(ins[0]*ins[0]*ins[0]);
 	for(int i = 1; i < NDIM+1; i++)
 		dvmag2[i] = 1.0/(ins[0]*ins[0]) * gs[i] * (-1.0);
 	dvmag2[NDIM+1] = 0;
 
 	// dummy dT for the next function call
-	a_real dT[NVARS];
+	j_real dT[NVARS];
 	for(int i = 0; i < NVARS; i++) dT[i] = 0;
 
-	phy.getJacobianEnergyFromJacobiansTemperatureVmag2(walltemperature, ins[0], vmag2,
-	                                                   dT, dvmag2, &dgs[3*NVARS]);
+	jphy.getJacobianEnergyFromJacobiansTemperatureVmag2(walltemperature, ins[0], vmag2,
+	                                                    dT, dvmag2, &dgs[3*NVARS]);
 }
 
-template <typename scalar>
-Extrapolation<scalar>::Extrapolation(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
-	: FlowBC<scalar>(EXTRAPOLATION_BC, bc_tag, gasphysics)
+template <typename scalar, typename j_real>
+Extrapolation<scalar,j_real>::Extrapolation(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics)
+	: FlowBC<scalar,j_real>(EXTRAPOLATION_BC, bc_tag, gasphysics)
 { }
 
-template <typename scalar>
-void Extrapolation<scalar>::computeGhostState(const scalar *const ins, const scalar *const n,
-                                              scalar *const __restrict gs) const
+template <typename scalar, typename j_real>
+void Extrapolation<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
+                                                     scalar *const __restrict gs) const
 {
 	for(int k = 0; k < NVARS; k++) {
 		gs[k] = ins[k];
 	}
 }
 
-template <typename scalar>
-void Extrapolation<scalar>::computeGhostStateAndJacobian(const scalar *const ins,
-                                                         const scalar *const n,
-                                                         scalar *const __restrict gs,
-                                                         scalar *const __restrict dgs) const
+template <typename scalar, typename j_real>
+void Extrapolation<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins,
+                                                                const j_real *const n,
+                                                                j_real *const __restrict gs,
+                                                                j_real *const __restrict dgs) const
 {
 	for(int k = 0; k < NVARS*NVARS; k++)
 		dgs[k] = 0;

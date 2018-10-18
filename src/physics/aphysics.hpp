@@ -745,8 +745,9 @@ scalar IdealGasPhysics<scalar>::getThermalConductivityFromViscosity(const scalar
 
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(
-		const scalar *const dmuhat, scalar *const __restrict dkhat) const 
+void IdealGasPhysics<scalar>::
+getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(const scalar *const dmuhat,
+                                                                   scalar *const __restrict dkhat) const
 {
 	for(int k = 0; k < NVARS; k++)
 		dkhat[k] = dmuhat[k]/(Minf*Minf*(g-1.0)*Pr);
