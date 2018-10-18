@@ -234,13 +234,6 @@ protected:
 	 */
 	const IdealGasPhysics<a_real> jphy;
 
-	/// Numerical inviscid flux context for computing an analytical Jacobian
-	/** See \ref jphy for the reason this is provided.
-	 * This may implement a numerical flux function mathematically distint from the
-	 * \ref FlowFV_base::inviflux object used for the fluxes (right hand side).
-	 */
-	const InviscidFlux<a_real> *const jflux;
-
 	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] iface Face index

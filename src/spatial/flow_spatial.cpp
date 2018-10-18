@@ -286,8 +286,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
                                                       const FlowPhysicsConfig& pconf, 
                                                       const FlowNumericsConfig& nconf)
 	: FlowFV_base<scalar>(mesh, pconf, nconf),
-	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
-	jflux {create_const_inviscidflux<a_real>(nconfig.conv_numflux_jac, &jphy)}
+	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
 {
 	if(secondOrderRequested)
 		std::cout << "FlowFV: Second order solution requested.\n";
@@ -298,7 +297,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 {
-	delete jflux;
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
@@ -702,7 +700,7 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 		bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(&uarr[lelem*NVARS], &n[0],
 		                                                               uface, &drdl(0,0));
 		
-		jflux->get_jacobian(&uarr[lelem*NVARS], uface, &n[0], &left(0,0), &right(0,0));
+		inviflux->get_jacobian(&uarr[lelem*NVARS], uface, &n[0], &left(0,0), &right(0,0));
 
 		if(pconfig.viscous_sim) {
 			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface, 
@@ -739,7 +737,7 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
 	
 		// NOTE: the values of L and U get REPLACED here, not added to
-		jflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
+		inviflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
 
 		if(pconfig.viscous_sim) {
 			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
