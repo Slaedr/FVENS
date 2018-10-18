@@ -21,6 +21,8 @@ template <typename scalar>
 class Physics
 {
 public:
+	virtual ~Physics();
+
 	/// Computes the flux vector along some direction
 	virtual void getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n, 
 			scalar *const flux) const = 0;

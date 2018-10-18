@@ -16,7 +16,7 @@ namespace fvens {
 /** The class is such that given the left and right states and a face normal, 
  * the numerical flux and its Jacobian w.r.t. left and right states is computed.
  */
-template <typename scalar>
+template <typename scalar, typename j_real = a_real>
 class InviscidFlux
 {
 public:
@@ -40,19 +40,24 @@ public:
 	 * the negative of the upper block is the contribution to diagonal block of right cell.
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	virtual void get_jacobian(const scalar *const uleft, const scalar *const uright, 
-			const scalar* const n,
-			scalar *const dfdl, scalar *const dfdr) const = 0;
+	virtual void get_jacobian(const j_real *const uleft, const j_real *const uright, 
+	                          const j_real *const n,
+	                          j_real *const dfdl, j_real *const dfdr) const = 0;
 
 	virtual ~InviscidFlux();
 
 protected:
-	const IdealGasPhysics<scalar> *const physics;        ///< Functionality replated to gas constitutive law
-	const a_real g;                              ///< Adiabatic index
+	const IdealGasPhysics<scalar> *const physics;  ///< Functionality replated to gas constitutive law
+
+	/// Gas physics for Jacobian computation
+	/// This is a copy of physics above, but using scalar type.
+	const IdealGasPhysics<j_real> *const jphy;
+
+	const a_real g;                                ///< Adiabatic index
 };
 
-template <typename scalar>
-class LocalLaxFriedrichsFlux : public InviscidFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class LocalLaxFriedrichsFlux : public InviscidFlux<scalar,j_real>
 {
 public:
 	LocalLaxFriedrichsFlux(const IdealGasPhysics<scalar> *const analyticalflux);
@@ -67,36 +72,38 @@ public:
 	 * \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	void get_jacobian(const scalar *const uleft, const scalar *const uright, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian(const j_real *const uleft, const j_real *const uright, const j_real* const n, 
+	                  j_real *const dfdl, j_real *const dfdr) const;
 
 	/** Computes the exact Jacobian.
 	 * This has been done to make the frozen Jacobian default.
 	 */
-	void get_jacobian_2(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian_2(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+			j_real *const dfdl, j_real *const dfdr) const;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
 };
 
 /// Van-Leer flux-vector-splitting
-template <typename scalar>
-class VanLeerFlux : public InviscidFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class VanLeerFlux : public InviscidFlux<scalar,j_real>
 {
 public:
 	VanLeerFlux(const IdealGasPhysics<scalar> *const analyticalflux);
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux) const;
-	void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	              scalar *const flux) const;
+	void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+	                  j_real *const dfdl, j_real *const dfdr) const;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
 };
 
 /// Liou-Steffen AUSM flux-vector-splitting
@@ -105,8 +112,8 @@ protected:
  * separately.
  * \warning The Jacobian does not work; use the LLF Jacobian instead.
  */
-template <typename scalar>
-class AUSMFlux : public InviscidFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class AUSMFlux : public InviscidFlux<scalar,j_real>
 {
 public:
 	AUSMFlux(const IdealGasPhysics<scalar> *const analyticalflux);
@@ -114,22 +121,23 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux) const;
+	              scalar *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+	                  j_real *const dfdl, j_real *const dfdr) const;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
 };
 
 /// Liou's AUSM+ flux
-template <typename scalar>
-class AUSMPlusFlux : public InviscidFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class AUSMPlusFlux : public InviscidFlux<scalar,j_real>
 {
 public:
 	AUSMPlusFlux(const IdealGasPhysics<scalar> *const analyticalflux);
@@ -138,28 +146,30 @@ public:
 	void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
 			scalar *const flux) const;
 	
-	void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+			j_real *const dfdl, j_real *const dfdr) const;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
 };
 
 /// Abstract class for fluxes which depend on Roe-averages
-template <typename scalar>
-class RoeAverageBasedFlux : public InviscidFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class RoeAverageBasedFlux : public InviscidFlux<scalar,j_real>
 {
 public:
 	RoeAverageBasedFlux(const IdealGasPhysics<scalar> *const analyticalflux);
 	virtual void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
 			scalar *const flux) const = 0;
-	virtual void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const = 0;
+	virtual void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+			j_real *const dfdl, j_real *const dfdr) const = 0;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
 
 	/// Computes Roe-averaged quantities
 	void getRoeAverages(const scalar ul[NVARS], const scalar ur[NVARS], const scalar n[NDIM],
@@ -182,22 +192,22 @@ protected:
 	/** \note The output vectors are assigned to, so any prior contents are lost.
 	 */
 	void getJacobiansRoeAveragesWrtConserved(
-		const scalar ul[NVARS], const scalar ur[NVARS], const scalar n[NDIM],
-		const scalar vxi, const scalar vyi, const scalar Hi,
-		const scalar vxj, const scalar vyj, const scalar Hj,
-		const scalar dvxi[NVARS], const scalar dvyi[NVARS], const scalar dHi[NVARS],
-		const scalar dvxj[NVARS], const scalar dvyj[NVARS], const scalar dHj[NVARS],
-		scalar dRiji[NVARS], scalar drhoiji[NVARS], scalar dvxiji[NVARS], scalar dvyiji[NVARS],
-		scalar dvm2iji[NVARS], scalar dvniji[NVARS], scalar dHiji[NVARS], scalar dciji[NVARS],
-		scalar dRijj[NVARS], scalar drhoijj[NVARS], scalar dvxijj[NVARS], scalar dvyijj[NVARS],
-		scalar dvm2ijj[NVARS], scalar dvnijj[NVARS], scalar dHijj[NVARS], scalar dcijj[NVARS] ) const;
+		const j_real ul[NVARS], const j_real ur[NVARS], const j_real n[NDIM],
+		const j_real vxi, const j_real vyi, const j_real Hi,
+		const j_real vxj, const j_real vyj, const j_real Hj,
+		const j_real dvxi[NVARS], const j_real dvyi[NVARS], const j_real dHi[NVARS],
+		const j_real dvxj[NVARS], const j_real dvyj[NVARS], const j_real dHj[NVARS],
+		j_real dRiji[NVARS], j_real drhoiji[NVARS], j_real dvxiji[NVARS], j_real dvyiji[NVARS],
+		j_real dvm2iji[NVARS], j_real dvniji[NVARS], j_real dHiji[NVARS], j_real dciji[NVARS],
+		j_real dRijj[NVARS], j_real drhoijj[NVARS], j_real dvxijj[NVARS], j_real dvyijj[NVARS],
+		j_real dvm2ijj[NVARS], j_real dvnijj[NVARS], j_real dHijj[NVARS], j_real dcijj[NVARS] ) const;
 };
 
 /// Roe-Pike flux-difference splitting
 /** From Blazek \cite{blazek}.
  */
-template <typename scalar>
-class RoeFlux : public RoeAverageBasedFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class RoeFlux : public RoeAverageBasedFlux<scalar,j_real>
 {
 public:
 	RoeFlux(const IdealGasPhysics<scalar> *const analyticalflux);
@@ -205,73 +215,61 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux) const;
+	              scalar *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+	                  j_real *const dfdl, j_real *const dfdr) const;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
-	using RoeAverageBasedFlux<scalar>::getRoeAverages;
-	using RoeAverageBasedFlux<scalar>::getJacobiansRoeAveragesWrtConserved;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
+	using RoeAverageBasedFlux<scalar,j_real>::getRoeAverages;
+	using RoeAverageBasedFlux<scalar,j_real>::getJacobiansRoeAveragesWrtConserved;
 
 	/// Entropy fix parameter
-	const scalar fixeps;
+	const a_real fixeps;
 };
 
 /// Harten Lax Van-Leer numerical flux
 /** Decent for inviscid flows.
  * \cite invflux_batten
  */
-template <typename scalar>
-class HLLFlux : public RoeAverageBasedFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class HLLFlux : public RoeAverageBasedFlux<scalar,j_real>
 {
-	/// Computes the Jacobian of the numerical flux w.r.t. left state
-	void getFluxJac_left(const scalar *const ul, const scalar *const ur, const scalar *const n, 
-			scalar *const flux, scalar *const fluxd) const;
-	/// Computes the Jacobian of the numerical flux w.r.t. right state
-	void getFluxJac_right(const scalar *const ul, const scalar *const ur, const scalar *const n, 
-			scalar *const flux, scalar *const fluxd) const;
-
 public:
 	HLLFlux(const IdealGasPhysics<scalar> *const analyticalflux);
 	
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux) const;
+	              scalar *const flux) const;
 	
-	/** \sa InviscidFlux::get_jacobian
+	/** Computes an approximate Jacobian of the HLL fluxes assuming frozen signal speeds
+	 * \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
-
-	/// Computes both the flux and the 2 flux Jacobians
-	void get_flux_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux, scalar *const dfdl, scalar *const dfdr) const;
-	
-	void get_jacobian_2(const scalar *const ul, const scalar *const ur, 
-			const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+	                  j_real *const dfdl, j_real *const dfdr) const;
 
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
-	using RoeAverageBasedFlux<scalar>::getRoeAverages;
-	using RoeAverageBasedFlux<scalar>::getJacobiansRoeAveragesWrtConserved;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
+	using RoeAverageBasedFlux<scalar,j_real>::getRoeAverages;
+	using RoeAverageBasedFlux<scalar,j_real>::getJacobiansRoeAveragesWrtConserved;
 };
 
 /// Harten Lax Van-Leer numerical flux with contact restoration by Toro
 /** Implemented as described by Batten et al. \cite invflux_hllc_batten
  * Good for both inviscid and viscous flows.
  */
-template <typename scalar>
-class HLLCFlux : public RoeAverageBasedFlux<scalar>
+template <typename scalar, typename j_real = a_real>
+class HLLCFlux : public RoeAverageBasedFlux<scalar,j_real>
 {
 public:
 	HLLCFlux(const IdealGasPhysics<scalar> *const analyticalflux);
@@ -279,23 +277,20 @@ public:
 	/** \sa InviscidFlux::get_flux
 	 */
 	void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux) const;
+	              scalar *const flux) const;
 	
 	/** \sa InviscidFlux::get_jacobian
 	 * \warning The output is *assigned* to the arrays dfdl and dfdr - any prior contents are lost!
 	 */
-	void get_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const dfdl, scalar *const dfdr) const;
+	void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n, 
+	                  j_real *const dfdl, j_real *const dfdr) const;
 	
-	/// Computes both the flux and the 2 flux Jacobians
-	void get_flux_jacobian(const scalar *const ul, const scalar *const ur, const scalar* const n, 
-			scalar *const flux, scalar *const dfdl, scalar *const dfdr) const;
-
 protected:
-	using InviscidFlux<scalar>::physics;
-	using InviscidFlux<scalar>::g;
-	using RoeAverageBasedFlux<scalar>::getRoeAverages;
-	using RoeAverageBasedFlux<scalar>::getJacobiansRoeAveragesWrtConserved;
+	using InviscidFlux<scalar,j_real>::physics;
+	using InviscidFlux<scalar,j_real>::jphy;
+	using InviscidFlux<scalar,j_real>::g;
+	using RoeAverageBasedFlux<scalar,j_real>::getRoeAverages;
+	using RoeAverageBasedFlux<scalar,j_real>::getJacobiansRoeAveragesWrtConserved;
 
 	/// Computes the averaged state between the waves in the Riemann fan
 	/** \param[in] u The state outside the Riemann fan
@@ -307,9 +302,9 @@ protected:
 	 * \param[in|out] ustr The output average state
 	 */
 	void getStarState(const scalar u[NVARS], const scalar n[NDIM],
-		const scalar vn, const scalar p, 
-		const scalar ss, const scalar sm,
-		scalar *const __restrict ustr) const;
+	                  const scalar vn, const scalar p, 
+	                  const scalar ss, const scalar sm,
+	                  scalar *const __restrict ustr) const;
 
 	/// Computes the averaged state between the waves in the Riemann fan
 	/// and corresponding Jacobians
@@ -331,15 +326,15 @@ protected:
 	 * \param[in|out] dustri Jacobian of ustr w.r.t. this initial state
 	 * \param[in|out] dustrj Jacobian of ustr w.r.t. other initial state
 	 */
-	void getStarStateAndJacobian(const scalar u[NVARS], const scalar n[NDIM],
-		const scalar vn, const scalar p, 
-		const scalar ss, const scalar sm,
-		const scalar dvn[NVARS], const scalar dp[NVARS], 
-		const scalar dssi[NDIM], const scalar dsmi[NDIM],
-		const scalar dssj[NDIM], const scalar dsmj[NDIM],
-		scalar ustr[NVARS],
-		scalar dustri[NVARS][NVARS], 
-		scalar dustrj[NVARS][NVARS]) const __attribute((always_inline));
+	void getStarStateAndJacobian(const j_real u[NVARS], const j_real n[NDIM],
+		const j_real vn, const j_real p, 
+		const j_real ss, const j_real sm,
+		const j_real dvn[NVARS], const j_real dp[NVARS], 
+		const j_real dssi[NDIM], const j_real dsmi[NDIM],
+		const j_real dssj[NDIM], const j_real dsmj[NDIM],
+		j_real ustr[NVARS],
+		j_real dustri[NVARS][NVARS], 
+		j_real dustrj[NVARS][NVARS]) const __attribute((always_inline));
 };
 
 } // end namespace fvens
