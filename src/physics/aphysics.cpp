@@ -33,9 +33,9 @@ void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *cons
  * the non-dimensional free-stream density and velocity magnitude are 1.0.
  */
 template <typename scalar>
-std::array<scalar,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const a_real aoa) const
+std::array<a_real,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const a_real aoa) const
 {
-	std::array<scalar,NVARS> uinf;
+	std::array<a_real,NVARS> uinf;
 	uinf[0] = 1.0;
 	uinf[1] = cos(aoa);
 	uinf[2] = sin(aoa);

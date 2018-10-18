@@ -53,7 +53,7 @@ public:
 	/// Returns an array containing the non-dimensional free-stream state
 	/** \param aoa The angle of attack in radians
 	 */
-	std::array<scalar,NVARS> compute_freestream_state(const a_real aoa) const;
+	std::array<a_real,NVARS> compute_freestream_state(const a_real aoa) const;
 
 	/// Computes flux in a given direction efficiently using specific data
 	/** Note that this function is independent of what kind of gas it is. 
@@ -110,7 +110,7 @@ public:
 		scalar dp[NVARS], scalar dH[NVARS]) const;
 
 	/// Returns the non-dimensionalized free-stream pressure
-	scalar getFreestreamPressure() const;
+	a_real getFreestreamPressure() const;
 	
 	/// Computes pressure from internal energy - here it's the ideal gas relation	
 	scalar getPressure(const scalar internalenergy) const;
@@ -755,8 +755,8 @@ getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(const scalar 
 
 template <typename scalar>
 inline
-scalar IdealGasPhysics<scalar>::getFreestreamPressure() const {
-	return (scalar)(1.0/(g*Minf*Minf));
+a_real IdealGasPhysics<scalar>::getFreestreamPressure() const {
+	return (a_real)(1.0/(g*Minf*Minf));
 }
 
 template <typename scalar>

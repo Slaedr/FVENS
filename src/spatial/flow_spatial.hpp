@@ -136,7 +136,7 @@ protected:
 	const IdealGasPhysics<scalar> physics;
 
 	/// Free-stream/reference condition
-	const std::array<scalar,NVARS> uinf;
+	const std::array<a_real,NVARS> uinf;
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
