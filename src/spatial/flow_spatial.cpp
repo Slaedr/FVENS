@@ -96,12 +96,6 @@ void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& i
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
-	
-		// if(m->gintfacbtags(ied,0) == pconfig.bcconf.periodic_id)
-		// {
-		// 	for(int i = 0; i < NVARS; i++)
-		// 		bs(ied,i) = ins(m->gperiodicmap(ied), i);
-		// }
 	}
 }
 
@@ -293,9 +287,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
                                                       const FlowNumericsConfig& nconf)
 	: FlowFV_base<scalar>(mesh, pconf, nconf),
 	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
-	juinf(jphy.compute_freestream_state(pconfig.aoa)),
-	jflux {create_const_inviscidflux<a_real>(nconfig.conv_numflux_jac, &jphy)},
-		   jbcs {create_const_flowBCs<a_real>(pconf.bcconf, jphy, juinf)}
+	jflux {create_const_inviscidflux<a_real>(nconfig.conv_numflux_jac, &jphy)}
 {
 	if(secondOrderRequested)
 		std::cout << "FlowFV: Second order solution requested.\n";
@@ -307,10 +299,6 @@ template<typename scalar, bool secondOrderRequested, bool constVisc>
 FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 {
 	delete jflux;
-	// delete BCs
-	for(auto it = jbcs.begin(); it != jbcs.end(); it++) {
-		delete it->second;
-	}
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
