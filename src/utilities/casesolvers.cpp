@@ -21,12 +21,8 @@
 
 namespace fvens {
 
-FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
-{
-}
-
 /// Prepare a mesh for use in a fluid simulation
-UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
+UMesh2dh<a_real> constructMesh(const FlowParserOptions& opts, const std::string mesh_suffix) const
 {
 	// Set up mesh
 	const std::string meshfile = opts.meshfile + mesh_suffix;
@@ -44,13 +40,10 @@ UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
 	return m;
 }
 
-int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
+const Spatial<a_real,NVARS>* FlowCase::createSpatialAndVec(const FlowParserOptions& opts,
+                                                           const UMesh2dh<a_real>& m,
+                                                           Vec *const u) const
 {
-	int ierr = 0;
-	
-	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
-	std::cout << "***\n";
-
 	std::cout << "Setting up main spatial scheme.\n";
 	// physical configuration
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
@@ -59,7 +52,24 @@ int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
 	const Spatial<a_real,NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
 	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
+	petsc_throw(ierr, "Could not create solution vector!");
 	prob->initializeUnknowns(*u);
+
+	return prob;
+}
+
+FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
+{
+}
+
+int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
+{
+	int ierr = 0;
+	
+	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
+	std::cout << "***\n";
+
+	const Spatial<a_real,NVARS> *const prob = newSpatialAndVec(m, u);
 
 	ierr = execute(prob, *u); CHKERRQ(ierr);
 
@@ -68,25 +78,16 @@ int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
 	return ierr;
 }
 
-FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix, 
-											 const bool vtu_output_needed, Vec *const u) const
+FlowSolutionFunctionals FlowCase::run_output(const UMesh2dh<a_real> *const m,
+											 const bool vtu_output_needed, Vec u) const
 {
 	int ierr = 0;
 	
-	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
-	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
-	std::cout << "***\n";
-
-	std::cout << "Setting up main spatial scheme.\n";
-	// physical configuration
-	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
-	// numerics for main solver
-	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	const FlowFV_base<a_real> *const prob
+	const Spatial<a_real,NVARS> *const prob
 		= create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
-	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
-	prob->initializeUnknowns(*u);
+	const a_real h = 1.0 / ( std::pow((a_real)m->gnelem(), 1.0/NDIM) );
+	std::cout << "***\n";
 
 	try {
 		ierr = execute(prob, *u);
@@ -96,11 +97,11 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 	}
 	fvens_throw(ierr, "Could not solve steady case! Error code " + std::to_string(ierr));
 
-	MVector<a_real> umat; umat.resize(m.gnelem(),NVARS);
+	MVector<a_real> umat; umat.resize(m->gnelem(),NVARS);
 	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(*u, &uarr); 
 	petsc_throw(ierr, "Petsc VecGetArrayRead error");
-	for(a_int i = 0; i < m.gnelem(); i++)
+	for(a_int i = 0; i < m->gnelem(); i++)
 		for(int j = 0; j < NVARS; j++)
 			umat(i,j) = uarr[i*NVARS+j];
 	ierr = VecRestoreArrayRead(*u, &uarr); 
@@ -125,12 +126,12 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 
 		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 		writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
-		                                  m, scalars, scalarnames, velocities, "velocity");
+		                                  *m, scalars, scalarnames, velocities, "velocity");
 	}
 	
-	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
+	MVector<a_real> output; output.resize(m->gnelem(),NDIM+2);
 	GradArray<a_real,NVARS> grad;
-	grad.resize(m.gnelem());
+	grad.resize(m->gnelem());
 	prob->getGradients(umat, grad);
 	const std::tuple<a_real,a_real,a_real> fnls 
 		{ prob->computeSurfaceData(umat, grad, opts.lwalls[0], output)};
@@ -139,7 +140,6 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 		out.exportVolumeData(umat, opts.volnameprefix);
 
 	delete prob;
-
 	return FlowSolutionFunctionals{h, entropy,
 			std::get<0>(fnls), std::get<1>(fnls), std::get<2>(fnls)};
 }
@@ -322,7 +322,13 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	fvens_throw(ierr, "Nonlinear solver failed!");
 	std::cout << "***\n";
 
-	const TimingData tdata = time->getTimingData();
+	TimingData tdata = time->getTimingData();
+#ifdef USE_BLASTED
+	computeTotalTimes(&bctx);
+	tdata.precsetup_walltime = bctx.factorwalltime;
+	tdata.precapply_walltime = bctx.applywalltime;
+	tdata.prec_cputime = bctx.factorcputime + bctx.applycputime;
+#endif
 
 	delete time;
 	ierr = KSPDestroy(&isol.ksp); petsc_throw(ierr, "KSP destroy");

@@ -5,12 +5,15 @@
  * * -benchmark_type ["speedup_sweeps": Study speed-up obtained from different numbers of async sweeps 
  *     with a fixed number of threads, "none"]
  * * -benchmark_num_repeat [integer] Number of times to repeat the benchmark and average the results
- * * -threads_sequence [integer array] The number of threads to use for the testing; only the first
- *     entry of this array is considered for the 'speedup_sweeps' test.
+ * * -benchmark_output_file [string] Path to which to write out the benchmark report
+ * * -benchmark_threads_sequence [integer array] The number of threads to use for the testing
+ * * -benchmark_base_threads [integer] Number of threads to use for base run
  * * -async_build_sweep_sequence [integer array] The number of asynchronous preconditioner build sweeps 
  *     to run test(s) with
  * * -async_apply_sweep_sequence [integer array] The number of asynchronous apply sweeps.
  *     The length of this array must be same as that of build sweeps array.
+ * * -async_base_build_sweeps
+ * * -async_base_apply_sweeps
  *
  * \author Aditya Kashi
  * \date 2018-03
@@ -23,6 +26,7 @@
 
 #include "utilities/aoptionparser.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/casesolvers.hpp"
 #include "threads_async_tests.hpp"
 
 using namespace fvens;
@@ -31,6 +35,7 @@ namespace po = boost::program_options;
 using namespace std::literals::string_literals;
 
 #define ARR_LEN 10
+#define PATH_LEN 100
 
 int main(int argc, char *argv[])
 {
@@ -57,7 +62,8 @@ int main(int argc, char *argv[])
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
 	std::ofstream outf;
-	open_file_toWrite(opts.logfile+".logb", outf);
+	const std::string outfilename = parsePetscCmd_string("-benchmark_output_file", PATH_LEN);
+	open_file_toWrite(outfilename, outf);
 
 	const std::string testtype = parsePetscCmd_string("-benchmark_type", 20);
 	const int bnrepeat = parsePetscCmd_int("-benchmark_num_repeat");
@@ -69,15 +75,17 @@ int main(int argc, char *argv[])
 
 	if(testtype == "speedup_sweeps")
 	{
-		const std::vector<int> threadseq = parsePetscCmd_intArray("-threads_sequence", ARR_LEN);
-		const std::vector<int> bswpseq  = parsePetscCmd_intArray("-async_build_sweep_sequence",
-		                                                         ARR_LEN);
-		const std::vector<int> aswpseq  = parsePetscCmd_intArray("-async_apply_sweep_sequence",
-		                                                         ARR_LEN);
-		fvens_throw(bswpseq.size() != aswpseq.size(),
+		SpeedupSweepsConfig config;
+		config.threadSeq = parsePetscCmd_intArray("-benchmark_threads_sequence", ARR_LEN);
+		config.buildSwpSeq = parsePetscCmd_intArray("-async_build_sweep_sequence", ARR_LEN);
+		config.applySwpSeq  = parsePetscCmd_intArray("-async_apply_sweep_sequence", ARR_LEN);
+		config.basethreads = parsePetscCmd_int("-benchmark_base_threads");
+		config.basebuildsweeps = parsePetscCmd_int("-async_base_build_sweeps");
+		config.baseapplysweeps = parsePetscCmd_int("-async_base_apply_sweeps");
+		fvens_throw(buildSwpSeq.size() != applySwpSeq.size(),
 		            "There must be an apply sweep for each build sweep requested and vice-versa!");
 
-		ierr = test_speedup_sweeps(opts, bnrepeat, threadseq, bswpseq, aswpseq, outf);
+		ierr = test_speedup_sweeps(opts, bnrepeat, config, outf);
 		CHKERRQ(ierr);
 	}
 	else {

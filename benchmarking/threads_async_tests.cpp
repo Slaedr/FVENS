@@ -68,111 +68,32 @@ static double std_deviation(const double *const vals, const double avg, const in
 }
 
 StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepeat,
-                               const std::vector<int>& threads_seq,
-                               const std::vector<int>& bswpseq, const std::vector<int>& aswpseq,
+                               const SpeedupSweepsConfig config,
                                std::ofstream& outf)
 {
 	StatusCode ierr = 0;
 
 	// Set up mesh
-	UMesh2dh<a_real> m;
-	m.readMesh(opts.meshfile);
-	CHKERRQ(preprocessMesh(m));
-	// check if there are any periodic boundaries
-	//m.compute_periodic_map(opts.periodic_marker, opts.periodic_axis);
-	for(auto it = opts.bcconf.begin(); it != opts.bcconf.end(); it++) {
-		if(it->bc_type == PERIODIC_BC)
-			m.compute_periodic_map(it->bc_opts[0], it->bc_opts[1]);
-	}
+	const UMesh2dh<a_real> m = constructMesh("");
 
-	std::cout << "\n***\n";
-
+	std::cout << "Setting up main spatial scheme.\n";
 	// physical configuration
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	// simpler numerics for startup
-	const FlowNumericsConfig nconfstart {opts.invflux, opts.invfluxjac, "NONE", "NONE", false};
-
-	std::cout << "Setting up main spatial scheme.\n";
 	const Spatial<a_real,NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
-	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<a_real,NVARS> *const startprob
-		= create_const_flowSpatialDiscretization(&m, pconf, nconfstart);
-	std::cout << "\n***\n";
 
 	// solution vector
 	Vec u;
-
-	// Initialize Jacobian for implicit schemes
-	Mat M;
-	ierr = setupSystemMatrix<NVARS>(&m, &M); CHKERRQ(ierr);
-	ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
-
-	// setup matrix-free Jacobian if requested
-	Mat A;
-	MatrixFreeSpatialJacobian<NVARS> mfjac;
-	PetscBool mf_flg = PETSC_FALSE;
-	ierr = PetscOptionsHasName(NULL, NULL, "-matrix_free_jacobian", &mf_flg); CHKERRQ(ierr);
-	if(mf_flg) {
-		std::cout << " Allocating matrix-free Jac\n";
-		ierr = setup_matrixfree_jacobian<NVARS>(&m, &mfjac, &A); 
-		CHKERRQ(ierr);
-	}
-
-	// initialize solver
-	KSP ksp;
-	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-	if(mf_flg) {
-		ierr = KSPSetOperators(ksp, A, M); 
-		CHKERRQ(ierr);
-	}
-	else {
-		ierr = KSPSetOperators(ksp, M, M); 
-		CHKERRQ(ierr);
-	}
-	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
-
-	// set up time discrization
-
-	SteadySolverConfig maintconf {
-		opts.lognres, opts.logfile,
-		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
-		opts.tolerance, opts.maxiter,
-	};
-
-	const SteadySolverConfig starttconf {
-		opts.lognres, opts.logfile+"-init",
-		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
-		opts.firsttolerance, opts.firstmaxiter,
-	};
-
-	SteadySolver<NVARS> * starttime=nullptr, * time=nullptr;
-
-	if(opts.usestarter != 0) {
-		starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
-		std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
-	}
-
-	// Ask the spatial discretization context to initialize flow variables
-	startprob->initializeUnknowns(u);
-
-	// setup BLASTed preconditioning
-	Blasted_data_list bctx = newBlastedDataList();
-	ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
+	prob->initializeUnknowns(*u);
 
 	std::cout << "\n***\n";
 
 	// starting computation
 	omp_set_num_threads(1);
 	set_blasted_sweeps(1,1);
-	if(opts.usestarter != 0) {
-
-		mfjac.set_spatial(startprob);
-
-		// solve the starter problem to get the initial solution
-		ierr = starttime->solve(u); CHKERRQ(ierr);
-	}
+	d
 
 	// Benchmarking runs
 
@@ -185,7 +106,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	// change file to which residual history is written
 	maintconf.logfile = opts.logfile + "-sweeps11-serial";
 
-	omp_set_num_threads(1);
+	omp_set_num_threads(basethreads);
+	set_blasted_sweeps(basefactorsweeps, baseapplysweeps);
 
 	TimingData tdata = run_sweeps(startprob, prob, maintconf, 1, 1, &ksp, u, A, M, 
 			mfjac, mf_flg, bctx);
@@ -217,7 +139,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 		// Note: The run is regarded as converged only if each repetition converged
 		for (size_t i = 0; i < bswpseq.size(); i++)
 		{
-			TimingData tdata = {0,0,0,0,0,0,0,0,0,true};
+			set_blasted_sweeps(bswpseq[i], aswpseq[i]);
+			TimingData tdata = {0,0,0,0,0,0,0,0,0,true,0,0,0};
 			double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
 			std::vector<double> precwalltimearr(numrepeat);
 
