@@ -7,14 +7,12 @@
 #include <iostream>
 #include <iomanip>
 #include <tuple>
-#include <petscksp.h>
 
 #include "casesolvers.hpp"
-#include "linalg/alinalg.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "spatial/aoutput.hpp"
-#include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"
 
 #ifdef USE_BLASTED
@@ -146,20 +144,52 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 			std::get<0>(fnls), std::get<1>(fnls), std::get<2>(fnls)};
 }
 
+void FlowCase::setupKSP(ImplicitSolver& solver, const bool use_mfjac) {
+	// initialize solver
+	int ierr = KSPCreate(PETSC_COMM_WORLD, &solver.ksp); petsc_throw(ierr, "KSP Create");
+	if(use_mfjac) {
+		ierr = KSPSetOperators(solver.ksp, solver.A, solver.M); 
+		petsc_throw(ierr, "KSP set operators");
+	}
+	else {
+		ierr = KSPSetOperators(solver.ksp, solver.M, solver.M); 
+		petsc_throw(ierr, "KSP set operators");
+	}
+
+	ierr = KSPSetFromOptions(solver.ksp); petsc_throw(ierr, "KSP set from options");
+}
+
+FlowCase::ImplicitSolver FlowCase::setupImplicitSolver(const UMesh2dh<a_real> *const mesh,
+                                                       const bool use_mfjac)
+{
+	ImplicitSolver solver;
+
+	// Initialize Jacobian for implicit schemes
+	int ierr = setupSystemMatrix<NVARS>(mesh, &solver.M); fvens_throw(ierr, "Setup system matrix");
+
+	// setup matrix-free Jacobian if requested
+	if(use_mfjac) {
+		std::cout << " Allocating matrix-free Jac\n";
+		ierr = setup_matrixfree_jacobian<NVARS>(mesh, &solver.mfjac, &solver.A); 
+		fvens_throw(ierr, "Setup matrix-free Jacobian");
+	}
+
+	setupKSP(solver, use_mfjac);
+
+	return solver;
+}
+
 SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
-	: FlowCase(options)
+	: FlowCase(options),
+	  pconf {extract_spatial_physics_config(opts)},
+	  nconfstart {firstorder_spatial_numerics_config(opts)},
+	  mf_flg {parsePetscCmd_isDefined("-matrix_free_jacobian")}
 { }
 
-/// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
-int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
+int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 	
-	// physical configuration
-	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
-	// simpler numerics for startup
-	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
-
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
@@ -168,46 +198,9 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 
 	std::cout << "***\n";
 
-	/* NOTE: Since the "startup" solver (meant to generate an initial solution) and the "main" solver
-	 * have the same number of unknowns and use first-order Jacobians, we have just one set of
-	 * solution vector, Jacobian matrix, preconditioning matrix and KSP solver.
-	 */
-
-	// Initialize Jacobian for implicit schemes
-	Mat M;
-	ierr = setupSystemMatrix<NVARS>(m, &M); CHKERRQ(ierr);
-	//ierr = MatCreateVecs(M, u, NULL); CHKERRQ(ierr);
-
-	// setup matrix-free Jacobian if requested
-	Mat A;
-	MatrixFreeSpatialJacobian<NVARS> mfjac;
-	PetscBool mf_flg = PETSC_FALSE;
-	ierr = PetscOptionsHasName(NULL, NULL, "-matrix_free_jacobian", &mf_flg); CHKERRQ(ierr);
-	if(mf_flg) {
-		std::cout << " Allocating matrix-free Jac\n";
-		ierr = setup_matrixfree_jacobian<NVARS>(m, &mfjac, &A); 
-		CHKERRQ(ierr);
-	}
-
-	// initialize solver
-	KSP ksp;
-	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-	if(mf_flg) {
-		ierr = KSPSetOperators(ksp, A, M); 
-		CHKERRQ(ierr);
-	}
-	else {
-		ierr = KSPSetOperators(ksp, M, M); 
-		CHKERRQ(ierr);
-	}
+	ImplicitSolver isol = setupImplicitSolver(m, mf_flg);
 
 	// set up time discrization
-
-	const SteadySolverConfig maintconf {
-		opts.lognres, opts.logfile,
-		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
-		opts.tolerance, opts.maxiter,
-	};
 
 	const SteadySolverConfig starttconf {
 		opts.lognres, opts.logfile+"-init",
@@ -215,15 +208,12 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 		opts.firsttolerance, opts.firstmaxiter,
 	};
 
-	const SteadySolverConfig temptconf = {false, opts.logfile, opts.firstinitcfl, opts.firstendcfl,
-		opts.firstrampstart, opts.firstrampend, opts.firsttolerance, 1};
-
-	SteadySolver<NVARS> * starttime = nullptr, * time = nullptr;
+	SteadySolver<NVARS> * starttime = nullptr;
 
 	if(opts.pseudotimetype == "IMPLICIT")
 	{
 		if(opts.usestarter != 0) {
-			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, ksp);
+			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, isol.ksp);
 			std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
 		}
 
@@ -236,16 +226,11 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 		}
 	}
 
-	// Ask the spatial discretization context to initialize flow variables
-	//startprob->initializeUnknowns(*u);
-
-	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
-
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
 	if(opts.pseudotimetype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(isol.ksp,u,startprob,bctx); CHKERRQ(ierr);
 	}
 #endif
 
@@ -255,7 +240,7 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 
 	if(opts.usestarter != 0) {
 
-		mfjac.set_spatial(startprob);
+		isol.mfjac.set_spatial(startprob);
 
 		// Solve the starter problem to get the initial solution
 		// If the starting solve does not converge to the required tolerance, don't throw and
@@ -267,33 +252,53 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 		}
 	}
 
+	delete starttime;
+
 	// Reset the KSP - could be advantageous for some types of algebraic solvers
 	//  This will also reset the BLASTed timing counters.
-	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = KSPDestroy(&isol.ksp); CHKERRQ(ierr);
 #ifdef USE_BLASTED
 	destroyBlastedDataList(&bctx);
 #endif
-	ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
+	ierr = MatDestroy(&isol.M); CHKERRQ(ierr);
 	if(mf_flg) {
-		ierr = KSPSetOperators(ksp, A, M); 
+		ierr = MatDestroy(&isol.A); 
 		CHKERRQ(ierr);
 	}
-	else {
-		ierr = KSPSetOperators(ksp, M, M); 
-		CHKERRQ(ierr);
-	}
-	ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+
+	delete startprob;
+	return ierr;
+}
+
+TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob, Vec u) const
+{
+	int ierr = 0;
+	
+	const UMesh2dh<a_real> *const m = prob->mesh();
+
+	ImplicitSolver isol = setupImplicitSolver(m, mf_flg);
+
+	// set up time discrization
+
+	const SteadySolverConfig maintconf {
+		opts.lognres, opts.logfile,
+		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
+		opts.tolerance, opts.maxiter,
+	};
+
+	SteadySolver<NVARS> * time = nullptr;
+
 #ifdef USE_BLASTED
-	bctx = newBlastedDataList();
+	Blasted_data_list bctx = newBlastedDataList();
 	if(opts.pseudotimetype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(ksp,u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(isol.ksp,u,prob,bctx); fvens_throw(ierr, "BLASTed not setup");
 	}
 #endif
 
 	// setup nonlinear ODE solver for main solve - MUST be done AFTER KSPCreate
 	if(opts.pseudotimetype == "IMPLICIT")
 	{
-		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, ksp);
+		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, isol.ksp);
 		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
 	}
 	else
@@ -302,26 +307,46 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 		std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
 	}
 
-	mfjac.set_spatial(prob);
+	isol.mfjac.set_spatial(prob);
 
 	// Solve the main problem
-	ierr = time->solve(u); CHKERRQ(ierr);
+	try {
+		ierr = time->solve(u);
+	}
+	catch(Numerical_error& e) {
+		TimingData tdata; tdata.converged = false;
+		delete time;
+		return tdata;
+	}
 
+	fvens_throw(ierr, "Nonlinear solver failed!");
 	std::cout << "***\n";
 
-	delete starttime;
+	const TimingData tdata = time->getTimingData();
+
 	delete time;
-	ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+	ierr = KSPDestroy(&isol.ksp); petsc_throw(ierr, "KSP destroy");
 #ifdef USE_BLASTED
 	destroyBlastedDataList(&bctx);
 #endif
-	ierr = MatDestroy(&M); CHKERRQ(ierr);
+	ierr = MatDestroy(&isol.M); petsc_throw(ierr, "Mat destroy");
 	if(mf_flg) {
-		ierr = MatDestroy(&A); 
-		CHKERRQ(ierr);
+		ierr = MatDestroy(&isol.A); 
+		petsc_throw(ierr, "MatFree mat destroy");
 	}
 
-	delete startprob;
+	return tdata;
+}
+
+/// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
+int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
+{
+	int ierr = 0;
+	
+	ierr = execute_starter(prob, u); fvens_throw(ierr, "Startup solve failed!");
+	TimingData td = execute_main(prob, u); fvens_throw(ierr, "Steady case solver failed!");
+	if(!td.converged)
+		throw Tolerance_error("Main flow solve did not converge!");
 
 	return ierr;
 }

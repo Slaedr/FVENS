@@ -51,6 +51,18 @@ po::variables_map parse_cmd_options(const int argc, const char *const argv[],
 	return cmdvarmap;
 }
 
+bool parsePetscCmd_isDefined(const std::string optionname)
+{
+	StatusCode ierr = 0;
+	PetscBool flg = PETSC_FALSE;
+	ierr = PetscOptionsHasName(NULL, NULL, optionname.c_str(), &flg);
+	petsc_throw(ierr, "Could not determine whether PETSc option was defined!");
+	if(flg == PETSC_TRUE)
+		return true;
+	else
+		return false;
+}
+
 /** Ideally, we would have single function template for int and real, but for that we need
  * `if constexpr' from C++ 17 which not all compilers have yet.
  */

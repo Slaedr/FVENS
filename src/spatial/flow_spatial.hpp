@@ -136,7 +136,7 @@ protected:
 	const IdealGasPhysics<scalar> physics;
 
 	/// Free-stream/reference condition
-	const std::array<scalar,NVARS> uinf;
+	const std::array<a_real,NVARS> uinf;
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
@@ -233,19 +233,6 @@ protected:
 	 * if need be.
 	 */
 	const IdealGasPhysics<a_real> jphy;
-
-	/// Free-stream/reference condition for Jacobian
-	const std::array<a_real,NVARS> juinf;
-
-	/// Numerical inviscid flux context for computing an analytical Jacobian
-	/** See \ref jphy for the reason this is provided.
-	 * This may implement a numerical flux function mathematically distint from the
-	 * \ref FlowFV_base::inviflux object used for the fluxes (right hand side).
-	 */
-	const InviscidFlux<a_real> *const jflux;
-
-	/// Boundary conditions objects used for building the Jacobian
-	const std::map<int,const FlowBC<a_real>*> jbcs;
 
 	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.

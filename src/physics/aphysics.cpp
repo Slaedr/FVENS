@@ -10,15 +10,19 @@
 namespace fvens {
 
 template <typename scalar>
+Physics<scalar>::~Physics() { }
+
+template <typename scalar>
 IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf, 
 		const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
 	: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
 {
+#ifdef DEBUG
 	std::cout << " IdealGasPhysics: Physical parameters:\n";
 	std::cout << "  Adiabatic index = " <<g << ", M_infty = " <<Minf << ", T_infty = " << Tinf
 		<< "\n   Re_infty = " << Reinf << ", Pr = " << Pr << std::endl;
+#endif
 }
-
 
 template <typename scalar>
 void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n, 
@@ -33,9 +37,9 @@ void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *cons
  * the non-dimensional free-stream density and velocity magnitude are 1.0.
  */
 template <typename scalar>
-std::array<scalar,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const a_real aoa) const
+std::array<a_real,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const a_real aoa) const
 {
-	std::array<scalar,NVARS> uinf;
+	std::array<a_real,NVARS> uinf;
 	uinf[0] = 1.0;
 	uinf[1] = cos(aoa);
 	uinf[2] = sin(aoa);
@@ -158,6 +162,7 @@ void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *c
 	}
 }
 
+template class Physics<a_real>;
 template class IdealGasPhysics<a_real>;
 
 }

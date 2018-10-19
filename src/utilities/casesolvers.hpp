@@ -22,7 +22,9 @@
 #define FVENS_CASESOLVERS_H
 
 #include <string>
-#include <petscvec.h>
+#include <petscksp.h>
+#include "linalg/alinalg.hpp"
+#include "ode/aodesolver.hpp"
 #include "utilities/controlparser.hpp"
 
 namespace fvens {
@@ -61,12 +63,14 @@ public:
 	 *   must be destroyed explicitly by the caller after it has been used.
 	 */
 	virtual FlowSolutionFunctionals run_output(const std::string mesh_suffix,
-												const bool vtu_output_needed,
-												Vec *const u) const;
+	                                           const bool vtu_output_needed,
+	                                           Vec *const u) const;
 
 	/// Construct a mesh from the base mesh name in the [options database](\ref FlowParserOptions)
 	///  and a suffix
-	/** \param mesh_suffix A string to concatenate to the
+	/** Reads the mesh, computes the face connectivity, reorders the cells if requested and
+	 * sets up periodic boundaries if necessary.
+	 * \param mesh_suffix A string to concatenate to the
 	 *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
 	 */
 	UMesh2dh<a_real> constructMesh(const std::string mesh_suffix) const;
@@ -79,6 +83,25 @@ public:
 
 protected:
 	const FlowParserOptions& opts;
+
+	/// Objects required for time-implicit solution
+	struct ImplicitSolver {
+		Mat A;                                  ///< System Jacobian matrix
+		Mat M;                                  ///< System preconditioning matrix
+		KSP ksp;                                ///< Linear solver context
+		MatrixFreeSpatialJacobian<NVARS> mfjac; ///< Matrix-free system Jacobian (used iff requested)
+	};
+
+	/// Sets up matrices and KSP contexts
+	/** Sets KSP options from command line (or PETSc options file) as well.
+	 * \param[in] mesh The mesh for which to set up the solver
+	 * \param[in] use_mfjac Whether a matrix-free Jacobian should be set up (true) or not (false)
+	 * \return Objects required for implicit solution of the problem
+	 */
+	static ImplicitSolver setupImplicitSolver(const UMesh2dh<a_real> *const mesh, const bool use_mfjac);
+
+	/// Sets up only the KSP context, assuming the Mats have been set up
+	static void setupKSP(ImplicitSolver& solver, const bool use_matrix_free);
 };
 
 /// Solution procedure for a steady-state case
@@ -92,7 +115,32 @@ public:
 	SteadyFlowCase(const FlowParserOptions& options);
 
 	/// Solve a case given a spatial discretization context
+	/** Timing data is discarded. Throws a \ref Tolerance_error if the main solve does not converge.
+	 */
 	int execute(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+
+	/// Solve the 1st-order problem corresponding to the actual problem to be solved
+	/** Even if the solver does not converge to required tolerance, no exception is thrown.
+	 * Sets up all the implicit solver objects it needs and destroys them after it's done.
+	 * \param[in] prob The original problem to be solved
+	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
+	 */
+	int execute_starter(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+
+	/// Solve the steady-state problem from some (decent) initial condition
+	/** If the solver does not converge to required tolerance, a \ref Tolerance_error is thrown.
+	 * Sets up all the implicit solver objects it needs and destroys them after it's done.
+	 * \param[in] prob The problem to be solved
+	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
+	 * \return Time taken by various phases of the solve and whether or not it converged
+	 */
+	TimingData execute_main(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+
+protected:
+
+	const FlowPhysicsConfig pconf;
+	const FlowNumericsConfig nconfstart;
+	const bool mf_flg;
 };
 
 /// Solution procedure for an unsteady flow case
