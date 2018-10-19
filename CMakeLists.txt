@@ -268,6 +268,8 @@ message(STATUS "Building with PETSc found at ${PETSC_LIB}/${PETSC_ARCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
 find_library(ADOLC_LIB NAMES adolc PATHS ${ADOLC_DIR}/lib64)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ADOLC=1")
+
 # ---------------------------------------------------------------------------- #
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} LCASE_CMAKE_BUILD_TYPE)

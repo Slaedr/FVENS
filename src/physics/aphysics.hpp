@@ -24,15 +24,15 @@ public:
 	virtual ~Physics();
 
 	/// Computes the flux vector along some direction
-	virtual void getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n, 
+	virtual void getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n,
 			scalar *const flux) const = 0;
 
 	/// Computes the Jacobian of the flux along some direction, at the given state
-	virtual void getJacobianDirectionalFluxWrtConserved(const scalar *const u, 
-			const scalar* const n, 
+	virtual void getJacobianDirectionalFluxWrtConserved(const scalar *const u,
+			const scalar* const n,
 			scalar *const dfdu) const = 0;
 };
-	
+
 /// Flow-physics-related computation for single-phase ideal gas
 /** The non-dimensionalization assumed is from free-stream velocities and temperatures,
  * as given in section 4.14.2 of \cite matatsuka.
@@ -49,7 +49,7 @@ template <typename scalar>
 class IdealGasPhysics : public Physics<scalar>
 {
 public:
-	IdealGasPhysics(const a_real _g, const a_real M_inf, 
+	IdealGasPhysics(const a_real _g, const a_real M_inf,
 			const a_real T_inf, const a_real Re_inf, const a_real _Pr);
 
 	/// Returns an array containing the non-dimensional free-stream state
@@ -58,7 +58,7 @@ public:
 	std::array<a_real,NVARS> compute_freestream_state(const a_real aoa) const;
 
 	/// Computes flux in a given direction efficiently using specific data
-	/** Note that this function is independent of what kind of gas it is. 
+	/** Note that this function is independent of what kind of gas it is.
 	 * \param[in] uc Vector of conserved variables
 	 * \param[in] n Vector along the direction in which the flux vector is needed
 	 * \param[in] vn Normal velocity (w.r.t. the the normal n above)
@@ -71,19 +71,19 @@ public:
 		__attribute__((always_inline));
 
 	/// Computes the analytical convective flux across a face oriented in some direction
-	void getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n, 
+	void getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n,
 			scalar *const __restrict flux) const;
-	
+
 	/// Computes the Jacobian of the flux along some direction, at the given state
 	/** The flux Jacobian matrix dfdu is assumed stored in a row-major 1-dimensional array.
 	 */
-	void getJacobianDirectionalFluxWrtConserved(const scalar *const u, const scalar* const n, 
+	void getJacobianDirectionalFluxWrtConserved(const scalar *const u, const scalar* const n,
 			scalar *const __restrict dfdu) const;
 
 	/// Computes derivatives of the squared velocity magnitude w.r.t. conserved variables
 	/** \warning uc and dvmag2 must not point to the same memory locations.
 	 */
-	void getJacobianVmag2WrtConserved(const scalar *const uc, 
+	void getJacobianVmag2WrtConserved(const scalar *const uc,
 		scalar *const __restrict dvmag2) const;
 
 	/// Outputs various quantities, especially needed by numerical fluxes
@@ -113,8 +113,8 @@ public:
 
 	/// Returns the non-dimensionalized free-stream pressure
 	a_real getFreestreamPressure() const;
-	
-	/// Computes pressure from internal energy - here it's the ideal gas relation	
+
+	/// Computes pressure from internal energy - here it's the ideal gas relation
 	scalar getPressure(const scalar internalenergy) const;
 
 	/// Computes pressure from conserved variables
@@ -123,7 +123,7 @@ public:
 	/// Computes pressure gradient from conserved variables and their gradients
 	scalar getGradPressureFromConservedAndGradConserved(const scalar *const uc,
 		const scalar *const guc) const;
-	
+
 	/// Derivative of pressure w.r.t. conserved variables
 	/** Note that the derivative is added to the second argument - the latter is not zeroed
 	 * or anything.
@@ -139,14 +139,14 @@ public:
 	scalar getTemperature(const scalar rho, const scalar p) const;
 
 	/// Computes derivatives of temperature w.r.t. either conserved, primitive or primitive2
-	/** \note Derivatives can be computed w.r.t. any variable-set that 
+	/** \note Derivatives can be computed w.r.t. any variable-set that
 	 * has density as the first variable; the specific variables w.r.t. which derivatives are
 	 * computed depends on dp.
 	 */
-	void getJacobianTemperature(const scalar rho, 
+	void getJacobianTemperature(const scalar rho,
 			const scalar p, const scalar *const dp,
 			scalar *const __restrict dT) const;
-	
+
 	/// Computes speed of sound from density and pressure
 	scalar getSoundSpeed(const scalar rho, const scalar p) const;
 
@@ -176,10 +176,10 @@ public:
 
 	/// Compute energy from pressure, density and square of magnitude of velocity
 	scalar getEnergyFromPressure(const scalar p, const scalar d, const scalar vmag2) const;
-	
+
 	/// Compute energy from temperature, density and square of magnitude of velocity
 	scalar getEnergyFromTemperature(const scalar T, const scalar d, const scalar vmag2) const;
-	
+
 	/// Computes derivatives of total energy from derivatives of temperature and |v|^2
 	/** Can compute the derivatives w.r.t. any variable-set as long as
 	 * the first variable is density. That variable set is decided by what variables the
@@ -204,21 +204,21 @@ public:
 	 * the same storage. The output is assigned to, not updated.
 	 */
 	void getPrimitiveFromConserved(const scalar *const uc, scalar *const up) const;
-	
+
 	/// Convert conserved variables to primitive-2 variables; depends on non-dimensionalization
 	/** The output is assigned to, not updated. So both input and output can point to the same
 	 * storage.
 	 */
 	void getPrimitive2FromConserved(const scalar *const uc, scalar *const up) const;
-	
+
 	/// Computes the Jacobian matrix of the conserved-to-primitive-2 transformation
-	/** \f$ \partial \mathbf{u}_{prim2} / \partial \mathbf{u}_{cons} \f$. 
+	/** \f$ \partial \mathbf{u}_{prim2} / \partial \mathbf{u}_{cons} \f$.
 	 * The output is stored as 1D rowmajor.
 	 *
 	 * \warning The Jacobian is *added* to the output jac. If it has garbage at the outset,
 	 * it will contain garbage at the end.
 	 */
-	void getJacobianPrimitive2WrtConserved(const scalar *const uc, 
+	void getJacobianPrimitive2WrtConserved(const scalar *const uc,
 			scalar *const __restrict jac) const;
 
 	/// Convert primitive variables to conserved
@@ -240,23 +240,23 @@ public:
 	/** \sa IdealGasPhysics
 	 */
 	scalar getTemperatureFromConserved(const scalar *const uc) const;
-	
+
 	/// Computes derivatives of temperature w.r.t. conserved variables
 	/** \param[in|out] dT The derivatives are added to dT, which is not zeroed initially.
 	 */
-	void getJacobianTemperatureWrtConserved(const scalar *const uc, 
+	void getJacobianTemperatureWrtConserved(const scalar *const uc,
 			scalar *const __restrict dT) const;
 
 	/// Computes non-dimensional temperature from non-dimensional primitive variables
 	scalar getTemperatureFromPrimitive(const scalar *const up) const;
 
 	/// Computes non-dim temperature gradient from non-dim density, pressure and their gradients
-	scalar getGradTemperature(const scalar rho, const scalar gradrho, 
+	scalar getGradTemperature(const scalar rho, const scalar gradrho,
 		const scalar p, const scalar gradp) const;
 
-	/// Compute non-dim temperature spatial derivative 
+	/// Compute non-dim temperature spatial derivative
 	/// from non-dim conserved variables and their spatial derivatives
-	scalar getGradTemperatureFromConservedAndGradConserved(const scalar *const uc, 
+	scalar getGradTemperatureFromConservedAndGradConserved(const scalar *const uc,
 			const scalar *const guc) const;
 
 	/// Compute spatial derivative of non-dim temperature from non-dim conserved variables and
@@ -269,9 +269,9 @@ public:
 	 */
 	void getGradPrimitive2FromConservedAndGradConserved(const scalar *const __restrict uc,
 			const scalar *const guc, scalar *const gp) const;
-	
+
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from temperature
-	/** By viscosity coefficient, we mean dynamic viscosity divided by 
+	/** By viscosity coefficient, we mean dynamic viscosity divided by
 	 * the free-stream Reynolds number.
 	 */
 	scalar getViscosityCoeffFromTemperature(const scalar T) const;
@@ -279,13 +279,13 @@ public:
 	/// Computes non-dimensional viscosity coeff using Sutherland's law from conserved variables
 	/** This is the dynamic viscosity divided by the Reynolds number
 	 * when non-dimensionalized as stated in IdealGasPhysics.
-	 * Note that divergence terms must still be multiplied further by -2/3 
+	 * Note that divergence terms must still be multiplied further by -2/3
 	 * and diagonal stress terms by 2.
 	 */
 	scalar getViscosityCoeffFromConserved(const scalar *const uc) const;
 
 	/// Computes derivatives of Sutherland's dynamic viscosity coeff w.r.t. conserved variables
-	void getJacobianSutherlandViscosityWrtConserved(const scalar *const uc, 
+	void getJacobianSutherlandViscosityWrtConserved(const scalar *const uc,
 			scalar *const __restrict dmu) const;
 
 	/// Returns non-dimensional free-stream viscosity coefficient
@@ -307,7 +307,7 @@ public:
 	 * \param[in] grad Gradients of primitve variables
 	 * \param[in,out] stress Components of the stress tensor on output
 	 */
-	void getStressTensor(const scalar mu, const scalar grad[NDIM][NVARS], 
+	void getStressTensor(const scalar mu, const scalar grad[NDIM][NVARS],
 			scalar stress[NDIM][NDIM]) const __attribute((always_inline));
 
 	/// Computes Jacobian of stress tensor using Jacobian of gradients of primitive variables
@@ -350,7 +350,7 @@ void IdealGasPhysics<scalar>::getVarsFromConserved(const scalar *const uc, const
 		scalar& p, scalar& H ) const
 {
 	for(int j = 0; j < NDIM; j++)
-		v[j] = uc[j+1]/uc[0]; 
+		v[j] = uc[j+1]/uc[0];
 	vn = dimDotProduct(v,n);
 	const scalar vmag2 = dimDotProduct(v,v);
 	p = (g-1.0)*(uc[3] - 0.5*uc[0]*vmag2);
@@ -360,7 +360,7 @@ void IdealGasPhysics<scalar>::getVarsFromConserved(const scalar *const uc, const
 // not restricted to anything
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianVmag2WrtConserved(const scalar *const uc, 
+void IdealGasPhysics<scalar>::getJacobianVmag2WrtConserved(const scalar *const uc,
 		scalar *const __restrict dvmag2) const
 {
 	dvmag2[0] += -2.0/(uc[0]*uc[0]*uc[0])*dimDotProduct(&uc[1],&uc[1]);
@@ -383,7 +383,7 @@ scalar IdealGasPhysics<scalar>::getPressureFromConserved(const scalar *const uc)
 }
 
 template <typename scalar>
-inline 
+inline
 scalar IdealGasPhysics<scalar>::getGradPressureFromConservedAndGradConserved(const scalar *const uc,
 		const scalar *const guc) const
 {
@@ -394,7 +394,7 @@ scalar IdealGasPhysics<scalar>::getGradPressureFromConservedAndGradConserved(con
 
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *const uc, 
+void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *const uc,
 		scalar *const __restrict dp) const
 {
 	dp[0] += (g-1.0)*0.5*dimDotProduct(&uc[1],&uc[1])/(uc[0]*uc[0]);
@@ -405,7 +405,7 @@ void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *cons
 
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *const uc, 
+void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *const uc,
 		const scalar rho2vmag2,
 		scalar *const __restrict dp) const
 {
@@ -424,7 +424,7 @@ scalar IdealGasPhysics<scalar>::getTemperature(const scalar rho, const scalar p)
 
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianTemperature(const scalar rho, 
+void IdealGasPhysics<scalar>::getJacobianTemperature(const scalar rho,
 		const scalar p, const scalar *const dp,
 		scalar *const __restrict dT) const
 {
@@ -438,7 +438,7 @@ template <typename scalar>
 inline
 scalar IdealGasPhysics<scalar>::getSoundSpeed(const scalar rho, const scalar p) const
 {
-	return std::sqrt(g * p/rho);
+	return sqrt(g * p/rho);
 }
 
 template <typename scalar>
@@ -469,7 +469,7 @@ void IdealGasPhysics<scalar>::getJacobianSoundSpeedWrtConserved(const scalar *co
 		scalar *const __restrict dc) const
 {
 	scalar p =getPressureFromConserved(uc);
-	scalar dp[NVARS]; 
+	scalar dp[NVARS];
 	for(int i = 0; i < NVARS; i++) dp[i] = 0;
 	getJacobianPressureWrtConserved(uc, dp);
 
@@ -501,20 +501,20 @@ template <typename scalar>
 inline
 scalar IdealGasPhysics<scalar>::getEntropyFromConserved(const scalar *const uc) const
 {
-	return getPressureFromConserved(uc)/std::pow(uc[0],g);
+	return getPressureFromConserved(uc)/pow(uc[0],g);
 }
 
 template <typename scalar>
 inline
-scalar IdealGasPhysics<scalar>::getEnergyFromPressure(const scalar p, const scalar d, const scalar vmag2) 
-	const 
+scalar IdealGasPhysics<scalar>::getEnergyFromPressure(const scalar p, const scalar d, const scalar vmag2)
+	const
 {
 	return p/(g-1.0) + 0.5*d*vmag2;
 }
 
 template <typename scalar>
 inline
-scalar IdealGasPhysics<scalar>::getEnergyFromTemperature(const scalar T, const scalar d, 
+scalar IdealGasPhysics<scalar>::getEnergyFromTemperature(const scalar T, const scalar d,
 		const scalar vmag2) const
 {
 	return d * (T/(g*(g-1.0)*Minf*Minf) + 0.5*vmag2);
@@ -594,12 +594,12 @@ void IdealGasPhysics<scalar>::getConservedFromPrimitive(const scalar *const up, 
 
 template <typename scalar>
 inline
-scalar IdealGasPhysics<scalar>::getDensityFromPressureTemperature(const scalar pressure, 
+scalar IdealGasPhysics<scalar>::getDensityFromPressureTemperature(const scalar pressure,
 		const scalar temperature) const
 {
 	return g*Minf*Minf*pressure/temperature;
 }
-	
+
 template <typename scalar>
 inline
 void IdealGasPhysics<scalar>::getJacobianDensityFromJacobiansPressureTemperature(
@@ -623,7 +623,7 @@ scalar IdealGasPhysics<scalar>::getTemperatureFromConserved(const scalar *const 
 // not restricted to ideal gases
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianTemperatureWrtConserved(const scalar *const uc, 
+void IdealGasPhysics<scalar>::getJacobianTemperatureWrtConserved(const scalar *const uc,
 		scalar *const __restrict dT) const
 {
 	const scalar p = getPressureFromConserved(uc);
@@ -642,7 +642,7 @@ scalar IdealGasPhysics<scalar>::getTemperatureFromPrimitive(const scalar *const 
 
 template <typename scalar>
 inline
-scalar IdealGasPhysics<scalar>::getGradTemperature(const scalar rho, const scalar gradrho, 
+scalar IdealGasPhysics<scalar>::getGradTemperature(const scalar rho, const scalar gradrho,
 		const scalar p, const scalar gradp) const
 {
 	return (gradp*rho - p*gradrho) / (rho*rho) * g*Minf*Minf;
@@ -650,7 +650,7 @@ scalar IdealGasPhysics<scalar>::getGradTemperature(const scalar rho, const scala
 
 template <typename scalar>
 inline
-scalar IdealGasPhysics<scalar>::getGradTemperatureFromConservedAndGradConserved(const scalar *const uc, 
+scalar IdealGasPhysics<scalar>::getGradTemperatureFromConservedAndGradConserved(const scalar *const uc,
 		const scalar *const guc) const
 {
 	const scalar p = getPressureFromConserved(uc);
@@ -677,13 +677,13 @@ void IdealGasPhysics<scalar>::getGradPrimitive2FromConservedAndGradConserved(
 	// velocity derivatives from momentum derivatives
 	for(int i = 1; i < NDIM+1; i++)
 		gup[i] = (guc[i]*uc[0]-uc[i]*guc[0])/(uc[0]*uc[0]);
-	
+
 	const scalar p = getPressureFromConserved(uc);
-	
-	/* 
+
+	/*
 	 * Note that beyond this point, we assume we don't have access to momentum grads anymore,
 	 * because we want to allow aliasing of guc and gp and we have modified gp above.
-	 * So we only use density grad (gup[0] or guc[0]), velocity grads just computed (gup[1:NDIM+1]) 
+	 * So we only use density grad (gup[0] or guc[0]), velocity grads just computed (gup[1:NDIM+1])
 	 * and energy grad (guc[NDIM+1]) going forward. We CANNOT use guc[1:NDIM+1].
 	 */
 
@@ -705,7 +705,7 @@ template <typename scalar>
 inline
 scalar IdealGasPhysics<scalar>::getViscosityCoeffFromTemperature(const scalar T) const
 {
-	return (1.0+sC/Tinf)/(T+sC/Tinf) * std::pow(T,1.5) / Reinf;
+	return (1.0+sC/Tinf)/(T+sC/Tinf) * pow(T,1.5) / Reinf;
 }
 
 template <typename scalar>
@@ -718,7 +718,7 @@ scalar IdealGasPhysics<scalar>::getViscosityCoeffFromConserved(const scalar *con
 
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getJacobianSutherlandViscosityWrtConserved(const scalar *const uc, 
+void IdealGasPhysics<scalar>::getJacobianSutherlandViscosityWrtConserved(const scalar *const uc,
 		scalar *const __restrict dmu) const
 {
 	const scalar T = getTemperatureFromConserved(uc);
@@ -726,7 +726,7 @@ void IdealGasPhysics<scalar>::getJacobianSutherlandViscosityWrtConserved(const s
 	getJacobianTemperatureWrtConserved(uc, dT);
 
 	const scalar coef = (1.0+sC/Tinf)/Reinf;
-	const scalar T15 = std::pow(T,1.5), Tm15 = std::pow(T,-1.5);
+	const scalar T15 = pow(T,1.5), Tm15 = pow(T,-1.5);
 	const scalar denom = (T + sC/Tinf)*(T+sC/Tinf);
 	// coef * pow(T,1.5) / (T + sC/Tinf)
 	for(int i = 0; i < NVARS; i++)
@@ -763,7 +763,7 @@ a_real IdealGasPhysics<scalar>::getFreestreamPressure() const {
 
 template <typename scalar>
 inline
-void IdealGasPhysics<scalar>::getStressTensor(const scalar mu, const scalar grad[NDIM][NVARS], 
+void IdealGasPhysics<scalar>::getStressTensor(const scalar mu, const scalar grad[NDIM][NVARS],
 		scalar stress[NDIM][NDIM]) const
 {
 	// divergence of velocity times second viscosity
@@ -772,7 +772,7 @@ void IdealGasPhysics<scalar>::getStressTensor(const scalar mu, const scalar grad
 		ldiv += grad[j][j+1];
 	ldiv *= 2.0/3.0*mu;
 
-	for(int i = 0; i < NDIM; i++) 
+	for(int i = 0; i < NDIM; i++)
 	{
 		for(int j = 0; j < NDIM; j++)
 			stress[i][j] = mu*(grad[i][j+1] + grad[j][i+1]);

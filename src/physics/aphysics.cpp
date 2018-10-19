@@ -6,15 +6,16 @@
 
 #include "aphysics.hpp"
 #include <iostream>
-	
+#include <adolc/adolc.h>
+
 namespace fvens {
 
 template <typename scalar>
 Physics<scalar>::~Physics() { }
 
 template <typename scalar>
-IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf, 
-		const a_real T_inf, const a_real Re_inf, const a_real _Pr) 
+IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf,
+		const a_real T_inf, const a_real Re_inf, const a_real _Pr)
 	: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
 {
 #ifdef DEBUG
@@ -25,7 +26,7 @@ IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf,
 }
 
 template <typename scalar>
-void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n, 
+void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n,
 		scalar *const __restrict flux) const
 {
 	const scalar vn = dimDotProduct(&u[1],n)/u[0];
@@ -48,15 +49,15 @@ std::array<a_real,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const
 }
 
 template <typename scalar>
-void IdealGasPhysics<scalar>::getJacobianDirectionalFluxWrtConserved(const scalar *const u, 
-		const scalar* const n, 
+void IdealGasPhysics<scalar>::getJacobianDirectionalFluxWrtConserved(const scalar *const u,
+		const scalar* const n,
 		scalar *const __restrict dfdu) const
 {
 	const scalar rhovn = dimDotProduct(&u[1],n), u02 = u[0]*u[0];
 	// first row
-	dfdu[0] = 0; 
-	dfdu[1] = n[0]; 
-	dfdu[2] = n[1]; 
+	dfdu[0] = 0;
+	dfdu[1] = n[0];
+	dfdu[2] = n[1];
 	dfdu[3] = 0;
 	// second row
 	dfdu[4] = (-rhovn*u[1] + (g-1)*n[0]*(dimDotProduct(&u[1],&u[1]))/2.0) / u02;
@@ -81,7 +82,7 @@ void IdealGasPhysics<scalar>
                               scalar *const __restrict dv, scalar *const __restrict dvn,
                               scalar *const __restrict dp, scalar *const __restrict dH) const
 {
-	for(int j = 0; j < NDIM; j++) 
+	for(int j = 0; j < NDIM; j++)
 	{
 		dv[j*NVARS+0] += -uc[j+1]/(uc[0]*uc[0]);
 		dv[j*NVARS+j+1] += 1.0/uc[0];
@@ -102,21 +103,21 @@ void IdealGasPhysics<scalar>
 }
 
 template <typename scalar>
-void IdealGasPhysics<scalar>::getJacobianPrimitive2WrtConserved(const scalar *const uc, 
+void IdealGasPhysics<scalar>::getJacobianPrimitive2WrtConserved(const scalar *const uc,
 		scalar *const __restrict jac) const
 {
 	jac[0] += 1.0;
 
 	const scalar rho2vmag2 = dimDotProduct(&uc[1],&uc[1]);
-	
+
 	for(int idim = 1; idim < NDIM+1; idim++) {
 		// d(up[idim])
 		jac[idim*NVARS+0] += -uc[idim]/(uc[0]*uc[0]);
 		jac[idim*NVARS+idim] += 1.0/uc[0];
 	}
-	
+
 	const scalar p = getPressure(uc[NVARS-1] - 0.5*rho2vmag2/uc[0]);
-	scalar dp[NVARS]; 
+	scalar dp[NVARS];
 	zeros(dp, NVARS);
 	getJacobianPressureWrtConserved(uc, rho2vmag2, dp);
 
@@ -126,7 +127,7 @@ void IdealGasPhysics<scalar>::getJacobianPrimitive2WrtConserved(const scalar *co
 template <typename scalar>
 void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *const dmu,
 		const scalar grad[NDIM][NVARS], const scalar dgrad[NDIM][NVARS][NVARS],
-		scalar stress[NDIM][NDIM], 
+		scalar stress[NDIM][NDIM],
 		scalar dstress[NDIM][NDIM][NVARS]) const
 {
 	scalar div = 0;
@@ -134,25 +135,25 @@ void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *c
 	for(int k = 0; k < NVARS; k++)
 		dldiv[k] = 0;
 
-	for(int j = 0; j < NDIM; j++) 
+	for(int j = 0; j < NDIM; j++)
 	{
 		div += grad[j][j+1];
 		for(int k = 0; k < NVARS; k++)
 			dldiv[k] += dgrad[j][j+1][k];
 	}
-	
+
 	const scalar ldiv = 2.0/3.0*mu*div;
 	for(int k = 0; k < NVARS; k++)
 		dldiv[k] = 2.0/3.0 * (dmu[k]*div + mu*dldiv[k]);
-	
-	for(int i = 0; i < NDIM; i++) 
+
+	for(int i = 0; i < NDIM; i++)
 	{
-		for(int j = 0; j < NDIM; j++) 
+		for(int j = 0; j < NDIM; j++)
 		{
 			stress[i][j] = mu*(grad[i][j+1] + grad[j][i+1]);
 
 			for(int k = 0; k < NVARS; k++)
-				dstress[i][j][k]= dmu[k]*(grad[i][j+1] + grad[j][i+1]) 
+				dstress[i][j][k]= dmu[k]*(grad[i][j+1] + grad[j][i+1])
 				                  + mu*(dgrad[i][j+1][k] + dgrad[j][i+1][k]);
 		}
 
@@ -163,6 +164,9 @@ void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *c
 }
 
 template class Physics<a_real>;
+template class Physics<adouble>;
 template class IdealGasPhysics<a_real>;
+//CHANGE HERE
+//template class IdealGasPhysics<adouble>;
 
 }

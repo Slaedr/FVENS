@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include "abc.hpp"
+#include <adolc/adolc.h>
 
 namespace fvens {
 
@@ -70,7 +71,7 @@ void InOutFlow<scalar,j_real>::computeGhostState(const scalar *const ins, const 
 		gs[NDIM+1] = phy.getEnergyFromPressure(pinf, ins[0],
 		                                       dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
 	}
-		
+
 	// At supersonic outflow, everything is taken from the interior
 	else
 	{
@@ -237,23 +238,23 @@ void Slipwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const i
 	dvni[NDIM+1] = 0;
 
 	gs[0] = ins[0];
-		
+
 	dgs[0] = 1.0;
 
 	gs[1] = ins[1] - 2.0*vni*n[0]*ins[0];
-		
+
 	dgs[NVARS+0] = -2.0*n[0]*(dvni[0]*ins[0]+vni);
 	dgs[NVARS+1] = 1.0 - 2.0*n[0]*ins[0]*dvni[1];
 	dgs[NVARS+2] = -2.0*n[0]*ins[0]*dvni[2];
 
 	gs[2] = ins[2] - 2.0*vni*n[1]*ins[0];
-		
+
 	dgs[2*NVARS+0] = -2.0*n[1]*(dvni[0]*ins[0]+vni);
 	dgs[2*NVARS+1] = -2.0*n[1]*ins[0]*dvni[1];
 	dgs[2*NVARS+2] = 1.0 - 2.0*n[1]*ins[0]*dvni[2];
 
 	gs[3] = ins[3];
-		
+
 	dgs[3*NVARS+3] = 1.0;
 }
 
@@ -352,7 +353,7 @@ void Isothermalwall2D<scalar,j_real>::computeGhostState(const scalar *const ins,
 {
 	// pressure in the interior cell
 	const a_real p = phy.getPressureFromConserved(ins);
-			
+
 	// temperature in the ghost cell
 	const a_real gtemp = 2.0*walltemperature - phy.getTemperature(ins[0],p);
 
@@ -433,6 +434,7 @@ void Extrapolation<scalar,j_real>::computeGhostStateAndJacobian(const j_real *co
 }
 
 template class InOutFlow<a_real>;
+template class InOutFlow<adouble>;
 template class InFlow<a_real>;
 template class Farfield<a_real>;
 template class Slipwall<a_real>;
