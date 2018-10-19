@@ -39,13 +39,13 @@ class Spatial
 {
 public:
 	/// Common setup required for finite volume discretizations
-	/** Computes and stores cell centre coordinates, ghost cells' centres, and 
+	/** Computes and stores cell centre coordinates, ghost cells' centres, and
 	 * quadrature point coordinates.
 	 */
 	Spatial(const UMesh2dh<scalar> *const mesh);
 
 	virtual ~Spatial();
-	
+
 	/// Computes the residual and local time steps
 	/** By convention, we need to compute the negative of the nonlinear function whose root
 	 * we want to find. Note that our nonlinear function or residual is defined (for steady problems) as
@@ -59,9 +59,9 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual StatusCode assemble_residual(const Vec u, Vec residual, 
+	virtual StatusCode assemble_residual(const Vec u, Vec residual,
 			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
-	
+
 	/// Computes the Jacobian matrix of the residual r(u) \sa assemble_residual
 	/** It is supposed to compute dr/du when we want to solve [M du/dt +] r(u) = 0.
 	 */
@@ -89,15 +89,15 @@ protected:
 	const UMesh2dh<scalar> *const m;
 
 	/// Cell centers of both real cells and ghost cells
-	/** The first nelem rows correspond to real cells, 
+	/** The first nelem rows correspond to real cells,
 	 * the next nelem+nbface rows are ghost cell centres, indexed by nelem+iface for face iface.
 	 */
 	amat::Array2d<scalar> rc;
 
-	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)
 	amat::Array2d<scalar>* gr;
-	
+
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);
 
@@ -118,7 +118,7 @@ protected:
 		const;
 
 	/// Computes the thin-layer face gradient and its Jacobian w.r.t. the left and right states
-	/** The Jacobians are computed w.r.t. whatever variables 
+	/** The Jacobians are computed w.r.t. whatever variables
 	 * the derivatives dul and dur are computed with respect to.
 	 * \param iface The \ref intfac index of the face at which the gradient Jacobian is to be computed
 	 * \param ucl The left state
@@ -132,7 +132,7 @@ protected:
 	void getFaceGradientAndJacobian_thinLayer(const a_int iface,
 		const a_real *const ucl, const a_real *const ucr,
 		const a_real *const dul, const a_real *const dur,
-		a_real grad[NDIM][nvars], a_real dgradl[NDIM][nvars][nvars], a_real dgradr[NDIM][nvars][nvars])
+		scalar grad[NDIM][nvars], scalar dgradl[NDIM][nvars][nvars], scalar dgradr[NDIM][nvars][nvars])
 		const;
 };
 

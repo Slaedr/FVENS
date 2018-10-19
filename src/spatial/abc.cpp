@@ -214,7 +214,7 @@ template <typename scalar, typename j_real>
 void Slipwall<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
                                                 scalar *const __restrict gs) const
 {
-	const a_real vni = dimDotProduct(&ins[1],&n[0])/ins[0];
+	const scalar vni = dimDotProduct(&ins[1],&n[0])/ins[0];
 	gs[0] = ins[0];
 	for(int i = 1; i < NDIM+1; i++)
 		gs[i] = ins[i] - 2.0*vni*n[i-1]*ins[0];
@@ -269,7 +269,7 @@ template <typename scalar, typename j_real>
 void Adiabaticwall2D<scalar,j_real>::computeGhostState(const scalar *const ins, const scalar *const n,
                                                        scalar *const __restrict gs) const
 {
-	const a_real tangMomentum = tangvel * ins[0];
+	const scalar tangMomentum = tangvel * ins[0];
 	gs[0] = ins[0];
 	gs[1] =  2.0*tangMomentum*n[1] - ins[1];
 	gs[2] = -2.0*tangMomentum*n[0] - ins[2];
@@ -352,16 +352,16 @@ void Isothermalwall2D<scalar,j_real>::computeGhostState(const scalar *const ins,
                                                         scalar *const __restrict gs) const
 {
 	// pressure in the interior cell
-	const a_real p = phy.getPressureFromConserved(ins);
+	const scalar p = phy.getPressureFromConserved(ins);
 
 	// temperature in the ghost cell
-	const a_real gtemp = 2.0*walltemperature - phy.getTemperature(ins[0],p);
+	const scalar gtemp = 2.0*walltemperature - phy.getTemperature(ins[0],p);
 
 	//gs[0] = physics.getDensityFromPressureTemperature(p, gtemp);
 	gs[0] = ins[0];
 	gs[1] = gs[0]*( 2.0*tangvel*n[1] - ins[1]/ins[0]);
 	gs[2] = gs[0]*(-2.0*tangvel*n[0] - ins[2]/ins[0]);
-	const a_real vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
+	const scalar vmag2 = dimDotProduct(&gs[1],&gs[1])/(gs[0]*gs[0]);
 	gs[3] = phy.getEnergyFromTemperature(gtemp, gs[0], vmag2);
 }
 
@@ -435,13 +435,19 @@ void Extrapolation<scalar,j_real>::computeGhostStateAndJacobian(const j_real *co
 
 template class InOutFlow<a_real>;
 template class InOutFlow<adouble>;
+template class Slipwall<a_real>;
+template class Slipwall<adouble>;
+template class Adiabaticwall2D<a_real>;
+template class Adiabaticwall2D<adouble>;
+template class Adiabaticwall<a_real>;
+template class Adiabaticwall<adouble>;
+template class Isothermalwall2D<a_real>;
+template class Isothermalwall2D<adouble>;
+template class Extrapolation<a_real>;
+template class Extrapolation<adouble>;
+//CHANGE HERE
 template class InFlow<a_real>;
 template class Farfield<a_real>;
-template class Slipwall<a_real>;
-template class Adiabaticwall2D<a_real>;
-template class Adiabaticwall<a_real>;
-template class Isothermalwall2D<a_real>;
-template class Extrapolation<a_real>;
 
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
@@ -485,9 +491,9 @@ std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowB
 	return bcmap;
 }
 
+//CHANGE HERE
 template
 std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<a_real>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
-
 }
