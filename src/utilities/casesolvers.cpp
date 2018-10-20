@@ -329,7 +329,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 		return tdata;
 	}
 
-	fvens_throw(ierr, "Nonlinear solver failed!");
+	petsc_throw(ierr, "Nonlinear solver failed!");
 	std::cout << "***\n";
 
 	TimingData tdata = time->getTimingData();
