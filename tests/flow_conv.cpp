@@ -43,15 +43,18 @@ int main(int argc, char *argv[])
 
 	for(int imesh = 0; imesh < nmesh; imesh++) 
 	{
+		// Mesh file suffix
+		std::string meshsuffix = std::to_string(imesh) + ".msh";
+		//Mesh
+		const UMesh2dh<a_real> m = constructMesh(opts, meshsuffix);
+
 		// solution vector
 		Vec u;
+		ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);
 		
-		// Mesh file suffix
-		std::string meshs = std::to_string(imesh) + ".msh";
-
 		FlowSolutionFunctionals fnls;
 		try {
-			fnls = case1.run_output(meshs, false, &u);
+			fnls = case1.run_output(false, false, m, u);
 		} catch(Numerical_error& e) {
 			std::cout << e.what() << std::endl;
 		}

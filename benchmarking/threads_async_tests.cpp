@@ -15,6 +15,7 @@
 #include "linalg/alinalg.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"
+#include "utilities/casesolvers.hpp"
 
 #include <blasted_petsc.h>
 
@@ -74,7 +75,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 	StatusCode ierr = 0;
 
 	// Set up mesh
-	const UMesh2dh<a_real> m = constructMesh("");
+	const UMesh2dh<a_real> m = constructMesh(opts,"");
 
 	std::cout << "Setting up main spatial scheme.\n";
 	// physical configuration
@@ -85,15 +86,15 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const int numrepea
 
 	// solution vector
 	Vec u;
-	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
-	prob->initializeUnknowns(*u);
+	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, &u);
+	prob->initializeUnknowns(u);
 
 	std::cout << "\n***\n";
 
 	// starting computation
 	omp_set_num_threads(1);
 	set_blasted_sweeps(1,1);
-	d
+	//d
 
 	// Benchmarking runs
 

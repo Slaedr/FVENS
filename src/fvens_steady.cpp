@@ -35,12 +35,16 @@ int main(int argc, char *argv[])
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
+	// Mesh
+	const UMesh2dh<a_real> m = constructMesh(opts, "");
+
 	// solution vector
 	Vec u;
+	ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);
 
 	// solve case - constructs (creates) u, computes the solution and stores the solution in it
 	SteadyFlowCase case1(opts);
-	case1.run_output("", true, &u);
+	case1.run_output(true, true, m, u);
 
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
 

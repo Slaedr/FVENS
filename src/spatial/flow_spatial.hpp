@@ -127,10 +127,10 @@ protected:
 	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
 
 	/// Problem specification
-	const FlowPhysicsConfig& pconfig;
+	const FlowPhysicsConfig pconfig;
 
 	/// Numerical method specification
-	const FlowNumericsConfig& nconfig;
+	const FlowNumericsConfig nconfig;
 
 	/// Analytical flux vector computation
 	const IdealGasPhysics<scalar> physics;

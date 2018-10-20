@@ -176,8 +176,8 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		a_int ielem = m->gintfac(iface,0);
-		a_int jelem = m->gintfac(iface,1);
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
 		scalar w2 = 0, dr[NDIM];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
