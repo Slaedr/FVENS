@@ -21,7 +21,7 @@
 
 #include "threads_async_tests.hpp"
 
-namespace benchmark {
+namespace perftest {
 
 // Field width in the report file
 const int field_width = 11;
@@ -77,28 +77,35 @@ static double std_deviation(const double *const vals, const double avg, const in
  * \return An arrray containing, in order, the factor walltime, apply wall time and ODE wall time.
  */
 static std::array<double,3>
-runSweepThreads(const Vec u, const FlowCase& flowcase,
-                const int nbswps, const int naswps, const int numthreads,
+runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVARS> *const prob,
+                const int nbswps, const int naswps, const int numthreads, const int numrepeat,
                 const double factor_basewtime, const double apply_basewtime, const double ode_basewtime,
-                const bool basecase, const std::string benchlogfile, std::ostream& benchout)
+                const bool basecase, const std::string perflogfile, std::ofstream& perftestout)
 {
 	TimingData tdata = {0,0,0,0,0,0,0,0,0,true,0,0,0};
 	double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
 	std::vector<double> precwalltimearr(numrepeat);
 
-	std::ofstream convout(benchlogfile, std::ofstream::app);
-	convout << "# Case: Sweeps=(" << nbswps << "," << naswps << "), threads=" << nthreads << "\n";
+	std::ofstream convout(perflogfile, std::ofstream::app);
+	if(basecase)
+		convout << "# Base case: ";
+	else
+		convout << "# Case: ";
+	convout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
 	convout.close();
+
+	omp_set_num_threads(numthreads);
+	set_blasted_sweeps(nbswps,naswps);
 
 	int irpt;
 	for(irpt = 0; irpt < numrepeat; irpt++) 
 	{
-		convout.open(benchlogfile, std::ofstream::app);
+		convout.open(perflogfile, std::ofstream::app);
 		convout << "#  Run " << irpt << "\n";
 		convout.close();
 
 		Vec ut;
-		ierr = VecDuplicate(u, &ut); petsc_throw(ierr, "Vec duplicate");
+		int ierr = VecDuplicate(u, &ut); petsc_throw(ierr, "Vec duplicate");
 		ierr = VecCopy(u, ut); petsc_throw(ierr, "Vec copy");
 
 		TimingData td = flowcase.execute_main(prob, ut);
@@ -140,20 +147,22 @@ runSweepThreads(const Vec u, const FlowCase& flowcase,
 
 	const double precdeviate = std_deviation(&precwalltimearr[0], precwalltime, irpt)/precwalltime;
 
+	int mpirank;
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 	if(mpirank == 0)
 	{
 		if(basecase) {
-			outf << "# Base preconditioner wall time = " << precwalltime << "; factor time = "
+			perftestout << "# Base preconditioner wall time = " << precwalltime << "; factor time = "
 			     << factorwalltime << ", apply time = "<< applywalltime
 			     << ", nonlinear solve time = " << tdata.ode_walltime << "\n#---\n";
 
-			writeHeaderToFile(outf, field_width);
-			writeTimingToFile(outf, field_width, true,tdata, 1, 1,1, 1.0, 1.0, 1.0,
-			                  precdeviate, tdata.prec_cputime, 1.0);
+			writeHeaderToFile(perftestout, field_width);
+			writeTimingToFile(perftestout, field_width, true,tdata, 1, 1,1, 1.0, 1.0, 1.0,
+			                  precdeviate, preccputime, 1.0);
 		}
 		else {
 			const double prec_basewtime = factor_basewtime + apply_basewtime;
-			writeTimingToFile(outf, field_width, false,tdata, nthreads, nbswps, naswps,
+			writeTimingToFile(perftestout, field_width, false,tdata, numthreads, nbswps, naswps,
 			                  factor_basewtime/factorwalltime,apply_basewtime/applywalltime,
 			                  prec_basewtime/precwalltime, precdeviate, preccputime,
 			                  ode_basewtime/tdata.ode_walltime);
@@ -164,7 +173,7 @@ runSweepThreads(const Vec u, const FlowCase& flowcase,
 }
 
 StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& flowcase,
-                               const int numrepeat,
+                               const int numrepeat, const int baserepeats,
                                const SpeedupSweepsConfig config,
                                std::ofstream& outf)
 {
@@ -172,17 +181,11 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 
 	// Set up mesh
 	const UMesh2dh<a_real> m = constructMesh(opts,"");
-
-	// std::cout << "Setting up main spatial scheme.\n";
-	// // physical configuration
-	// const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
-	// // numerics for main solver
-	// const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
 	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
 
 	// Prepate convergence historu file
-	const std::string benchlogile = opts.logfile + ".conv";
-	std::ofstream convout(benchlogile);
+	const std::string perflogfile = opts.logfile + ".conv";
+	std::ofstream convout(perflogfile);
 	convout << "# Perftest: sweeps and threads for async preconditioner from BLASTed\n";
 	convout << "# Number of repeats per run = " << numrepeat << "\n";
 
@@ -209,34 +212,26 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 		outf << "# Preconditioner wall times #\n# num-cells = " << m.gnelem() << "\n";
 	}
 
-	convout.open(benchlogfile, std::ofstream::app);
-	convout << "# Base case: Sweeps=("<<basefactorsweeps<<","<<baseapplysweeps<<"), threads="
-	        << basethreads << "\n";
-	convout.close();
-
 	const std::array<double,3> basetimes =
-		runSweepThreads(u, flowcase, basefactorsweeps, baseapplysweeps, basethreads, 1,1,1,
-		                true, benchlogfile, outf);
+		runSweepThreads(u, flowcase, prob, config.basebuildsweeps, config.baseapplysweeps,
+		                config.basethreads, baserepeats, 1,1,1, true, perflogfile, outf);
 
 	const double factor_basewtime = basetimes[0];
 	const double apply_basewtime = basetimes[1];
-	const double prec_basewtime = basetimes[0]+basetimes[1];
 	const double ode_basewtime = basetimes[2];
 
-	// Benchmarking runs
+	// Perftesting runs
 
 	// Carry out multi-thread runs
-	for (size_t i = 0; i < bswpseq.size(); i++)
+	for (size_t i = 0; i < config.buildSwpSeq.size(); i++)
 	{
-		set_blasted_sweeps(bswpseq[i], aswpseq[i]);
+		set_blasted_sweeps(config.buildSwpSeq[i], config.applySwpSeq[i]);
 
-		for(int numthreads : threads_seq)
+		for(int numthreads : config.threadSeq)
 		{
-			omp_set_num_threads(numthreads);
-
-			runSweepThreads(u, flowcase, bswpseq[i], aswpseq[i], numthreads,
-			                factor_basewtime, apply_basewtime, ode_basewtime,
-			                false, benchlogfile, outf);
+			runSweepThreads(u, flowcase, prob, config.buildSwpSeq[i], config.applySwpSeq[i], numthreads,
+			                numrepeat, factor_basewtime, apply_basewtime, ode_basewtime,
+			                false, perflogfile, outf);
 		}
 	}
 

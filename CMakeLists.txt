@@ -308,6 +308,6 @@ add_subdirectory(tests)
 # Non-automated test cases
 add_subdirectory(testcases)
 
-# Benchmarking
-add_subdirectory(benchmarking)
+# Performance testing
+add_subdirectory(perftest)
 
