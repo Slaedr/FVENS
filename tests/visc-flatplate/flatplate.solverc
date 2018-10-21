@@ -1,5 +1,3 @@
-#-number_of_meshes 3
-#-test_type CDSF
 
 #-ksp_converged_reason
 -options_left
