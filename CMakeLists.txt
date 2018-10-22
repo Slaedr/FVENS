@@ -266,12 +266,25 @@ endif()
 include_directories(${PETSC_DIR}/include ${PETSC_DIR}/${PETSC_ARCH}/include)
 message(STATUS "Building with PETSc found at ${PETSC_LIB}/${PETSC_ARCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
-find_library(ADOLC_LIB NAMES adolc PATHS ${ADOLC_DIR}/lib64)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ADOLC=1")
+# ADOLC
+if(NOT DEFINED ADOLC_DIR)
+  set(ADOLC_DIR $ENV{ADOLC_DIR} CACHE PATH "ADOL-C install directory")
+endif()
+find_library(ADOLC_LIB NAMES adolc PATHS ${ADOLC_DIR}/lib64)
+if(${ADOLC_LIB} STREQUAL "ADOLC_LIB-NOTFOUND")
+  message(SEND_ERROR "ADOL-C library not found!")
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ADOLC=1")
+  include_directories(${ADOLC_DIR}/include)
+endif()
 
 # ---------------------------------------------------------------------------- #
 
+#if(NOT DEFINED CMAKE_BUILD_TYPE)
+#	set(CMAKE_BUILD_TYPE "Release")
+#endif()
+#message(STATUS "Build type is ${CMAKE_BUILD_TYPE}")
 string(TOLOWER ${CMAKE_BUILD_TYPE} LCASE_CMAKE_BUILD_TYPE)
 if(LCASE_CMAKE_BUILD_TYPE MATCHES "debug")
   message(STATUS "Debug build")
