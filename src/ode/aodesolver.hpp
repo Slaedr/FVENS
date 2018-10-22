@@ -39,6 +39,9 @@ struct TimingData {
 	int avg_lin_iters;           ///< Average number of linear iters needed per time step
 	int num_timesteps;           ///< Number of time steps needed for the ODE solve
 	bool converged;              ///< Did the nonlinear solver converge?
+	double precsetup_walltime;   ///< Custom preconditioner setup wall time
+	double precapply_walltime;   ///< Custom preconditioner apply wall time
+	double prec_cputime;         ///< Total CPU time taken by custom preconditioner
 };
 
 /// Base class for steady-state simulations in pseudo-time

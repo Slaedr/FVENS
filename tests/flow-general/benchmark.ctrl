@@ -2,7 +2,7 @@ io {
 	mesh_file                    "from-cmd"
 	solution_output_file         "2dcyl.vtu"
 	log_file_prefix              "2dcyl-test-bench"
-	convergence_history_required false
+	convergence_history_required true
 }
 
 flow_conditions {

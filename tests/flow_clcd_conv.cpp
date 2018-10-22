@@ -83,14 +83,17 @@ skin-friction drag respectively");
 
 	for(int imesh = 0; imesh < nmesh; imesh++) 
 	{
+		// Mesh
+		std::string meshsuffix = std::to_string(imesh) + ".msh";
+		const UMesh2dh<a_real> m = constructMesh(opts, meshsuffix);
+		
 		// solution vector
 		Vec u;
-		
-		std::string meshs = std::to_string(imesh) + ".msh";
+		ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);
 		
 		FlowSolutionFunctionals fnls;
 		try {
-			fnls = case1.run_output(meshs, false, &u);
+			fnls = case1.run_output(false, false, m, u);
 		} catch (Tolerance_error& e) {
 			std::cout << e.what() << std::endl;
 		}

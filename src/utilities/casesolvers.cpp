@@ -10,7 +10,6 @@
 
 #include "casesolvers.hpp"
 #include "utilities/afactory.hpp"
-#include "utilities/aerrorhandling.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "spatial/aoutput.hpp"
 #include "mesh/ameshutils.hpp"
@@ -21,12 +20,8 @@
 
 namespace fvens {
 
-FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
-{
-}
-
 /// Prepare a mesh for use in a fluid simulation
-UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
+UMesh2dh<a_real> constructMesh(const FlowParserOptions& opts, const std::string mesh_suffix)
 {
 	// Set up mesh
 	const std::string meshfile = opts.meshfile + mesh_suffix;
@@ -44,52 +39,65 @@ UMesh2dh<a_real> FlowCase::constructMesh(const std::string mesh_suffix) const
 	return m;
 }
 
-int FlowCase::run(const std::string mesh_suffix, Vec *const u) const
+const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
+                                             const UMesh2dh<a_real>& m)
 {
-	int ierr = 0;
-	
-	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
-	std::cout << "***\n";
-
 	std::cout << "Setting up main spatial scheme.\n";
 	// physical configuration
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	// numerics for main solver
 	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	const Spatial<a_real,NVARS> *const prob = create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 
-	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
-	prob->initializeUnknowns(*u);
+	return create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
+}
 
-	ierr = execute(prob, *u); CHKERRQ(ierr);
+int initializeSystemVector(const FlowParserOptions& opts, const UMesh2dh<a_real>& m, Vec *const u)
+{
+	int ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u); CHKERRQ(ierr);
 
-	delete prob;
+	const IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	const std::array<a_real,NVARS> uinf = phy.compute_freestream_state(opts.alpha);
 
+	PetscScalar * uloc;
+	ierr = VecGetArray(*u, &uloc); CHKERRQ(ierr);
+	
+	//initial values are equal to free-stream values
+	for(a_int i = 0; i < m.gnelem(); i++)
+		for(int j = 0; j < NVARS; j++)
+			uloc[i*NVARS+j] = uinf[j];
+
+	ierr = VecRestoreArray(*u, &uloc); CHKERRQ(ierr);
 	return ierr;
 }
 
-FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix, 
-											 const bool vtu_output_needed, Vec *const u) const
+FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
+{
+}
+
+int FlowCase::run(const UMesh2dh<a_real>& m, Vec u) const
 {
 	int ierr = 0;
-	
-	const UMesh2dh<a_real> m = constructMesh(mesh_suffix);
+	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
+
+	ierr = execute(prob, u); CHKERRQ(ierr);
+
+	delete prob;
+	return ierr;
+}
+
+FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
+											 const bool vtu_output_needed,
+                                             const UMesh2dh<a_real>& m, Vec u) const
+{
+	int ierr = 0;
+
+	const FlowFV_base<a_real> *const prob = createFlowSpatial(opts, m);
+
 	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
 	std::cout << "***\n";
 
-	std::cout << "Setting up main spatial scheme.\n";
-	// physical configuration
-	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
-	// numerics for main solver
-	const FlowNumericsConfig nconfmain = extract_spatial_numerics_config(opts);
-	const FlowFV_base<a_real> *const prob
-		= create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
-
-	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u);
-	prob->initializeUnknowns(*u);
-
 	try {
-		ierr = execute(prob, *u);
+		ierr = execute(prob, u);
 	}
 	catch (Tolerance_error& e) {
 		std::cout << e.what() << std::endl;
@@ -98,45 +106,48 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 
 	MVector<a_real> umat; umat.resize(m.gnelem(),NVARS);
 	const PetscScalar *uarr;
-	ierr = VecGetArrayRead(*u, &uarr); 
+	ierr = VecGetArrayRead(u, &uarr); 
 	petsc_throw(ierr, "Petsc VecGetArrayRead error");
 	for(a_int i = 0; i < m.gnelem(); i++)
 		for(int j = 0; j < NVARS; j++)
 			umat(i,j) = uarr[i*NVARS+j];
-	ierr = VecRestoreArrayRead(*u, &uarr); 
+	ierr = VecRestoreArrayRead(u, &uarr); 
 	petsc_throw(ierr, "Petsc VecRestoreArrayRead error");
 
 	IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(prob, &phy, opts.alpha);
 
-	const a_real entropy = out.compute_entropy_cell(*u);
+	const a_real entropy = out.compute_entropy_cell(u);
 
-	try {
-		out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
-	} 
-	catch(std::exception& e) {
-		std::cout << e.what() << std::endl;
+	if(surface_file_needed) {
+		try {
+			out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
+		} 
+		catch(std::exception& e) {
+			std::cout << e.what() << std::endl;
+		}
 	}
 	
 	if(vtu_output_needed) {
 		amat::Array2d<a_real> scalars;
 		amat::Array2d<a_real> velocities;
-		out.postprocess_point(*u, scalars, velocities);
+		out.postprocess_point(u, scalars, velocities);
 
 		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
 		writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
 		                                  m, scalars, scalarnames, velocities, "velocity");
 	}
+
+	if(opts.vol_output_reqd == "YES")
+		out.exportVolumeData(umat, opts.volnameprefix);
 	
 	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
 	GradArray<a_real,NVARS> grad;
 	grad.resize(m.gnelem());
 	prob->getGradients(umat, grad);
+
 	const std::tuple<a_real,a_real,a_real> fnls 
 		{ prob->computeSurfaceData(umat, grad, opts.lwalls[0], output)};
-
-	if(opts.vol_output_reqd == "YES")
-		out.exportVolumeData(umat, opts.volnameprefix);
 
 	delete prob;
 
@@ -144,7 +155,7 @@ FlowSolutionFunctionals FlowCase::run_output(const std::string mesh_suffix,
 			std::get<0>(fnls), std::get<1>(fnls), std::get<2>(fnls)};
 }
 
-void FlowCase::setupKSP(ImplicitSolver& solver, const bool use_mfjac) {
+void FlowCase::setupKSP(LinearProblemLHS& solver, const bool use_mfjac) {
 	// initialize solver
 	int ierr = KSPCreate(PETSC_COMM_WORLD, &solver.ksp); petsc_throw(ierr, "KSP Create");
 	if(use_mfjac) {
@@ -159,10 +170,10 @@ void FlowCase::setupKSP(ImplicitSolver& solver, const bool use_mfjac) {
 	ierr = KSPSetFromOptions(solver.ksp); petsc_throw(ierr, "KSP set from options");
 }
 
-FlowCase::ImplicitSolver FlowCase::setupImplicitSolver(const UMesh2dh<a_real> *const mesh,
-                                                       const bool use_mfjac)
+FlowCase::LinearProblemLHS FlowCase::setupImplicitSolver(const UMesh2dh<a_real> *const mesh,
+                                                         const bool use_mfjac)
 {
-	ImplicitSolver solver;
+	LinearProblemLHS solver;
 
 	// Initialize Jacobian for implicit schemes
 	int ierr = setupSystemMatrix<NVARS>(mesh, &solver.M); fvens_throw(ierr, "Setup system matrix");
@@ -175,14 +186,13 @@ FlowCase::ImplicitSolver FlowCase::setupImplicitSolver(const UMesh2dh<a_real> *c
 	}
 
 	setupKSP(solver, use_mfjac);
+	solver.mf_flg = use_mfjac;
 
 	return solver;
 }
 
 SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 	: FlowCase(options),
-	  pconf {extract_spatial_physics_config(opts)},
-	  nconfstart {firstorder_spatial_numerics_config(opts)},
 	  mf_flg {parsePetscCmd_isDefined("-matrix_free_jacobian")}
 { }
 
@@ -192,13 +202,16 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
+	const FlowPhysicsConfig pconf {extract_spatial_physics_config(opts)};
+	const FlowNumericsConfig nconfstart {firstorder_spatial_numerics_config(opts)};
+
 	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
 	const Spatial<a_real,NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(m, pconf, nconfstart);
 
 	std::cout << "***\n";
 
-	ImplicitSolver isol = setupImplicitSolver(m, mf_flg);
+	LinearProblemLHS isol = setupImplicitSolver(m, mf_flg);
 
 	// set up time discrization
 
@@ -254,17 +267,13 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 
 	delete starttime;
 
-	// Reset the KSP - could be advantageous for some types of algebraic solvers
+	// Note that we destroy the KSP after the startup solve (in fact, after any solve)
+	//  - could be advantageous for some types of algebraic solvers
 	//  This will also reset the BLASTed timing counters.
-	ierr = KSPDestroy(&isol.ksp); CHKERRQ(ierr);
+	ierr = isol.destroy(); CHKERRQ(ierr);
 #ifdef USE_BLASTED
 	destroyBlastedDataList(&bctx);
 #endif
-	ierr = MatDestroy(&isol.M); CHKERRQ(ierr);
-	if(mf_flg) {
-		ierr = MatDestroy(&isol.A); 
-		CHKERRQ(ierr);
-	}
 
 	delete startprob;
 	return ierr;
@@ -276,7 +285,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
-	ImplicitSolver isol = setupImplicitSolver(m, mf_flg);
+	LinearProblemLHS isol = setupImplicitSolver(m, mf_flg);
 
 	// set up time discrization
 
@@ -314,26 +323,28 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 		ierr = time->solve(u);
 	}
 	catch(Numerical_error& e) {
+		std::cout << "FVENS: Main solve failed: " << e.what() << std::endl;
 		TimingData tdata; tdata.converged = false;
 		delete time;
 		return tdata;
 	}
 
-	fvens_throw(ierr, "Nonlinear solver failed!");
+	petsc_throw(ierr, "Nonlinear solver failed!");
 	std::cout << "***\n";
 
-	const TimingData tdata = time->getTimingData();
+	TimingData tdata = time->getTimingData();
+#ifdef USE_BLASTED
+	computeTotalTimes(&bctx);
+	tdata.precsetup_walltime = bctx.factorwalltime;
+	tdata.precapply_walltime = bctx.applywalltime;
+	tdata.prec_cputime = bctx.factorcputime + bctx.applycputime;
+#endif
 
 	delete time;
-	ierr = KSPDestroy(&isol.ksp); petsc_throw(ierr, "KSP destroy");
+	ierr = isol.destroy(); petsc_throw(ierr, "Could not destroy linear problen LHS");
 #ifdef USE_BLASTED
 	destroyBlastedDataList(&bctx);
 #endif
-	ierr = MatDestroy(&isol.M); petsc_throw(ierr, "Mat destroy");
-	if(mf_flg) {
-		ierr = MatDestroy(&isol.A); 
-		petsc_throw(ierr, "MatFree mat destroy");
-	}
 
 	return tdata;
 }

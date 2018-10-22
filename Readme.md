@@ -1,11 +1,9 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes.
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. Linear, MUSCL and limited linear reconstructions are availble. The Van Albada limiter is used for MUSCL reconstruction while the WENO (weighted essentially non-oscillatory), Barth-Jespersen or Venkatakrishnan limiters can be used for limited linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. For steady-state problems, both explicit and implicit pseudo-time stepping are avaible. 
 
-For steady-state problems, both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. 'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal.
-
-If you wish to contribute, please read the [guidelines](CONTRIBUTING.md).
+'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal. If you wish to contribute, please read the [guidelines](CONTRIBUTING.md).
 
 Features
 --------

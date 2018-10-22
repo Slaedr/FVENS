@@ -11,6 +11,8 @@
 #include <string>
 #include <limits>
 
+#define SMALL_TIME_NUMBER 0.001
+
 int main(int argc, char *argv[])
 {
 	assert(argc >= 2);
@@ -34,18 +36,20 @@ int main(int argc, char *argv[])
 			std::getline(fin,line);
 			std::getline(fin,line);
 
-			int nums[11]; double time[2]; char dm;
-			sscanf(line.c_str(), "%c %d %d %d %d %d %d %d %lf %d %d %d %d %lf", 
-					&dm, &nums[0], &nums[1], &nums[2], &nums[3], &nums[4], &nums[5], &nums[6],
-					&time[0], &nums[7], &nums[8], &nums[9], &nums[10], &time[1]);
+			int nums[11]; double time[3]; char dm;
+			sscanf(line.c_str(), "%c %d %d %d %d %d %d %lf %lf %d %d %d %d %lf", 
+					&dm, &nums[0], &nums[1], &nums[2], &nums[3], &nums[4], &nums[5], &time[0],
+					&time[1], &nums[7], &nums[8], &nums[9], &nums[10], &time[2]);
+			assert(dm == '#');
 			for(int i = 0; i < 6; i++)
 				assert(nums[i] == 1);
-			assert(nums[6] == 0);
+			assert(time[0] > SMALL_TIME_NUMBER);
+			std::cout << "Nums 7 = " << nums[7] << std::endl;
 			assert(nums[7] > 1);
 			assert(nums[8] >= 1);
 			assert(nums[9] >= 1);
-			assert(time[0] > 0);
-			assert(time[1] == 1.0);
+			assert(time[1] > SMALL_TIME_NUMBER);
+			assert(time[2] == 1.0);
 			break;
 		}
 	}
@@ -62,13 +66,13 @@ int main(int argc, char *argv[])
 		sscanf(line.c_str(), "%d %d %d %lf %lf %lf %lf %lf %d %d %d %d %lf", 
 				&nums[0], &nums[1], &nums[2], &dnums[0], &dnums[1], &dnums[2], &dnums[3], &dnums[4],
 				&nums[3], &nums[4], &nums[5], &nums[6], &dnums[5]);
-		assert(nums[0] == 4 || nums[0] == 6);
-		assert(nums[1] == 1);
-		assert(nums[2] == 1 || nums[2] == 2);
+		assert(nums[0] == 2 || nums[0] == 4 || nums[0] == 6);       // num threads
+		assert(nums[1] == 1 || nums[1] == 2);                       // num build sweeps
+		assert(nums[2] == 1 || nums[2] == 3);                       // apply sweeps
 
 		for(int i = 0; i < 3; i++) {
-			assert(dnums[i] > 0.5);              // some speedup for build, apply, total
-			assert(dnums[i] < 5.0);                  // assuming max 4 threads
+			assert(dnums[i] > 0.05);                 // some speedup for build, apply, total
+			assert(dnums[i] <45.0);                  // assuming max 4 threads
 		}
 
 		assert(dnums[3] > meps);                     // should be some nonzero total deviation
@@ -84,11 +88,11 @@ int main(int argc, char *argv[])
 
 		assert(nums[6] == 1);                        // converged
 
-		assert(dnums[5] > 0.25);                      // NL speedup
-		assert(dnums[5] < 5);                        // Assuming we use at most 4 threads for the test
+		assert(dnums[5] > 0.01);                     // some NL speedup
+		assert(dnums[5] < 4);                        // Assuming we use at most 4 threads for the test
 	}
 
-	assert(rows == 2);
+	assert(rows == 4);
 
 	fin.close();
 	return 0;
