@@ -22,7 +22,9 @@
 #include <iomanip>
 #include "aspatial.hpp"
 #include "mathutils.hpp"
+#ifdef USE_ADOLC
 #include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 
@@ -243,8 +245,10 @@ void Spatial<scalar,nvars>::getFaceGradientAndJacobian_thinLayer(const a_int ifa
 }
 
 template class Spatial<a_real,NVARS>;
-template class Spatial<adouble,NVARS>;
-
 template class Spatial<a_real,1>;
+
+#ifdef USE_ADOLC
+template class Spatial<adouble,NVARS>;
 template class Spatial<adouble,1>;
+#endif
 }	// end namespace

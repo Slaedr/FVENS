@@ -6,9 +6,26 @@
 
 #include "aphysics.hpp"
 #include <iostream>
+#ifdef USE_ADOLC
 #include <adolc/adolc.h>
+#endif
 
 namespace fvens {
+
+template <typename scalar>
+static a_real getvalue(const scalar x);
+
+#ifdef USE_ADOLC
+template <>
+a_real getvalue(const adouble x) {
+    return x.value();
+}
+#endif
+
+template <>
+a_real getvalue(const a_real x) {
+    return x;
+}
 
 template <typename scalar>
 Physics<scalar>::~Physics() { }
@@ -44,7 +61,7 @@ std::array<a_real,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const
 	uinf[0] = 1.0;
 	uinf[1] = cos(aoa);
 	uinf[2] = sin(aoa);
-	uinf[3] = getEnergyFromPressure(getFreestreamPressure(),1.0,1.0);
+    uinf[3] = getvalue<scalar>(getEnergyFromPressure(getFreestreamPressure(),1.0,1.0));
 	return uinf;
 }
 
@@ -164,9 +181,11 @@ void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *c
 }
 
 template class Physics<a_real>;
-template class Physics<adouble>;
 template class IdealGasPhysics<a_real>;
-//CHANGE HERE
-//template class IdealGasPhysics<adouble>;
+
+#ifdef USE_ADOLC
+template class Physics<adouble>;
+template class IdealGasPhysics<adouble>;
+#endif
 
 }

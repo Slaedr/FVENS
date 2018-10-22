@@ -97,9 +97,9 @@ protected:
 };
 
 /// Currently, this is a pressure-imposed outflow and all-imposed inflow BC
-/** This "inflow-outflow" BC assumes we know the state at the inlet is 
+/** This "inflow-outflow" BC assumes we know the state at the inlet is
  * the free-stream state with certainty,
- * while the state at the outlet is not certain to be the free-stream state. 
+ * while the state at the outlet is not certain to be the free-stream state.
  * If so, we can just impose free-stream conditions for the ghost cells of inflow faces.
  *
  * The outflow boundary condition corresponds to Sec 2.4 "Pressure outflow boundary condition"
@@ -113,7 +113,7 @@ template <typename scalar, typename j_real = a_real>
 class InOutFlow : public FlowBC<scalar,j_real>
 {
 public:
-	/// Setup inflow-outflow BC 
+	/// Setup inflow-outflow BC
 	/** \sa FlowBC::FlowBC
 	 * \param ufar Far-field state
 	 */
@@ -145,13 +145,13 @@ template <typename scalar, typename j_real = a_real>
 class InFlow : public FlowBC<scalar,j_real>
 {
 public:
-	/// Setup inflow BC 
+	/// Setup inflow BC
 	/** \sa FlowBC::FlowBC
 	 * \param totalpressure Non-dimensional total pressure at inflow
 	 * \param totaltemperature Total temperature at inflow
 	 */
 	InFlow(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	       const a_real totalpressure, const a_real totaltemperature); 
+	       const a_real totalpressure, const a_real totaltemperature);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -175,7 +175,7 @@ template <typename scalar, typename j_real = a_real>
 class Farfield : public FlowBC<scalar, j_real>
 {
 public:
-	/// Setup farfield BC 
+	/// Setup farfield BC
 	/** \sa FlowBC::FlowBC
 	 * \param ufar Far-field state
 	 */
@@ -192,7 +192,7 @@ public:
 	                                  j_real *const __restrict dugdui) const;
 
 protected:
-	const std::array<scalar,NVARS> uinf;
+	const std::array<a_real,NVARS> uinf;
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
@@ -227,7 +227,7 @@ template <typename scalar, typename j_real = a_real>
 class Slipwall : public FlowBC<scalar, j_real>
 {
 public:
-	/// Setup slip wall BC 
+	/// Setup slip wall BC
 	/** \sa FlowBC::FlowBC
 	 */
 	Slipwall(const int face_id, const IdealGasPhysics<scalar>& gasphysics);
@@ -253,7 +253,7 @@ class Adiabaticwall2D : public FlowBC<scalar, j_real>
 {
 	static_assert(NDIM == 2, "Adiabaticwall2D is only defined for 2D cases.");
 public:
-	/// Setup adiabatic no-slip wall BC 
+	/// Setup adiabatic no-slip wall BC
 	/** \sa FlowBC::FlowBC
 	 */
 	Adiabaticwall2D(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
@@ -280,7 +280,7 @@ template <typename scalar, typename j_real = a_real>
 class Adiabaticwall : public FlowBC<scalar,j_real>
 {
 public:
-	/// Setup adiabatic no-slip wall BC 
+	/// Setup adiabatic no-slip wall BC
 	/** \sa FlowBC::FlowBC
 	 */
 	Adiabaticwall(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
@@ -308,7 +308,7 @@ class Isothermalwall2D : public FlowBC<scalar,j_real>
 {
 	static_assert(NDIM == 2, "Isothermalwall2D is only defined for 2D cases.");
 public:
-	/// Setup isothermal no-slip wall BC 
+	/// Setup isothermal no-slip wall BC
 	/** \sa FlowBC::FlowBC
 	 */
 	Isothermalwall2D(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,

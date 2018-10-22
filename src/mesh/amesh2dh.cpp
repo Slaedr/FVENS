@@ -24,6 +24,10 @@
 #include "amesh2dh.hpp"
 #include "utilities/aoptionparser.hpp"
 
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
+
 namespace fvens {
 
 template <typename scalar>
@@ -1642,6 +1646,9 @@ void UMesh2dh<scalar>::compute_pointsSurroundingPoints()
 }
 
 template class UMesh2dh<a_real>;
+
+#ifdef USE_ADOLC
 template class UMesh2dh<adouble>;
+#endif
 
 } // end namespace

@@ -20,7 +20,9 @@
 
 #include <iostream>
 #include "abc.hpp"
+#ifdef USE_ADOLC
 #include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 
@@ -434,20 +436,25 @@ void Extrapolation<scalar,j_real>::computeGhostStateAndJacobian(const j_real *co
 }
 
 template class InOutFlow<a_real>;
-template class InOutFlow<adouble>;
 template class Slipwall<a_real>;
-template class Slipwall<adouble>;
 template class Adiabaticwall2D<a_real>;
-template class Adiabaticwall2D<adouble>;
 template class Adiabaticwall<a_real>;
-template class Adiabaticwall<adouble>;
 template class Isothermalwall2D<a_real>;
-template class Isothermalwall2D<adouble>;
 template class Extrapolation<a_real>;
-template class Extrapolation<adouble>;
-//CHANGE HERE
 template class InFlow<a_real>;
 template class Farfield<a_real>;
+
+#ifdef USE_ADOLC
+template class InOutFlow<adouble>;
+template class Slipwall<adouble>;
+template class Adiabaticwall2D<adouble>;
+template class Adiabaticwall<adouble>;
+template class Isothermalwall2D<adouble>;
+template class Extrapolation<adouble>;
+template class InFlow<adouble>;
+template class Farfield<adouble>;
+#endif
+
 
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
@@ -491,9 +498,15 @@ std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowB
 	return bcmap;
 }
 
-//CHANGE HERE
 template
 std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<a_real>& physics,
                                                          const std::array<a_real,NVARS>& uinf);
+
+#ifdef USE_ADOLC
+template
+std::map<int,const FlowBC<adouble>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
+                                                         const IdealGasPhysics<adouble>& physics,
+                                                         const std::array<a_real,NVARS>& uinf);
+#endif
 }

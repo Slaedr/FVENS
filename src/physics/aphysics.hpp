@@ -112,7 +112,7 @@ public:
 		scalar dp[NVARS], scalar dH[NVARS]) const;
 
 	/// Returns the non-dimensionalized free-stream pressure
-	a_real getFreestreamPressure() const;
+	scalar getFreestreamPressure() const;
 
 	/// Computes pressure from internal energy - here it's the ideal gas relation
 	scalar getPressure(const scalar internalenergy) const;
@@ -757,8 +757,8 @@ getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(const scalar 
 
 template <typename scalar>
 inline
-a_real IdealGasPhysics<scalar>::getFreestreamPressure() const {
-	return (a_real)(1.0/(g*Minf*Minf));
+scalar IdealGasPhysics<scalar>::getFreestreamPressure() const {
+	return (1.0/(g*Minf*Minf));
 }
 
 template <typename scalar>

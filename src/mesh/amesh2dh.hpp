@@ -9,7 +9,6 @@
 #include <vector>
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
-#include <adolc/adolc.h>
 
 namespace fvens {
 

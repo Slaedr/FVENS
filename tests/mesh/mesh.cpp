@@ -128,21 +128,15 @@ int main(int argc, char *argv[])
 	int err = 0;
 
 	UMesh2dh<a_real> m;
-	UMesh2dh<adouble> ma;
 
 	m.readMesh(argv[2]);
 	m.compute_topological();
 
-	ma.readMesh(argv[2]);
-	ma.compute_topological();
-
 	if(whichtest == "esup") {
 		err = test_topology_internalconsistency_esup(m);
-		err += test_topology_internalconsistency_esup(ma);
 	}
 	else if(whichtest == "periodic") {
 		err = test_periodic_map(m, 4, 0);
-		err += test_periodic_map(ma, 4, 0);
 		if(err) std::cerr << " Periodic map test failed!\n";
 	}
 	else if(whichtest == "levelschedule") {
@@ -151,11 +145,9 @@ int main(int argc, char *argv[])
 			return -2;
 		}
 		err = test_levelscheduling(m, argv[3]);
-		err += test_levelscheduling(ma, argv[3]);
 	}
 	else if(whichtest == "levelscheduleInternal") {
 		err = test_levelscheduling_internalconsistency(m);
-		err += test_levelscheduling_internalconsistency(ma);
 	}
 	else
 		throw "Invalid test";

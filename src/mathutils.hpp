@@ -7,6 +7,9 @@
 #define FVENS_MATHUTILS_H
 
 #include "aconstants.hpp"
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 
@@ -37,12 +40,23 @@ template <typename scalar>
 inline void getComponentsCartesian(const scalar mag, const scalar dir[NDIM], scalar vec[NDIM])
 {
 	zeros(vec,NDIM);
-	const scalar cosphi = (NDIM == 3) ? sqrt(dir[0]*dir[0]+dir[1]*dir[1]) : 1.0;
-	const scalar sinphi = (NDIM == 3) ? dir[2] : 0.0;
-	if(NDIM == 3)
-		vec[2] = mag*sinphi;
-	vec[0] = mag*cosphi*dir[0];
-	vec[1] = mag*cosphi*dir[1];
+	scalar cosphi, sinphi;
+
+	#ifndef USE_ADOLC
+        cosphi = (NDIM == 3) ? sqrt(dir[0]*dir[0]+dir[1]*dir[1]) : 1.0;
+        sinphi = (NDIM == 3) ? dir[2] : 0.0;
+        if(NDIM == 3) vec[2] = mag*sinphi;
+    #else
+        scalar one = 1.0;
+        scalar zero = 0.0;
+        scalar b = NDIM - 2;
+
+        condassign(cosphi, b, sqrt(dir[0]*dir[0]+dir[1]*dir[1]), one);
+        condassign(sinphi, b, dir[2], zero);
+        condassign(vec[2], b, mag*sinphi, zero);
+	#endif
+		vec[0] = mag*cosphi*dir[0];
+        vec[1] = mag*cosphi*dir[1];
 }
 
 /// Returns the derivatives of f/g given the derivatives of f and g (for NVARS components)
@@ -51,7 +65,7 @@ inline void getComponentsCartesian(const scalar mag, const scalar dir[NDIM], sca
  * one of the input arrays. In that case, the entire array should overlap, NOT only a part of it.
  */
 template <typename scalar>
-inline void getQuotientDerivatives(const scalar f, const scalar *const df, 
+inline void getQuotientDerivatives(const scalar f, const scalar *const df,
                                    const scalar g, const scalar *const dg,
                                    scalar *const __restrict dq)
 {

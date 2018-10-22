@@ -12,11 +12,6 @@
 #include <fenv.h>
 #endif
 */
-#ifndef USE_ADOLC
-using std::pow;
-using std::sqrt;
-using std::fabs;
-#endif
 
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353
@@ -48,6 +43,12 @@ using std::fabs;
 namespace fvens
 {
 #define DOUBLE_PRECISION 1
+
+#ifndef USE_ADOLC
+using std::pow;
+using std::sqrt;
+using std::fabs;
+#endif
 
 /// The floating-point type to use for all float computations
 typedef double a_real;

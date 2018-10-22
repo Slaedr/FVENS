@@ -14,8 +14,8 @@ namespace fvens {
 
 /// Computes various entity lists required for mesh traversal, also reorders the cells if requested
 /** This can, and should, be called immediately after [reading](UMesh2dh::readMesh) the mesh.
- * Does not compute [periodic boundary maps](UMesh2dh::compute_periodic_map); 
- * this must be done separately. 
+ * Does not compute [periodic boundary maps](UMesh2dh::compute_periodic_map);
+ * this must be done separately.
  */
 template <typename scalar>
 StatusCode preprocessMesh(UMesh2dh<scalar>& m);

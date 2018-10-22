@@ -7,7 +7,10 @@
 #include "ameshutils.hpp"
 #include "linalg/alinalg.hpp"
 #include "spatial/diffusion.hpp"
+
+#ifdef USE_ADOLC
 #include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 
@@ -128,6 +131,10 @@ template StatusCode reorderMesh(const char *const ordering, const Spatial<a_real
                                 UMesh2dh<a_real>& m);
 
 template std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m);
+
+//CHANGE HERE
+#ifdef USE_ADOLC
 template std::vector<a_int> levelSchedule(const UMesh2dh<adouble>& m);
+#endif
 
 }
