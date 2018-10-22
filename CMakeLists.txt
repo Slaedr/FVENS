@@ -281,10 +281,10 @@ endif()
 
 # ---------------------------------------------------------------------------- #
 
-#if(NOT DEFINED CMAKE_BUILD_TYPE)
-#	set(CMAKE_BUILD_TYPE "Release")
-#endif()
-#message(STATUS "Build type is ${CMAKE_BUILD_TYPE}")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	message(STATUS "Setting default build type of debug")
+	set(CMAKE_BUILD_TYPE "Debug")
+endif()
 string(TOLOWER ${CMAKE_BUILD_TYPE} LCASE_CMAKE_BUILD_TYPE)
 if(LCASE_CMAKE_BUILD_TYPE MATCHES "debug")
   message(STATUS "Debug build")

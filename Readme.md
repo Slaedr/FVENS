@@ -88,6 +88,11 @@ PETSc options for FVENS
 * `-matrix_free_difference_step` (float argument): The finite difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
 * `-fvens_log_file` (string argument): Prefix (path + base file name) of the file into which to write timing logs (.tlog extension), and if requested, nonlinear residual histories (.conv extension). Note that this option, if specified, overrides the corresponding option in the control file.
 
+Contributors
+------------
+- Luis Hernandez
+- Aditya Kashi
+
 ---
 
 Copyright (C) 2016 - 2018, Aditya Kashi. See LICENSE.md for terms of redistribution with/without modification and those of linking.
