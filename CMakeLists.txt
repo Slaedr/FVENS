@@ -277,6 +277,7 @@ if(${ADOLC_LIB} STREQUAL "ADOLC_LIB-NOTFOUND")
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ADOLC=1")
   include_directories(${ADOLC_DIR}/include)
+  message(STATUS "Building with ADOL-C found at ${ADOLC_LIB}")
 endif()
 
 # ---------------------------------------------------------------------------- #
