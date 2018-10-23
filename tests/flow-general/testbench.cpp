@@ -12,11 +12,12 @@
 #include <limits>
 
 #define SMALL_TIME_NUMBER 0.001
+#define SMALL_DEVIATION_NUMBER 1e-8
 
 int main(int argc, char *argv[])
 {
 	assert(argc >= 2);
-	constexpr double meps = std::numeric_limits<double>::epsilon();
+	//constexpr double meps = std::numeric_limits<double>::epsilon();
 
 	std::ifstream fin(argv[1]);
 
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 			assert(dm == '#');
 			for(int i = 0; i < 6; i++)
 				assert(nums[i] == 1);
-			assert(time[0] > SMALL_TIME_NUMBER);
+			assert(time[0] > SMALL_DEVIATION_NUMBER);                       // deviation
 			std::cout << "Nums 7 = " << nums[7] << std::endl;
 			assert(nums[7] > 1);
 			assert(nums[8] >= 1);
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
 			assert(dnums[i] <45.0);                  // assuming max 4 threads
 		}
 
-		assert(dnums[3] > meps);                     // should be some nonzero total deviation
+		assert(dnums[3] > SMALL_DEVIATION_NUMBER);   // should be some nonzero total deviation
 		assert(dnums[4] > 0);                        // CPU time
 
 		assert(nums[3] > 1);

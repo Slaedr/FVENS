@@ -84,6 +84,16 @@ public:
 	                            a_real *const rarr, 
 	                            const bool gettimesteps, 
 	                            std::vector<a_real>& dtm) const;
+
+	void compute_local_jacobian_interior(const a_int iface,
+	                                     const a_real *const ul, const a_real *const ur,
+	                                     Matrix<a_real,nvars,nvars,RowMajor>& L,
+	                                     Matrix<a_real,nvars,nvars,RowMajor>& U) const;
+
+	void compute_local_jacobian_boundary(const a_int iface,
+	                                     const a_real *const ul,
+	                                     Matrix<a_real,nvars,nvars,RowMajor>& L) const;
+
 	
 	/*void add_source(const MVector<scalar>& u, 
 			MVector<scalar>& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/

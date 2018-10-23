@@ -216,6 +216,68 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 	return ierr;
 }
 
+template<int nvars>
+void DiffusionMA<nvars>::compute_local_jacobian_interior(const a_int iface,
+                                                         const a_real *const ul, const a_real *const ur,
+                                                         Matrix<a_real,nvars,nvars,RowMajor>& L,
+                                                         Matrix<a_real,nvars,nvars,RowMajor>& U) const
+{
+	const a_real len = m->gfacemetric(iface,2);
+
+	a_real du[nvars*nvars];
+	for(int i = 0; i < nvars; i++) {
+		for(int j = 0; j < nvars; j++)
+			du[i*nvars+j] = 0;
+		du[i*nvars+i] = 1.0;
+	}
+
+	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
+
+	// Compute the face gradient Jacobian; we don't actually need the gradient, however..
+	getFaceGradientAndJacobian_thinLayer(iface, ul, ur, du, du, grad, dgradl, dgradr);
+
+	L = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+	U = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+	for(int ivar = 0; ivar < nvars; ivar++)
+	{
+		// compute nu*(d(-grad u)/du_l . n) * l
+		for(int idim = 0; idim < NDIM; idim++)
+			L[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
+		L[ivar*nvars+ivar] *= (-diffusivity*len);
+	}
+
+	U = L;
+}
+
+template<int nvars>
+void DiffusionMA<nvars>::compute_local_jacobian_boundary(const a_int iface,
+                                                         const a_real *const ul,
+                                                         Matrix<a_real,nvars,nvars,RowMajor>& L) const
+{
+	const a_real len = m->gfacemetric(iface,2);
+
+	a_real du[nvars*nvars];
+	for(int i = 0; i < nvars; i++) {
+		for(int j = 0; j < nvars; j++)
+			du[i*nvars+j] = 0;
+		du[i*nvars+i] = 1.0;
+	}
+
+	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
+
+	// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
+	getFaceGradientAndJacobian_thinLayer(iface, ul, ul, du, du, grad, dgradl, dgradr);
+
+	L = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+	for(int ivar = 0; ivar < nvars; ivar++)
+	{
+		// compute nu*(d(-grad u)/du_l . n) * l
+		for(int idim = 0; idim < NDIM; idim++)
+			L(ivar,ivar) += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
+		L(ivar,ivar) *= (-diffusivity*len);
+	}
+}
+
 /** For now, this is the same as the thin-layer Jacobian
  */
 template<int nvars>
@@ -235,79 +297,37 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		//a_int intface = iface-m->gnbface();
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
-		const a_real len = m->gfacemetric(iface,2);
 
-		a_real du[nvars*nvars];
-		for(int i = 0; i < nvars; i++) {
-			for(int j = 0; j < nvars; j++)
-				du[i*nvars+j] = 0;
-			du[i*nvars+i] = 1.0;
-		}
-
-		a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
-
-		// Compute the face gradient Jacobian; we don't actually need the gradient, however..
-		getFaceGradientAndJacobian_thinLayer(iface, &uarr[lelem*nvars], &uarr[relem*nvars],
-				du, du, grad, dgradl, dgradr);
-
-		a_real dfluxl[nvars*nvars];
-		zeros(dfluxl, nvars*nvars);
-		for(int ivar = 0; ivar < nvars; ivar++)
-		{
-			// compute nu*(d(-grad u)/du_l . n) * l
-			for(int idim = 0; idim < NDIM; idim++)
-				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
-			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
-		}
+		Matrix<a_real,nvars,nvars,RowMajor> dfluxl, dfluxr;
+		compute_local_jacobian_interior(iface, &uarr[lelem*nvars], &uarr[relem*nvars],
+		                                dfluxl, dfluxr);
 
 #pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, dfluxl, ADD_VALUES);
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, &dfluxl(0,0), ADD_VALUES);
 #pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, dfluxl, ADD_VALUES);
+		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, &dfluxl(0,0), ADD_VALUES);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 			dfluxl[ivar*nvars+ivar] *= -1;
 
 #pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, dfluxl, ADD_VALUES);
+		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, &dfluxl(0,0), ADD_VALUES);
 #pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, dfluxl, ADD_VALUES);
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, &dfluxl(0,0), ADD_VALUES);
 	}
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const a_real len = m->gfacemetric(iface,2);
 
-		a_real du[nvars*nvars];
-		for(int i = 0; i < nvars; i++) {
-			for(int j = 0; j < nvars; j++)
-				du[i*nvars+j] = 0;
-			du[i*nvars+i] = 1.0;
-		}
-
-		a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
-
-		// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
-		getFaceGradientAndJacobian_thinLayer(iface, &uarr[lelem*nvars], &uarr[lelem*nvars],
-				du, du, grad, dgradl, dgradr);
-
-		a_real dfluxl[nvars*nvars];
-		zeros(dfluxl, nvars*nvars);
-		for(int ivar = 0; ivar < nvars; ivar++)
-		{
-			// compute nu*(d(-grad u)/du_l . n) * l
-			for(int idim = 0; idim < NDIM; idim++)
-				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
-			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
-		}
+		Matrix<a_real,nvars,nvars,RowMajor> dfluxl;
+		compute_local_jacobian_boundary(iface, &uarr[lelem*nvars], dfluxl);
 
 #pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, dfluxl, ADD_VALUES);
+		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, &dfluxl(0,0), ADD_VALUES);
 	}
 
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);

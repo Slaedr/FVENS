@@ -137,7 +137,6 @@ StatusCode FlowFV_base<scalar>::assemble_residual(const Vec uvec,
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
-	GradArray<a_real,NVARS> grads;
 
 	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -676,6 +675,66 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 }
 
 template<typename scalar, bool order2, bool constVisc>
+void FlowFV<scalar,order2,constVisc>
+::compute_local_jacobian_interior(const a_int iface,
+                                  const a_real *const ul, const a_real *const ur,
+                                  Matrix<a_real,NVARS,NVARS,RowMajor>& L,
+                                  Matrix<a_real,NVARS,NVARS,RowMajor>& U) const
+{
+	assert(iface >= m->gnbface());
+
+	a_real n[NDIM];
+	n[0] = m->gfacemetric(iface,0);
+	n[1] = m->gfacemetric(iface,1);
+	const a_real len = m->gfacemetric(iface,2);
+
+	// NOTE: the values of L and U get REPLACED here, not added to
+	inviflux->get_jacobian(ul, ur, n, &L(0,0), &U(0,0));
+
+	if(pconfig.viscous_sim) {
+		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
+		//		&L(0,0), &U(0,0));
+		compute_viscous_flux_jacobian(iface, ul, ur, &L(0,0), &U(0,0));
+	}
+
+	L *= len; U *= len;
+}
+
+template<typename scalar, bool order2, bool constVisc>
+void FlowFV<scalar,order2,constVisc>
+::compute_local_jacobian_boundary(const a_int iface,
+                                  const a_real *const ul,
+                                  Matrix<a_real,NVARS,NVARS,RowMajor>& left) const
+{
+	const std::array<a_real,NDIM> n = m->gnormal(iface);
+	const a_real len = m->gfacemetric(iface,2);
+
+	a_real uface[NVARS];
+	Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
+	Matrix<a_real,NVARS,NVARS,RowMajor> right;
+
+	bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0],
+	                                                               uface, &drdl(0,0));
+
+	inviflux->get_jacobian(ul, uface, &n[0], &left(0,0), &right(0,0));
+
+	if(pconfig.viscous_sim) {
+		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface,
+		//		&left(0,0), &right(0,0));
+		compute_viscous_flux_jacobian(iface, ul, uface, &left(0,0), &right(0,0));
+	}
+
+	/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
+	 * We actually need to subtract dF/dr from dF/dl because the inviscid numerical flux
+	 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
+	 * get correct signs for lower and upper off-diagonal blocks.
+	 *
+	 * Integrate the results over the face and negate, as -ve of L is added to D
+	 */
+	left = -len*(left - right*drdl);
+}
+
+template<typename scalar, bool order2, bool constVisc>
 StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) const
 {
 	StatusCode ierr = 0;
@@ -692,33 +751,9 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const std::array<a_real,NDIM> n = m->gnormal(iface);
-		const a_real len = m->gfacemetric(iface,2);
 
-		a_real uface[NVARS];
-		Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
 		Matrix<a_real,NVARS,NVARS,RowMajor> left;
-		Matrix<a_real,NVARS,NVARS,RowMajor> right;
-
-		bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(&uarr[lelem*NVARS], &n[0],
-		                                                               uface, &drdl(0,0));
-
-		inviflux->get_jacobian(&uarr[lelem*NVARS], uface, &n[0], &left(0,0), &right(0,0));
-
-		if(pconfig.viscous_sim) {
-			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface,
-			//		&left(0,0), &right(0,0));
-			compute_viscous_flux_jacobian(iface,&uarr[lelem*NVARS],uface, &left(0,0), &right(0,0));
-		}
-
-		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
-		 * We actually need to subtract dF/dr from dF/dl because the inviscid numerical flux
-		 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
-		 * get correct signs for lower and upper off-diagonal blocks.
-		 *
-		 * Integrate the results over the face and negate, as -ve of L is added to D
-		 */
-		left = -len*(left - right*drdl);
+		compute_local_jacobian_boundary(iface, &uarr[lelem*NVARS], left);
 
 #pragma omp critical
 		{
@@ -732,24 +767,11 @@ StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat
 		//const a_int intface = iface-m->gnbface();
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
-		a_real n[NDIM];
-		n[0] = m->gfacemetric(iface,0);
-		n[1] = m->gfacemetric(iface,1);
-		const a_real len = m->gfacemetric(iface,2);
+
 		Matrix<a_real,NVARS,NVARS,RowMajor> L;
 		Matrix<a_real,NVARS,NVARS,RowMajor> U;
+		compute_local_jacobian_interior(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], L, U);
 
-		// NOTE: the values of L and U get REPLACED here, not added to
-		inviflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
-
-		if(pconfig.viscous_sim) {
-			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
-			//		&L(0,0), &U(0,0));
-			compute_viscous_flux_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
-			                              &L(0,0), &U(0,0));
-		}
-
-		L *= len; U *= len;
 #pragma omp critical
 		{
 			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);

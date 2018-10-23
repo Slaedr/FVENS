@@ -212,6 +212,15 @@ public:
 	 */
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const;
 
+	void compute_local_jacobian_interior(const a_int iface,
+	                                     const a_real *const ul, const a_real *const ur,
+	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& L,
+	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& U) const;
+
+	void compute_local_jacobian_boundary(const a_int iface,
+	                                     const a_real *const ul,
+	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& L) const;
+
 protected:
 	using Spatial<scalar,NVARS>::m;
 	using Spatial<scalar,NVARS>::rc;

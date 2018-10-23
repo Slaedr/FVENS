@@ -12,6 +12,9 @@
 namespace fvens_tests {
 
 using fvens::a_real;
+using fvens::a_int;
+using fvens::Matrix;
+using Eigen::RowMajor;
 
 /// A 'spatial discretization' that does nothing but carry out tests on gradient schemes etc
 class TestSpatial : public fvens::Spatial<a_real,1>
@@ -25,6 +28,17 @@ public:
 
 	virtual fvens::StatusCode compute_jacobian(const Vec u, Mat A) const
 	{ return 0; }
+
+	void compute_local_jacobian_interior(const a_int iface,
+	                                     const a_real *const ul, const a_real *const ur,
+	                                     Matrix<a_real,1,1,RowMajor>& L,
+	                                     Matrix<a_real,1,1,RowMajor>& U) const
+	{ }
+
+	void compute_local_jacobian_boundary(const a_int iface,
+	                                     const a_real *const ul,
+	                                     Matrix<a_real,1,1,RowMajor>& L) const
+	{ }
 
 	virtual void getGradients(const fvens::MVector<a_real>& u,
 	                          fvens::GradArray<a_real,1>& grads) const
