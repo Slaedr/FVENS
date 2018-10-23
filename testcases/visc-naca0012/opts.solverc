@@ -10,7 +10,7 @@
 
 -ksp_type fgmres
 -ksp_rtol 1e-1
--ksp_max_it 40
+-ksp_max_it 30
 -pc_type bjacobi
 -sub_pc_type ilu
 
