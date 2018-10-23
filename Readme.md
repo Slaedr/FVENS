@@ -33,7 +33,8 @@ The following libraries and programs are required:
 - [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 or newer for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
 - [Gmsh](http://gmsh.info/) 3.0 or later is required for building many of the grids for test cases. It is available in most GNU/Linux distributions' official repositories. If it is not present in a standard directory and has not been added to the `PATH` variable, one can pass
 `-DCMAKE_PREFIX_PATH=/path/to/top-level/gmsh-dir` in the `cmake` command line (see below).
-- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory.
+- Optionally, the [ADOL-C](https://projects.coin-or.org/ADOL-C) automatic differentiation library can be used for computing exact derivatives of the fluxes. Unless installed in a standard directory, an environment variable `ADOLC_DIR` needs to be set, and `-DWITH_ADOLC=1` should be passed to the CMake command line.
+- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory. `-DWITH_BLASTED=1` needs to be passed to CMake.
 
 The variables needed can either be passed as arguments to CMake during configuration (see below) or set as environment variables. OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
 

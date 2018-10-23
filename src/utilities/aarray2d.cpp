@@ -12,7 +12,10 @@
 #include <iomanip>
 #include <cmath>
 #include <cstdlib>
+
+#ifdef USE_ADOLC
 #include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 namespace amat {
@@ -142,7 +145,10 @@ void Array2d<T>::fread(std::ifstream& infile)
 
 template class Array2d<a_real>;
 template class Array2d<a_int>;
+
+#ifdef USE_ADOLC
 template class Array2d<adouble>;
+#endif
 
 }
 }

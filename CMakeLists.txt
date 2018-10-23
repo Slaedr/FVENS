@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 # EIGEN3_ROOT needs to be set to the path of the Eigen top-level directory.
 # PETSC_DIR and PETSC_ARCH need to be set.
+# ADOLC_DIR should be set if needed.
 # BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
 # BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
 
@@ -268,6 +269,7 @@ message(STATUS "Building with PETSc found at ${PETSC_LIB}/${PETSC_ARCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
 
 # ADOLC
+if(WITH_ADOLC)
 if(NOT DEFINED ADOLC_DIR)
   set(ADOLC_DIR $ENV{ADOLC_DIR} CACHE PATH "ADOL-C install directory")
 endif()
@@ -278,6 +280,7 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ADOLC=1")
   include_directories(${ADOLC_DIR}/include)
   message(STATUS "Building with ADOL-C found at ${ADOLC_LIB}")
+endif()
 endif()
 
 # ---------------------------------------------------------------------------- #
