@@ -2,12 +2,16 @@
 #include "diffusion.hpp"
 #include "utilities/afactory.hpp"
 
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
+
 namespace fvens {
 
 template<int nvars>
 Diffusion<nvars>::Diffusion(const UMesh2dh<a_real> *const mesh,
                             const a_real diffcoeff, const a_real bvalue,
-                            std::function < 
+                            std::function <
 								void(const a_real *const, const a_real, const a_real *const,
 								     a_real *const)
                             > sourcefunc)
@@ -42,7 +46,7 @@ StatusCode Diffusion<nvars>::initializeUnknowns(Vec u) const
 
 // Currently, all boundaries are constant Dirichlet
 template<int nvars>
-inline void Diffusion<nvars>::compute_boundary_state(const int ied, 
+inline void Diffusion<nvars>::compute_boundary_state(const int ied,
 		const a_real *const ins, a_real *const bs) const
 {
 	for(int ivar = 0; ivar < nvars; ivar++)
@@ -50,7 +54,7 @@ inline void Diffusion<nvars>::compute_boundary_state(const int ied,
 }
 
 template<int nvars>
-void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates, 
+void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates,
                                                 amat::Array2d<a_real>& bounstates) const
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -58,9 +62,9 @@ void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& inst
 }
 
 template<int nvars>
-DiffusionMA<nvars>::DiffusionMA(const UMesh2dh<a_real> *const mesh, 
+DiffusionMA<nvars>::DiffusionMA(const UMesh2dh<a_real> *const mesh,
 		const a_real diffcoeff, const a_real bvalue,
-	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf, 
+	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf,
 		const std::string grad_scheme)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
 	  gradcomp {create_const_gradientscheme<a_real,nvars>(grad_scheme, m, rc)}
@@ -74,8 +78,8 @@ DiffusionMA<nvars>::~DiffusionMA()
 
 template<int nvars>
 StatusCode DiffusionMA<nvars>::assemble_residual(const Vec uvec,
-                                                Vec rvec, 
-                                                const bool gettimesteps, 
+                                                Vec rvec,
+                                                const bool gettimesteps,
                                                 std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
@@ -90,7 +94,7 @@ StatusCode DiffusionMA<nvars>::assemble_residual(const Vec uvec,
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 
 	ierr = compute_residual(uarr, rarr, gettimesteps, dtm); CHKERRQ(ierr);
-	
+
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 	return ierr;
@@ -98,8 +102,8 @@ StatusCode DiffusionMA<nvars>::assemble_residual(const Vec uvec,
 
 template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
-                                                a_real *const __restrict rarr, 
-                                                const bool gettimesteps, 
+                                                a_real *const __restrict rarr,
+                                                const bool gettimesteps,
                                                 std::vector<a_real>& dtm) const
 {
 	StatusCode ierr = 0;
@@ -121,7 +125,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 
 	GradArray<a_real,nvars> grads;
 	grads.resize(m->gnelem());
-	
+
 	compute_boundary_states(uleft, ug);
 	gradcomp->compute_gradients(u, ug, grads);
 
@@ -131,7 +135,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
 		const a_real len = m->gfacemetric(iface,2);
-		
+
 		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
 		for(int ivar = 0; ivar < nvars; ivar++) {
 			for(int idim = 0; idim < NDIM; idim++) {
@@ -141,7 +145,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		}
 		// const a_real *const gradl = &grads[lelem](0,0);
 		// const a_real *const gradr = &grads[relem](0,0);
-	
+
 		a_real gradf[NDIM][nvars];
 		getFaceGradient_modifiedAverage
 			(iface, &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, gradf);
@@ -161,13 +165,13 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 			residual(relem,ivar) += flux;
 		}
 	}
-	
+
 #pragma omp parallel for default(shared)
 	for(int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_real len = m->gfacemetric(iface,2);
-		
+
 		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
 		for(int ivar = 0; ivar < nvars; ivar++) {
 			for(int idim = 0; idim < NDIM; idim++) {
@@ -197,7 +201,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 	}
 
 #pragma omp parallel for default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++) 
+	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
 		if(gettimesteps)
 			dtm[iel] = h[iel]*h[iel]/diffusivity;
@@ -208,7 +212,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		for(int ivar = 0; ivar < nvars; ivar++)
 			residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
 	}
-	
+
 	return ierr;
 }
 
@@ -250,7 +254,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 				du, du, grad, dgradl, dgradr);
 
 		a_real dfluxl[nvars*nvars];
-		zeros(dfluxl, nvars*nvars);	
+		zeros(dfluxl, nvars*nvars);
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			// compute nu*(d(-grad u)/du_l . n) * l
@@ -263,7 +267,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, dfluxl, ADD_VALUES);
 #pragma omp critical
 		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, dfluxl, ADD_VALUES);
-		
+
 		for(int ivar = 0; ivar < nvars; ivar++)
 			dfluxl[ivar*nvars+ivar] *= -1;
 
@@ -272,13 +276,13 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 #pragma omp critical
 		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, dfluxl, ADD_VALUES);
 	}
-	
+
 #pragma omp parallel for default(shared)
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_real len = m->gfacemetric(iface,2);
-		
+
 		a_real du[nvars*nvars];
 		for(int i = 0; i < nvars; i++) {
 			for(int j = 0; j < nvars; j++)
@@ -293,7 +297,7 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 				du, du, grad, dgradl, dgradr);
 
 		a_real dfluxl[nvars*nvars];
-		zeros(dfluxl, nvars*nvars);	
+		zeros(dfluxl, nvars*nvars);
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			// compute nu*(d(-grad u)/du_l . n) * l
@@ -301,11 +305,11 @@ StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
 				dfluxl[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
 			dfluxl[ivar*nvars+ivar] *= (-diffusivity*len);
 		}
-		
+
 #pragma omp critical
 		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, dfluxl, ADD_VALUES);
 	}
-	
+
 	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	return ierr;
 }
@@ -329,7 +333,7 @@ StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec u
                                     amat::Array2d<a_real>& up)
 {
 	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
-	
+
 	std::vector<a_real> areasum(m->gnpoin(),0);
 	up.resize(m->gnpoin(), nvars);
 	up.zeros();
@@ -360,6 +364,7 @@ StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec u
 
 // template instantiations
 
+//CHANGE HERE
 template class Diffusion<1>;
 template class DiffusionMA<1>;
 template StatusCode scalar_postprocess_point<1>(const UMesh2dh<a_real> *const m, const Vec uvec,

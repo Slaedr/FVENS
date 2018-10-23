@@ -31,12 +31,12 @@ namespace fvens {
 /// The collection of physical data needed to initialize flow spatial discretizations
 struct FlowPhysicsConfig
 {
-	a_real gamma;                       ///< Adiabatic index 
+	a_real gamma;                       ///< Adiabatic index
 	a_real Minf;                        ///< Free-stream Mach number
 	a_real Tinf;                        ///< Free-stream temperature in Kelvin
 	a_real Reinf;                       ///< Free-stream Reynolds number
 	a_real Pr;                          ///< (Constant) Prandtl number
-	a_real aoa;                         ///< Angle of attack in radians 
+	a_real aoa;                         ///< Angle of attack in radians
 	bool viscous_sim;                   ///< Whether to include viscous effects
 	bool const_visc;                    ///< Whether to use constant viscosity
 	std::vector<FlowBCConfig> bcconf;   ///< Boundary condition specification
@@ -87,13 +87,13 @@ public:
 	 * \note For non-standard scalar types (like std::complex or ADOL-C's adouble), this function
 	 *   needs to be reimplementated in an appropriate sub-class.
 	 */
-	virtual StatusCode assemble_residual(const Vec u, Vec residual, 
+	virtual StatusCode assemble_residual(const Vec u, Vec residual,
 	                                     const bool gettimesteps,
 	                                     std::vector<a_real>& dtm) const;
 
 	/// Computes the [right hand side](@ref residual)
-	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is 
-	 * [M du/dt +] r(u) = 0. 
+	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is
+	 * [M du/dt +] r(u) = 0.
 	 * Invokes flux calculation and adds the fluxes to the residual vector,
 	 * and also computes local time steps.
 	 */
@@ -104,7 +104,7 @@ public:
 	/** \param[in] u The multi-vector containing conserved variables
 	 * \param[in] grad Gradients of converved variables at cell-centres
 	 * \param[in] iwbcm The marker of the boundary on which the computation is to be done
-	 * \param[in,out] output On output, contains for each boundary face having the marker im : 
+	 * \param[in,out] output On output, contains for each boundary face having the marker im :
 	 *                   Cp and Csf, in that order
 	 * \return A tuple containing Cl, Cd_p and Cd_sf.
 	 *
@@ -152,7 +152,7 @@ protected:
 	/// The different boundary conditions required for all the boundaries
 	const std::map<int,const FlowBC<scalar>*> bcs;
 
-	/// Computes flow variables at all boundaries (either Gauss points or ghost cell centers) 
+	/// Computes flow variables at all boundaries (either Gauss points or ghost cell centers)
 	/// using the interior state provided
 	/** \param[in] instates provides the left (interior state) for each boundary face
 	 * \param[out] bounstates will contain the right state of boundary faces
@@ -160,7 +160,7 @@ protected:
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Array2d<scalar>& instates, 
+	void compute_boundary_states(const amat::Array2d<scalar>& instates,
 			amat::Array2d<scalar>& bounstates) const;
 
 	/// Computes ghost cell state across one face
@@ -174,7 +174,7 @@ protected:
 /// Computes the integrated fluxes and their Jacobians for compressible flow
 /** \note Make sure [mesh proprocessing](\ref preprocessMesh) has been completed
  * prior to initialzing an object of this class.
- * 
+ *
  * This class also includes (as protected members) clones of some objects from the base class prefixed
  * with 'j' (such as \ref jphy). These objects are used in the computation of approximate Jacobians
  * and only use the basic real type, not the generic scalar used for computing the fluxes. These
@@ -195,12 +195,12 @@ public:
 		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
 		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
 	);
-	
+
 	~FlowFV();
 
 	/// Calls functions to assemble the [right hand side](@ref residual)
-	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is 
-	 * [M du/dt +] r(u) = 0. 
+	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is
+	 * [M du/dt +] r(u) = 0.
 	 * Invokes flux calculation and adds the fluxes to the residual vector,
 	 * and also computes local time steps.
 	 */
@@ -208,10 +208,10 @@ public:
 	                            const bool gettimesteps, std::vector<a_real>& dtm) const;
 
 	/// Computes the residual Jacobian as a PETSc martrix
-	/** Computes the Jacobian of r(u), where the 
+	/** Computes the Jacobian of r(u), where the
 	 */
 	virtual StatusCode compute_jacobian(const Vec u, Mat A) const;
-	
+
 protected:
 	using Spatial<scalar,NVARS>::m;
 	using Spatial<scalar,NVARS>::rc;

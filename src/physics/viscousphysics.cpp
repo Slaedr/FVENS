@@ -294,6 +294,20 @@ computeViscousFluxJacobian<a_real,NDIM,NVARS,false>(const IdealGasPhysics<a_real
 //CHANGE HERE
 #ifdef USE_ADOLC
 template void
+getPrimitive2StatesAndGradients<adouble,NDIM,true>(const IdealGasPhysics<adouble>& physics,
+                                                  const adouble *const ucl, const adouble *const ucr,
+                                                  const adouble *const gradl, const adouble *const gradr,
+                                                  adouble *const uctl, adouble *const uctr,
+                                                  adouble *const gradtl, adouble *const gradtr);
+
+template void
+getPrimitive2StatesAndGradients<adouble,NDIM,false>(const IdealGasPhysics<adouble>& physics,
+                                                  const adouble *const ucl, const adouble *const ucr,
+                                                  const adouble *const gradl, const adouble *const gradr,
+                                                  adouble *const uctl, adouble *const uctr,
+                                                  adouble *const gradtl, adouble *const gradtr);
+
+template void
 computeViscousFlux<adouble,NDIM,NVARS,true>(const IdealGasPhysics<adouble>& physics,
                                            const adouble *const n,
                                            const adouble grad[NDIM][NVARS],
