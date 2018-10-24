@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstring>
 #include <limits>
+#include "petsc_assembly.hpp"
 
 namespace fvens {
 
@@ -137,7 +138,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	// aux <- u + eps/xnorm * x
 	ierr = VecAXPY(aux, 1.0, u); CHKERRQ(ierr);
 	// y <- -r(u + eps/xnorm * x)
-	ierr = spatial->assemble_residual(aux, y, false, dummy); CHKERRQ(ierr);
+	ierr = assemble_residual(spatial, aux, y, false, dummy); CHKERRQ(ierr);
 	// y <- -(-r(u + eps/xnorm * x)) + (-r(u)) = r(u + eps/xnorm * x) - r(u)
 	ierr = VecAXPBY(y, 1.0, -1.0, res); CHKERRQ(ierr);
 	
@@ -293,7 +294,7 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const star
 	ierr = KSPGetOperators(ksp, &A, &M); CHKERRQ(ierr);
 
 	// first assemble the matrix once because PETSc requires it
-	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
+	ierr = assemble_jacobian(startprob, u, M); CHKERRQ(ierr);
 	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 

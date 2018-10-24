@@ -34,6 +34,7 @@
 
 #include "aodesolver.hpp"
 #include "linalg/alinalg.hpp"
+#include "linalg/petsc_assembly.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/aerrorhandling.hpp"
 
@@ -150,7 +151,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 		// update residual
-		space->assemble_residual(uvec, rvec, true, dtm);
+		ierr = assemble_residual(space, uvec, rvec, true, dtm); CHKERRQ(ierr);
 
 		a_real errmass = 0;
 
@@ -383,10 +384,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		
 		// update residual and local time steps
-		ierr = space->assemble_residual(uvec, rvec, true, dtm); CHKERRQ(ierr);
+		ierr = assemble_residual(space, uvec, rvec, true, dtm); CHKERRQ(ierr);
 
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
-		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
+		ierr = assemble_jacobian(space, uvec, M); CHKERRQ(ierr);
 		
 		//curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
 		//(void)resiold;
@@ -609,7 +610,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			}
 
 			// update residual
-			space->assemble_residual(uvec, rvec, true, dtm);
+			ierr = assemble_residual(space, uvec, rvec, true, dtm); CHKERRQ(ierr);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)

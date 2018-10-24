@@ -76,26 +76,18 @@ public:
 	 */
 	StatusCode initializeUnknowns(Vec u) const;
 
-	/// Computes the residual from a PETSc vector containing the conserved variables
-	/** \sa compute_residual
-	 * Uses \ref compute_residual from derived classes to asseble the residual and compute max
-	 * allowable time steps.
+	/// Computes the residual and local time steps
+	/** By convention, we need to compute the negative of the nonlinear function whose root
+	 * we want to find. Note that our nonlinear function or residual is defined (for steady problems) as
+	 * the sum (over all cells) of net outgoing fluxes from each cell
+	 * \f$ r(u) = \sum_K \int_{\partial K} F \hat{n} d\gamma \f$ where $f K $f denotes a cell.
+	 * For pseudo time-stepping, the output should be -r(u), where the ODE is
+	 * M du/dt + r(u) = 0.
 	 *
-	 * \warning Data from the PETSc vector is extracted as a pointer to PetscScalar, PETSc's native
-	 *   floating point type. This may not be the template parameter to this class.
-	 *
-	 * \note For non-standard scalar types (like std::complex or ADOL-C's adouble), this function
-	 *   needs to be reimplementated in an appropriate sub-class.
-	 */
-	virtual StatusCode assemble_residual(const Vec u, Vec residual,
-	                                     const bool gettimesteps,
-	                                     std::vector<a_real>& dtm) const;
-
-	/// Computes the [right hand side](@ref residual)
-	/** Actually computes -r(u) (ie., negative of r(u)), where the nonlinear problem being solved is
-	 * [M du/dt +] r(u) = 0.
-	 * Invokes flux calculation and adds the fluxes to the residual vector,
-	 * and also computes local time steps.
+	 * \param[in] u The state at which the residual is to be computed
+	 * \param[in|out] residual The residual is added to this
+	 * \param[in] gettimesteps Whether time-step computation is required
+	 * \param[out] dtm Local time steps are stored in this
 	 */
 	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
 	                                    const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
@@ -207,16 +199,17 @@ public:
 	StatusCode compute_residual(const scalar *const u, scalar *const residual,
 	                            const bool gettimesteps, std::vector<a_real>& dtm) const;
 
-	/// Computes the residual Jacobian as a PETSc martrix
-	/** Computes the Jacobian of r(u), where the
+	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
+	/** \see Spatial::compute_local_jacobian_interior
 	 */
-	virtual StatusCode compute_jacobian(const Vec u, Mat A) const;
-
 	void compute_local_jacobian_interior(const a_int iface,
 	                                     const a_real *const ul, const a_real *const ur,
 	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& L,
 	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& U) const;
 
+	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
+	/** \see Spatial::compute_local_jacobian_boundary
+	 */
 	void compute_local_jacobian_boundary(const a_int iface,
 	                                     const a_real *const ul,
 	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& L) const;

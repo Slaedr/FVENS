@@ -5,6 +5,7 @@
 #ifndef FVENS_PETSC_ASSEMBLY
 #define FVENS_PETSC_ASSEMBLY
 
+#include <petscmat.h>
 #include "spatial/aspatial.hpp"
 
 namespace fvens {
@@ -23,7 +24,7 @@ namespace fvens {
  * \param[out] dtm Local time steps are stored in this
  */
 template <typename scalar, int nvars>
-StatusCode assemble_residual(const FlowSpatial<scalar,nvars> *const spatial,
+StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
                              const Vec uvec, Vec __restrict rvec,
                              const bool gettimesteps, std::vector<a_real>& dtm);
 

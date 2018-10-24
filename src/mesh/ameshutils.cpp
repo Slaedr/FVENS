@@ -6,6 +6,7 @@
 #include <iostream>
 #include "ameshutils.hpp"
 #include "linalg/alinalg.hpp"
+#include "linalg/petsc_assembly.hpp"
 #include "spatial/diffusion.hpp"
 
 #ifdef USE_ADOLC
@@ -30,7 +31,7 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 	CHKERRQ(VecCreateSeq(PETSC_COMM_SELF, m.gnelem(), &u));
 	CHKERRQ(VecSet(u,1.0));
 
-	CHKERRQ(sd.compute_jacobian(u, A));
+	ierr = assemble_jacobian(&sd, u, A); CHKERRQ(ierr);
 	CHKERRQ(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
 	CHKERRQ(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
 

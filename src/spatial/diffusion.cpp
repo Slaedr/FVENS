@@ -77,30 +77,6 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<int nvars>
-StatusCode DiffusionMA<nvars>::assemble_residual(const Vec uvec,
-                                                Vec rvec,
-                                                const bool gettimesteps,
-                                                std::vector<a_real>& dtm) const
-{
-	StatusCode ierr = 0;
-
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % nvars == 0);
-	locnelem /= nvars;
-	assert(locnelem == m->gnelem());
-
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-
-	ierr = compute_residual(uarr, rarr, gettimesteps, dtm); CHKERRQ(ierr);
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
-	return ierr;
-}
-
-template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
                                                 a_real *const __restrict rarr,
                                                 const bool gettimesteps,
@@ -243,9 +219,10 @@ void DiffusionMA<nvars>::compute_local_jacobian_interior(const a_int iface,
 		// compute nu*(d(-grad u)/du_l . n) * l
 		for(int idim = 0; idim < NDIM; idim++)
 			L[ivar*nvars+ivar] += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
-		L[ivar*nvars+ivar] *= (-diffusivity*len);
+		L[ivar*nvars+ivar] *= (diffusivity*len);
 	}
 
+	// The Jacobian is symmetric
 	U = L;
 }
 
@@ -274,64 +251,8 @@ void DiffusionMA<nvars>::compute_local_jacobian_boundary(const a_int iface,
 		// compute nu*(d(-grad u)/du_l . n) * l
 		for(int idim = 0; idim < NDIM; idim++)
 			L(ivar,ivar) += dgradl[idim][ivar][ivar]*m->gfacemetric(iface,idim);
-		L(ivar,ivar) *= (-diffusivity*len);
+		L(ivar,ivar) *= (diffusivity*len);
 	}
-}
-
-/** For now, this is the same as the thin-layer Jacobian
- */
-template<int nvars>
-StatusCode DiffusionMA<nvars>::compute_jacobian(const Vec uvec,
-		Mat A) const
-{
-	StatusCode ierr = 0;
-
-	PetscInt locnelem; const PetscScalar *uarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % nvars == 0);
-	locnelem /= nvars;
-	assert(locnelem == m->gnelem());
-
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-
-#pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
-	{
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
-
-		Matrix<a_real,nvars,nvars,RowMajor> dfluxl, dfluxr;
-		compute_local_jacobian_interior(iface, &uarr[lelem*nvars], &uarr[relem*nvars],
-		                                dfluxl, dfluxr);
-
-#pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, &dfluxl(0,0), ADD_VALUES);
-#pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, &dfluxl(0,0), ADD_VALUES);
-
-		for(int ivar = 0; ivar < nvars; ivar++)
-			dfluxl[ivar*nvars+ivar] *= -1;
-
-#pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, &dfluxl(0,0), ADD_VALUES);
-#pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, &dfluxl(0,0), ADD_VALUES);
-	}
-
-#pragma omp parallel for default(shared)
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
-	{
-		const a_int lelem = m->gintfac(iface,0);
-
-		Matrix<a_real,nvars,nvars,RowMajor> dfluxl;
-		compute_local_jacobian_boundary(iface, &uarr[lelem*nvars], dfluxl);
-
-#pragma omp critical
-		ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, &dfluxl(0,0), ADD_VALUES);
-	}
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	return ierr;
 }
 
 template <int nvars>

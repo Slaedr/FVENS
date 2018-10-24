@@ -126,38 +126,6 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 }
 
 template <typename scalar>
-StatusCode FlowFV_base<scalar>::assemble_residual(const Vec uvec,
-                                                  Vec __restrict rvec,
-                                                  const bool gettimesteps,
-                                                  std::vector<a_real>& dtm) const
-{
-	StatusCode ierr = 0;
-	amat::Array2d<a_real> integ, ug, uleft, uright;
-	integ.resize(m->gnelem(), 1);
-	ug.resize(m->gnbface(),NVARS);
-	uleft.resize(m->gnaface(), NVARS);
-	uright.resize(m->gnaface(), NVARS);
-
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % NVARS == 0);
-	locnelem /= NVARS;
-	assert(locnelem == m->gnelem());
-	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	//assert(locnelem == dtsz);
-
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-
-	compute_residual(uarr, rarr, gettimesteps, dtm);
-
-	VecRestoreArrayRead(uvec, &uarr);
-	VecRestoreArray(rvec, &rarr);
-	//VecRestoreArray(dtmvec, &dtm);
-	return ierr;
-}
-
-template <typename scalar>
 static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa) {
 	std::array<scalar,NDIM> dir;
 	for(int i = 0; i < NDIM; i++) dir[i] = 0;
@@ -729,73 +697,9 @@ void FlowFV<scalar,order2,constVisc>
 	 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
 	 * get correct signs for lower and upper off-diagonal blocks.
 	 *
-	 * Integrate the results over the face and negate, as -ve of L is added to D
+	 * Integrate the results over the face --- NO -> and negate, as -ve of L is added to D
 	 */
-	left = -len*(left - right*drdl);
-}
-
-template<typename scalar, bool order2, bool constVisc>
-StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) const
-{
-	StatusCode ierr = 0;
-
-	PetscInt locnelem; const PetscScalar *uarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % NVARS == 0);
-	locnelem /= NVARS;
-	assert(locnelem == m->gnelem());
-
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-
-#pragma omp parallel for default(shared)
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
-	{
-		const a_int lelem = m->gintfac(iface,0);
-
-		Matrix<a_real,NVARS,NVARS,RowMajor> left;
-		compute_local_jacobian_boundary(iface, &uarr[lelem*NVARS], left);
-
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
-		}
-	}
-
-#pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
-	{
-		//const a_int intface = iface-m->gnbface();
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
-
-		Matrix<a_real,NVARS,NVARS,RowMajor> L;
-		Matrix<a_real,NVARS,NVARS,RowMajor> U;
-		compute_local_jacobian_interior(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], L, U);
-
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
-		}
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
-		}
-
-		// negative L and U contribute to diagonal blocks
-		L *= -1.0; U *= -1.0;
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
-		}
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
-		}
-	}
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-
-	return ierr;
+	left = len*(left - right*drdl);
 }
 
 template class FlowFV_base<a_real>;

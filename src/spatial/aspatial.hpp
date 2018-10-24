@@ -29,7 +29,7 @@
 
 #include "mesh/amesh2dh.hpp"
 
-#include <petscmat.h>
+#include <petscvec.h>
 
 namespace fvens {
 
@@ -59,19 +59,24 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual StatusCode assemble_residual(const Vec u, Vec residual,
-			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
+	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
+	                                    const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
 
-	/// Computes the Jacobian matrix of the residual r(u) \sa assemble_residual
-	/** It is supposed to compute dr/du when we want to solve [M du/dt +] r(u) = 0.
+	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
+	/** It is supposed to be a point-block in dr/du when we want to solve [M du/dt +] r(u) = 0.
+	 * The convention is that L and U should go into the two off-diagonal blocks
+	 * corresponding to the face. The negative of L and U are added to the
+	 * diagonal blocks of the respective cells.
 	 */
-	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
-
 	virtual void compute_local_jacobian_interior(const a_int iface,
 	                                             const a_real *const ul, const a_real *const ur,
 	                                             Matrix<a_real,nvars,nvars,RowMajor>& L,
 	                                             Matrix<a_real,nvars,nvars,RowMajor>& U) const = 0;
 
+	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
+	/** The convention is that L is the negative of the matrix that is added to the diagonal block
+	 * corresponding to the interior cell.
+	 */
 	virtual void compute_local_jacobian_boundary(const a_int iface,
 	                                             const a_real *const ul,
 	                                             Matrix<a_real,nvars,nvars,RowMajor>& L) const = 0;

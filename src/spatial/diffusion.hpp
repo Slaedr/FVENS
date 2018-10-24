@@ -27,11 +27,6 @@ public:
 	 */
 	StatusCode initializeUnknowns(Vec u) const;
 	
-	// virtual StatusCode assemble_residual(const Vec u, Vec residual, 
-	// 		const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
-	
-	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
-	
 	virtual void getGradients(const MVector<a_real>& u,
 	                          GradArray<a_real,nvars>& grads) const = 0;
 	
@@ -77,9 +72,6 @@ public:
 			                                           ///< scheme to use
 			);
 	
-	StatusCode assemble_residual(const Vec u, Vec residual, 
-							const bool gettimesteps, std::vector<a_real>& dtm) const;
-
 	StatusCode compute_residual(const a_real *const uarr,
 	                            a_real *const rarr, 
 	                            const bool gettimesteps, 
@@ -97,8 +89,6 @@ public:
 	
 	/*void add_source(const MVector<scalar>& u, 
 			MVector<scalar>& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
-	
-	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 	void getGradients(const MVector<a_real>& u,
 	                  GradArray<a_real,nvars>& grads) const;
