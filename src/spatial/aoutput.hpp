@@ -5,6 +5,7 @@
 #ifndef AOUTPUT_H
 #define AOUTPUT_H 1
 
+#include <petscvec.h>
 #include "flow_spatial.hpp"
 
 namespace fvens {

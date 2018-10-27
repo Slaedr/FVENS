@@ -41,8 +41,6 @@ public:
 	                          fvens::GradArray<a_real,1>& grads) const
 	{ }
 
-	virtual fvens::StatusCode initializeUnknowns(Vec u) const { return 0; }
-
 	/// Test if weighted least-squares reconstruction is '1-exact'
 	int test_oneExact(const std::string reconst_type) const;
 

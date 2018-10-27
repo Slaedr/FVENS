@@ -84,8 +84,8 @@ int main(int argc, char* argv[])
 
 	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
 
-	for(int imesh = 0; imesh < nmesh; imesh++) {
-		
+	for(int imesh = 0; imesh < nmesh; imesh++)
+	{
 		std::string meshfile = meshprefix + std::to_string(imesh) + ".msh";
 
 		UMesh2dh<a_real> m;
@@ -117,7 +117,8 @@ int main(int argc, char* argv[])
 		Mat M;
 		ierr = setupSystemMatrix<1>(&m, &M); CHKERRQ(ierr);
 		ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
-		prob->initializeUnknowns(u);
+		//prob->initializeUnknowns(u);
+		ierr = VecSet(u, 0); CHKERRQ(ierr);
 
 		// initialize solver
 		KSP ksp;

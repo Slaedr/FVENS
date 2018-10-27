@@ -68,30 +68,6 @@ FlowFV_base<scalar>::~FlowFV_base()
 }
 
 template <typename scalar>
-StatusCode FlowFV_base<scalar>::initializeUnknowns(Vec u) const
-{
-	StatusCode ierr = 0;
-	PetscScalar * uloc;
-	VecGetArray(u, &uloc);
-	PetscInt locsize;
-	VecGetLocalSize(u, &locsize);
-	assert(locsize % NVARS == 0);
-	locsize /= NVARS;
-
-	//initial values are equal to boundary values
-	for(a_int i = 0; i < locsize; i++)
-		for(int j = 0; j < NVARS; j++)
-			uloc[i*NVARS+j] = uinf[j];
-
-	VecRestoreArray(u, &uloc);
-
-#ifdef DEBUG
-	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
-#endif
-	return ierr;
-}
-
-template <typename scalar>
 void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& ins,
                                                   amat::Array2d<scalar>& bs ) const
 {

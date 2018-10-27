@@ -6,6 +6,7 @@
 #define FVENS_DIFFUSION_H
 
 #include <vector>
+#include <petscvec.h>
 #include "spatial/aspatial.hpp"
 #include "agradientschemes.hpp"
 
@@ -25,7 +26,7 @@ public:
 	/** 
 	 * \param[in,out] u Vector to store the initial data in
 	 */
-	StatusCode initializeUnknowns(Vec u) const;
+	//StatusCode initializeUnknowns(Vec u) const;
 	
 	virtual void getGradients(const MVector<a_real>& u,
 	                          GradArray<a_real,nvars>& grads) const = 0;

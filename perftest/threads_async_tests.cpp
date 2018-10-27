@@ -191,8 +191,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 
 	// solution vector
 	Vec u;
-	ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, &u);
-	prob->initializeUnknowns(u);
+	ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);
 
 	// starting computation
 

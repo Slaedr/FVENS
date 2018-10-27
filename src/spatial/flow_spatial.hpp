@@ -69,13 +69,6 @@ public:
 
 	virtual ~FlowFV_base();
 
-	/// Sets initial conditions
-	/** \param[in] fromfile True if initial data is to be read from a file
-	 * \param[in] file Name of initial conditions file
-	 * \param[in,out] u Vector to store the initial data in
-	 */
-	StatusCode initializeUnknowns(Vec u) const;
-
 	/// Computes the residual and local time steps
 	/** By convention, we need to compute the negative of the nonlinear function whose root
 	 * we want to find. Note that our nonlinear function or residual is defined (for steady problems) as

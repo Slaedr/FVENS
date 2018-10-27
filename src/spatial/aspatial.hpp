@@ -29,8 +29,6 @@
 
 #include "mesh/amesh2dh.hpp"
 
-#include <petscvec.h>
-
 namespace fvens {
 
 /// Base class for finite volume spatial discretization
@@ -85,13 +83,6 @@ public:
 	/// Computes gradients of field variables and stores them in the argument
 	virtual void getGradients(const MVector<a_real>& u,
 	                          GradArray<a_real,nvars>& grads) const = 0;
-
-	/// Sets initial conditions
-	/** \param[in] fromfile True if initial data is to be read from a file
-	 * \param[in] file Name of initial conditions file
-	 * \param[in|out] u Vector to store the initial data in
-	 */
-	virtual StatusCode initializeUnknowns(Vec u) const = 0;
 
 	/// Exposes access to the mesh context
 	const UMesh2dh<scalar>* mesh() const

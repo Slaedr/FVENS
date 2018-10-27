@@ -32,18 +32,6 @@ template<int nvars>
 Diffusion<nvars>::~Diffusion()
 { }
 
-template<int nvars>
-StatusCode Diffusion<nvars>::initializeUnknowns(Vec u) const
-{
-	PetscScalar *uarr;
-	StatusCode ierr = VecGetArray(u, &uarr); CHKERRQ(ierr);
-	for(a_int i = 0; i < m->gnelem(); i++)
-		for(a_int j = 0; j < nvars; j++)
-			uarr[i*nvars+j] = 0;
-	ierr = VecRestoreArray(u, &uarr); CHKERRQ(ierr);
-	return ierr;
-}
-
 // Currently, all boundaries are constant Dirichlet
 template<int nvars>
 inline void Diffusion<nvars>::compute_boundary_state(const int ied,
