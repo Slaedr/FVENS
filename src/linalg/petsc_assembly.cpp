@@ -18,14 +18,14 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
 
 	amat::Array2d<a_real> integ, ug, uleft, uright;
 	integ.resize(m->gnelem(), 1);
-	ug.resize(m->gnbface(),NVARS);
-	uleft.resize(m->gnaface(), NVARS);
-	uright.resize(m->gnaface(), NVARS);
+	ug.resize(m->gnbface(),nvars);
+	uleft.resize(m->gnaface(), nvars);
+	uright.resize(m->gnaface(), nvars);
 
 	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % NVARS == 0);
-	locnelem /= NVARS;
+	assert(locnelem % nvars == 0);
+	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
 	//assert(locnelem == dtsz);

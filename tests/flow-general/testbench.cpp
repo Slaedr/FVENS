@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
 	assert(argc >= 2);
 	//constexpr double meps = std::numeric_limits<double>::epsilon();
 
-	std::ifstream fin(argv[1]);
+	const std::string outprefix = argv[1];
+	std::ifstream fin(outprefix+".perf");
 
 	std::string line;
 
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
 
 		for(int i = 0; i < 3; i++) {
 			assert(dnums[i] > 0.05);                 // some speedup for build, apply, total
-			assert(dnums[i] <45.0);                  // assuming max 4 threads
+			assert(dnums[i] < 5.0);                  // assuming max 4 threads
 		}
 
 		assert(dnums[3] > SMALL_DEVIATION_NUMBER);   // should be some nonzero total deviation
@@ -96,5 +97,26 @@ int main(int argc, char *argv[])
 	assert(rows == 4);
 
 	fin.close();
+
+	// Check if convergence history output files can be opened
+	std::ifstream conv;
+
+	conv.open(outprefix+"-sweeps1_1-threads2.conv");
+	if(!conv)
+		throw std::ios_base::failure("File not found");
+	conv.close();
+	conv.open(outprefix+"-sweeps1_1-threads4.conv");
+	if(!conv)
+		throw std::ios_base::failure("File not found");
+	conv.close();
+	conv.open(outprefix+"-sweeps2_3-threads2.conv");
+	if(!conv)
+		throw std::ios_base::failure("File not found");
+	conv.close();
+	conv.open(outprefix+"-sweeps2_3-threads4.conv");
+	if(!conv)
+		throw std::ios_base::failure("File not found");
+	conv.close();
+
 	return 0;
 }

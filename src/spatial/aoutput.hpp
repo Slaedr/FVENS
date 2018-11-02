@@ -7,6 +7,7 @@
 
 #include <petscvec.h>
 #include "flow_spatial.hpp"
+#include "ode/aodesolver.hpp"
 
 namespace fvens {
 
@@ -109,6 +110,12 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh2dh<a_real>
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
 void writeMeshToVtu(std::string fname, UMesh2dh<a_real>& m);
+
+/// Prints out the column of headers of convergence history to a file
+void writeConvergenceHistoryHeader(std::ostream& outf);
+
+/// Prints monitor data for one step of convergence history to a file
+void writeStepToConvergenceHistory(const SteadyStepMonitor step, std::ostream& outf);
 
 }
 #endif

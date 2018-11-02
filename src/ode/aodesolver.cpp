@@ -33,6 +33,7 @@
 #include <petsctime.h>
 
 #include "aodesolver.hpp"
+#include "spatial/aoutput.hpp"
 #include "linalg/alinalg.hpp"
 #include "linalg/petsc_assembly.hpp"
 #include "utilities/aoptionparser.hpp"
@@ -65,11 +66,19 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 	return tvdrk;
 }
 
+TimingData::TimingData()
+	: nelem{0}, num_threads{1}, lin_walltime{0}, lin_cputime{0}, ode_walltime{0}, ode_cputime{0},
+	  total_lin_iters{0}, avg_lin_iters{0}, num_timesteps{0}, converged{false}, precsetup_walltime{0},
+	  precapply_walltime{0}, prec_cputime{0}
+{ }
+
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf)
-	: space{spatial}, config{conf}, 
-	  tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false}
-{ }
+	: space{spatial}, config{conf}
+	  //tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false, 0,0,0}
+{
+	tdata.nelem = spatial->mesh()->gnelem();
+}
 
 template <int nvars>
 TimingData SteadySolver<nvars>::getTimingData() const {
@@ -339,19 +348,20 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 	Eigen::Map<MVector<a_real>> u(uarr, m->gnelem(), nvars);
 
-	std::ofstream convout;
 	if(config.lognres)
-		if(mpirank == 0)
-			convout.open(config.logfile+".conv", std::ofstream::app);
+		tdata.convhis.reserve(100);
 	
 	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;*/
+	const double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;*/
+	const double initialwtime = MPI_Wtime();
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	PetscLogDouble initialwtime;
-	PetscTime(&initialwtime);
 	
 	double linwtime = 0, linctime = 0;
+
+	SteadyStepMonitor convline;
+	if(mpirank == 0)
+		writeConvergenceHistoryHeader(std::cout);
 		
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
@@ -454,57 +464,52 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		resiold = resi;
 		resi = sqrt(resnorm2);
 
-		if(step == 0)
-			initres = resi;
-
-		if(step % 10 == 0) {
-			//const a_real updmag = du.norm();
-			if(mpirank == 0) {
-				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
-					<< ", rel res " << resi/initres << ", abs res = " << resi << std::endl;
-				std::cout << "      CFL = " << curCFL 
-					<< ", iters used = " << linstepsneeded << std::endl;
-			}
-		}
-
-		step++;
-			
-		if(config.lognres)
-			if(mpirank == 0)
-				convout << step << " " << std::setw(10)  << resi/initres << '\n';
-
 		// test for nan
 		if(!std::isfinite(resi))
 			throw Numerical_error("Steady backward Euler diverged - residual is Nan or inf!");
+
+		if(step == 0)
+			initres = resi;
+
+		step++;
+
+		const double curtime = MPI_Wtime();
+		convline = { step, (float)(resi/initres), (float)resi,
+		             (float)(curtime-initialwtime), (float)linwtime, tdata.total_lin_iters,
+		             (float)curCFL };
+
+		if(config.lognres)
+		{
+			tdata.convhis.push_back(convline);
+		}
+
+		if((step-1) % 10 == 0)
+		{
+			if(mpirank == 0) {
+				writeStepToConvergenceHistory(convline, std::cout);
+			}
+		}
 	}
 
-	/*gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;*/
-	PetscLogDouble finalwtime;
-	PetscTime(&finalwtime);
+	const double finalwtime = MPI_Wtime();
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); 
 	tdata.ode_cputime += (finalctime-initialctime);
 	tdata.avg_lin_iters = (int) (tdata.total_lin_iters / (double)step);
 	tdata.num_timesteps = step;
 
-	if(config.lognres)
-		if(mpirank == 0)
-			convout.close();
-
 	if(mpirank == 0) {
-		std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step 
-			<< ", rel residual " << resi/initres << std::endl;
+		writeStepToConvergenceHistory(convline, std::cout);
 	}
 
 	// print timing data
 	if(mpirank == 0) {
-		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters;
-		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-		std::cout << " \t\tWall time = " << tdata.ode_walltime << ", CPU time = " 
-		          << tdata.ode_cputime << "\n";
-		std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
-		std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
+		std::cout << "  SteadySolver: Average number of linear solver iterations = "
+		          << tdata.avg_lin_iters << '\n';
+		std::cout << "  SteadySolver: solve(): Total time taken: ";
+		std::cout << " CPU time = " << tdata.ode_cputime << "\n";
+		std::cout << "  SteadySolver: solve(): Time taken by linear solver:";
+		std::cout << " CPU time = " << linctime << std::endl;
 	}
 
 #ifdef _OPENMP
