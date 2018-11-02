@@ -140,17 +140,18 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 
-	std::ofstream convout;
-	if(mpirank==0)
-		if(config.lognres)
-			convout.open(config.logfile+".conv", std::ofstream::app);
-	
-	struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	// struct timeval time1, time2;
+	// gettimeofday(&time1, NULL);
+	// double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	const double initialwtime = MPI_Wtime();
+	const double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
 	std::cout << " Constant CFL = " << config.cflinit << std::endl;
+
+	SteadyStepMonitor convstep;
+	if(mpirank == 0)
+		writeConvergenceHistoryHeader(std::cout);
+		
 
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
@@ -187,29 +188,29 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		if(step == 0)
 			initres = resi;
 
-		if(step % 50 == 0)
-			if(mpirank==0)
-				std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step 
-					<< ", rel residual " << resi/initres << std::endl;
-
 		step++;
-		if(mpirank==0)
-			if(config.lognres)
-				convout << step << " " << std::setw(10) << resi/initres << '\n';
+
+		const double curtime = MPI_Wtime();
+		convstep = {step, (float)(resi/initres), (float)resi, (float)(curtime-initialwtime),
+		            0, 0, (float)config.cflinit};
+		if(config.lognres)
+			tdata.convhis.push_back(convstep);
+
+		if((step-1) % 50 == 0)
+			if(mpirank==0)
+				writeStepToConvergenceHistory(convstep, std::cout);
 
 		// test for nan
 		if(!std::isfinite(resi))
 			throw Numerical_error("Steady forward Euler diverged - residual is Nan or inf!");
 	}
+	
+	const double finalwtime = MPI_Wtime();
+	const double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
 
 	if(mpirank==0)
-		if(config.lognres)
-			convout.close();
-	
-	gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
-	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
+		writeStepToConvergenceHistory(convstep, std::cout);
 
 	tdata.converged = true;
 	if(step == config.maxiter) {
@@ -218,10 +219,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
 	}
 	if(mpirank == 0) {
-		std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
-		std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
-		std::cout << "                                   Wall time = " << tdata.ode_walltime 
-			<< ", CPU time = " << tdata.ode_cputime << std::endl << std::endl;
+		std::cout << " SteadyForwardEulerSolver: solve(): Done. ";
+		std::cout << " CPU time = " << tdata.ode_cputime << std::endl;
 	}
 
 #ifdef _OPENMP
