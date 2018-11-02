@@ -10,22 +10,22 @@ spatial_discretization {
 ;; Psuedo-time continuation settings for the nonlinear solver
 pseudotime 
 {
-	pseudotime_stepping_type    implicit
+	pseudotime_stepping_type    explicit
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  250.0
-		cfl_max                  1000.0
-		tolerance                1e-5
-		max_timesteps            400
+		cfl_min                  0.25
+		cfl_max                  0.25
+		tolerance                1e-4
+		max_timesteps            10000
 	}
 	
 	;; The solver which computes an initial guess for the main solver
 	initialization {	
-		cfl_min                  25.0
-		cfl_max                  500.0
+		cfl_min                  0.5
+		cfl_max                  0.5
 		tolerance                1e-1
-		max_timesteps            250
+		max_timesteps            1000
 	}
 }
 
