@@ -38,7 +38,8 @@ template <int nvars>
 StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A);
 
 /// Matrix-free Jacobian of the flux
-/** The normalized step length epsilon for the finite-difference Jacobian is set to a default value,
+/** An object of this type is associated with a specific spatial discretization context.
+ * The normalized step length epsilon for the finite-difference Jacobian is set to a default value,
  * but it also queried from the PETSc options database.
  */
 template <int nvars>
@@ -47,11 +48,10 @@ class MatrixFreeSpatialJacobian
 public:
 	/// Query the Petsc options database for a custom option for setting the step length epsilon
 	/** The finite difference step length epsilon is given a default value.
+	 * \param[in] spatial_discretization The spatial discretization of which this objact
+	 *   will act as Jacobian
 	 */
-	MatrixFreeSpatialJacobian();
-
-	/// Set the spatial dscretization whose Jacobian is needed
-	void set_spatial(const Spatial<a_real,nvars> *const space);
+	MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const spatial_discretization);
 
 	/// Set the state u at which the Jacobian is computed, the corresponding residual r(u) and 
 	/// the diagonal vector of the mass matrix for each cell
@@ -65,7 +65,7 @@ public:
 
 protected:
 	/// Spatial discretization context
-	const Spatial<a_real,nvars>* spatial;
+	const Spatial<a_real,nvars> *const spatial;
 
 	/// step length for finite difference Jacobian
 	a_real eps;
@@ -81,14 +81,13 @@ protected:
 };
 
 /// Setup a matrix-free Mat for the Jacobian
-/**
- * \param mfj A constructed MatrixFreeSpatialJacobian object
- * \param A The Mat to setup We assume \ref setupSystemMatrix has already been called on the Mat
- *   to set the size etc.
+/** Sets up the matrix-free Jacobian with the spatial discretization as well as sets up the PETSc
+ * shell Mat with it.
+ * \param[in] spatial The spatial discretization context to associate with the matrix-free Jacobian
+ * \param[out] A The Mat to setup
  */
 template <int nvars>
-StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A);
+StatusCode create_matrixfree_jacobian(const Spatial<a_real,nvars> *const spatial, Mat *const A);
 
 /// Returns true iff the argument is a matrix-free PETSc Mat
 bool isMatrixFree(Mat);

@@ -122,7 +122,6 @@ protected:
 		Mat A;                                  ///< System Jacobian matrix
 		Mat M;                                  ///< System preconditioning matrix
 		KSP ksp;                                ///< Linear solver context
-		MatrixFreeSpatialJacobian<NVARS> mfjac; ///< Matrix-free system Jacobian (used iff requested)
 		bool mf_flg;                            ///< Whether matrix-free Jacobian has been requested
 
 		/// Destroy all components of linear problem LHS
@@ -139,11 +138,11 @@ protected:
 
 	/// Sets up matrices and KSP contexts
 	/** Sets KSP options from command line (or PETSc options file) as well.
-	 * \param[in] mesh The mesh for which to set up the solver
+	 * \param[in] s The spatial discretization for which to set up the solver
 	 * \param[in] use_mfjac Whether a matrix-free Jacobian should be set up (true) or not (false)
 	 * \return Objects required for implicit solution of the problem
 	 */
-	static LinearProblemLHS setupImplicitSolver(const UMesh2dh<a_real> *const mesh, const bool use_mfjac);
+	static LinearProblemLHS setupImplicitSolver(const Spatial<a_real,NVARS> *const s, const bool use_mfjac);
 
 	/// Sets up only the KSP context, assuming the Mats have been set up
 	static void setupKSP(LinearProblemLHS& solver, const bool use_matrix_free);

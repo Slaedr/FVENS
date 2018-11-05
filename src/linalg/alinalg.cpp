@@ -74,16 +74,11 @@ template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh<a_real> *const m, Ma
 template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *const A);
 
 template<int nvars>
-MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()
-	: spatial{nullptr}, eps{1e-7}
+MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const s)
+	: spatial{s}, eps{1e-7}
 {
 	PetscBool set = PETSC_FALSE;
 	PetscOptionsGetReal(NULL, NULL, "-matrix_free_difference_step", &eps, &set);
-}
-
-template<int nvars>
-void MatrixFreeSpatialJacobian<nvars>::set_spatial(const Spatial<a_real,nvars> *const space) {
-	spatial = space;
 }
 
 template<int nvars>
@@ -165,11 +160,24 @@ StatusCode matrixfree_apply(Mat A, Vec x, Vec y)
 	return ierr;
 }
 
+/// Function called by PETSc to cleanup the matrix-free mat
 template <int nvars>
-StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A)
+StatusCode matrixfree_destroy(Mat A)
 {
 	StatusCode ierr = 0;
+	MatrixFreeSpatialJacobian<nvars> *mfmat;
+	ierr = MatShellGetContext(A, (void*)&mfmat); CHKERRQ(ierr);
+	delete mfmat;
+	return ierr;
+}
+
+template <int nvars>
+StatusCode create_matrixfree_jacobian(const Spatial<a_real,nvars> *const s, Mat *const A)
+{
+	StatusCode ierr = 0;
+
+	const UMesh2dh<a_real> *const m = s->mesh();
+	MatrixFreeSpatialJacobian<nvars> *const mfj = new MatrixFreeSpatialJacobian<nvars>(s);
 	
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
 	ierr = setJacobianSizes<nvars>(m, *A); CHKERRQ(ierr);
@@ -178,17 +186,17 @@ StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
 	ierr = MatShellSetContext(*A, (void*)mfj); CHKERRQ(ierr);
 	ierr = MatShellSetOperation(*A, MATOP_MULT, (void(*)(void))&matrixfree_apply<nvars>); 
 	CHKERRQ(ierr);
+	ierr = MatShellSetOperation(*A, MATOP_DESTROY, (void(*)(void))&matrixfree_destroy<nvars>); 
+	CHKERRQ(ierr);
 
 	ierr = MatSetUp(*A); CHKERRQ(ierr);
 	return ierr;
 }
 
-template StatusCode setup_matrixfree_jacobian<NVARS>( const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<NVARS> *const mfj,
-		Mat *const A);
-template StatusCode setup_matrixfree_jacobian<1>( const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<1> *const mfj,
-		Mat *const A);
+template
+StatusCode create_matrixfree_jacobian<NVARS>(const Spatial<a_real,NVARS> *const s, Mat *const A);
+template
+StatusCode create_matrixfree_jacobian<1>(const Spatial<a_real,1> *const s, Mat *const A);
 
 bool isMatrixFree(Mat M) 
 {
