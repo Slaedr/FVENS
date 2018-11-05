@@ -84,9 +84,6 @@ protected:
 
 	/// Time steps for each cell
 	const std::vector<a_real> *mdt;
-
-	/// Temporary storage
-	mutable Vec aux;
 };
 
 /// Setup a matrix-free Mat for the Jacobian

@@ -87,22 +87,6 @@ void MatrixFreeSpatialJacobian<nvars>::set_spatial(const Spatial<a_real,nvars> *
 }
 
 template<int nvars>
-StatusCode MatrixFreeSpatialJacobian<nvars>::setup_work_storage(const Mat system_matrix)
-{
-	StatusCode ierr = MatCreateVecs(system_matrix, NULL, &aux); CHKERRQ(ierr);
-	ierr = VecSet(aux,0.0); CHKERRQ(ierr);
-	std::cout << " MatrixFreeSpatialJacobian: Using finite difference step " << eps << '\n';
-	return ierr;
-}
-
-template<int nvars>
-StatusCode MatrixFreeSpatialJacobian<nvars>::destroy_work_storage()
-{
-	StatusCode ierr = VecDestroy(&aux); CHKERRQ(ierr);
-	return ierr;
-}
-
-template<int nvars>
 void MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state,
 		const std::vector<a_real> *const dtms) 
 {
@@ -118,6 +102,9 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	std::vector<a_real> dummy;
 	const UMesh2dh<a_real> *const m = spatial->mesh();
 	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
+
+	Vec aux;
+	VecDuplicate(x, &aux); CHKERRQ(ierr);
 
 	const a_real *xr;
 	a_real *yr;
@@ -155,6 +142,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	
 	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
 	ierr = VecRestoreArrayRead(x, &xr); CHKERRQ(ierr);
+	ierr = VecDestroy(&aux); CHKERRQ(ierr);
 	return ierr;
 }
 
@@ -173,16 +161,6 @@ StatusCode matrixfree_apply(Mat A, Vec x, Vec y)
 }
 
 template <int nvars>
-StatusCode matrixfree_destroy(Mat A)
-{
-	StatusCode ierr = 0;
-	MatrixFreeSpatialJacobian<nvars> *mfmat;
-	ierr = MatShellGetContext(A, (void*)&mfmat); CHKERRQ(ierr);
-	ierr = mfmat->destroy_work_storage(); CHKERRQ(ierr);
-	return ierr;
-}
-
-template <int nvars>
 StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
 		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A)
 {
@@ -192,11 +170,8 @@ StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
 	ierr = setJacobianSizes<nvars>(m, *A); CHKERRQ(ierr);
 	ierr = MatSetType(*A, MATSHELL); CHKERRQ(ierr);
 
-	ierr = mfj->setup_work_storage(*A); CHKERRQ(ierr);
 	ierr = MatShellSetContext(*A, (void*)mfj); CHKERRQ(ierr);
 	ierr = MatShellSetOperation(*A, MATOP_MULT, (void(*)(void))&matrixfree_apply<nvars>); 
-	CHKERRQ(ierr);
-	ierr = MatShellSetOperation(*A, MATOP_DESTROY, (void(*)(void))&matrixfree_destroy<nvars>);
 	CHKERRQ(ierr);
 
 	ierr = MatSetUp(*A); CHKERRQ(ierr);
