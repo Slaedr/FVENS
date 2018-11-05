@@ -11,7 +11,7 @@ endforeach(file)
 
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri_EntropyConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_conv
+  COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow_conv
   ${CMAKE_CURRENT_BINARY_DIR}/inv-cyl-ls-hllc_quad.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv_cyl.solverc
   --number_of_meshes 4
@@ -19,7 +19,7 @@ add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Tri_EntropyConvergenc
 
 add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri_EntropyConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_conv
+  COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow_conv
   ${CMAKE_CURRENT_BINARY_DIR}/inv-cyl-gg-hllc_tri.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv_cyl.solverc
   --number_of_meshes 4
@@ -27,7 +27,7 @@ add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri_EntropyConvergence
 
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad_EntropyConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_conv
+  COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow_conv
   ${CMAKE_CURRENT_BINARY_DIR}/inv-cyl-ls-hllc_quad.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/inv_cyl.solverc
   --number_of_meshes 4
@@ -35,6 +35,6 @@ add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad_EntropyConvergen
 
 add_test(NAME Flow_Euler_Cylinder_Explicit_LeastSquares_HLLC_Quad_ResidualConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow
+  COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow
   ${CMAKE_CURRENT_BINARY_DIR}/expl-cyl-ls-hllc.ctrl
   --mesh_file ../../testcases/2dcylinder/grids/2dcylquad1.msh )

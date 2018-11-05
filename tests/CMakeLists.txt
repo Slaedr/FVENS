@@ -1,15 +1,5 @@
 # Test executables
 	
-if(SLURM)
-	set(SEQEXEC "srun")
-	set(SEQTASKS "-n 1")
-	set(MPIEXEC "srun")
-else(SLURM)
-	set(SEQEXEC "")
-	set(SEQTASKS "")
-	set(MPIEXEC "mpirun")
-endif(SLURM)
-
 # Gmsh for generating meshes
 find_program(GMSH_EXEC gmsh)
 if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")

@@ -18,6 +18,7 @@ cmake_minimum_required(VERSION 3.0)
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DPROFILE=1 for profiling.
 # Pass -DSLURM=1 for running the automated tests on a system managed by SLURM
+# Pass -DSLURMTESTTHREADS=<n> to use <n> threads for multi-threaded tests; defaults to 4
 # Pass -DNOTAGS=1 to NOT generate tags for navigating code, otherwise, exuberent-ctags is needed.
 
 project (fvens)
@@ -284,6 +285,23 @@ endif()
 endif()
 
 # ---------------------------------------------------------------------------- #
+
+# For test execution
+if(SLURM)
+	set(SEQEXEC "srun")
+	set(SEQTASKS "-n 1")
+	set(MPIEXEC "srun")
+	if(SLURMTESTTHREADS)
+		set(THREADOPTS "--cpus-per-task=${SLURMTESTTHREADS}")
+	else()
+		set(THREADOPTS "--cpus-per-task=4")
+	endif()
+else(SLURM)
+	set(SEQEXEC "")
+	set(SEQTASKS "")
+	set(MPIEXEC "mpirun")
+	set(THREADOPTS "")
+endif(SLURM)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	message(STATUS "Setting default build type of debug")

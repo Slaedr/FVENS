@@ -57,7 +57,7 @@ add_test(NAME PseudotimeFlow_exception_nanorinf WORKING_DIRECTORY ${CMAKE_CURREN
 if(WITH_BLASTED)
   add_test(NAME Benchmark_Euler_Blasted_run
 	  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-	  COMMAND ${SEQEXEC} ${SEQTASKS} sh testbench.sh
+	  COMMAND sh testbench.sh
 	  ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.ctrl 
 	  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.solverc
 	  --mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh )
