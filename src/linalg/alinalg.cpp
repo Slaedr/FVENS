@@ -75,7 +75,7 @@ template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *c
 
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()
-	: eps{1e-7}
+	: spatial{nullptr}, eps{1e-7}
 {
 	PetscBool set = PETSC_FALSE;
 	PetscOptionsGetReal(NULL, NULL, "-matrix_free_difference_step", &eps, &set);
@@ -100,6 +100,11 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 {
 	StatusCode ierr = 0;
 	std::vector<a_real> dummy;
+
+	if(!spatial)
+		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_POINTER,
+		        "Spatial context not set!");
+
 	const UMesh2dh<a_real> *const m = spatial->mesh();
 	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 

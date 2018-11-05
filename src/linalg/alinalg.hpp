@@ -53,12 +53,6 @@ public:
 	/// Set the spatial dscretization whose Jacobian is needed
 	void set_spatial(const Spatial<a_real,nvars> *const space);
 
-	/// Allocate storage for work vectors using the (possibly matrix-free) Mat as a template
-	StatusCode setup_work_storage(const Mat system_matrix);
-
-	/// Release storage from work vectors
-	StatusCode destroy_work_storage();
-
 	/// Set the state u at which the Jacobian is computed, the corresponding residual r(u) and 
 	/// the diagonal vector of the mass matrix for each cell
 	/** Note that the residual vector supplied is assumed to be the negative of what is needed,
