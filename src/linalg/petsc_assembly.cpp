@@ -22,7 +22,7 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
 	uleft.resize(m->gnaface(), nvars);
 	uright.resize(m->gnaface(), nvars);
 
-	PetscInt locnelem, dtsz;
+	PetscInt locnelem;
 	const PetscScalar *uarr;
 	PetscScalar *rarr, *dtm = NULL;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -34,16 +34,20 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
 
 	if(gettimesteps) {
+		PetscInt dtsz;
 		ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
 		assert(locnelem == dtsz);
 		ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
 	}
 
-	spatial->compute_residual(uarr, rarr, gettimesteps, dtm);
+	ierr = spatial->compute_residual(uarr, rarr, gettimesteps, dtm); CHKERRQ(ierr);
 
-	VecRestoreArrayRead(uvec, &uarr);
-	VecRestoreArray(rvec, &rarr);
-	VecRestoreArray(dtmvec, &dtm);
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
+	if(gettimesteps) {
+		ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
+	}
+
 	return ierr;
 }
 
