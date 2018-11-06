@@ -24,9 +24,7 @@
 #include "abctypemap.hpp"
 #include "flow_spatial.hpp"
 
-#ifdef USE_ADOLC
 #include "utilities/adolcutils.hpp"
-#endif
 
 namespace fvens {
 

@@ -5,7 +5,9 @@
 #ifndef FVENS_ADOLC_UTILS_H
 #define FVENS_ADOLC_UTILS_H
 
+#ifdef USE_ADOLC
 #include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 

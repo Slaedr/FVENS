@@ -89,7 +89,7 @@ MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real
 
 template<int nvars>
 void MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state,
-		const std::vector<a_real> *const dtms) 
+		const Vec dtms) 
 {
 	u = u_state;
 	res = r_state;
@@ -100,7 +100,7 @@ template<int nvars>
 StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 {
 	StatusCode ierr = 0;
-	std::vector<a_real> dummy;
+	Vec dummy = NULL;
 
 	if(!spatial)
 		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_POINTER,
@@ -112,10 +112,11 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	Vec aux;
 	VecDuplicate(x, &aux); CHKERRQ(ierr);
 
-	const a_real *xr;
+	const a_real *xr, *dtmr;
 	a_real *yr;
 	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
 	ierr = VecGetArrayRead(x, &xr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(mdt, &dtmr); CHKERRQ(ierr);
 
 	PetscScalar xnorm = 0;
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
@@ -143,11 +144,12 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		for(int i = 0; i < nvars; i++)
-			yr[iel*nvars+i] += (*mdt)[iel] * xr[iel*nvars+i];
+			yr[iel*nvars+i] += dtmr[iel] * xr[iel*nvars+i];
 	}
 	
 	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
 	ierr = VecRestoreArrayRead(x, &xr); CHKERRQ(ierr);
+	ierr = VecRestoreArrayRead(mdt, &dtmr); CHKERRQ(ierr);
 	ierr = VecDestroy(&aux); CHKERRQ(ierr);
 	return ierr;
 }

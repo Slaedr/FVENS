@@ -23,7 +23,7 @@ public:
 	TestSpatial(const fvens::UMesh2dh<a_real> *const mesh);
 
 	virtual fvens::StatusCode compute_residual(const a_real *const u, a_real *const residual,
-	                                           const bool gettimesteps, std::vector<a_real>& dtm) const
+	                                           const bool gettimesteps, a_real *const dtm) const
 	{ return 0; }
 
 	void compute_local_jacobian_interior(const a_int iface,

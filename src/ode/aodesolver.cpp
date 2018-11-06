@@ -94,13 +94,12 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<a_real,n
 	: SteadySolver<nvars>(spatial, conf)
 {
 	const UMesh2dh<a_real> *const m = space->mesh();
-	dtm.resize(m->gnelem(), 0);
 
 	StatusCode ierr = VecDuplicate(uvec, &rvec);
-	if(ierr) {
-		std::cout << "! SteadyForwardEulerSolver: Could not create residual vector!\n";
-		std::abort();
-	}
+	petsc_throw(ierr, "Could not duplicate vec");
+
+	ierr = createMeshBasedVector(m, &dtmvec);
+	petsc_throw(ierr, "Could not create mesh vector");
 }
 
 template<int nvars>
@@ -109,6 +108,9 @@ SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 	int ierr = VecDestroy(&rvec);
 	if(ierr)
 		std::cout << "! SteadyForwardEulerSolver: Could not destroy residual vector!\n";
+	ierr = VecDestroy(&dtmvec);
+	if(ierr)
+		std::cout << "! SteadyForwardEulerSolver: Could not destroy dt vector!\n";
 }
 
 template<int nvars>
@@ -161,9 +163,11 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 		// update residual
-		ierr = assemble_residual(space, uvec, rvec, true, dtm); CHKERRQ(ierr);
+		ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		a_real errmass = 0;
+		const PetscScalar *dtm;
+		ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
 
 #pragma omp parallel default(shared)
 		{
@@ -182,6 +186,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 				errmass += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
 			}
 		} // end parallel region
+
+		ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
 
 		resi = sqrt(errmass);
 
@@ -244,12 +250,14 @@ SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
 	: SteadySolver<nvars>(spatial, conf), solver{ksp}
 {
 	const UMesh2dh<a_real> *const m = space->mesh();
-	dtm.resize(m->gnelem(), 0);
-	Mat M; int ierr;
+	Mat M;
+	int ierr;
 	ierr = KSPGetOperators(solver, NULL, &M);
 	ierr = MatCreateVecs(M, &duvec, &rvec);
 	if(ierr)
 		throw "! SteadyBackwardEulerSolver: Could not create residual or update vector!";
+	ierr = createMeshBasedVector(m, &dtmvec);
+	petsc_throw(ierr, "Could not create mesh vector");
 }
 
 template <int nvars>
@@ -261,6 +269,9 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 	ierr = VecDestroy(&duvec);
 	if(ierr)
 		std::cout << "! SteadyBackwardEulerSolver: Could not destroy update vector!\n";
+	ierr = VecDestroy(&dtmvec);
+	if(ierr)
+		std::cout << "! SteadyBackwardEulerSolver: Could not destroy dt vector";
 }
 	
 template <int nvars>
@@ -320,7 +331,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	if(ismatrixfree) {
 		ierr = MatShellGetContext(A, (void**)&mfA); CHKERRQ(ierr);
 		// uvec, rvec and dtm keep getting updated, but pointers to them can be set just once
-		mfA->set_state(uvec,rvec,&dtm);
+		mfA->set_state(uvec,rvec, dtmvec);
 	}
 
 	// get list of iterations at which to recompute AMG interpolation operators, if used
@@ -393,7 +404,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		
 		// update residual and local time steps
-		ierr = assemble_residual(space, uvec, rvec, true, dtm); CHKERRQ(ierr);
+		ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = assemble_jacobian(space, uvec, M); CHKERRQ(ierr);
@@ -402,19 +413,18 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		//(void)resiold;
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.3);
 
+		const PetscScalar *dtm;
+		ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+
 		// add pseudo-time terms to diagonal blocks; also, after the following loop,
-		// dtm is the diagonal vector of the mass matrix but having only one entry for each cell.
 
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
-			dtm[iel] = m->garea(iel) / (curCFL*dtm[iel]);
+			const a_real diagdt = m->garea(iel) / (curCFL*dtm[iel]);
 
-			Matrix<a_real,nvars,nvars,RowMajor> db 
-				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
-
-			for(int i = 0; i < nvars; i++)
-				db(i,i) = dtm[iel];
+			const Matrix<a_real,nvars,nvars,RowMajor> db
+				= diagdt * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
 	
 #pragma omp critical
 			{
@@ -422,7 +432,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		}
 
-		MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY);
+		ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+
+		ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 		MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY);
 	
 		/// Freezes the non-zero structure for efficiency in subsequent time steps.
@@ -552,10 +564,10 @@ TVDRKSolver<nvars>::TVDRKSolver(const Spatial<a_real,nvars> *const spatial,
 	: UnsteadySolver<nvars>(spatial, soln, temporal_order, log_file), cfl{cfl_num},
 	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
 {
-	dtm.resize(space->mesh()->gnelem(), 0);
 	int ierr = VecDuplicate(uvec, &rvec);
-	if(ierr)
-		std::cout << "! TVDRKSolver: Could not create residual vector!\n";
+	petsc_throw(ierr, "! TVDRKSolver: Could not create residual vector!");
+	ierr = createMeshBasedVector(space->mesh(), &dtmvec);
+	petsc_throw(ierr, "Could not create dt vec");
 	std::cout << " TVDRKSolver: Initialized TVD RK solver of order " << order <<
 		", CFL = " << cfl << std::endl;
 }
@@ -565,6 +577,9 @@ TVDRKSolver<nvars>::~TVDRKSolver() {
 	int ierr = VecDestroy(&rvec);
 	if(ierr)
 		std::cout << "! TVDRKSolver: Could not destroy residual vector!\n";
+	ierr = VecDestroy(&dtmvec);
+	if(ierr)
+		std::cout << "! TVDRKSolver: Could not destroy time-step vector!\n";
 }
 
 template<int nvars>
@@ -589,7 +604,6 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 
 	int step = 0;
 	a_real time = 0;   //< Physical time elapsed
-	a_real dtmin=0;      //< Time step
 
 	// Stage solution vector
 	MVector<a_real> ustage(m->gnelem(),nvars);
@@ -605,6 +619,8 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 
 	while(time <= finaltime - A_SMALL_NUMBER)
 	{
+		a_real dtmin=0;      //< Time step
+
 		for(int istage = 0; istage < order; istage++)
 		{
 #pragma omp parallel for simd default(shared)
@@ -614,11 +630,16 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			}
 
 			// update residual
-			ierr = assemble_residual(space, uvec, rvec, true, dtm); CHKERRQ(ierr);
+			ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)
-				dtmin = *std::min_element(dtm.begin(),dtm.end());
+			{
+				const PetscScalar *dtm;
+				ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+				dtmin = *std::min_element(dtm, dtm+m->gnelem());
+				ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+			}
 
 			if(!std::isfinite(dtmin))
 				throw Numerical_error("TVDRK solver diverged - dtmin is Nan or inf!");

@@ -22,22 +22,28 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
 	uleft.resize(m->gnaface(), nvars);
 	uright.resize(m->gnaface(), nvars);
 
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
+	PetscInt locnelem, dtsz;
+	const PetscScalar *uarr;
+	PetscScalar *rarr, *dtm = NULL;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
-	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	//assert(locnelem == dtsz);
 
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+
+	if(gettimesteps) {
+		ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
+		assert(locnelem == dtsz);
+		ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+	}
 
 	spatial->compute_residual(uarr, rarr, gettimesteps, dtm);
 
 	VecRestoreArrayRead(uvec, &uarr);
 	VecRestoreArray(rvec, &rarr);
-	//VecRestoreArray(dtmvec, &dtm);
+	VecRestoreArray(dtmvec, &dtm);
 	return ierr;
 }
 
@@ -111,11 +117,11 @@ StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const V
 template StatusCode
 assemble_residual<a_real,1>(const Spatial<a_real,1> *const spatial,
                             const Vec uvec, Vec __restrict rvec,
-                            const bool gettimesteps, std::vector<a_real>& dtm);
+                            const bool gettimesteps, Vec dtm);
 template StatusCode
 assemble_residual<a_real,NVARS>(const Spatial<a_real,NVARS> *const spatial,
                                 const Vec uvec, Vec __restrict rvec,
-                                const bool gettimesteps, std::vector<a_real>& dtm);
+                                const bool gettimesteps, Vec dtm);
 
 template StatusCode
 assemble_jacobian<a_real,1>(const Spatial<a_real,1> *const spatial, const Vec uvec, Mat A);

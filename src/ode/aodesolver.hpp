@@ -127,7 +127,8 @@ private:
 	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::tdata;
 
-	std::vector<a_real> dtm;				///< Stores allowable local time step for each cell
+	/// Characteristic local time step for each cell
+	Vec dtmvec;				
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -162,7 +163,9 @@ protected:
 	using SteadySolver<nvars>::rvec;       ///< Residual vector
 
 	Vec duvec;                             ///< Nonlinear update vector
-	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell
+
+	/// Characteristic local time step for each cell
+	Vec dtmvec;				
 
 	KSP solver;                            ///< The solver context
 
@@ -239,7 +242,9 @@ protected:
 	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
 
 private:
-	std::vector<a_real> dtm;
+	/// Characteristic local time step for each cell
+	Vec dtmvec;				
+
 };
 	
 

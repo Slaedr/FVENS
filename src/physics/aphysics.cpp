@@ -6,9 +6,7 @@
 
 #include "aphysics.hpp"
 #include <iostream>
-#ifdef USE_ADOLC
 #include "utilities/adolcutils.hpp"
-#endif
 
 namespace fvens {
 
