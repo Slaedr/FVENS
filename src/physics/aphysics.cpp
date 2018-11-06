@@ -7,25 +7,10 @@
 #include "aphysics.hpp"
 #include <iostream>
 #ifdef USE_ADOLC
-#include <adolc/adolc.h>
+#include "utilities/adolcutils.hpp"
 #endif
 
 namespace fvens {
-
-template <typename scalar>
-static a_real getvalue(const scalar x);
-
-#ifdef USE_ADOLC
-template <>
-a_real getvalue(const adouble x) {
-    return x.value();
-}
-#endif
-
-template <>
-a_real getvalue(const a_real x) {
-    return x;
-}
 
 template <typename scalar>
 Physics<scalar>::~Physics() { }

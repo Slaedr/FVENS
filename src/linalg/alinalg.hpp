@@ -37,6 +37,11 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A);
 template <int nvars>
 StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A);
 
+/// Creates a Vec with one unknown per mesh cell
+/** Currently, a 'sequential' Vec is created.
+ */
+StatusCode createMeshBasedVector(const UMesh2dh<a_real> *const m, Vec *const v);
+
 /// Matrix-free Jacobian of the flux
 /** An object of this type is associated with a specific spatial discretization context.
  * The normalized step length epsilon for the finite-difference Jacobian is set to a default value,

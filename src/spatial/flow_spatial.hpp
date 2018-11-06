@@ -80,10 +80,10 @@ public:
 	 * \param[in] u The state at which the residual is to be computed
 	 * \param[in|out] residual The residual is added to this
 	 * \param[in] gettimesteps Whether time-step computation is required
-	 * \param[out] dtm Local time steps are stored in this
+	 * \param[in,out] dtm Local time steps are stored in this (shoud be pre-allocated)
 	 */
 	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
-	                                    const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
+	                                    const bool gettimesteps, a_real *const dtm) const = 0;
 
 	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
@@ -190,7 +190,7 @@ public:
 	 * and also computes local time steps.
 	 */
 	StatusCode compute_residual(const scalar *const u, scalar *const residual,
-	                            const bool gettimesteps, std::vector<a_real>& dtm) const;
+	                            const bool gettimesteps, a_real *const dtm) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** \see Spatial::compute_local_jacobian_interior

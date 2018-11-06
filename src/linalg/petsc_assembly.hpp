@@ -26,7 +26,7 @@ namespace fvens {
 template <typename scalar, int nvars>
 StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
                              const Vec uvec, Vec __restrict rvec,
-                             const bool gettimesteps, std::vector<a_real>& dtm);
+                             const bool gettimesteps, Vec __restrict dtm);
 
 template <typename scalar, int nvars>
 StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const Vec uvec, Mat A);

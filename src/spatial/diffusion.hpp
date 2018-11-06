@@ -21,12 +21,6 @@ public:
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 			> source);
-
-	/// Sets initial conditions to zero
-	/** 
-	 * \param[in,out] u Vector to store the initial data in
-	 */
-	//StatusCode initializeUnknowns(Vec u) const;
 	
 	virtual void getGradients(const MVector<a_real>& u,
 	                          GradArray<a_real,nvars>& grads) const = 0;
@@ -76,7 +70,7 @@ public:
 	StatusCode compute_residual(const a_real *const uarr,
 	                            a_real *const rarr, 
 	                            const bool gettimesteps, 
-	                            std::vector<a_real>& dtm) const;
+	                            a_real *const dtm) const;
 
 	void compute_local_jacobian_interior(const a_int iface,
 	                                     const a_real *const ul, const a_real *const ur,

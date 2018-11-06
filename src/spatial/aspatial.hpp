@@ -58,7 +58,7 @@ public:
 	 * \param[out] dtm Local time steps are stored in this
 	 */
 	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
-	                                    const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
+	                                    const bool gettimesteps, a_real *const dtm) const = 0;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** It is supposed to be a point-block in dr/du when we want to solve [M du/dt +] r(u) = 0.

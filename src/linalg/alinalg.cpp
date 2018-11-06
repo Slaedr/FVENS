@@ -73,6 +73,12 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh<a_real> *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *const A);
 
+StatusCode createMeshBasedVector(const UMesh2dh<a_real> *const m, Vec *const v)
+{
+	StatusCode ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem(), v); CHKERRQ(ierr);
+	return ierr;
+}
+
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const s)
 	: spatial{s}, eps{1e-7}

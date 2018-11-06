@@ -68,7 +68,7 @@ template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
                                                 a_real *const __restrict rarr,
                                                 const bool gettimesteps,
-                                                std::vector<a_real>& dtm) const
+                                                a_real *const dtm) const
 {
 	StatusCode ierr = 0;
 

@@ -23,8 +23,9 @@
 #include "utilities/afactory.hpp"
 #include "abctypemap.hpp"
 #include "flow_spatial.hpp"
+
 #ifdef USE_ADOLC
-#include <adolc/adolc.h>
+#include "utilities/adolcutils.hpp"
 #endif
 
 namespace fvens {
@@ -53,6 +54,13 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	for(auto it = pconfig.bcconf.begin(); it != pconfig.bcconf.end(); it++) {
 		std::cout << "  " << bcTypeMap.left.find(it->bc_type)->second << '\n';
 	}
+
+	// To get rid of unused function warning for ADOL-C include
+	//  Should be removed once ADOL-C instantiations are compiled and working
+#ifdef USE_ADOLC
+	adouble x = 3.0;
+	(void)getvalue<adouble>(x);
+#endif
 }
 
 template <typename scalar>
@@ -408,9 +416,11 @@ void FlowFV<scalar,secondOrder,constVisc>
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *const uarr,
-		scalar *const __restrict rarr,
-		const bool gettimesteps, std::vector<a_real>& dtm) const
+StatusCode
+FlowFV<scalar,secondOrderRequested,constVisc> ::compute_residual(const scalar *const uarr,
+                                                                 scalar *const __restrict rarr,
+                                                                 const bool gettimesteps,
+                                                                 a_real *const __restrict dtm) const
 {
 	StatusCode ierr = 0;
 	amat::Array2d<scalar> integ, ug, uleft, uright;
@@ -608,10 +618,14 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 #pragma omp barrier
 
 		if(gettimesteps)
+#ifdef USE_ADOLC
+#pragma omp for
+#else
 #pragma omp for simd
+#endif
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				dtm[iel] = m->garea(iel)/integ(iel);
+				dtm[iel] = getvalue<scalar>(m->garea(iel)/integ(iel));
 			}
 	} // end parallel region
 
