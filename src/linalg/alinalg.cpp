@@ -110,7 +110,8 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 
 	Vec aux;
-	VecDuplicate(x, &aux); CHKERRQ(ierr);
+	ierr = VecDuplicate(x, &aux); CHKERRQ(ierr);
+	//ierr = VecSet(aux, 0); CHKERRQ(ierr);
 
 	const a_real *xr, *dtmr;
 	a_real *yr;
@@ -125,10 +126,10 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP,
 				"Norm of offset is too small for finite difference Jacobian!");
 #endif
-	xnorm = eps/xnorm;
+	const a_real pertmag = eps/xnorm;
 
 	// aux <- eps/xnorm * x
-	ierr = VecAXPBY(aux, xnorm, 0.0, x); CHKERRQ(ierr);
+	ierr = VecAXPBY(aux, pertmag, 0.0, x); CHKERRQ(ierr);
 	// aux <- u + eps/xnorm * x
 	ierr = VecAXPY(aux, 1.0, u); CHKERRQ(ierr);
 	// y <- -r(u + eps/xnorm * x)
@@ -136,8 +137,11 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	// y <- -(-r(u + eps/xnorm * x)) + (-r(u)) = r(u + eps/xnorm * x) - r(u)
 	ierr = VecAXPBY(y, 1.0, -1.0, res); CHKERRQ(ierr);
 	
-	/* divide by the normalized step length */
-	ierr = VecScale(y, 1.0/xnorm); CHKERRQ(ierr);
+	/* Divide by the normalized step length.
+	 * We do NOT divide by epsilon, because we want the product of the Jacobian and x, which is
+	 * the directional derivative (in the direction of x) multiplied by the norm of x.
+	 */
+	ierr = VecScale(y, 1.0/pertmag); CHKERRQ(ierr);
 
 	// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
 #pragma omp parallel for simd default(shared)

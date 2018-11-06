@@ -1,0 +1,16 @@
+#-ksp_converged_reason
+-options_left
+#-log_view
+
+-mesh_reorder rcm
+
+-mat_type baij
+#-matrix_free_jacobian
+#-matrix_free_difference_step 1e-6
+
+-ksp_type gmres
+-ksp_rtol 1e-2
+-ksp_max_it 30
+-pc_type bjacobi
+-sub_pc_type ilu
+-sub_pc_factor_levels 1

@@ -35,19 +35,17 @@ endif()
 # Tests
 
 add_subdirectory(utils)
-
 add_subdirectory(mesh)
-
 add_subdirectory(finite-volume)
 
 add_subdirectory(heat)
 
 add_subdirectory(flow-general)
+add_subdirectory(solvers)
 
 #add_subdirectory(isentropic-vortex)
 
 add_subdirectory(inv-2dcyl)
 add_subdirectory(inv-gaussianbump)
-
 add_subdirectory(visc-flatplate)
 

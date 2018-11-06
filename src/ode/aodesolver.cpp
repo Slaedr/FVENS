@@ -326,11 +326,12 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	Mat M, A;
 	ierr = KSPGetOperators(solver, &A, &M); CHKERRQ(ierr);
 
-	bool ismatrixfree = isMatrixFree(A);
-	MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
+	const bool ismatrixfree = isMatrixFree(A);
 	if(ismatrixfree) {
+		MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
 		ierr = MatShellGetContext(A, (void**)&mfA); CHKERRQ(ierr);
 		// uvec, rvec and dtm keep getting updated, but pointers to them can be set just once
+		std::cout << " Setting matfree state" << std::endl;
 		mfA->set_state(uvec,rvec, dtmvec);
 	}
 
@@ -409,22 +410,25 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = assemble_jacobian(space, uvec, M); CHKERRQ(ierr);
 		
-		//curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
-		//(void)resiold;
+		// curCFL = linearRamp(config.cflinit, config.cflfin,
+		//                     /*config.rampstart*/30, /*config.rampend*/100, step);
+		// (void)resiold;
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.3);
 
-		const PetscScalar *dtm;
-		ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+		PetscScalar *dtm;
+		ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
 
-		// add pseudo-time terms to diagonal blocks; also, after the following loop,
+		// Add pseudo-time terms to diagonal blocks
+		// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
+		//   This is required in case of matrix-free solvers.
 
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
-			const a_real diagdt = m->garea(iel) / (curCFL*dtm[iel]);
+			dtm[iel] = m->garea(iel) / (curCFL*dtm[iel]);
 
 			const Matrix<a_real,nvars,nvars,RowMajor> db
-				= diagdt * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
+				= dtm[iel] * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
 	
 #pragma omp critical
 			{
@@ -432,7 +436,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		}
 
-		ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+		ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
 
 		ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 		MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY);
