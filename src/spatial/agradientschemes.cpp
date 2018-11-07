@@ -6,12 +6,15 @@
 
 #include "agradientschemes.hpp"
 #include <Eigen/LU>
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
 
 namespace fvens
 {
 
 template<typename scalar, int nvars>
-GradientScheme<scalar,nvars>::GradientScheme(const UMesh2dh<scalar> *const mesh, 
+GradientScheme<scalar,nvars>::GradientScheme(const UMesh2dh<scalar> *const mesh,
 		const amat::Array2d<scalar>& _rc)
 	: m{mesh}, rc{_rc}
 { }
@@ -21,15 +24,15 @@ GradientScheme<scalar,nvars>::~GradientScheme()
 { }
 
 template<typename scalar, int nvars>
-ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh, 
+ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
 		const amat::Array2d<scalar>& _rc)
 	: GradientScheme<scalar,nvars>(mesh, _rc)
 { }
 
 template<typename scalar, int nvars>
 void ZeroGradients<scalar,nvars>::compute_gradients(
-		const MVector<scalar>& u, 
-		const amat::Array2d<scalar>& ug, 
+		const MVector<scalar>& u,
+		const amat::Array2d<scalar>& ug,
 		GradArray<scalar,nvars>& grad ) const
 {
 #pragma omp parallel for default(shared)
@@ -42,7 +45,7 @@ void ZeroGradients<scalar,nvars>::compute_gradients(
 }
 
 template<typename scalar, int nvars>
-GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *const mesh, 
+GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *const mesh,
 		const amat::Array2d<scalar>& _rc)
 	: GradientScheme<scalar,nvars>(mesh, _rc)
 { }
@@ -51,8 +54,8 @@ GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *c
  */
 template<typename scalar, int nvars>
 void GreenGaussGradients<scalar,nvars>::compute_gradients(
-		const MVector<scalar>& u, 
-		const amat::Array2d<scalar>& ug, 
+		const MVector<scalar>& u,
+		const amat::Array2d<scalar>& ug,
 		GradArray<scalar,nvars>& grad ) const
 {
 #pragma omp parallel default(shared)
@@ -64,14 +67,14 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 				for(int i = 0; i < nvars; i++)
 					grad[iel](j,i) = 0;
 		}
-		
+
 #pragma omp for
 		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
 			scalar areainv1;
 			scalar ut[nvars];
 			scalar dL, dR, mid[NDIM];
-		
+
 			const a_int ielem = m->gintfac(iface,0);
 			const a_int jelem = m->gintfac(iface,1);   // ghost cell index
 			const a_int ip1 = m->gintfac(iface,2);
@@ -86,7 +89,7 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
 			areainv1 = 1.0/m->garea(ielem);
-			
+
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
 				ut[ivar]= (u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
@@ -103,7 +106,7 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			scalar areainv1, areainv2;
 			scalar ut[nvars];
 			scalar dL, dR, mid[NDIM];
-		
+
 			ielem = m->gintfac(iface,0);
 			jelem = m->gintfac(iface,1);
 			ip1 = m->gintfac(iface,2);
@@ -119,16 +122,24 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			dR = 1.0/sqrt(dR);
 			areainv1 = 1.0/m->garea(ielem);
 			areainv2 = 1.0/m->garea(jelem);
-			
+
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
 				ut[ivar] = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
 
 				for(int idim = 0; idim < NDIM; idim++)
 				{
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 					grad[ielem](idim,ivar) += (ut[ivar] * m->gfacemetric(iface,idim))*areainv1;
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 					grad[jelem](idim,ivar) -= (ut[ivar] * m->gfacemetric(iface,idim))*areainv2;
 				}
 			}
@@ -140,10 +151,10 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
  */
 template<typename scalar, int nvars>
 WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
-		const UMesh2dh<scalar> *const mesh, 
+		const UMesh2dh<scalar> *const mesh,
 		const amat::Array2d<scalar>& _rc)
 	: GradientScheme<scalar,nvars>(mesh, _rc)
-{ 
+{
 	V.resize(m->gnelem());
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -165,10 +176,14 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
-		
+
 		for(int i = 0; i<NDIM; i++)
 			for(int j = 0; j < NDIM; j++) {
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 				V[ielem](i,j) += w2*dr[i]*dr[j];
 			}
 	}
@@ -176,8 +191,8 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
 	{
-		a_int ielem = m->gintfac(iface,0);
-		a_int jelem = m->gintfac(iface,1);
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
 		scalar w2 = 0, dr[NDIM];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
@@ -185,12 +200,20 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
-		
+
 		for(int i = 0; i<NDIM; i++)
 			for(int j = 0; j < NDIM; j++) {
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 				V[ielem](i,j) += w2*dr[i]*dr[j];
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 				V[jelem](i,j) += w2*dr[i]*dr[j];
 			}
 	}
@@ -208,8 +231,8 @@ using FMultiVectorArray = std::vector<Matrix<scalar,NDIM,nvars>,
 
 template<typename scalar, int nvars>
 void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
-		const MVector<scalar>& u, 
-		const amat::Array2d<scalar>& ug, 
+		const MVector<scalar>& u,
+		const amat::Array2d<scalar>& ug,
 		GradArray<scalar,nvars>& grad ) const
 {
 	FMultiVectorArray<scalar,nvars> f;
@@ -218,7 +241,7 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 #pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 		f[ielem] = Matrix<scalar,NDIM,nvars>::Zero();
-	
+
 	// compute least-squares RHS
 
 #pragma omp parallel for default(shared)
@@ -233,14 +256,18 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
-		
+
 		for(short ivar = 0; ivar < nvars; ivar++)
 			du[ivar] = u(ielem,ivar) - ug(iface,ivar);
-		
+
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
 			for(int jdim = 0; jdim < NDIM; jdim++)
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 				f[ielem](jdim,ivar) += w2*dr[jdim]*du[ivar];
 		}
 	}
@@ -257,16 +284,24 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
-		
+
 		for(short ivar = 0; ivar < nvars; ivar++)
 			du[ivar] = u(ielem,ivar) - u(jelem,ivar);
 
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
 			for(int jdim = 0; jdim < NDIM; jdim++) {
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 				f[ielem](jdim,ivar) += w2*dr[jdim]*du[ivar];
+#ifdef USE_ADOLC
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
 				f[jelem](jdim,ivar) += w2*dr[jdim]*du[ivar];
 			}
 		}
@@ -290,5 +325,14 @@ template class WeightedLeastSquaresGradients<a_real,NVARS>;
 template class ZeroGradients<a_real,1>;
 template class GreenGaussGradients<a_real,1>;
 template class WeightedLeastSquaresGradients<a_real,1>;
+
+#ifdef USE_ADOLC
+template class ZeroGradients<adouble,NVARS>;
+template class GreenGaussGradients<adouble,NVARS>;
+template class WeightedLeastSquaresGradients<adouble,NVARS>;
+template class ZeroGradients<adouble,1>;
+template class GreenGaussGradients<adouble,1>;
+template class WeightedLeastSquaresGradients<adouble,1>;
+#endif
 
 } // end namespace

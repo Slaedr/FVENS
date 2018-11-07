@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 # EIGEN3_ROOT needs to be set to the path of the Eigen top-level directory.
 # PETSC_DIR and PETSC_ARCH need to be set.
+# ADOLC_DIR should be set if needed.
 # BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
 # BLASTED_BIN_DIR may be set to the root of the BLASTed build directory.
 
@@ -17,6 +18,7 @@ cmake_minimum_required(VERSION 3.0)
 # Pass -DMICKNC=1 to compile for Xeon Phi Knights Corner.
 # Pass -DPROFILE=1 for profiling.
 # Pass -DSLURM=1 for running the automated tests on a system managed by SLURM
+# Pass -DSLURMTESTTHREADS=<n> to use <n> threads for multi-threaded tests; defaults to 4
 # Pass -DNOTAGS=1 to NOT generate tags for navigating code, otherwise, exuberent-ctags is needed.
 
 project (fvens)
@@ -267,8 +269,44 @@ include_directories(${PETSC_DIR}/include ${PETSC_DIR}/${PETSC_ARCH}/include)
 message(STATUS "Building with PETSc found at ${PETSC_LIB}/${PETSC_ARCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PETSC=1")
 
+# ADOLC
+if(WITH_ADOLC)
+if(NOT DEFINED ADOLC_DIR)
+  set(ADOLC_DIR $ENV{ADOLC_DIR} CACHE PATH "ADOL-C install directory")
+endif()
+find_library(ADOLC_LIB NAMES adolc PATHS ${ADOLC_DIR}/lib64)
+if(${ADOLC_LIB} STREQUAL "ADOLC_LIB-NOTFOUND")
+  message(SEND_ERROR "ADOL-C library not found!")
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ADOLC=1")
+  include_directories(${ADOLC_DIR}/include)
+  message(STATUS "Building with ADOL-C found at ${ADOLC_LIB}")
+endif()
+endif()
+
 # ---------------------------------------------------------------------------- #
 
+# For test execution
+if(SLURM)
+	set(SEQEXEC "srun")
+	set(SEQTASKS "-n 1")
+	set(MPIEXEC "srun")
+	if(SLURMTESTTHREADS)
+		set(THREADOPTS "--cpus-per-task=${SLURMTESTTHREADS}")
+	else()
+		set(THREADOPTS "--cpus-per-task=4")
+	endif()
+else(SLURM)
+	set(SEQEXEC "")
+	set(SEQTASKS "")
+	set(MPIEXEC "mpirun")
+	set(THREADOPTS "")
+endif(SLURM)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	message(STATUS "Setting default build type of debug")
+	set(CMAKE_BUILD_TYPE "Debug")
+endif()
 string(TOLOWER ${CMAKE_BUILD_TYPE} LCASE_CMAKE_BUILD_TYPE)
 if(LCASE_CMAKE_BUILD_TYPE MATCHES "debug")
   message(STATUS "Debug build")
@@ -308,6 +346,6 @@ add_subdirectory(tests)
 # Non-automated test cases
 add_subdirectory(testcases)
 
-# Benchmarking
-add_subdirectory(benchmarking)
+# Performance testing
+add_subdirectory(perftest)
 

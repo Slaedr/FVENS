@@ -31,7 +31,7 @@ else()
   
   add_test(NAME SpatialFlow_NS_FlatPlate_LeastSquares_Roe_Struct_CDConvergence
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_conv_clcd
+	COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow_conv_clcd
     ${CMAKE_CURRENT_SOURCE_DIR}/flatplate.ctrl
     -options_file ${CMAKE_CURRENT_SOURCE_DIR}/flatplate.solverc
     --exact_solution_file ${CMAKE_CURRENT_SOURCE_DIR}/exact_clcd_flatplate.dat

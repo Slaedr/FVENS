@@ -21,12 +21,15 @@
 #include "mathutils.hpp"
 #include "areconstruction.hpp"
 #include "reconstruction_utils.hpp"
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 
 template <typename scalar, int nvars>
-SolutionReconstruction<scalar,nvars>::SolutionReconstruction (const UMesh2dh<scalar> *const mesh, 
-		const amat::Array2d<scalar>& c_centres, 
+SolutionReconstruction<scalar,nvars>::SolutionReconstruction (const UMesh2dh<scalar> *const mesh,
+		const amat::Array2d<scalar>& c_centres,
 		const amat::Array2d<scalar>* gauss_r)
 	: m{mesh}, ri{c_centres}, gr{gauss_r}, ng{gr[0].rows()}
 { }
@@ -45,7 +48,7 @@ LinearUnlimitedReconstruction<scalar,nvars>
 
 template <typename scalar, int nvars>
 void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
-		const MVector<scalar>& u, 
+		const MVector<scalar>& u,
 		const amat::Array2d<scalar>& ug,
 		const GradArray<scalar,nvars>& grads,
 		amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
@@ -67,13 +70,13 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 						&gr[ied](0,0), &ri(jelem,0));
 			}
 		}
-		
+
 #pragma omp for
 		for(a_int ied = 0; ied < m->gnbface(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
 
-			for(int i = 0; i < nvars; i++) 
+			for(int i = 0; i < nvars; i++)
 			{
 				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
 						&gr[ied](0,0), &ri(ielem,0));
@@ -86,6 +89,13 @@ template class SolutionReconstruction<a_real,NVARS>;
 template class SolutionReconstruction<a_real,1>;
 template class LinearUnlimitedReconstruction<a_real,NVARS>;
 template class LinearUnlimitedReconstruction<a_real,1>;
+
+#ifdef USE_ADOLC
+template class SolutionReconstruction<adouble,NVARS>;
+template class SolutionReconstruction<adouble,1>;
+template class LinearUnlimitedReconstruction<adouble,NVARS>;
+template class LinearUnlimitedReconstruction<adouble,1>;
+#endif
 
 } // end namespace
 

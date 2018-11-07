@@ -29,7 +29,7 @@ IMPLICIT
 -Tolerance
 1e-6
 -Max-pseudotime-iterations
-50000
+500
 ###############################################################
 -use-first-order-initialization
 0

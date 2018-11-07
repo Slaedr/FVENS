@@ -18,7 +18,7 @@ linearExtrapolate(const scalar ucell,                          ///< Relevant cel
                   const Eigen::Array<scalar,NDIM,nvars>& grad, ///< Gradients
                   const int ivar,                              ///< Index of physical variable to be
                   ///<  reconstructed
-                  const scalar lim,                            ///< Limiter value
+                  const a_real lim,                            ///< Limiter value
                   const scalar *const gp,                      ///< Quadrature point coords
                   const scalar *const rc                       ///< Cell centre coords
                   )

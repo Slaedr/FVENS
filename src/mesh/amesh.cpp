@@ -29,6 +29,10 @@
 #include "amesh2dh.hpp"
 #include "utilities/aoptionparser.hpp"
 
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
+
 namespace fvens {
 
 template <typename scalar, int ndim>
@@ -102,7 +106,7 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 
 	std::ifstream infile;
 	open_file_toRead(mfile, infile);
-	
+
 	for(int i = 0; i < 4; i++)		//skip 4 lines
 		do
 			ch = infile.get();
@@ -140,8 +144,8 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	{
 		infile >> dum;
 		infile >> elmtype;
-		/** elmtype is different for all faces and for all elements. 
-		 * However, meshes in which high-order and linear elements are both present 
+		/** elmtype is different for all faces and for all elements.
+		 * However, meshes in which high-order and linear elements are both present
 		 * are not supported.
 		 */
 		switch(elmtype)
@@ -372,7 +376,7 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 		nfael.push_back(nfaels[i+nface]);
 	}
 	infile.close();
-	
+
 	// set flag_bpoin
 	flag_bpoin.resize(npoin,1);
 	flag_bpoin.zeros();
@@ -411,7 +415,7 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 	{
 		int id, ddum;
 		fin >> id;
-		switch(id) 
+		switch(id)
 		{
 			case 5: // triangle
 				nnode[iel] = 3;
@@ -460,9 +464,9 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 #ifdef DEBUG
 	std::cout << "UMesh: readSU2: Number of BC markers = " << nbmarkers << std::endl;
 #endif
-	
+
 	std::vector<std::vector<std::vector<a_int>>> bfacs(nbmarkers);
-	
+
 	std::vector<int> tags(nbmarkers);
 	std::vector<a_int> numfacs(nbmarkers);
 	nface = 0;
@@ -486,7 +490,7 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 			for(int inofa = 0; inofa < nnofa; inofa++)
 				fin >> bfacs[ib][iface][inofa];
 		}
-		
+
 		//clear newline, except the last one because it may not exist
 		if(ib < nbmarkers-1)
 			std::getline(fin,dum);
@@ -500,18 +504,18 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 	a_int count=0;
 	for(int ib = 0; ib < nbmarkers; ib++)
 	{
-		for(a_int iface = 0; iface < numfacs[ib]; iface++) 
+		for(a_int iface = 0; iface < numfacs[ib]; iface++)
 		{
 			for(int inofa = 0; inofa < nnofa; inofa++)
 				bface(count,inofa) = bfacs[ib][iface][inofa];
 			bface(count,nnofa) = tags[ib];
-			
+
 			count++;
 		}
 	}
-	
+
 	// Classify points as boundary points or not
-	
+
 	flag_bpoin.resize(npoin,1);
 	flag_bpoin.zeros();
 	for(int i = 0; i < nface; i++)
@@ -526,7 +530,7 @@ void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
 	const amat::Array2d<a_int> tempelems = inpoel;
 	const std::vector<int> tempnnode = nnode;
 	const std::vector<int> tempnfael = nfael;
-	
+
 	for(a_int i = 0; i < nelem; i++)
 	{
 		for(int j = 0; j < inpoel.cols(); j++)
@@ -536,9 +540,9 @@ void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
 	}
 }
 
-/**	Stores (in array bpointsb) for each boundary point: the associated global point number and 
+/**	Stores (in array bpointsb) for each boundary point: the associated global point number and
  * the two bfaces associated with it.
- * Also calculates bfacebp, which is like inpoel for boundary faces - 
+ * Also calculates bfacebp, which is like inpoel for boundary faces -
  * it gives the boundary node number (according to bpointsb) of each local node of a bface.
  * \note Only for linear meshes.
  */
@@ -569,14 +573,14 @@ void UMesh<scalar,ndim>::compute_boundary_points()
 			bpointsb(i,j) = -1;
 
 	bfacebp.resize(nface,nnofa);
-	
+
 	amat::Array2d<double > lpoin(npoin,1);
 
 	int bp = 0;
 
-	// Next, populate bpointsb by iterating over faces. 
+	// Next, populate bpointsb by iterating over faces.
 	// Also populate bfacebp, which holds the boundary points numbers of the 2 points in a bface.
-	
+
 	lpoin.zeros();		// lpoin will be 1 if the point has been visited
 	for(int iface = 0; iface < nface; iface++)
 	{
@@ -622,7 +626,7 @@ void UMesh<scalar,ndim>::compute_boundary_points()
 			{
 				if(bpointsb(i,0) == p2) ibp = i;
 			}
-			if(ibp==-1) std::cout << "UMesh2d: compute_boundary_points(): Point not found!" 
+			if(ibp==-1) std::cout << "UMesh2d: compute_boundary_points(): Point not found!"
 				<< std::endl;
 			bpointsb(ibp,1) = iface;
 			bfacebp(iface,1) = ibp;
@@ -654,7 +658,7 @@ void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
 
 	std::ofstream outf;
 	open_file_toWrite(mfile, outf);
-	
+
 	outf << std::setprecision(MESHDATA_DOUBLE_PRECISION);
 	//std::cout << "nodes\n";
 	outf << "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n";
@@ -683,7 +687,7 @@ void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
 	{
 		outf << iface+1 << " " << face_type << " " << nbtagout;
 		for(int i = nnofa; i < nnofa+nbtag; i++)    // write tags
-			outf << " " << bface(iface,i);          
+			outf << " " << bface(iface,i);
 		for(int i = 0; i < nbtagout-nbtag; i++)     // write extra tags if needed
 			if(nbtag == 0)
 				outf << " " << default_tag;
@@ -742,11 +746,11 @@ void UMesh<scalar,ndim>::compute_volumes()
 		{
 			volume(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
 				- gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)
-				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) 
+				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1)
 				- gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
 			volume(i,0) += 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,2),1) 
 				- gcoords(ginpoel(i,3),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,2),0)
-				- gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1) 
+				- gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1)
 				- gcoords(ginpoel(i,3),0)*gcoords(ginpoel(i,2),1));
 		}
 	}
@@ -782,7 +786,7 @@ void UMesh<scalar,ndim>::compute_topological()
 #endif
 }
 
-/** Assumption: order of nodes of boundary faces is such that normal points outside, 
+/** Assumption: order of nodes of boundary faces is such that normal points outside,
  * when normal is calculated as
  * 		nx = y2 - y1, ny = -(x2-x1).
  */
@@ -852,7 +856,7 @@ void UMesh<scalar,ndim>::compute_periodic_map(const int bcm, const int axis)
 
 	// this is used to keep track of faces we've visited
 	std::vector<a_int> periodicmap(nbface,-1);
-	
+
 	const int ax = 1-axis;  //< The axis along which we'll compare the faces' locations
 
 	/* Whenever we come across a face that's not been processed, we'll set mapped faces
@@ -860,23 +864,23 @@ void UMesh<scalar,ndim>::compute_periodic_map(const int bcm, const int axis)
 	 */
 	for(a_int iface = 0; iface < nbface; iface++)
 	{
-		if(intfacbtags(iface,0) == bcm) 
+		if(intfacbtags(iface,0) == bcm)
 		{
 			if(periodicmap[iface] > -1)
 				continue;
 
 			// get relevant coordinate of face centre
-			const a_real ci = (coords(intfac(iface,2),ax)+coords(intfac(iface,3),ax))/2.0;
+			const scalar ci = (coords(intfac(iface,2),ax)+coords(intfac(iface,3),ax))/2.0;
 
 			// Faces before iface have already been paired
 			for(a_int jface = iface+1; jface < nbface; jface++)
 			{
-				if(intfacbtags(jface,0) == bcm) 
+				if(intfacbtags(jface,0) == bcm)
 				{
-					const a_real cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
-					
+					const scalar cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
+
 					// 1e-11 is seemingly the best tolerance Gmsh can offer
-					if(std::fabs(ci-cj) <= 1e-8)
+					if(fabs(ci-cj) <= 1e-8)
 					{
 						periodicmap[iface] = jface;
 						periodicmap[jface] = iface;
@@ -922,7 +926,7 @@ void UMesh<scalar,ndim>::compute_boundary_maps()
 			{
 				for(int k = 0; k < nnofa; k++)
 					if(fpo[j] == intfac(iface, 2+k)) {
-						/* if jth node of ibface has a node of iface, it belongs to iface; 
+						/* if jth node of ibface has a node of iface, it belongs to iface;
 						 * set the corresp. boolean to true
 						 */
 						inter[j] = true;
@@ -935,10 +939,10 @@ void UMesh<scalar,ndim>::compute_boundary_maps()
 			std::cout << std::endl;*/
 
 			for(int b = 0; b < nnofa; b++)
-				/* if any node of ibface failed to find a node of iface, 
+				/* if any node of ibface failed to find a node of iface,
 				 * ibface is not the same as iface
 				 */
-				if(inter[b] == false) final1 = false;	
+				if(inter[b] == false) final1 = false;
 
 			if(final1 == true) inface = iface;
 		}
@@ -948,7 +952,7 @@ void UMesh<scalar,ndim>::compute_boundary_maps()
 			ifbmap(ibface) = inface;
 		}
 		else {
-			std::cout << "UMesh2d: compute_boundary_maps(): ! intfac face corresponding to " 
+			std::cout << "UMesh2d: compute_boundary_maps(): ! intfac face corresponding to "
 				<< ibface << "th bface not found!!" << std::endl;
 			continue;
 		}
@@ -960,7 +964,7 @@ template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::writeBoundaryMapsToFile(std::string mapfile)
 {
 	if(isBoundaryMaps == false) {
-		std::cout << "UMesh2d: writeBoundaryMapsToFile(): ! Boundary maps not available!" 
+		std::cout << "UMesh2d: writeBoundaryMapsToFile(): ! Boundary maps not available!"
 			<< std::endl;
 		return;
 	}
@@ -982,7 +986,7 @@ void UMesh<scalar,ndim>::readBoundaryMapsFromFile(std::string mapfile)
 	std::ifstream ofile(mapfile);
 	std::string dum; int sz;
 	ofile >> sz >>  dum;
-	std::cout << "UMesh2d: readBoundaryMapsFromFile(): Number of boundary faces in file = " 
+	std::cout << "UMesh2d: readBoundaryMapsFromFile(): Number of boundary faces in file = "
 		<< sz << std::endl;
 	bifmap.resize(sz,1);
 	ifbmap.resize(sz,1);
@@ -1007,7 +1011,7 @@ void UMesh<scalar,ndim>::compute_intfacbtags()
 
 	if(isBoundaryMaps == false)
 	{
-		std::cout << "UMesh2d: compute_intfacbtags(): ! Boundary maps are not available!" 
+		std::cout << "UMesh2d: compute_intfacbtags(): ! Boundary maps are not available!"
 			<< std::endl;
 		return;
 	}
@@ -1020,13 +1024,13 @@ void UMesh<scalar,ndim>::compute_intfacbtags()
 }
 
 /**	Adds high-order nodes to convert a linear mesh to a straight-faced quadratic mesh.
- * NOTE: Make sure to execute [compute_topological()](@ref compute_topological) 
+ * NOTE: Make sure to execute [compute_topological()](@ref compute_topological)
  * before calling this function.
  */
 template <typename scalar, int ndim>
 UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 {
-	std::cout << "UMesh2d: convertLinearToQuadratic(): Producing quadratic mesh from linear mesh" 
+	std::cout << "UMesh2d: convertLinearToQuadratic(): Producing quadratic mesh from linear mesh"
 		<< std::endl;
 	UMesh<scalar,ndim> q;
 	if(nnofa != 2) 
@@ -1036,23 +1040,23 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 	}
 
 	int parm = 1;		// 1 extra node per face
-	
-	/** We first calculate: 
-	 * total number of non-simplicial elements; 
-	 * nnode, nfael in each element; 
+
+	/** We first calculate:
+	 * total number of non-simplicial elements;
+	 * nnode, nfael in each element;
 	 * mmax nnode and max nfael.
 	 */
 	int nelemnonsimp = 0;		// total number of non-simplicial elements
-	
+
 	q.nnode.resize(nelem);		// allocate
 	q.nfael.resize(nelem);
 
 	q.maxnfael = maxnfael;
-	q.maxnnode = 0; 
+	q.maxnnode = 0;
 	for(int ielem = 0; ielem < nelem; ielem++)
 	{
 		q.nfael[ielem] = nfael[ielem];
-		
+
 		if(nnode[ielem] >= 4) 	// if mesh is not simplicial
 		{
 			nelemnonsimp++;
@@ -1065,7 +1069,7 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 			q.nnode[ielem] = nnode[ielem] + nfael[ielem]*parm;
 			if(q.nnode[ielem] > q.maxnnode)
 				q.maxnnode = q.nnode[ielem];
-		}	
+		}
 	}
 
 	q.npoin = npoin + naface + nelemnonsimp;
@@ -1101,7 +1105,7 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 	q.vol_regions = vol_regions;
 
 	/// We then iterate over faces, introducing the required number of points in each face.
-	
+
 	// iterate over boundary faces
 	for(int ied = 0; ied < nbface; ied++)
 	{
@@ -1119,14 +1123,14 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 			//if(p2 == inpoel(ielem,inode)) lp2 = inode;
 		}
 
-		// in the left element, the new point is in face ip1 
+		// in the left element, the new point is in face ip1
 		// (ie, the face whose first point is ip1 in CCW order)
 		q.inpoel(ielem, nnode[ielem]+lp1) = npoin+ied*parm;
 
 		// find the bface that this face corresponds to
 		for(int ifa = 0; ifa < nface; ifa++)
 		{
-			if((p1 == bface(ifa,0) && p2 == bface(ifa,1)) 
+			if((p1 == bface(ifa,0) && p2 == bface(ifa,1))
 					|| (p1 == bface(ifa,1) && p2 == bface(ifa,0)))	// face found
 			{
 				q.bface(ifa,nnofa) = npoin+ied*parm;
@@ -1166,7 +1170,7 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 		// in the right element, the new point is in face ip2
 		q.inpoel(jelem, nnode[jelem]+lp2) = npoin+ied*parm;
 	}
-	
+
 	// for non-simplicial mesh, add extra points at cell-centres as well
 
 	int numpoin = npoin+naface*parm;		// next global point number to be added
@@ -1174,9 +1178,9 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 	for(int iel = 0; iel < nelem; iel++)
 	{
 		//parmcell = 1;		// number of extra nodes per cell in the interior of the cell
-		double c_x = 0, c_y = 0;
+		scalar c_x = 0, c_y = 0;
 
-		if(nnode[iel] == 4)	
+		if(nnode[iel] == 4)
 		{
 			//parmcell = parm*parm;		// number of interior points to be added
 			// for now, we just add one node at cell center
@@ -1197,7 +1201,7 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertLinearToQuadratic()
 	return q;
 }
 
-/**	Converts all quadrilaterals in a linear mesh into triangles, 
+/**	Converts all quadrilaterals in a linear mesh into triangles,
  * and returns the fully triangular mesh.
  */
 template <typename scalar, int ndim>
@@ -1219,7 +1223,7 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertQuadToTri() const
 			element[1] = inpoel.get(ielem,1);
 			element[2] = inpoel.get(ielem,3);
 			elms.push_back(element);
-			
+
 			for(int i = 0; i < ndtag; i++)
 				vr[i] = vol_regions.get(ielem,i);
 			volregs.push_back(vr);
@@ -1237,11 +1241,11 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertQuadToTri() const
 			for(int i = 0; i < nnodet; i++)
 				element[i] = inpoel.get(ielem,i);
 			elms.push_back(element);
-			
+
 			for(int i = 0; i < ndtag; i++)
 				vr[i] = vol_regions.get(ielem,i);
 			volregs.push_back(vr);
-			
+
 			nelem2++;
 		}
 	}
@@ -1270,7 +1274,7 @@ UMesh<scalar,ndim> UMesh<scalar,ndim>::convertQuadToTri() const
 		for(int i = 0; i < ndtag; i++)
 			tm.vol_regions(ielem,i) = volregs[ielem][i];
 	}
-	
+
 	return tm;
 }
 
@@ -1285,7 +1289,7 @@ void UMesh<scalar,ndim>::compute_elementsSurroundingPoints()
 	{
 		for(int j = 0; j < nfael[i]; j++)
 		{
-			/* The first index is inpoel(i,j) + 1 : the + 1 is there because 
+			/* The first index is inpoel(i,j) + 1 : the + 1 is there because
 			 * the storage corresponding to the first node begins at 0, not at 1
 			 */
 			esup_p(inpoel(i,j)+1,0) += 1;
@@ -1302,15 +1306,15 @@ void UMesh<scalar,ndim>::compute_elementsSurroundingPoints()
 		for(int j = 0; j < nfael[i]; j++)
 		{
 			int ipoin = inpoel(i,j);
-			
+
 			// now put that element no. in the space pointed to by esup_p(ipoin):
 			esup(esup_p(ipoin,0),0) = i;
 
 			// an element corresponding to ipoin has been found - increment esup_p for that point:
-			esup_p(ipoin,0) += 1;				
+			esup_p(ipoin,0) += 1;
 		}
 	}
-	
+
 	//But now esup_p holds increased values:
 	// each member increased by the number elements surrounding the corresponding point.
 	// So now correct this.
@@ -1343,15 +1347,15 @@ void UMesh<scalar,ndim>::compute_elementsSurroundingElements()
 		lhelp.zeros();
 
 		// first get lpofa for this element
-		// lpofa(i,j) holds local vertex number of jth vertex of ith face 
+		// lpofa(i,j) holds local vertex number of jth vertex of ith face
 		//   (j in [0:nverfa], i in [0:nfael])
-		amat::Array2d<int > lpofai(nfael[ielem], nverfa);	
+		amat::Array2d<int > lpofai(nfael[ielem], nverfa);
 		for(int i = 0; i < nfael[ielem]; i++)
 		{
 			for(int j = 0; j < nverfa; j++)
 			{
 				// fine as long as operands of % are not negative
-				lpofai(i,j) = (i+j) % nnode[ielem];		
+				lpofai(i,j) = (i+j) % nnode[ielem];
 			}
 		}
 
@@ -1360,7 +1364,7 @@ void UMesh<scalar,ndim>::compute_elementsSurroundingElements()
 			for(int i = 0; i < nverfa; i++)
 			{
 				// lhelp stores global node nos. of vertices of current face of current element
-				lhelp(i,0) = inpoel(ielem, lpofai(ifael,i));	
+				lhelp(i,0) = inpoel(ielem, lpofai(ifael,i));
 				lpoin(lhelp(i,0)) = 1;
 			}
 			int ipoin = lhelp(0);
@@ -1488,7 +1492,7 @@ void UMesh<scalar,ndim>::compute_faceConnectivity()
 	}
 }
 
-/** \todo: There is an issue with psup for some boundary nodes 
+/** \todo: There is an issue with psup for some boundary nodes
  * belonging to elements of different types. Correct this.
  */
 template <typename scalar, int ndim>
@@ -1501,7 +1505,7 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 	psup_p.zeros();
 	psup_p(0,0) = 0;
 
-	// The ith member indicates the global point number of which 
+	// The ith member indicates the global point number of which
 	// the ith point is a surrounding point
 	amat::Array2d<int > lpoin(npoin,1);
 	for(int i = 0; i < npoin; i++) lpoin(i,0) = -1;	// initialize this std::vector to -1
@@ -1538,7 +1542,7 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 			else if(nnode[ielem] == 4)
 				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
 				{
-					if(jnode == (inode + 1) % nnode[ielem] 
+					if(jnode == (inode + 1) % nnode[ielem]
 							|| jnode == (inode + nnode[ielem]-1) % nnode[ielem])
 						nbd[jnode] = true;
 				}
@@ -1549,10 +1553,10 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 				//Get global index of this node
 				int jpoin = inpoel(ielem, inode);
 
-				/* test if this point as already been counted as a surrounding point of ip, 
-				 * and whether it's connected to ip. 
+				/* test if this point as already been counted as a surrounding point of ip,
+				 * and whether it's connected to ip.
 				 */
-				if(lpoin(jpoin,0) != ip && nbd[inode])		
+				if(lpoin(jpoin,0) != ip && nbd[inode])
 				{
 					istor++;
 					lpoin(jpoin,0) = ip;		// set this point as a surrounding point of ip
@@ -1598,7 +1602,7 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 			else if(nnode[ielem] == 4)
 				for(int jnode = 0; jnode < nnode[ielem]; jnode++)
 				{
-					if(jnode == (inode + 1) % nnode[ielem] 
+					if(jnode == (inode + 1) % nnode[ielem]
 							|| jnode == (inode + nnode[ielem]-1) % nnode[ielem])
 						nbd[jnode] = true;
 				}
@@ -1621,5 +1625,9 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 }
 
 template class UMesh<a_real>;
+
+#ifdef USE_ADOLC
+template class UMesh2dh<adouble>;
+#endif
 
 } // end namespace

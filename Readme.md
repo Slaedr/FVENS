@@ -1,11 +1,9 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. WENO (weighted essentially non-oscillatory), MUSCL and linear reconstructions are availble with the Van Albada limiter for MUSCL reconstruction, and the Barth-Jespersen and Venkatakrishnan limiters for linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes.
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. Linear, MUSCL and limited linear reconstructions are availble. The Van Albada limiter is used for MUSCL reconstruction while the WENO (weighted essentially non-oscillatory), Barth-Jespersen or Venkatakrishnan limiters can be used for limited linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. For steady-state problems, both explicit and implicit pseudo-time stepping are avaible. 
 
-For steady-state problems, both explicit and implicit pseudo-time stepping are avaible. Explicit time-stepping uses the forward Euler scheme while implicit time stepping uses the backward Euler scheme; both use local time-steps. 'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal.
-
-If you wish to contribute, please read the [guidelines](CONTRIBUTING.md).
+'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal. If you wish to contribute, please read the [guidelines](CONTRIBUTING.md).
 
 Features
 --------
@@ -35,7 +33,8 @@ The following libraries and programs are required:
 - [PETSc](http://www.mcs.anl.gov/petsc/) version 3.8 or newer for sparse linear solvers; needs `PETSC_DIR` and `PETSC_ARCH` set, unless PETSc has been installed in standard system locations.
 - [Gmsh](http://gmsh.info/) 3.0 or later is required for building many of the grids for test cases. It is available in most GNU/Linux distributions' official repositories. If it is not present in a standard directory and has not been added to the `PATH` variable, one can pass
 `-DCMAKE_PREFIX_PATH=/path/to/top-level/gmsh-dir` in the `cmake` command line (see below).
-- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory.
+- Optionally, the [ADOL-C](https://projects.coin-or.org/ADOL-C) automatic differentiation library can be used for computing exact derivatives of the fluxes. Unless installed in a standard directory, an environment variable `ADOLC_DIR` needs to be set, and `-DWITH_ADOLC=1` should be passed to the CMake command line.
+- Optionally, [BLASTed](https://github.com/Slaedr/BLASTed) sparse linear algebra library - needs an environment variable called `BLASTED_DIR` to be set to the top level BLASTed source directory and `BLASTED_BIN_DIR` to be set to the BLASTed build directory. `-DWITH_BLASTED=1` needs to be passed to CMake.
 
 The variables needed can either be passed as arguments to CMake during configuration (see below) or set as environment variables. OpenMP will be used if available (default builds of GCC on most GNU/Linux distributions have this, for instance).
 
@@ -89,6 +88,11 @@ PETSc options for FVENS
 * `-matrix_free_jacobian` (no argument): If mentioned, matrix-free finite-difference Jacobian will be used, but the first-order approximate Jacobian will still be stored for the preconditioner.
 * `-matrix_free_difference_step` (float argument): The finite difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
 * `-fvens_log_file` (string argument): Prefix (path + base file name) of the file into which to write timing logs (.tlog extension), and if requested, nonlinear residual histories (.conv extension). Note that this option, if specified, overrides the corresponding option in the control file.
+
+Contributors
+------------
+- Luis Hernandez
+- Aditya Kashi
 
 ---
 

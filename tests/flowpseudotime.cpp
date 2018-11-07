@@ -41,10 +41,12 @@ for testing detection of NaN or inf during nonlinear sovlve");
 
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
+	const UMesh2dh<a_real> m = constructMesh(opts, "");
 	SteadyFlowCase case1(opts);
 
 	// solution vector
 	Vec u;
+	ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);
 
 	//std::string testchoice = parsePetscCmd_string("-test_type", 100);
 	std::string testchoice = cmdvars["test_type"].as<std::string>();
@@ -52,7 +54,7 @@ for testing detection of NaN or inf during nonlinear sovlve");
 	// solve case - constructs (creates) u, computes the solution and stores the solution in it
 	if(testchoice == "exception_nanorinf") {
 		try {
-			ierr = case1.run("", &u);
+			ierr = case1.run(m, u);
 			CHKERRQ(ierr);
 		}
 		catch (Numerical_error& e) {

@@ -6,6 +6,7 @@
 #define FVENS_DIFFUSION_H
 
 #include <vector>
+#include <petscvec.h>
 #include "spatial/aspatial.hpp"
 #include "agradientschemes.hpp"
 
@@ -20,17 +21,6 @@ public:
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 			> source);
-
-	/// Sets initial conditions to zero
-	/** 
-	 * \param[in,out] u Vector to store the initial data in
-	 */
-	StatusCode initializeUnknowns(Vec u) const;
-	
-	// virtual StatusCode assemble_residual(const Vec u, Vec residual, 
-	// 		const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
-	
-	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
 	
 	virtual void getGradients(const MVector<a_real>& u,
 	                          GradArray<a_real,nvars>& grads) const = 0;
@@ -77,18 +67,23 @@ public:
 			                                           ///< scheme to use
 			);
 	
-	StatusCode assemble_residual(const Vec u, Vec residual, 
-							const bool gettimesteps, std::vector<a_real>& dtm) const;
-
 	StatusCode compute_residual(const a_real *const uarr,
 	                            a_real *const rarr, 
 	                            const bool gettimesteps, 
-	                            std::vector<a_real>& dtm) const;
+	                            a_real *const dtm) const;
+
+	void compute_local_jacobian_interior(const a_int iface,
+	                                     const a_real *const ul, const a_real *const ur,
+	                                     Matrix<a_real,nvars,nvars,RowMajor>& L,
+	                                     Matrix<a_real,nvars,nvars,RowMajor>& U) const;
+
+	void compute_local_jacobian_boundary(const a_int iface,
+	                                     const a_real *const ul,
+	                                     Matrix<a_real,nvars,nvars,RowMajor>& L) const;
+
 	
 	/*void add_source(const MVector<scalar>& u, 
 			MVector<scalar>& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
-	
-	StatusCode compute_jacobian(const Vec u, Mat A) const;
 	
 	void getGradients(const MVector<a_real>& u,
 	                  GradArray<a_real,nvars>& grads) const;

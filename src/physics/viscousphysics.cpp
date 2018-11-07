@@ -5,6 +5,10 @@
 
 #include "viscousphysics.hpp"
 
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
+
 namespace fvens {
 
 template<typename scalar, int ndim, bool secondOrderRequested>
@@ -40,7 +44,7 @@ void getPrimitive2StatesAndGradients(const IdealGasPhysics<scalar>& physics,
 				gradtl[i*nvars+j] = gradl[i*nvars+j];
 				gradtr[i*nvars+j] = gradr[i*nvars+j];
 			}
-			
+
 		/* get one-sided temperature gradients from one-sided primitive gradients
 		 * and discard grad p in favor of grad T.
 		 */
@@ -71,26 +75,26 @@ void computeViscousFlux(const IdealGasPhysics<scalar>& physics, const scalar *co
 {
 	static_assert(ndim == NDIM, "3D not implemented yet.");
 	static_assert(nvars == ndim+2, "Only single-phase ideal gas is supported.");
-	
+
 	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const scalar muRe = constVisc ? 
-			physics.getConstantViscosityCoeff() 
+	const scalar muRe = constVisc ?
+			physics.getConstantViscosityCoeff()
 		:
 			0.5*( physics.getViscosityCoeffFromConserved(ul)
 			+ physics.getViscosityCoeffFromConserved(ur) );
-	
+
 	// Non-dimensional thermal conductivity
-	const scalar kdiff = physics.getThermalConductivityFromViscosity(muRe); 
+	const scalar kdiff = physics.getThermalConductivityFromViscosity(muRe);
 
 	scalar stress[ndim][ndim];
 	for(int i = 0; i < ndim; i++)
 		for(int j = 0; j < ndim; j++)
 			stress[i][j] = 0;
-	
+
 	physics.getStressTensor(muRe, grad, stress);
 
 	vflux[0] = 0;
-	
+
 	for(int i = 0; i < ndim; i++)
 	{
 		vflux[i+1] = 0;
@@ -107,10 +111,10 @@ void computeViscousFlux(const IdealGasPhysics<scalar>& physics, const scalar *co
 	for(int i = 0; i < ndim; i++)
 	{
 		scalar comp = 0;
-		
+
 		for(int j = 0; j < ndim; j++)
 			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction etc)
-		
+
 		comp += kdiff*grad[i][nvars-1];         // dissipation by heat flux
 
 		vflux[nvars-1] -= comp * n[i];
@@ -130,16 +134,16 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 	static_assert(nvars == ndim+2, "Only single-phase ideal gas is supported.");
 
 	a_real vflux[nvars];             // output variable to be differentiated
-	
+
 	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const a_real muRe = constVisc ? 
-			jphy.getConstantViscosityCoeff() 
+	const a_real muRe = constVisc ?
+			jphy.getConstantViscosityCoeff()
 		:
 			0.5*( jphy.getViscosityCoeffFromConserved(ul)
 			+ jphy.getViscosityCoeffFromConserved(ur) );
-	
+
 	// Non-dimensional thermal conductivity
-	const a_real kdiff = jphy.getThermalConductivityFromViscosity(muRe); 
+	const a_real kdiff = jphy.getThermalConductivityFromViscosity(muRe);
 
 	a_real dmul[nvars], dmur[nvars], dkdl[nvars], dkdr[nvars];
 	for(int k = 0; k < nvars; k++) {
@@ -156,10 +160,10 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmul, dkdl);
 		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
 	}
-	
+
 	a_real stress[ndim][ndim], dstressl[ndim][ndim][nvars], dstressr[ndim][ndim][nvars];
 	for(int i = 0; i < ndim; i++)
-		for(int j = 0; j < ndim; j++) 
+		for(int j = 0; j < ndim; j++)
 		{
 			stress[i][j] = 0;
 			for(int k = 0; k < nvars; k++) {
@@ -167,12 +171,12 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 				dstressr[i][j][k] = 0;
 			}
 		}
-	
+
 	jphy.getJacobianStress(muRe, dmul, grad, dgradl, stress, dstressl);
 	jphy.getJacobianStress(muRe, dmur, grad, dgradr, stress, dstressr);
 
 	vflux[0] = 0;
-	
+
 	for(int i = 0; i < ndim; i++)
 	{
 		vflux[i+1] = 0;
@@ -197,10 +201,10 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 			dvavgl[j][k] = 0;
 			dvavgr[j][k] = 0;
 		}
-		
+
 		dvavgl[j][0] = -0.5*ul[j+1]/(ul[0]*ul[0]);
 		dvavgr[j][0] = -0.5*ur[j+1]/(ur[0]*ur[0]);
-		
+
 		dvavgl[j][j+1] = 0.5/ul[0];
 		dvavgr[j][j+1] = 0.5/ur[0];
 	}
@@ -214,17 +218,17 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 			dcompl[k] = 0;
 			dcompr[k] = 0;
 		}
-		
-		for(int j = 0; j < ndim; j++) 
+
+		for(int j = 0; j < ndim; j++)
 		{
 			comp += stress[i][j]*vavg[j];       // dissipation by momentum flux (friction)
-			
+
 			for(int k = 0; k < nvars; k++) {
 				dcompl[k] += dstressl[i][j][k]*vavg[j] + stress[i][j]*dvavgl[j][k];
 				dcompr[k] += dstressr[i][j][k]*vavg[j] + stress[i][j]*dvavgr[j][k];
 			}
 		}
-		
+
 		comp += kdiff*grad[i][nvars-1];         // dissipation by heat flux
 
 		for(int k = 0; k < nvars; k++) {
@@ -242,48 +246,79 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 }
 
 template void
-getPrimitive2StatesAndGradients<double,NDIM,true>(const IdealGasPhysics<double>& physics,
-                                                  const double *const ucl, const double *const ucr,
-                                                  const double *const gradl, const double *const gradr,
-                                                  double *const uctl, double *const uctr,
-                                                  double *const gradtl, double *const gradtr);
+getPrimitive2StatesAndGradients<a_real,NDIM,true>(const IdealGasPhysics<a_real>& physics,
+                                                  const a_real *const ucl, const a_real *const ucr,
+                                                  const a_real *const gradl, const a_real *const gradr,
+                                                  a_real *const uctl, a_real *const uctr,
+                                                  a_real *const gradtl, a_real *const gradtr);
 template void
-getPrimitive2StatesAndGradients<double,NDIM,false>(const IdealGasPhysics<double>& physics,
-                                                   const double *const ucl, const double *const ucr,
-                                                   const double *const gradl, const double *const gradr,
-                                                   double *const uctl, double *const uctr,
-                                                   double *const gradtl, double *const gradtr);
+getPrimitive2StatesAndGradients<a_real,NDIM,false>(const IdealGasPhysics<a_real>& physics,
+                                                   const a_real *const ucl, const a_real *const ucr,
+                                                   const a_real *const gradl, const a_real *const gradr,
+                                                   a_real *const uctl, a_real *const uctr,
+                                                   a_real *const gradtl, a_real *const gradtr);
 
 template void
-computeViscousFlux<double,NDIM,NVARS,true>(const IdealGasPhysics<double>& physics,
-                                           const double *const n,
-                                           const double grad[NDIM][NVARS],
-                                           const double *const ul, const double *const ur,
-                                           double *const __restrict vflux);
+computeViscousFlux<a_real,NDIM,NVARS,true>(const IdealGasPhysics<a_real>& physics,
+                                           const a_real *const n,
+                                           const a_real grad[NDIM][NVARS],
+                                           const a_real *const ul, const a_real *const ur,
+                                           a_real *const __restrict vflux);
 template void
-computeViscousFlux<double,NDIM,NVARS,false>(const IdealGasPhysics<double>& physics,
-                                           const double *const n,
-                                           const double grad[NDIM][NVARS],
-                                           const double *const ul, const double *const ur,
-                                           double *const __restrict vflux);
+computeViscousFlux<a_real,NDIM,NVARS,false>(const IdealGasPhysics<a_real>& physics,
+                                           const a_real *const n,
+                                           const a_real grad[NDIM][NVARS],
+                                           const a_real *const ul, const a_real *const ur,
+                                           a_real *const __restrict vflux);
 
 template void
-computeViscousFluxJacobian<double,NDIM,NVARS,true>(const IdealGasPhysics<double>& jphy,
-                                                   const double *const n,
-                                                   const double *const ul, const double *const ur,
-                                                   const double grad[NDIM][NVARS],
-                                                   const double dgradl[NDIM][NVARS][NVARS],
-                                                   const double dgradr[NDIM][NVARS][NVARS],
-                                                   double *const __restrict dvfi,
-                                                   double *const __restrict dvfj);
+computeViscousFluxJacobian<a_real,NDIM,NVARS,true>(const IdealGasPhysics<a_real>& jphy,
+                                                   const a_real *const n,
+                                                   const a_real *const ul, const a_real *const ur,
+                                                   const a_real grad[NDIM][NVARS],
+                                                   const a_real dgradl[NDIM][NVARS][NVARS],
+                                                   const a_real dgradr[NDIM][NVARS][NVARS],
+                                                   a_real *const __restrict dvfi,
+                                                   a_real *const __restrict dvfj);
 
 template void
-computeViscousFluxJacobian<double,NDIM,NVARS,false>(const IdealGasPhysics<double>& jphy,
-                                                    const double *const n,
-                                                    const double *const ul, const double *const ur,
-                                                    const double grad[NDIM][NVARS],
-                                                    const double dgradl[NDIM][NVARS][NVARS],
-                                                    const double dgradr[NDIM][NVARS][NVARS],
-                                                    double *const __restrict dvfi,
-                                                    double *const __restrict dvfj);
+computeViscousFluxJacobian<a_real,NDIM,NVARS,false>(const IdealGasPhysics<a_real>& jphy,
+                                                    const a_real *const n,
+                                                    const a_real *const ul, const a_real *const ur,
+                                                    const a_real grad[NDIM][NVARS],
+                                                    const a_real dgradl[NDIM][NVARS][NVARS],
+                                                    const a_real dgradr[NDIM][NVARS][NVARS],
+                                                    a_real *const __restrict dvfi,
+                                                    a_real *const __restrict dvfj);
+
+//CHANGE HERE
+#ifdef USE_ADOLC
+template void
+getPrimitive2StatesAndGradients<adouble,NDIM,true>(const IdealGasPhysics<adouble>& physics,
+                                                  const adouble *const ucl, const adouble *const ucr,
+                                                  const adouble *const gradl, const adouble *const gradr,
+                                                  adouble *const uctl, adouble *const uctr,
+                                                  adouble *const gradtl, adouble *const gradtr);
+
+template void
+getPrimitive2StatesAndGradients<adouble,NDIM,false>(const IdealGasPhysics<adouble>& physics,
+                                                  const adouble *const ucl, const adouble *const ucr,
+                                                  const adouble *const gradl, const adouble *const gradr,
+                                                  adouble *const uctl, adouble *const uctr,
+                                                  adouble *const gradtl, adouble *const gradtr);
+
+template void
+computeViscousFlux<adouble,NDIM,NVARS,true>(const IdealGasPhysics<adouble>& physics,
+                                           const adouble *const n,
+                                           const adouble grad[NDIM][NVARS],
+                                           const adouble *const ul, const adouble *const ur,
+                                           adouble *const __restrict vflux);
+
+template void
+computeViscousFlux<adouble,NDIM,NVARS,false>(const IdealGasPhysics<adouble>& physics,
+                                           const adouble *const n,
+                                           const adouble grad[NDIM][NVARS],
+                                           const adouble *const ul, const adouble *const ur,
+                                           adouble *const __restrict vflux);
+#endif
 }

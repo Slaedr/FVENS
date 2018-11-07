@@ -188,7 +188,7 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	// check for some PETSc options
 	char petsclogfile[200];
 	PetscBool set = PETSC_FALSE;
-	PetscOptionsGetString(NULL, NULL, "-fvens_log_file", petsclogfile, 200, &set);
+	PetscOptionsGetString(NULL, NULL, "-fvens_log_file_prefix", petsclogfile, 200, &set);
 	if(set)
 		opts.logfile = petsclogfile;
 

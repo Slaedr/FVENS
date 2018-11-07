@@ -18,7 +18,7 @@ namespace fvens {
 /// Data read from a control file for flow problems
 struct FlowParserOptions
 {
-	std::string meshfile, vtu_output_file, 
+	std::string meshfile, vtu_output_file,
 		logfile,                           ///< File to log timing data in
 		flowtype,                          ///< Type of flow to simulate - EULER, NAVIERSTOKES
 		init_soln_file,                    ///< File to read initial solution from (not implemented)
@@ -31,7 +31,7 @@ struct FlowParserOptions
 		                                   ///<  in addition to the main VTU output
 		sim_type,                          ///< Steady or unsteady simulation
 		time_integrator;                   ///< Physical time discretization scheme
-	
+
 	a_real initcfl, endcfl,                  ///< Starting CFL number and max CFL number
 		tolerance,                           ///< Relative tolerance for the whole nonlinear problem
 		firstinitcfl, firstendcfl,           ///< Starting and max CFL numbers for starting problem
@@ -42,25 +42,25 @@ struct FlowParserOptions
 		final_time,                          ///< Physical time upto which to simulate
 		phy_timestep,                        ///< Constant physical time step for unsteady implicit
 		phy_cfl;                             ///< CFL used only by unsteady explicit solvers
-	
-	int maxiter, 
-		rampstart, rampend, 
-		firstmaxiter, 
+
+	int maxiter,
+		rampstart, rampend,
+		firstmaxiter,
 		firstrampstart, firstrampend,
 		num_out_walls,                    ///< Number of wall boundary markers where output is needed
 		num_out_others,                   ///< Number of other boundaru markers where output is needed
 		time_order;                       ///< Desired order of accuracy in time
 
 	std::vector<FlowBCConfig> bcconf;     ///< All info about boundary conditions
-	
-	short soln_init_type, 
+
+	short soln_init_type,
 		  usestarter;                     ///< Whether to start with a first-order solver initially
-	
-	bool lognres, 
-		 useconstvisc, 
+
+	bool lognres,
+		 useconstvisc,
 		 viscsim,
 		 order2;                     ///< Whether 2nd order in space is required
-	
+
 	std::vector<int> lwalls,         ///< List of wall boundary markers for output
 		lothers;                     ///< List of other boundary markers for output
 };

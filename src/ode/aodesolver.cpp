@@ -33,7 +33,9 @@
 #include <petsctime.h>
 
 #include "aodesolver.hpp"
+#include "spatial/aoutput.hpp"
 #include "linalg/alinalg.hpp"
+#include "linalg/petsc_assembly.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/aerrorhandling.hpp"
 
@@ -64,11 +66,19 @@ static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order)
 	return tvdrk;
 }
 
+TimingData::TimingData()
+	: nelem{0}, num_threads{1}, lin_walltime{0}, lin_cputime{0}, ode_walltime{0}, ode_cputime{0},
+	  total_lin_iters{0}, avg_lin_iters{0}, num_timesteps{0}, converged{false}, precsetup_walltime{0},
+	  precapply_walltime{0}, prec_cputime{0}
+{ }
+
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf)
-	: space{spatial}, config{conf}, 
-	  tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false}
-{ }
+	: space{spatial}, config{conf}
+	  //tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false, 0,0,0}
+{
+	tdata.nelem = spatial->mesh()->gnelem();
+}
 
 template <int nvars>
 TimingData SteadySolver<nvars>::getTimingData() const {
@@ -84,13 +94,12 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<a_real,n
 	: SteadySolver<nvars>(spatial, conf)
 {
 	const UMesh2dh<a_real> *const m = space->mesh();
-	dtm.resize(m->gnelem(), 0);
 
 	StatusCode ierr = VecDuplicate(uvec, &rvec);
-	if(ierr) {
-		std::cout << "! SteadyForwardEulerSolver: Could not create residual vector!\n";
-		std::abort();
-	}
+	petsc_throw(ierr, "Could not duplicate vec");
+
+	ierr = createMeshBasedVector(m, &dtmvec);
+	petsc_throw(ierr, "Could not create mesh vector");
 }
 
 template<int nvars>
@@ -99,6 +108,9 @@ SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
 	int ierr = VecDestroy(&rvec);
 	if(ierr)
 		std::cout << "! SteadyForwardEulerSolver: Could not destroy residual vector!\n";
+	ierr = VecDestroy(&dtmvec);
+	if(ierr)
+		std::cout << "! SteadyForwardEulerSolver: Could not destroy dt vector!\n";
 }
 
 template<int nvars>
@@ -130,17 +142,18 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	a_real resi = 1.0;
 	a_real initres = 1.0;
 
-	std::ofstream convout;
-	if(mpirank==0)
-		if(config.lognres)
-			convout.open(config.logfile+".conv", std::ofstream::app);
-	
-	struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
-	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	// struct timeval time1, time2;
+	// gettimeofday(&time1, NULL);
+	// double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;
+	const double initialwtime = MPI_Wtime();
+	const double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
 	std::cout << " Constant CFL = " << config.cflinit << std::endl;
+
+	SteadyStepMonitor convstep;
+	if(mpirank == 0)
+		writeConvergenceHistoryHeader(std::cout);
+		
 
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
@@ -150,9 +163,11 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 		// update residual
-		space->assemble_residual(uvec, rvec, true, dtm);
+		ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		a_real errmass = 0;
+		const PetscScalar *dtm;
+		ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
 
 #pragma omp parallel default(shared)
 		{
@@ -172,34 +187,36 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		} // end parallel region
 
+		ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+
 		resi = sqrt(errmass);
 
 		if(step == 0)
 			initres = resi;
 
-		if(step % 50 == 0)
-			if(mpirank==0)
-				std::cout << "  SteadyForwardEulerSolver: solve(): Step " << step 
-					<< ", rel residual " << resi/initres << std::endl;
-
 		step++;
-		if(mpirank==0)
-			if(config.lognres)
-				convout << step << " " << std::setw(10) << resi/initres << '\n';
+
+		const double curtime = MPI_Wtime();
+		convstep = {step, (float)(resi/initres), (float)resi, (float)(curtime-initialwtime),
+		            0, 0, (float)config.cflinit};
+		if(config.lognres)
+			tdata.convhis.push_back(convstep);
+
+		if((step-1) % 50 == 0)
+			if(mpirank==0)
+				writeStepToConvergenceHistory(convstep, std::cout);
 
 		// test for nan
 		if(!std::isfinite(resi))
 			throw Numerical_error("Steady forward Euler diverged - residual is Nan or inf!");
 	}
+	
+	const double finalwtime = MPI_Wtime();
+	const double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
+	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
 
 	if(mpirank==0)
-		if(config.lognres)
-			convout.close();
-	
-	gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;
-	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
+		writeStepToConvergenceHistory(convstep, std::cout);
 
 	tdata.converged = true;
 	if(step == config.maxiter) {
@@ -208,10 +225,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
 	}
 	if(mpirank == 0) {
-		std::cout << " SteadyForwardEulerSolver: solve(): Done, steps = " << step << "\n\n";
-		std::cout << " SteadyForwardEulerSolver: solve(): Time taken by ODE solver:\n";
-		std::cout << "                                   Wall time = " << tdata.ode_walltime 
-			<< ", CPU time = " << tdata.ode_cputime << std::endl << std::endl;
+		std::cout << " SteadyForwardEulerSolver: solve(): Done. ";
+		std::cout << " CPU time = " << tdata.ode_cputime << std::endl;
 	}
 
 #ifdef _OPENMP
@@ -235,12 +250,14 @@ SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
 	: SteadySolver<nvars>(spatial, conf), solver{ksp}
 {
 	const UMesh2dh<a_real> *const m = space->mesh();
-	dtm.resize(m->gnelem(), 0);
-	Mat M; int ierr;
+	Mat M;
+	int ierr;
 	ierr = KSPGetOperators(solver, NULL, &M);
 	ierr = MatCreateVecs(M, &duvec, &rvec);
 	if(ierr)
 		throw "! SteadyBackwardEulerSolver: Could not create residual or update vector!";
+	ierr = createMeshBasedVector(m, &dtmvec);
+	petsc_throw(ierr, "Could not create mesh vector");
 }
 
 template <int nvars>
@@ -252,6 +269,9 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 	ierr = VecDestroy(&duvec);
 	if(ierr)
 		std::cout << "! SteadyBackwardEulerSolver: Could not destroy update vector!\n";
+	ierr = VecDestroy(&dtmvec);
+	if(ierr)
+		std::cout << "! SteadyBackwardEulerSolver: Could not destroy dt vector";
 }
 	
 template <int nvars>
@@ -306,12 +326,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	Mat M, A;
 	ierr = KSPGetOperators(solver, &A, &M); CHKERRQ(ierr);
 
-	bool ismatrixfree = isMatrixFree(A);
-	MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
+	const bool ismatrixfree = isMatrixFree(A);
 	if(ismatrixfree) {
+		MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
 		ierr = MatShellGetContext(A, (void**)&mfA); CHKERRQ(ierr);
 		// uvec, rvec and dtm keep getting updated, but pointers to them can be set just once
-		mfA->set_state(uvec,rvec,&dtm);
+		std::cout << " Setting matfree state" << std::endl;
+		mfA->set_state(uvec,rvec, dtmvec);
 	}
 
 	// get list of iterations at which to recompute AMG interpolation operators, if used
@@ -338,19 +359,20 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 	Eigen::Map<MVector<a_real>> u(uarr, m->gnelem(), nvars);
 
-	std::ofstream convout;
 	if(config.lognres)
-		if(mpirank == 0)
-			convout.open(config.logfile+".conv", std::ofstream::app);
+		tdata.convhis.reserve(100);
 	
 	/*struct timeval time1, time2;
 	gettimeofday(&time1, NULL);
-	double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;*/
+	const double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;*/
+	const double initialwtime = MPI_Wtime();
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
-	PetscLogDouble initialwtime;
-	PetscTime(&initialwtime);
 	
 	double linwtime = 0, linctime = 0;
+
+	SteadyStepMonitor convline;
+	if(mpirank == 0)
+		writeConvergenceHistoryHeader(std::cout);
 		
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
@@ -383,28 +405,30 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		
 		// update residual and local time steps
-		ierr = space->assemble_residual(uvec, rvec, true, dtm); CHKERRQ(ierr);
+		ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
-		ierr = space->compute_jacobian(uvec, M); CHKERRQ(ierr);
+		ierr = assemble_jacobian(space, uvec, M); CHKERRQ(ierr);
 		
-		//curCFL = linearRamp(config.cflinit, config.cflfin, config.rampstart, config.rampend, step);
-		//(void)resiold;
+		// curCFL = linearRamp(config.cflinit, config.cflfin,
+		//                     /*config.rampstart*/30, /*config.rampend*/100, step);
+		// (void)resiold;
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.3);
 
-		// add pseudo-time terms to diagonal blocks; also, after the following loop,
-		// dtm is the diagonal vector of the mass matrix but having only one entry for each cell.
+		PetscScalar *dtm;
+		ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+
+		// Add pseudo-time terms to diagonal blocks
+		// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
+		//   This is required in case of matrix-free solvers.
 
 #pragma omp parallel for default(shared)
 		for(a_int iel = 0; iel < m->gnelem(); iel++)
 		{
 			dtm[iel] = m->garea(iel) / (curCFL*dtm[iel]);
 
-			Matrix<a_real,nvars,nvars,RowMajor> db 
-				= Matrix<a_real,nvars,nvars,RowMajor>::Zero();
-
-			for(int i = 0; i < nvars; i++)
-				db(i,i) = dtm[iel];
+			const Matrix<a_real,nvars,nvars,RowMajor> db
+				= dtm[iel] * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
 	
 #pragma omp critical
 			{
@@ -412,7 +436,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		}
 
-		MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY);
+		ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
+
+		ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 		MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY);
 	
 		/// Freezes the non-zero structure for efficiency in subsequent time steps.
@@ -453,57 +479,52 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		resiold = resi;
 		resi = sqrt(resnorm2);
 
-		if(step == 0)
-			initres = resi;
-
-		if(step % 10 == 0) {
-			//const a_real updmag = du.norm();
-			if(mpirank == 0) {
-				std::cout << "  SteadyBackwardEulerSolver: solve(): Step " << step 
-					<< ", rel res " << resi/initres << ", abs res = " << resi << std::endl;
-				std::cout << "      CFL = " << curCFL 
-					<< ", iters used = " << linstepsneeded << std::endl;
-			}
-		}
-
-		step++;
-			
-		if(config.lognres)
-			if(mpirank == 0)
-				convout << step << " " << std::setw(10)  << resi/initres << '\n';
-
 		// test for nan
 		if(!std::isfinite(resi))
 			throw Numerical_error("Steady backward Euler diverged - residual is Nan or inf!");
+
+		if(step == 0)
+			initres = resi;
+
+		step++;
+
+		const double curtime = MPI_Wtime();
+		convline = { step, (float)(resi/initres), (float)resi,
+		             (float)(curtime-initialwtime), (float)linwtime, tdata.total_lin_iters,
+		             (float)curCFL };
+
+		if(config.lognres)
+		{
+			tdata.convhis.push_back(convline);
+		}
+
+		if((step-1) % 10 == 0)
+		{
+			if(mpirank == 0) {
+				writeStepToConvergenceHistory(convline, std::cout);
+			}
+		}
 	}
 
-	/*gettimeofday(&time2, NULL);
-	double finalwtime = (double)time2.tv_sec + (double)time2.tv_usec * 1.0e-6;*/
-	PetscLogDouble finalwtime;
-	PetscTime(&finalwtime);
+	const double finalwtime = MPI_Wtime();
 	double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); 
 	tdata.ode_cputime += (finalctime-initialctime);
 	tdata.avg_lin_iters = (int) (tdata.total_lin_iters / (double)step);
 	tdata.num_timesteps = step;
 
-	if(config.lognres)
-		if(mpirank == 0)
-			convout.close();
-
 	if(mpirank == 0) {
-		std::cout << " SteadyBackwardEulerSolver: solve(): Done, steps = " << step 
-			<< ", rel residual " << resi/initres << std::endl;
+		writeStepToConvergenceHistory(convline, std::cout);
 	}
 
 	// print timing data
 	if(mpirank == 0) {
-		std::cout << "\t\tAverage number of linear solver iterations = " << tdata.avg_lin_iters;
-		std::cout << "\n SteadyBackwardEulerSolver: solve(): Time taken by ODE solver:" << std::endl;
-		std::cout << " \t\tWall time = " << tdata.ode_walltime << ", CPU time = " 
-		          << tdata.ode_cputime << "\n";
-		std::cout << " SteadyBackwardEulerSolver: solve(): Time taken by linear solver:\n";
-		std::cout << " \t\tWall time = " << linwtime << ", CPU time = " << linctime << std::endl;
+		std::cout << "  SteadySolver: Average number of linear solver iterations = "
+		          << tdata.avg_lin_iters << '\n';
+		std::cout << "  SteadySolver: solve(): Total time taken: ";
+		std::cout << " CPU time = " << tdata.ode_cputime << "\n";
+		std::cout << "  SteadySolver: solve(): Time taken by linear solver:";
+		std::cout << " CPU time = " << linctime << std::endl;
 	}
 
 #ifdef _OPENMP
@@ -547,10 +568,10 @@ TVDRKSolver<nvars>::TVDRKSolver(const Spatial<a_real,nvars> *const spatial,
 	: UnsteadySolver<nvars>(spatial, soln, temporal_order, log_file), cfl{cfl_num},
 	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
 {
-	dtm.resize(space->mesh()->gnelem(), 0);
 	int ierr = VecDuplicate(uvec, &rvec);
-	if(ierr)
-		std::cout << "! TVDRKSolver: Could not create residual vector!\n";
+	petsc_throw(ierr, "! TVDRKSolver: Could not create residual vector!");
+	ierr = createMeshBasedVector(space->mesh(), &dtmvec);
+	petsc_throw(ierr, "Could not create dt vec");
 	std::cout << " TVDRKSolver: Initialized TVD RK solver of order " << order <<
 		", CFL = " << cfl << std::endl;
 }
@@ -560,6 +581,9 @@ TVDRKSolver<nvars>::~TVDRKSolver() {
 	int ierr = VecDestroy(&rvec);
 	if(ierr)
 		std::cout << "! TVDRKSolver: Could not destroy residual vector!\n";
+	ierr = VecDestroy(&dtmvec);
+	if(ierr)
+		std::cout << "! TVDRKSolver: Could not destroy time-step vector!\n";
 }
 
 template<int nvars>
@@ -584,7 +608,6 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 
 	int step = 0;
 	a_real time = 0;   //< Physical time elapsed
-	a_real dtmin=0;      //< Time step
 
 	// Stage solution vector
 	MVector<a_real> ustage(m->gnelem(),nvars);
@@ -600,6 +623,8 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 
 	while(time <= finaltime - A_SMALL_NUMBER)
 	{
+		a_real dtmin=0;      //< Time step
+
 		for(int istage = 0; istage < order; istage++)
 		{
 #pragma omp parallel for simd default(shared)
@@ -609,11 +634,16 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			}
 
 			// update residual
-			space->assemble_residual(uvec, rvec, true, dtm);
+			ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)
-				dtmin = *std::min_element(dtm.begin(),dtm.end());
+			{
+				const PetscScalar *dtm;
+				ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+				dtmin = *std::min_element(dtm, dtm+m->gnelem());
+				ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+			}
 
 			if(!std::isfinite(dtmin))
 				throw Numerical_error("TVDRK solver diverged - dtmin is Nan or inf!");

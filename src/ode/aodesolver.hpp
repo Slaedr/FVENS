@@ -27,8 +27,22 @@ struct SteadySolverConfig {
 	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
 };
 
+/// Data written out to file for each pseudo-time step, if requested
+/** All quantities except the RMS residual are cumulative over the entire solve.
+ */
+struct SteadyStepMonitor {
+	int step;                     ///< Number of pseudo-time steps
+	float rmsres;                 ///< relative l2 norm of energy residual
+	float absrmsres;              ///< absolute l2 norm of energy residual
+	float odewalltime;            ///< Total wall time
+	float linwalltime;            ///< Cumulative wall time taken by linear solver
+	int linits;                   ///< Cumulative number of linear iterations
+	float cfl;                    ///< CFL number used for the step
+};
+
 /// A collection of variables used for benchmarking purposes
-struct TimingData {
+struct TimingData
+{
 	a_int nelem;                 ///< Size of the problem - the number of cells
 	int num_threads;             ///< Number of threads used to solve the problem
 	double lin_walltime;         ///< Wall-clock time taken by all the linear solves
@@ -39,6 +53,15 @@ struct TimingData {
 	int avg_lin_iters;           ///< Average number of linear iters needed per time step
 	int num_timesteps;           ///< Number of time steps needed for the ODE solve
 	bool converged;              ///< Did the nonlinear solver converge?
+	double precsetup_walltime;   ///< Custom preconditioner setup wall time
+	double precapply_walltime;   ///< Custom preconditioner apply wall time
+	double prec_cputime;         ///< Total CPU time taken by custom preconditioner
+
+	/// Convergence history
+	std::vector<SteadyStepMonitor> convhis;
+
+	/// Constructor
+	TimingData();
 };
 
 /// Base class for steady-state simulations in pseudo-time
@@ -104,7 +127,8 @@ private:
 	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::tdata;
 
-	std::vector<a_real> dtm;				///< Stores allowable local time step for each cell
+	/// Characteristic local time step for each cell
+	Vec dtmvec;				
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -139,7 +163,9 @@ protected:
 	using SteadySolver<nvars>::rvec;       ///< Residual vector
 
 	Vec duvec;                             ///< Nonlinear update vector
-	std::vector<a_real> dtm;               ///< Stores allowable local time step for each cell
+
+	/// Characteristic local time step for each cell
+	Vec dtmvec;				
 
 	KSP solver;                            ///< The solver context
 
@@ -216,7 +242,9 @@ protected:
 	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
 
 private:
-	std::vector<a_real> dtm;
+	/// Characteristic local time step for each cell
+	Vec dtmvec;				
+
 };
 	
 

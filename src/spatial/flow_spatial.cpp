@@ -24,20 +24,22 @@
 #include "abctypemap.hpp"
 #include "flow_spatial.hpp"
 
+#include "utilities/adolcutils.hpp"
+
 namespace fvens {
 
 template <typename scalar>
 FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
-                                 const FlowPhysicsConfig& pconf, 
+                                 const FlowPhysicsConfig& pconf,
                                  const FlowNumericsConfig& nconf)
-	: 
-	Spatial<scalar,NVARS>(mesh), 
+	:
+	Spatial<scalar,NVARS>(mesh),
 	pconfig{pconf},
 	nconfig{nconf},
-	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr), 
+	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
 	uinf(physics.compute_freestream_state(pconfig.aoa)),
 
-	inviflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux, &physics)}, 
+	inviflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux, &physics)},
 
 	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, rc)},
 	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, rc, gr,
@@ -50,6 +52,13 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	for(auto it = pconfig.bcconf.begin(); it != pconfig.bcconf.end(); it++) {
 		std::cout << "  " << bcTypeMap.left.find(it->bc_type)->second << '\n';
 	}
+
+	// To get rid of unused function warning for ADOL-C include
+	//  Should be removed once ADOL-C instantiations are compiled and working
+#ifdef USE_ADOLC
+	adouble x = 3.0;
+	(void)getvalue<adouble>(x);
+#endif
 }
 
 template <typename scalar>
@@ -65,49 +74,19 @@ FlowFV_base<scalar>::~FlowFV_base()
 }
 
 template <typename scalar>
-StatusCode FlowFV_base<scalar>::initializeUnknowns(Vec u) const
-{
-	StatusCode ierr = 0;
-	PetscScalar * uloc;
-	VecGetArray(u, &uloc);
-	PetscInt locsize;
-	VecGetLocalSize(u, &locsize);
-	assert(locsize % NVARS == 0);
-	locsize /= NVARS;
-	
-	//initial values are equal to boundary values
-	for(a_int i = 0; i < locsize; i++)
-		for(int j = 0; j < NVARS; j++)
-			uloc[i*NVARS+j] = uinf[j];
-
-	VecRestoreArray(u, &uloc);
-
-#ifdef DEBUG
-	std::cout << "FlowFV: loaddata(): Initial data calculated.\n";
-#endif
-	return ierr;
-}
-
-template <typename scalar>
-void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& ins, 
+void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& ins,
                                                   amat::Array2d<scalar>& bs ) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
-	
-		// if(m->gintfacbtags(ied,0) == pconfig.bcconf.periodic_id)
-		// {
-		// 	for(int i = 0; i < NVARS; i++)
-		// 		bs(ied,i) = ins(m->gperiodicmap(ied), i);
-		// }
 	}
 }
 
 template <typename scalar>
-void FlowFV_base<scalar>::compute_boundary_state(const int ied, 
-                                         const scalar *const ins, 
+void FlowFV_base<scalar>::compute_boundary_state(const int ied,
+                                         const scalar *const ins,
                                          scalar *const gs        ) const
 {
 	const std::array<scalar,NDIM> n = m->gnormal(ied);
@@ -129,39 +108,6 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 }
 
 template <typename scalar>
-StatusCode FlowFV_base<scalar>::assemble_residual(const Vec uvec, 
-                                                  Vec __restrict rvec, 
-                                                  const bool gettimesteps,
-                                                  std::vector<a_real>& dtm) const
-{
-	StatusCode ierr = 0;
-	amat::Array2d<a_real> integ, ug, uleft, uright;	
-	integ.resize(m->gnelem(), 1);
-	ug.resize(m->gnbface(),NVARS);
-	uleft.resize(m->gnaface(), NVARS);
-	uright.resize(m->gnaface(), NVARS);
-	GradArray<a_real,NVARS> grads;
-
-	PetscInt locnelem; const PetscScalar *uarr; PetscScalar *rarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % NVARS == 0);
-	locnelem /= NVARS;
-	assert(locnelem == m->gnelem());
-	//ierr = VecGetLocalSize(dtmvec, &dtsz); CHKERRQ(ierr);
-	//assert(locnelem == dtsz);
-
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-
-	compute_residual(uarr, rarr, gettimesteps, dtm);
-	
-	VecRestoreArrayRead(uvec, &uarr);
-	VecRestoreArray(rvec, &rarr);
-	//VecRestoreArray(dtmvec, &dtm);
-	return ierr;
-}
-
-template <typename scalar>
 static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa) {
 	std::array<scalar,NDIM> dir;
 	for(int i = 0; i < NDIM; i++) dir[i] = 0;
@@ -180,12 +126,12 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
                                          MVector<scalar>& output) const
 {
 	// unit vector in the direction of flow
-	const std::array<scalar,NDIM> av = flowDirectionVector(pconfig.aoa); 
+	const std::array<scalar,NDIM> av = flowDirectionVector(pconfig.aoa);
 
 	a_int facecoun = 0;			// face iteration counter for this boundary marker
 	scalar totallen = 0;		// total area of the surface with this boundary marker
 	scalar Cdf=0, Cdp=0, Cl=0;
-	
+
 	const scalar pinf = physics.getFreestreamPressure();
 
 	// unit vector normal to the free-stream flow direction
@@ -209,17 +155,17 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 			ijp[0] = m->gintfac(iface,2);
 			ijp[1] = m->gintfac(iface,3);
 			scalar coord[NDIM];
-			for(int j = 0; j < NDIM; j++) 
+			for(int j = 0; j < NDIM; j++)
 			{
 				coord[j] = 0;
 				for(int inofa = 0; inofa < m->gnnofa(); inofa++)
 					coord[j] += m->gcoords(ijp[inofa],j);
 				coord[j] /= m->gnnofa();
-				
+
 				output(facecoun,j) = coord[j];
 			}
 
-			/** Pressure coefficient: 
+			/** Pressure coefficient:
 			 * \f$ C_p = (p-p_\infty)/(\frac12 rho_\infty * v_\infty^2) \f$
 			 * = 2(p* - p_inf*) where *'s indicate non-dimensional values.
 			 * We note that p_inf* = 1/(gamma Minf^2) in our non-dimensionalization.
@@ -227,13 +173,13 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 			output(facecoun, NDIM) = (physics.getPressureFromConserved(&u(lelem,0)) - pinf)*2.0;
 
 			/** Skin friction coefficient \f% C_f = \tau_w / (\frac12 \rho v_\infty^2) \f$.
-			 * 
+			 *
 			 * We can define \f$ \tau_w \f$, the wall shear stress, as
 			 * \f$ \tau_w = (\mathbf{T} \hat{\mathbf{n}}).\hat{\mathbf{t}} \f$
-			 * where \f$ \mathbf{\Tau} \f$ is the viscous stress tensor, 
-			 * \f$ \hat{\mathbf{n}} \f$ is the unit normal to the face and 
+			 * where \f$ \mathbf{\Tau} \f$ is the viscous stress tensor,
+			 * \f$ \hat{\mathbf{n}} \f$ is the unit normal to the face and
 			 * \f$ \hat{\mathbf{t}} \f$ is a consistent unit tangent to the face.
-			 * 
+			 *
 			 * Note that because of our non-dimensionalization,
 			 * \f$ C_f = 2 \tau_w \f$.
 			 *
@@ -257,15 +203,15 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 							/ (u(lelem,0)*u(lelem,0));
 			gradu[1][1] = (grad[lelem](1,2)*u(lelem,0)-u(lelem,2)*grad[lelem](1,0))
 							/ (u(lelem,0)*u(lelem,0));
-			
-			const scalar tauw = 
+
+			const scalar tauw =
 				muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
 				+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 
 			output(facecoun, NDIM+1) = 2.0*tauw;
 
 			// add contributions to Cdp, Cdf and Cl
-			
+
 			// face normal dot free-stream direction
 			const scalar ndotf = n[0]*av[0]+n[1]*av[1];
 			// face normal dot "up" direction perpendicular to free stream
@@ -289,13 +235,10 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *const mesh,
-                                                      const FlowPhysicsConfig& pconf, 
+                                                      const FlowPhysicsConfig& pconf,
                                                       const FlowNumericsConfig& nconf)
 	: FlowFV_base<scalar>(mesh, pconf, nconf),
-	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
-	juinf(jphy.compute_freestream_state(pconfig.aoa)),
-	jflux {create_const_inviscidflux<a_real>(nconfig.conv_numflux_jac, &jphy)},
-		   jbcs {create_const_flowBCs<a_real>(pconf.bcconf, jphy, juinf)}
+	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
 {
 	if(secondOrderRequested)
 		std::cout << "FlowFV: Second order solution requested.\n";
@@ -306,11 +249,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 {
-	delete jflux;
-	// delete BCs
-	for(auto it = jbcs.begin(); it != jbcs.end(); it++) {
-		delete it->second;
-	}
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
@@ -333,7 +271,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 
 	const scalar *in_ucr = nullptr;
 	//const scalar *in_gradl = nullptr, *in_gradr = nullptr;
-	
+
 	if(iface < m->gnbface())
 	{
 		// boundary face
@@ -407,7 +345,7 @@ void FlowFV<scalar,secondOrder,constVisc>
 
 	a_real dupr[NVARS*NVARS], dupl[NVARS*NVARS];
 	for(int k = 0; k < NVARS*NVARS; k++) {
-		dupr[k] = 0; 
+		dupr[k] = 0;
 		dupl[k] = 0;
 	}
 
@@ -416,16 +354,16 @@ void FlowFV<scalar,secondOrder,constVisc>
 
 	jphy.getJacobianPrimitive2WrtConserved(ul, dupl);
 	jphy.getJacobianPrimitive2WrtConserved(ur, dupr);
-	
+
 	// gradient, in each direction, of each variable
 	a_real grad[NDIM][NVARS];
 
-	/* Jacobian of the gradient in each direction of each variable at the face w.r.t. 
+	/* Jacobian of the gradient in each direction of each variable at the face w.r.t.
 	 * every variable of the left state
 	 */
 	a_real dgradl[NDIM][NVARS][NVARS];
 
-	/* Jacobian of the gradient in each direction of each variable at the face w.r.t. 
+	/* Jacobian of the gradient in each direction of each variable at the face w.r.t.
 	 * every variable of the right state
 	 */
 	a_real dgradr[NDIM][NVARS][NVARS];
@@ -445,12 +383,12 @@ void FlowFV<scalar,secondOrder,constVisc>
                                             a_real *const __restrict dvfj) const
 {
 	// compute non-dimensional viscosity and thermal conductivity
-	const a_real muRe = constVisc ? 
-			jphy.getConstantViscosityCoeff() 
+	const a_real muRe = constVisc ?
+			jphy.getConstantViscosityCoeff()
 		:
 			0.5*( jphy.getViscosityCoeffFromConserved(ul)
 			+ jphy.getViscosityCoeffFromConserved(ur) );
-	
+
 	const a_real rho = 0.5*(ul[0]+ur[0]);
 
 	// the vector from the left cell-centre to the right, and its magnitude
@@ -462,12 +400,12 @@ void FlowFV<scalar,secondOrder,constVisc>
 		dr[i] = rc(relem,i)-rc(lelem,i);
 		dist += dr[i]*dr[i];
 	}
-	
+
 	dist = sqrt(dist);
 	for(int i = 0; i < NDIM; i++) {
 		dr[i] /= dist;
 	}
-	
+
 	for(int i = 0; i < NVARS; i++)
 	{
 		dvfi[i*NVARS+i] -= muRe/(rho*dist);
@@ -476,12 +414,14 @@ void FlowFV<scalar,secondOrder,constVisc>
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
-StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *const uarr, 
-		scalar *const __restrict rarr, 
-		const bool gettimesteps, std::vector<a_real>& dtm) const
+StatusCode
+FlowFV<scalar,secondOrderRequested,constVisc> ::compute_residual(const scalar *const uarr,
+                                                                 scalar *const __restrict rarr,
+                                                                 const bool gettimesteps,
+                                                                 a_real *const __restrict dtm) const
 {
 	StatusCode ierr = 0;
-	amat::Array2d<scalar> integ, ug, uleft, uright;	
+	amat::Array2d<scalar> integ, ug, uleft, uright;
 	integ.resize(m->gnelem(), 1);
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
@@ -547,7 +487,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 				physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
 			}
 #pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++) 
+			for(a_int iface = 0; iface < m->gnbface(); iface++)
 			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
 				physics.getConservedFromPrimitive(&ug(iface,0), &ug(iface,0));
@@ -557,7 +497,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 	else
 	{
 		// if order is 1, set the face data same as cell-centred data for all faces
-		
+
 		// set both left and right states for all interior faces
 #pragma omp parallel for default(shared)
 		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
@@ -607,12 +547,12 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 			for(int ivar = 0; ivar < NVARS; ivar++)
 					fluxes[ivar] *= len;
 
-			if(pconfig.viscous_sim) 
+			if(pconfig.viscous_sim)
 			{
 				// get viscous fluxes
 				scalar vflux[NVARS];
 				const scalar *const urt = (ied < m->gnbface()) ? nullptr : &uarr[relem*NVARS];
-				compute_viscous_flux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright, 
+				compute_viscous_flux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright,
 				                     vflux);
 
 				for(int ivar = 0; ivar < NVARS; ivar++)
@@ -630,9 +570,9 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 					residual(relem,ivar) += fluxes[ivar];
 				}
 			}
-			
+
 			// compute max allowable time steps
-			if(gettimesteps) 
+			if(gettimesteps)
 			{
 				//calculate speeds of sound
 				const scalar ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
@@ -644,7 +584,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 				scalar specradi = (fabs(vni)+ci)*len;
 				scalar specradj = (fabs(vnj)+cj)*len;
 
-				if(pconfig.viscous_sim) 
+				if(pconfig.viscous_sim)
 				{
 					scalar mui, muj;
 					if(constVisc) {
@@ -657,7 +597,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 					}
 					const scalar coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
 					const scalar coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
-					
+
 					specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
 					if(relem < m->gnelem())
 						specradj += coj*muj/physics.Pr * len*len/m->garea(relem);
@@ -665,7 +605,7 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 
 #pragma omp atomic
 				integ(lelem) += specradi;
-				
+
 				if(relem < m->gnelem()) {
 #pragma omp atomic
 					integ(relem) += specradj;
@@ -676,115 +616,78 @@ StatusCode FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const
 #pragma omp barrier
 
 		if(gettimesteps)
+#ifdef USE_ADOLC
+#pragma omp for
+#else
 #pragma omp for simd
+#endif
 			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				dtm[iel] = m->garea(iel)/integ(iel);
+				dtm[iel] = getvalue<scalar>(m->garea(iel)/integ(iel));
 			}
 	} // end parallel region
-	
+
 	return ierr;
 }
 
 template<typename scalar, bool order2, bool constVisc>
-StatusCode FlowFV<scalar,order2,constVisc>::compute_jacobian(const Vec uvec, Mat A) const
+void FlowFV<scalar,order2,constVisc>
+::compute_local_jacobian_interior(const a_int iface,
+                                  const a_real *const ul, const a_real *const ur,
+                                  Matrix<a_real,NVARS,NVARS,RowMajor>& L,
+                                  Matrix<a_real,NVARS,NVARS,RowMajor>& U) const
 {
-	StatusCode ierr = 0;
+	assert(iface >= m->gnbface());
 
-	PetscInt locnelem; const PetscScalar *uarr;
-	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
-	assert(locnelem % NVARS == 0);
-	locnelem /= NVARS;
-	assert(locnelem == m->gnelem());
+	a_real n[NDIM];
+	n[0] = m->gfacemetric(iface,0);
+	n[1] = m->gfacemetric(iface,1);
+	const a_real len = m->gfacemetric(iface,2);
 
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	// NOTE: the values of L and U get REPLACED here, not added to
+	inviflux->get_jacobian(ul, ur, n, &L(0,0), &U(0,0));
 
-#pragma omp parallel for default(shared)
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
-	{
-		const a_int lelem = m->gintfac(iface,0);
-		const std::array<a_real,NDIM> n = m->gnormal(iface);
-		const a_real len = m->gfacemetric(iface,2);
-		
-		a_real uface[NVARS];
-		Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
-		Matrix<a_real,NVARS,NVARS,RowMajor> left;
-		Matrix<a_real,NVARS,NVARS,RowMajor> right;
-		
-		bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(&uarr[lelem*NVARS], &n[0],
-		                                                               uface, &drdl(0,0));
-		
-		jflux->get_jacobian(&uarr[lelem*NVARS], uface, &n[0], &left(0,0), &right(0,0));
-
-		if(pconfig.viscous_sim) {
-			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface, 
-			//		&left(0,0), &right(0,0));
-			compute_viscous_flux_jacobian(iface,&uarr[lelem*NVARS],uface, &left(0,0), &right(0,0));
-		}
-		
-		/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
-		 * We actually need to subtract dF/dr from dF/dl because the inviscid numerical flux
-		 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
-		 * get correct signs for lower and upper off-diagonal blocks.
-		 *
-		 * Integrate the results over the face and negate, as -ve of L is added to D
-		 */
-		left = -len*(left - right*drdl);
-
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
-		}
+	if(pconfig.viscous_sim) {
+		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
+		//		&L(0,0), &U(0,0));
+		compute_viscous_flux_jacobian(iface, ul, ur, &L(0,0), &U(0,0));
 	}
 
-#pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
-	{
-		//const a_int intface = iface-m->gnbface();
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
-		a_real n[NDIM];
-		n[0] = m->gfacemetric(iface,0);
-		n[1] = m->gfacemetric(iface,1);
-		const a_real len = m->gfacemetric(iface,2);
-		Matrix<a_real,NVARS,NVARS,RowMajor> L;
-		Matrix<a_real,NVARS,NVARS,RowMajor> U;
-	
-		// NOTE: the values of L and U get REPLACED here, not added to
-		jflux->get_jacobian(&uarr[lelem*NVARS], &uarr[relem*NVARS], n, &L(0,0), &U(0,0));
+	L *= len; U *= len;
+}
 
-		if(pconfig.viscous_sim) {
-			//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
-			//		&L(0,0), &U(0,0));
-			compute_viscous_flux_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS], 
-			                              &L(0,0), &U(0,0));
-		}
+template<typename scalar, bool order2, bool constVisc>
+void FlowFV<scalar,order2,constVisc>
+::compute_local_jacobian_boundary(const a_int iface,
+                                  const a_real *const ul,
+                                  Matrix<a_real,NVARS,NVARS,RowMajor>& left) const
+{
+	const std::array<a_real,NDIM> n = m->gnormal(iface);
+	const a_real len = m->gfacemetric(iface,2);
 
-		L *= len; U *= len;
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
-		}
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
-		}
+	a_real uface[NVARS];
+	Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
+	Matrix<a_real,NVARS,NVARS,RowMajor> right;
 
-		// negative L and U contribute to diagonal blocks
-		L *= -1.0; U *= -1.0;
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
-		}
-#pragma omp critical
-		{
-			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
-		}
+	bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0],
+	                                                               uface, &drdl(0,0));
+
+	inviflux->get_jacobian(ul, uface, &n[0], &left(0,0), &right(0,0));
+
+	if(pconfig.viscous_sim) {
+		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface,
+		//		&left(0,0), &right(0,0));
+		compute_viscous_flux_jacobian(iface, ul, uface, &left(0,0), &right(0,0));
 	}
 
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	
-	return ierr;
+	/* The actual derivative is  dF/dl  +  dF/dr * dr/dl.
+	 * We actually need to subtract dF/dr from dF/dl because the inviscid numerical flux
+	 * computation returns the negative of dF/dl but positive dF/dr. The latter was done to
+	 * get correct signs for lower and upper off-diagonal blocks.
+	 *
+	 * Integrate the results over the face --- NO -> and negate, as -ve of L is added to D
+	 */
+	left = len*(left - right*drdl);
 }
 
 template class FlowFV_base<a_real>;
@@ -793,6 +696,15 @@ template class FlowFV<a_real,true,true>;
 template class FlowFV<a_real,false,true>;
 template class FlowFV<a_real,true,false>;
 template class FlowFV<a_real,false,false>;
+
+#ifdef USE_ADOLC
+//template class FlowFV_base<adouble>;
+
+//template class FlowFV<adouble,true,true>;
+//template class FlowFV<adouble,false,true>;
+//template class FlowFV<adouble,true,false>;
+//template class FlowFV<adouble,false,false>;
+#endif
 
 }
 

@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstring>
 #include <limits>
+#include "petsc_assembly.hpp"
 
 namespace fvens {
 
@@ -72,38 +73,23 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh<a_real> *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *const A);
 
+StatusCode createMeshBasedVector(const UMesh2dh<a_real> *const m, Vec *const v)
+{
+	StatusCode ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem(), v); CHKERRQ(ierr);
+	return ierr;
+}
+
 template<int nvars>
-MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian()
-	: eps{1e-7}
+MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const s)
+	: spatial{s}, eps{1e-7}
 {
 	PetscBool set = PETSC_FALSE;
 	PetscOptionsGetReal(NULL, NULL, "-matrix_free_difference_step", &eps, &set);
 }
 
 template<int nvars>
-void MatrixFreeSpatialJacobian<nvars>::set_spatial(const Spatial<a_real,nvars> *const space) {
-	spatial = space;
-}
-
-template<int nvars>
-StatusCode MatrixFreeSpatialJacobian<nvars>::setup_work_storage(const Mat system_matrix)
-{
-	StatusCode ierr = MatCreateVecs(system_matrix, NULL, &aux); CHKERRQ(ierr);
-	ierr = VecSet(aux,0.0); CHKERRQ(ierr);
-	std::cout << " MatrixFreeSpatialJacobian: Using finite difference step " << eps << '\n';
-	return ierr;
-}
-
-template<int nvars>
-StatusCode MatrixFreeSpatialJacobian<nvars>::destroy_work_storage()
-{
-	StatusCode ierr = VecDestroy(&aux); CHKERRQ(ierr);
-	return ierr;
-}
-
-template<int nvars>
 void MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state,
-		const std::vector<a_real> *const dtms) 
+		const Vec dtms) 
 {
 	u = u_state;
 	res = r_state;
@@ -114,46 +100,75 @@ template<int nvars>
 StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 {
 	StatusCode ierr = 0;
-	std::vector<a_real> dummy;
-	const UMesh2dh<a_real> *const m = spatial->mesh();
-	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
+	Vec dummy = NULL;
 
-	const a_real *xr;
-	a_real *yr;
+	if(!spatial)
+		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_POINTER,
+		        "Spatial context not set!");
+
+	const UMesh2dh<a_real> *const m = spatial->mesh();
+	//ierr = VecSet(y, 0.0); CHKERRQ(ierr);
+
+	Vec aux;
+	ierr = VecDuplicate(x, &aux); CHKERRQ(ierr);
+
+	const a_real *xr, *dtmr, *ur, *resr;
+	a_real *yr, *auxr;
+	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);
 	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
 	ierr = VecGetArrayRead(x, &xr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(u, &ur); CHKERRQ(ierr);
 
 	PetscScalar xnorm = 0;
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
+
 #ifdef DEBUG
 	if(xnorm < 10.0*std::numeric_limits<a_real>::epsilon())
 		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP,
 				"Norm of offset is too small for finite difference Jacobian!");
 #endif
-	xnorm = eps/xnorm;
+	const a_real pertmag = eps/xnorm;
 
-	// aux <- eps/xnorm * x
-	ierr = VecAXPBY(aux, xnorm, 0.0, x); CHKERRQ(ierr);
-	// aux <- u + eps/xnorm * x
-	ierr = VecAXPY(aux, 1.0, u); CHKERRQ(ierr);
+	// aux <- u + eps/xnorm * x ;    y <- 0
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		yr[i] = 0;
+		auxr[i] = ur[i] + pertmag * xr[i];
+	}
+
+	ierr = VecRestoreArray(aux, &auxr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
+
 	// y <- -r(u + eps/xnorm * x)
-	ierr = spatial->assemble_residual(aux, y, false, dummy); CHKERRQ(ierr);
-	// y <- -(-r(u + eps/xnorm * x)) + (-r(u)) = r(u + eps/xnorm * x) - r(u)
-	ierr = VecAXPBY(y, 1.0, -1.0, res); CHKERRQ(ierr);
-	
-	/* divide by the normalized step length */
-	ierr = VecScale(y, 1.0/xnorm); CHKERRQ(ierr);
+	ierr = assemble_residual(spatial, aux, y, false, dummy); CHKERRQ(ierr);
 
-	// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
+	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
+	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(res, &resr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(mdt, &dtmr); CHKERRQ(ierr);
+
+	// y <- vol/dt x + (-(-r(u + eps/xnorm * x)) + (-r(u))) / eps |x|
+	//    = vol/dt x + (r(u + eps/xnorm * x) - r(u)) / eps |x|
+	/* We need to divide the difference by the step length scaled by the norm of x.
+	 * We do NOT divide by epsilon, because we want the product of the Jacobian and x, which is
+	 * the directional derivative (in the direction of x) multiplied by the norm of x.
+	 */
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		for(int i = 0; i < nvars; i++)
-			yr[iel*nvars+i] += (*mdt)[iel] * xr[iel*nvars+i];
+		for(int i = 0; i < nvars; i++) {
+			// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
+			yr[iel*nvars+i] = dtmr[iel]*xr[iel*nvars+i] + (-yr[iel*nvars+i] + resr[iel*nvars+i])/pertmag;
+		}
 	}
 	
 	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(aux, &auxr); CHKERRQ(ierr);
 	ierr = VecRestoreArrayRead(x, &xr); CHKERRQ(ierr);
+	ierr = VecRestoreArrayRead(mdt, &dtmr); CHKERRQ(ierr);
+	ierr = VecRestoreArrayRead(u, &ur); CHKERRQ(ierr);
+	ierr = VecRestoreArrayRead(res, &resr); CHKERRQ(ierr);
+	ierr = VecDestroy(&aux); CHKERRQ(ierr);
 	return ierr;
 }
 
@@ -171,43 +186,43 @@ StatusCode matrixfree_apply(Mat A, Vec x, Vec y)
 	return ierr;
 }
 
+/// Function called by PETSc to cleanup the matrix-free mat
 template <int nvars>
 StatusCode matrixfree_destroy(Mat A)
 {
 	StatusCode ierr = 0;
 	MatrixFreeSpatialJacobian<nvars> *mfmat;
 	ierr = MatShellGetContext(A, (void*)&mfmat); CHKERRQ(ierr);
-	ierr = mfmat->destroy_work_storage(); CHKERRQ(ierr);
+	delete mfmat;
 	return ierr;
 }
 
 template <int nvars>
-StatusCode setup_matrixfree_jacobian(const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<nvars> *const mfj, Mat *const A)
+StatusCode create_matrixfree_jacobian(const Spatial<a_real,nvars> *const s, Mat *const A)
 {
 	StatusCode ierr = 0;
+
+	const UMesh2dh<a_real> *const m = s->mesh();
+	MatrixFreeSpatialJacobian<nvars> *const mfj = new MatrixFreeSpatialJacobian<nvars>(s);
 	
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
 	ierr = setJacobianSizes<nvars>(m, *A); CHKERRQ(ierr);
 	ierr = MatSetType(*A, MATSHELL); CHKERRQ(ierr);
 
-	ierr = mfj->setup_work_storage(*A); CHKERRQ(ierr);
 	ierr = MatShellSetContext(*A, (void*)mfj); CHKERRQ(ierr);
 	ierr = MatShellSetOperation(*A, MATOP_MULT, (void(*)(void))&matrixfree_apply<nvars>); 
 	CHKERRQ(ierr);
-	ierr = MatShellSetOperation(*A, MATOP_DESTROY, (void(*)(void))&matrixfree_destroy<nvars>);
+	ierr = MatShellSetOperation(*A, MATOP_DESTROY, (void(*)(void))&matrixfree_destroy<nvars>); 
 	CHKERRQ(ierr);
 
 	ierr = MatSetUp(*A); CHKERRQ(ierr);
 	return ierr;
 }
 
-template StatusCode setup_matrixfree_jacobian<NVARS>( const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<NVARS> *const mfj,
-		Mat *const A);
-template StatusCode setup_matrixfree_jacobian<1>( const UMesh2dh<a_real> *const m,
-		MatrixFreeSpatialJacobian<1> *const mfj,
-		Mat *const A);
+template
+StatusCode create_matrixfree_jacobian<NVARS>(const Spatial<a_real,NVARS> *const s, Mat *const A);
+template
+StatusCode create_matrixfree_jacobian<1>(const Spatial<a_real,1> *const s, Mat *const A);
 
 bool isMatrixFree(Mat M) 
 {
@@ -293,7 +308,7 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const star
 	ierr = KSPGetOperators(ksp, &A, &M); CHKERRQ(ierr);
 
 	// first assemble the matrix once because PETSc requires it
-	ierr = startprob->compute_jacobian(u, M); CHKERRQ(ierr);
+	ierr = assemble_jacobian(startprob, u, M); CHKERRQ(ierr);
 	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 

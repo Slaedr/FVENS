@@ -1,0 +1,35 @@
+#-ksp_converged_reason
+#-log_view
+-options_left
+
+-fvens_log_file_prefix 2dcyl
+
+-perftest_output_file 2dcyl.perf
+-perftest_type speedup_sweeps
+
+-perftest_base_repeat 2
+-perftest_base_threads 2
+-async_base_build_sweeps 1
+-async_base_apply_sweeps 1
+
+-perftest_num_repeat 2
+-perftest_threads_sequence 2,4
+
+-async_build_sweep_sequence 1,2
+-async_apply_sweep_sequence 1,3
+
+-mesh_reorder rcm
+
+-mat_type baij
+
+-ksp_type fgmres
+-ksp_rtol 1e-1
+-ksp_max_it 10
+-pc_type bjacobi
+-sub_pc_type shell
+
+-blasted_pc_type ilu0
+
+-blasted_async_fact_init_type init_sgs
+-blasted_async_apply_init_type init_zero
+-blasted_thread_chunk_size 128

@@ -25,6 +25,9 @@ boost::program_options::variables_map
 parse_cmd_options(const int argc, const char *const argv[],
                   boost::program_options::options_description& desc);
 
+/// Checks whether a command line option has been passed irrespective of any argument values
+bool parsePetscCmd_isDefined(const std::string optionname);
+
 /// Extracts an integer corresponding to the argument from the default PETSc options database 
 /** Throws an exception if the option was not set or if it could not be extracted.
  * \param optionname The name of the option to get the value of; needs to include the preceding '-'

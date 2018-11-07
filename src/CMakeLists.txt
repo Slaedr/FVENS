@@ -19,13 +19,13 @@ add_library(ens_gasdynamics spatial/anumericalflux.cpp spatial/abc.cpp
 set_property(TARGET ens_gasdynamics PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
-  ode/aodesolver.cpp linalg/alinalg.cpp 
+  ode/aodesolver.cpp linalg/alinalg.cpp linalg/petsc_assembly.cpp
   spatial/flow_spatial.cpp spatial/aspatial.cpp spatial/agradientschemes.cpp
   spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
   spatial/aoutput.cpp spatial/diffusion.cpp
   mesh/ameshutils.cpp mesh/amesh2dh.cpp utilities/aarray2d.cpp
   )
-target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB})
+target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB} ${ADOLC_LIB})
 if(WITH_BLASTED)
   target_link_libraries(fvens_base ${BLASTED_LIB})
 endif()

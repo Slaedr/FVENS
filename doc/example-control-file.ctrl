@@ -121,6 +121,6 @@ pseudotime
 ;; Inviscid flux function to use for computing the Jacobian for implicit solvers
  ; Apart from all the fluxes available, 'consistent' can be specified.
  ; This will cause FVENS to use the same flux as specified above for
- ; the spatial discretization (usually a good choice).
+ ; the spatial discretization (usually a good choice, if available).
 Jacobian_inviscid_flux         consistent
 

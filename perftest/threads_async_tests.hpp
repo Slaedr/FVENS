@@ -15,9 +15,21 @@
 #include "linalg/alinalg.hpp"
 #include "ode/aodesolver.hpp"
 
-namespace benchmark {
+namespace perftest {
 
 using namespace fvens;
+
+/// Parameters defining the test
+/** There is one run for each pair of corresponding entries in the build and apply sweep arrays.
+ */
+struct SpeedupSweepsConfig {
+	std::vector<int> threadSeq;      ///< Sequence of threads to run (apart from base case)
+	std::vector<int> buildSwpSeq;    ///< Sequence of build sweeps to run
+	std::vector<int> applySwpSeq;    ///< Sequence of apply sweeps to run corresponding to build sweeps
+	int basethreads;                 ///< Number of threads to use for base case
+	int basebuildsweeps;             ///< No. of build sweeps to use for base case
+	int baseapplysweeps;             ///< No. of apply sweeps to use for base case
+};
 
 /// Find the dependence of the speed-up from a certain thread-count on the number of async sweeps
 /** Only for implicit solves.
@@ -29,16 +41,15 @@ using namespace fvens;
  * to the output file, and it moves on to the next requested number of sweeps.
  *
  * \param opts Numerics and physics options for the test-case
- * \param numrepeat The number of times to repeat the benchmark and average the results
- * \param numthreads_seq The sequence of number of threads to run the case with
- * \param b_swp_seq The set of async build sweeps to run the case with
- * \param a_swp_seq The set of async apply sweeps to run in tandem with the build sweep array
- *   There is one run for each pair of corresponding entries in the build and apply arrays.
+ * \param flowcase The case solver that decides what case will be solved for the perf-test
+ * \param numrepeat The number of times to repeat the run for each setting and average the results
+ * \param baserepeats The number of times to repeat the base case of the strong-scaling test
+ * \param config Test configuration
  * \param outfile Opened stream context to write the averaged results to
  */
-StatusCode test_speedup_sweeps(const FlowParserOptions& opts,
-                               const int numrepeat, const std::vector<int>& numthreads_seq,
-                               const std::vector<int>& b_swp_seq, const std::vector<int>& a_swp_seq,
+StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& flowcase,
+                               const int numrepeat, const int baserepeats,
+                               const SpeedupSweepsConfig config,
                                std::ofstream& outfile);
 
 /// Run a timing test with a specific number of sweeps with a specific number of threads

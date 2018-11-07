@@ -29,8 +29,6 @@
 
 #include "mesh/amesh2dh.hpp"
 
-#include <petscmat.h>
-
 namespace fvens {
 
 /// Base class for finite volume spatial discretization
@@ -39,13 +37,13 @@ class Spatial
 {
 public:
 	/// Common setup required for finite volume discretizations
-	/** Computes and stores cell centre coordinates, ghost cells' centres, and 
+	/** Computes and stores cell centre coordinates, ghost cells' centres, and
 	 * quadrature point coordinates.
 	 */
 	Spatial(const UMesh2dh<scalar> *const mesh);
 
 	virtual ~Spatial();
-	
+
 	/// Computes the residual and local time steps
 	/** By convention, we need to compute the negative of the nonlinear function whose root
 	 * we want to find. Note that our nonlinear function or residual is defined (for steady problems) as
@@ -59,24 +57,32 @@ public:
 	 * \param[in] gettimesteps Whether time-step computation is required
 	 * \param[out] dtm Local time steps are stored in this
 	 */
-	virtual StatusCode assemble_residual(const Vec u, Vec residual, 
-			const bool gettimesteps, std::vector<a_real>& dtm) const = 0;
-	
-	/// Computes the Jacobian matrix of the residual r(u) \sa assemble_residual
-	/** It is supposed to compute dr/du when we want to solve [M du/dt +] r(u) = 0.
+	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
+	                                    const bool gettimesteps, a_real *const dtm) const = 0;
+
+	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
+	/** It is supposed to be a point-block in dr/du when we want to solve [M du/dt +] r(u) = 0.
+	 * The convention is that L and U should go into the two off-diagonal blocks
+	 * corresponding to the face. The negative of L and U are added to the
+	 * diagonal blocks of the respective cells.
 	 */
-	virtual StatusCode compute_jacobian(const Vec u, Mat A) const = 0;
+	virtual void compute_local_jacobian_interior(const a_int iface,
+	                                             const a_real *const ul, const a_real *const ur,
+	                                             Matrix<a_real,nvars,nvars,RowMajor>& L,
+	                                             Matrix<a_real,nvars,nvars,RowMajor>& U) const = 0;
+
+	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
+	/** The convention is that L is the negative of the matrix that is added to the diagonal block
+	 * corresponding to the interior cell.
+	 */
+	virtual void compute_local_jacobian_boundary(const a_int iface,
+	                                             const a_real *const ul,
+	                                             Matrix<a_real,nvars,nvars,RowMajor>& L) const = 0;
+
 
 	/// Computes gradients of field variables and stores them in the argument
 	virtual void getGradients(const MVector<a_real>& u,
 	                          GradArray<a_real,nvars>& grads) const = 0;
-
-	/// Sets initial conditions
-	/** \param[in] fromfile True if initial data is to be read from a file
-	 * \param[in] file Name of initial conditions file
-	 * \param[in|out] u Vector to store the initial data in
-	 */
-	virtual StatusCode initializeUnknowns(Vec u) const = 0;
 
 	/// Exposes access to the mesh context
 	const UMesh2dh<scalar>* mesh() const
@@ -89,15 +95,15 @@ protected:
 	const UMesh2dh<scalar> *const m;
 
 	/// Cell centers of both real cells and ghost cells
-	/** The first nelem rows correspond to real cells, 
+	/** The first nelem rows correspond to real cells,
 	 * the next nelem+nbface rows are ghost cell centres, indexed by nelem+iface for face iface.
 	 */
 	amat::Array2d<scalar> rc;
 
-	/// Faces' Gauss points' coords, stored a 3D array of dimensions 
+	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)
 	amat::Array2d<scalar>* gr;
-	
+
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);
 
@@ -118,7 +124,7 @@ protected:
 		const;
 
 	/// Computes the thin-layer face gradient and its Jacobian w.r.t. the left and right states
-	/** The Jacobians are computed w.r.t. whatever variables 
+	/** The Jacobians are computed w.r.t. whatever variables
 	 * the derivatives dul and dur are computed with respect to.
 	 * \param iface The \ref intfac index of the face at which the gradient Jacobian is to be computed
 	 * \param ucl The left state
@@ -132,7 +138,7 @@ protected:
 	void getFaceGradientAndJacobian_thinLayer(const a_int iface,
 		const a_real *const ucl, const a_real *const ucr,
 		const a_real *const dul, const a_real *const dur,
-		a_real grad[NDIM][nvars], a_real dgradl[NDIM][nvars][nvars], a_real dgradr[NDIM][nvars][nvars])
+		scalar grad[NDIM][nvars], scalar dgradl[NDIM][nvars][nvars], scalar dgradr[NDIM][nvars][nvars])
 		const;
 };
 

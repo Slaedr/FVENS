@@ -1,15 +1,5 @@
 # Test executables
 	
-if(SLURM)
-	set(SEQEXEC "srun")
-	set(SEQTASKS "-n 1")
-	set(MPIEXEC "srun")
-else(SLURM)
-	set(SEQEXEC "")
-	set(SEQTASKS "")
-	set(MPIEXEC "mpirun")
-endif(SLURM)
-
 # Gmsh for generating meshes
 find_program(GMSH_EXEC gmsh)
 if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")
@@ -19,7 +9,7 @@ else()
 endif()
 
 add_executable(e_testflow_pseudotime flowpseudotime.cpp)
-target_link_libraries(e_testflow_pseudotime fvens_base ${PETSC_LIB})
+target_link_libraries(e_testflow_pseudotime fvens_base ${PETSC_LIB} ${ADOLC_LIB})
 if(WITH_BLASTED)
 	target_link_libraries(e_testflow_pseudotime ${BLASTED_LIB})
 endif()
@@ -45,19 +35,17 @@ endif()
 # Tests
 
 add_subdirectory(utils)
-
 add_subdirectory(mesh)
-
 add_subdirectory(finite-volume)
 
 add_subdirectory(heat)
 
 add_subdirectory(flow-general)
+add_subdirectory(solvers)
 
 #add_subdirectory(isentropic-vortex)
 
 add_subdirectory(inv-2dcyl)
 add_subdirectory(inv-gaussianbump)
-
 add_subdirectory(visc-flatplate)
 

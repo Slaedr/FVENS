@@ -1,7 +1,7 @@
 /**
  * @file aarray2d.cpp
  * @brief Some method implementations for the 2d arrays class.
- * 
+ *
  * Part of FVENS.
  * @author Aditya Kashi
  */
@@ -12,6 +12,10 @@
 #include <iomanip>
 #include <cmath>
 #include <cstdlib>
+
+#ifdef USE_ADOLC
+#include <adolc/adolc.h>
+#endif
 
 namespace fvens {
 namespace amat {
@@ -73,7 +77,7 @@ void Array2d<T>::setupraw(const a_int nr, const a_int nc)
 {
 	assert(nc>0);
 	assert(nr>0);
-		
+
 	nrows = nr; ncols = nc;
 	size = nrows*ncols;
 	delete [] elems;
@@ -141,6 +145,10 @@ void Array2d<T>::fread(std::ifstream& infile)
 
 template class Array2d<a_real>;
 template class Array2d<a_int>;
+
+#ifdef USE_ADOLC
+template class Array2d<adouble>;
+#endif
 
 }
 }

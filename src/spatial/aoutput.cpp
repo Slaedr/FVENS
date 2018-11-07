@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <cmath>
 #include "aoutput.hpp"
 #include "utilities/aoptionparser.hpp"
 
@@ -595,6 +596,27 @@ void writeMeshToVtu(std::string fname, fvens::UMesh2dh<a_real>& m)
 	out << "</VTKFile>";
 	out.close();
 	std::cout << "Vtu file written.\n";
+}
+
+void writeConvergenceHistoryHeader(std::ostream& outf)
+{
+	using std::setw;
+	outf << '#' << setw(6) << "NStep" << setw(16) << "Log10 rel resi" << setw(16) << "Log10 abs resi"
+	     << setw(12) << "Tot.Wtime" << setw(12) << "Lin.Wtime" << setw(12) << "Lin.iters"
+	     << setw(10) << "CFL" << '\n';
+	outf << "#------------------------------------------------------------------------------------\n";
+}
+
+void writeStepToConvergenceHistory(const SteadyStepMonitor s, std::ostream& outf)
+{
+	using std::setw;
+	outf << std::setprecision(6);
+	outf << setw(7) << s.step << setw(16) << std::log10(s.rmsres) << setw(16)
+	     << std::log10(s.absrmsres);
+	outf << std::setprecision(4);
+	outf << setw(12) << s.odewalltime << setw(12) << s.linwalltime
+	     << setw(12) << s.linits << setw(10) << s.cfl << '\n';
+	outf << std::flush;
 }
 
 }
