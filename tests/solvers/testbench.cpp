@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 		assert(nums[6] == 1);                        // converged
 
 		assert(dnums[5] > 0.01);                     // some NL speedup
-		assert(dnums[5] < 4);                        // Assuming we use at most 4 threads for the test
+		assert(dnums[5] < 5);                        // Assuming we use at most 4 threads for the test
 	}
 
 	assert(rows == 4);

@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	std::cout << "Matrix-based iterations = " << td1.num_timesteps << std::endl;
 	std::cout << "Matrix-free iterations = " << td2.num_timesteps << std::endl;
 
-	assert(abs(td1.num_timesteps-td2.num_timesteps) <= 1);
+	assert(abs(td1.num_timesteps-td2.num_timesteps) <= 0);
 
 	std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);

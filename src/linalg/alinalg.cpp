@@ -107,20 +107,21 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		        "Spatial context not set!");
 
 	const UMesh2dh<a_real> *const m = spatial->mesh();
-	ierr = VecSet(y, 0.0); CHKERRQ(ierr);
+	//ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 
 	Vec aux;
 	ierr = VecDuplicate(x, &aux); CHKERRQ(ierr);
-	//ierr = VecSet(aux, 0); CHKERRQ(ierr);
 
-	const a_real *xr, *dtmr;
-	a_real *yr;
+	const a_real *xr, *dtmr, *ur, *resr;
+	a_real *yr, *auxr;
+	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);
 	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
 	ierr = VecGetArrayRead(x, &xr); CHKERRQ(ierr);
-	ierr = VecGetArrayRead(mdt, &dtmr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(u, &ur); CHKERRQ(ierr);
 
 	PetscScalar xnorm = 0;
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
+
 #ifdef DEBUG
 	if(xnorm < 10.0*std::numeric_limits<a_real>::epsilon())
 		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP,
@@ -128,32 +129,45 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 #endif
 	const a_real pertmag = eps/xnorm;
 
-	// aux <- eps/xnorm * x
-	ierr = VecAXPBY(aux, pertmag, 0.0, x); CHKERRQ(ierr);
-	// aux <- u + eps/xnorm * x
-	ierr = VecAXPY(aux, 1.0, u); CHKERRQ(ierr);
+	// aux <- u + eps/xnorm * x ;    y <- 0
+#pragma omp parallel for simd default(shared)
+	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		yr[i] = 0;
+		auxr[i] = ur[i] + pertmag * xr[i];
+	}
+
+	ierr = VecRestoreArray(aux, &auxr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
+
 	// y <- -r(u + eps/xnorm * x)
 	ierr = assemble_residual(spatial, aux, y, false, dummy); CHKERRQ(ierr);
-	// y <- -(-r(u + eps/xnorm * x)) + (-r(u)) = r(u + eps/xnorm * x) - r(u)
-	ierr = VecAXPBY(y, 1.0, -1.0, res); CHKERRQ(ierr);
-	
-	/* Divide by the normalized step length.
+
+	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
+	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(res, &resr); CHKERRQ(ierr);
+	ierr = VecGetArrayRead(mdt, &dtmr); CHKERRQ(ierr);
+
+	// y <- vol/dt x + (-(-r(u + eps/xnorm * x)) + (-r(u))) / eps |x|
+	//    = vol/dt x + (r(u + eps/xnorm * x) - r(u)) / eps |x|
+	/* We need to divide the difference by the step length scaled by the norm of x.
 	 * We do NOT divide by epsilon, because we want the product of the Jacobian and x, which is
 	 * the directional derivative (in the direction of x) multiplied by the norm of x.
 	 */
-	ierr = VecScale(y, 1.0/pertmag); CHKERRQ(ierr);
-
-	// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
 #pragma omp parallel for simd default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		for(int i = 0; i < nvars; i++)
-			yr[iel*nvars+i] += dtmr[iel] * xr[iel*nvars+i];
+		for(int i = 0; i < nvars; i++) {
+			// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
+			yr[iel*nvars+i] = dtmr[iel]*xr[iel*nvars+i] + (-yr[iel*nvars+i] + resr[iel*nvars+i])/pertmag;
+		}
 	}
 	
 	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
+	ierr = VecRestoreArray(aux, &auxr); CHKERRQ(ierr);
 	ierr = VecRestoreArrayRead(x, &xr); CHKERRQ(ierr);
 	ierr = VecRestoreArrayRead(mdt, &dtmr); CHKERRQ(ierr);
+	ierr = VecRestoreArrayRead(u, &ur); CHKERRQ(ierr);
+	ierr = VecRestoreArrayRead(res, &resr); CHKERRQ(ierr);
 	ierr = VecDestroy(&aux); CHKERRQ(ierr);
 	return ierr;
 }
