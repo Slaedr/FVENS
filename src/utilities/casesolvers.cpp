@@ -79,7 +79,7 @@ int FlowCase::run(const UMesh2dh<a_real>& m, Vec u) const
 	int ierr = 0;
 	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
 
-	ierr = execute(prob, u); CHKERRQ(ierr);
+	ierr = execute(prob, false, u); CHKERRQ(ierr);
 
 	delete prob;
 	return ierr;
@@ -97,7 +97,7 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
 
 	try {
-		ierr = execute(prob, u);
+		ierr = execute(prob, opts.lognres, u);
 	}
 	catch (Tolerance_error& e) {
 		std::cout << e.what() << std::endl;
@@ -344,8 +344,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	return tdata;
 }
 
-/// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
-int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
+int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, const bool outhist, Vec u) const
 {
 	int ierr = 0;
 	
@@ -353,6 +352,18 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 	TimingData td = execute_main(prob, u); fvens_throw(ierr, "Steady case solver failed!");
 	if(!td.converged)
 		throw Tolerance_error("Main flow solve did not converge!");
+
+	if(outhist) {
+		int rank;
+		MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+		if(rank == 0) {
+			std::ofstream convout(opts.logfile+"-residual_history.log");
+			writeConvergenceHistoryHeader(convout);
+			for(int istp = 0; istp < td.num_timesteps; istp++)
+				writeStepToConvergenceHistory(td.convhis[istp], convout);
+			convout.close();
+		}
+	}
 
 	return ierr;
 }

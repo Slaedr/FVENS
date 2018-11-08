@@ -93,9 +93,11 @@ public:
 
 	/// Solve a case given a spatial discretization context
 	/** Specific case types must provide an implementation of this.
+	 * \param output_reshistory If true, residual history is written to file
 	 * \return An error code (may also throw exceptions)
 	 */
-	virtual int execute(const Spatial<a_real,NVARS> *const prob, Vec u) const = 0;
+	virtual int execute(const Spatial<a_real,NVARS> *const prob, const bool output_reshistory,
+	                    Vec u) const = 0;
 
 	/// Solve a startup problem corresponding to the actual problem to be solved
 	/**
@@ -159,9 +161,10 @@ public:
 	SteadyFlowCase(const FlowParserOptions& options);
 
 	/// Solve a case given a spatial discretization context
-	/** Timing data is discarded. Throws a \ref Tolerance_error if the main solve does not converge.
+	/** Throws a \ref Tolerance_error if the main solve does not converge.
+	 * \param output_reshistory If true, residual history is written to file
 	 */
-	int execute(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+	int execute(const Spatial<a_real,NVARS> *const prob, const bool output_reshistory, Vec u) const;
 
 	/// Solve the 1st-order problem corresponding to the actual problem to be solved
 	/** Even if the solver does not converge to required tolerance, no exception is thrown.

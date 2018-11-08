@@ -223,6 +223,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		tdata.converged = false;
 		if(mpirank == 0)
 			std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
+		throw Tolerance_error("Steady forward Euler did not converge to specified tolerance!");
 	}
 	if(mpirank == 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): Done. ";
