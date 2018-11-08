@@ -257,7 +257,7 @@ private:
 	template <int nFace, int maxVerticesPerFace>
 	struct MEntityTopology : public MGenEntityTopology
 	{
-		amat::Array2d<int>> localFaceMap;
+		amat::Array2d<int> localFaceMap;
 	};
 
 	/// A subset of mesh entities having the same type
@@ -276,6 +276,8 @@ private:
 	 * node in the cell.
 	 * Note that the ordering here is such that all faces `point' towards the exterior of the cell
 	 * by the right-hand rule.
+	 * Note that cell shapes having different types of faces will have some `empty' entries. These are
+	 * set to -1.
 	 */
 	///@{
 	static const int triLFM[3][2];       ///< Triangle

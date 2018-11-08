@@ -98,7 +98,6 @@ void UMesh<scalar,ndim>::readMesh(const std::string mfile)
 		readGmsh2(mfile);
 }
 
-/// Reads mesh from Gmsh 2 format file
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 {
@@ -126,7 +125,7 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	infile >> dums;		// get 'endnodes'
 	infile >> dums;		// get 'elements'
 
-	int width_elms = 25;
+	const int width_elms = 25;
 	int nelm, elmtype, nbtags, ntags;
 	/// elmtype is the standard element type in the Gmsh 2 mesh format - of either faces or elements
 	ndtag = 0; nbtag = 0;
@@ -135,6 +134,7 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	nface = 0; nelem = 0;
 	maxnnofa = 2;
 	int maxnnobfa = 2;       //< Max nodes in any boundary face
+	// temporary arrays to hold number of nodes per entity etc. for each entity
 	std::vector<int> nnodes(nelm,0);
 	std::vector<int> nfaels(nelm,0);
 	std::vector<int> nnofas(nelm,0);
@@ -272,6 +272,8 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 				infile >> elms(i,j+nnodes[i]);		// get tags
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
+			if(maxnnofa < 3)
+				maxnnofa = 3;
 			nelem++;
 			break;
 		case(5): // linear hex
@@ -314,7 +316,7 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nelem++;
 			break;
 		default:
-			throw std::runtime_error("! UMesh2d: readGmsh2(): Element type not recognized.");
+			throw std::runtime_error("! UMesh: readGmsh2(): Element type not recognized.");
 		}
 	}
 	/*std::cout << "UMesh2d: readGmsh2(): Done reading elms" << std::endl;

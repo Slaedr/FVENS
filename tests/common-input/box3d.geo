@@ -6,7 +6,7 @@ ox = 0.0;
 oy = 0.0;
 oz = 0.0;
 
-h = 0.33;
+h = 0.4;
 
 Point(0) = {ox,   oy,   oz,   h};
 Point(1) = {ox+lx,oy,   oz,   h};
@@ -36,3 +36,17 @@ Curve Loop(2) = {0,9,-4,-8};
 Curve Loop(3) = {1,10,-5,-9};
 Curve Loop(4) = {10,6,-11,-2};
 Curve Loop(5) = {-3,11,7,-8};
+
+Plane Surface(0) = {0};
+Plane Surface(1) = {1};
+Plane Surface(2) = {2};
+Plane Surface(3) = {3};
+Plane Surface(4) = {4};
+Plane Surface(5) = {5};
+
+Surface Loop(0) = {0,1,2,3,4,5};
+
+Volume(0) = {0};
+
+Physical Volume(1) = {0};
+Physical Surface(2) = {0,1,2,3,4,5};
