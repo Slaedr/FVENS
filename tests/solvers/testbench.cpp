@@ -43,8 +43,9 @@ int main(int argc, char *argv[])
 					&dm, &nums[0], &nums[1], &nums[2], &nums[3], &nums[4], &nums[5], &time[0],
 					&time[1], &nums[7], &nums[8], &nums[9], &nums[10], &time[2]);
 			assert(dm == '#');
-			for(int i = 0; i < 6; i++)
-				assert(nums[i] == 1);
+			assert(nums[0] == 2);                            // base threads
+			for(int i = 1; i < 6; i++)
+				assert(nums[i] == 1);                        // base num sweeps and speedups
 			assert(time[0] > SMALL_DEVIATION_NUMBER);                       // deviation
 			std::cout << "Nums 7 = " << nums[7] << std::endl;
 			assert(nums[7] > 1);

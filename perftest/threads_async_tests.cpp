@@ -166,8 +166,8 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVAR
 			     << ", nonlinear solve time = " << tdata.ode_walltime << "\n#---\n";
 
 			writeHeaderToFile(perftestout, field_width);
-			writeTimingToFile(perftestout, field_width, true,tdata, 1, 1,1, 1.0, 1.0, 1.0,
-			                  precdeviate, preccputime, 1.0);
+			writeTimingToFile(perftestout, field_width, true,tdata, numthreads, nbswps,naswps, 
+			                  1.0, 1.0, 1.0, precdeviate, preccputime, 1.0);
 		}
 		else {
 			const double prec_basewtime = factor_basewtime + apply_basewtime;
