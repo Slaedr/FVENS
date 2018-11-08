@@ -1,43 +1,81 @@
+#! /usr/bin/env python3
+
 """ Plots convergence histories.
-	Make sure to put the description you need in the legend at the end of filenames, 
-	before extensions,
-	separated from whatever comes before by '-'.
-	E.g.: 'In grid4-HLLflux-3wp-SGS_solver.dat', the legend label would be 'SGS_solver'.
+    Use `python3 plotconv.py --help` to see all available options.
 """
 
-#! /usr/bin/env python3
 import sys
+import argparse
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.ticker import AutoMinorLocator
 
-if(len(sys.argv) < 2):
-	print("Error. Please provide input file name.")
-	sys.exit(-1)
+def setAxisParams(ax, baseLineWidth):
+    """ Sets line style and grid lines for a given pyplot axis."""
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.yaxis.set_minor_locator(AutoMinorLocator())
+    ax.grid(which='major', axis='x', lw=0.5*baseLineWidth, linestyle='-', color='0.75')
+    ax.grid(which='minor', axis='x', lw=0.5*baseLineWidth, linestyle=':', color='0.75')
+    ax.grid(which='major', axis='y', lw=0.5*baseLineWidth, linestyle='-', color='0.75')
+    ax.grid(which='minor', axis='y', lw=0.5*baseLineWidth, linestyle=':', color='0.75')
 
-symbs = ['b-', 'g-', 'r-', 'c-','b-']
-titles = []
-	
-for ifile in range(len(sys.argv)-1):
-	fname = sys.argv[ifile+1]
-	
-	# For use in legend, strip prefix and extension(s)
-	tstr = fname.split('/')[-1]
-	titles.append(tstr.split('.')[0].split('-')[-1])
+def plotquantity(filelist, quantname, numits, labellist, opts):
+    plt.close()
+    markdivisor = 20
+    for i in range(len(filelist)):
+        filename = filelist[i]
+        data = np.genfromtxt(filename)
+        numsteps = data.shape[0]
+        opts['markinterval'] = int(numsteps/markdivisor)
 
-	data = np.genfromtxt(fname)
-	n = data.shape[0]
-	plt.plot(data[:,0],np.log10(data[:,1]),symbs[ifile], label=titles[-1])
-	
-titlestr = ""
-for i in range(len(titles)):
-	if i==0:
-		titlestr = titlestr + titles[i]
-	else:
-		titlestr = titlestr + ", " + titles[i]
+        # number of points to plot
+        pltdatalen = len(data[:,0])-numits
 
-plt.title("Convergence - " + titlestr)
-plt.xlabel("Pseudo-time step")
-plt.ylabel("Log l2 residual")
-plt.grid('on')
-plt.legend()
-plt.show()
+        if quantname == "residual":
+            plt.plot(data[numits:,0], data[numits:,1], \
+                    lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
+                    marker=opts['marklist'][i], ms=opts['marksize'], \
+                    mew=opts['markedgewidth'], \
+                    markevery=list(range(0,pltdatalen,opts['markinterval'])), \
+                    label=labellist[i])
+            plt.xlabel("Pseudo-time steps")
+        elif quantname == "walltime":
+            plt.plot(data[numits:,3], data[numits:,1], \
+                    lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
+                    marker=opts['marklist'][i], ms=opts['marksize'], \
+                    mew=opts['markedgewidth'], \
+                    markevery=list(range(0,pltdatalen,opts['markinterval'])), \
+                    label=labellist[i])
+            plt.xlabel("Wall-clock time (s)")
+
+        plt.ylabel("Log of L2 norm of energy residual")
+        ax = plt.axes()
+        setAxisParams(ax,opts['linewidth'])
+        plt.legend(loc="best", fontsize="medium")
+
+    plt.savefig(filename.split('/')[-1].split('.')[0]+"-"+quantname+".ps")
+
+if __name__ == "__main__":
+
+    opts = { \
+            "marklist" : ['.', 'x', '+', '^', 'v', '<', '>', 'd'],
+            "colorlist" : ['k', 'b', 'r', 'g', 'c', 'm', 'k'],
+            "linetype" : ['-', '--', '-.', ':', '--', '--'],
+            "linewidth" : 1,
+            "marksize" : 5,
+            "markedgewidth" : 1 \
+            }
+
+    if(len(sys.argv) < 2):
+        print("Error. Please provide input file name.")
+        sys.exit(-1)
+
+    parser = argparse.ArgumentParser(description="Plots residual history w.r.t. iterations and wall time starting at a specified iteration")
+    parser.add_argument("files", nargs='+')
+    parser.add_argument("--labels", nargs='+', help = "Legend strings")
+    parser.add_argument("--start_iter", type=int, default=100, help = "Iteration to start plotting from")
+    args = parser.parse_args(sys.argv)
+
+    plotquantity(args.files[1:], "residual", args.start_iter, args.labels, opts)
+    plotquantity(args.files[1:], "walltime", args.start_iter, args.labels, opts)
+
