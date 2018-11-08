@@ -90,11 +90,11 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
                                              const UMesh2dh<a_real>& m, Vec u) const
 {
 	int ierr = 0;
+	std::cout << "\nSetting up flow case with output\n";
 
 	const FlowFV_base<a_real> *const prob = createFlowSpatial(opts, m);
 
 	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
-	std::cout << "***\n";
 
 	try {
 		ierr = execute(prob, u);
