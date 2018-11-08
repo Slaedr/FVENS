@@ -75,7 +75,6 @@ TimingData::TimingData()
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf)
 	: space{spatial}, config{conf}
-	  //tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false, 0,0,0}
 {
 	tdata.nelem = spatial->mesh()->gnelem();
 }

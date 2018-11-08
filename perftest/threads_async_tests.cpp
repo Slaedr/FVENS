@@ -81,8 +81,12 @@ static std::array<double,3>
 runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVARS> *const prob,
                 const int nbswps, const int naswps, const int numthreads, const int numrepeat,
                 const double factor_basewtime, const double apply_basewtime, const double ode_basewtime,
-                const bool basecase, const std::string perflogprefix, std::ofstream& perftestout)
+                const bool basecase, const bool conv_history_reqd, const std::string perflogprefix,
+                std::ofstream& perftestout)
 {
+	int mpirank;
+	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
+
 	TimingData tdata;
 	tdata.converged = true;   // need to initialize with true because we AND the values for each run
 	double precwalltime = 0, preccputime = 0, factorwalltime = 0, applywalltime = 0;
@@ -90,19 +94,27 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVAR
 	std::vector<SteadyStepMonitor> cohis;           // convergence history
 	int monitortimesteps=0;                         // number of steps in the repeat that is written
 
-	// Prepare convergence history file for this sweeps+threads setting
-	const std::string perflogfile = perflogprefix
-		+ "-sweeps" + std::to_string(nbswps) + "_" + std::to_string(naswps)
-		+ "-threads" + std::to_string(numthreads) + ".conv";
-	std::ofstream convout(perflogfile);
-	convout << "# Perftest: sweeps and threads for async preconditioner from BLASTed\n";
-	convout << "# Number of repeats per run = " << numrepeat << "\n";
-	if(basecase)
-		convout << "# Base case: ";
-	else
-		convout << "# Case: ";
-	convout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
-	writeConvergenceHistoryHeader(convout);
+	std::ofstream convout;
+
+	if(conv_history_reqd && mpirank==0) {
+		// Prepare convergence history file for this sweeps+threads setting
+		const std::string perflogfile = perflogprefix
+			+ "-sweeps" + std::to_string(nbswps) + "_" + std::to_string(naswps)
+			+ "-threads" + std::to_string(numthreads) + ".conv";
+
+		convout.open(perflogfile);
+		if(!convout)
+			throw std::runtime_error("Could not open file to write convergence history!");
+
+		convout << "# Perftest: sweeps and threads for async preconditioner from BLASTed\n";
+		convout << "# Number of repeats per run = " << numrepeat << "\n";
+		if(basecase)
+			convout << "# Base case: ";
+		else
+			convout << "# Case: ";
+		convout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
+		writeConvergenceHistoryHeader(convout);
+	}
 
 	omp_set_num_threads(numthreads);
 	set_blasted_sweeps(nbswps,naswps);
@@ -156,8 +168,6 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVAR
 
 	const double precdeviate = std_deviation(&precwalltimearr[0], precwalltime, irpt)/precwalltime;
 
-	int mpirank;
-	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 	if(mpirank == 0)
 	{
 		if(basecase) {
@@ -178,11 +188,14 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVAR
 		}
 
 		// Write to convergence history file
-		for(int istp = 0; istp < monitortimesteps; istp++)
-			writeStepToConvergenceHistory(cohis[istp], convout);
+		if(conv_history_reqd) {
+			for(int istp = 0; istp < monitortimesteps; istp++)
+				writeStepToConvergenceHistory(cohis[istp], convout);
+
+			convout.close();
+		}
 	}
 
-	convout.close();
 
 	return {factorwalltime, applywalltime, tdata.ode_walltime};
 }
@@ -219,7 +232,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 
 	const std::array<double,3> basetimes =
 		runSweepThreads(u, flowcase, prob, config.basebuildsweeps, config.baseapplysweeps,
-		                config.basethreads, baserepeats, 1,1,1, true, opts.logfile, outf);
+		                config.basethreads, baserepeats, 1,1,1, true, opts.lognres, opts.logfile, outf);
 
 	const double factor_basewtime = basetimes[0];
 	const double apply_basewtime = basetimes[1];
@@ -227,7 +240,6 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 
 	// Perftesting runs
 
-	// Carry out multi-thread runs
 	for (size_t i = 0; i < config.buildSwpSeq.size(); i++)
 	{
 		set_blasted_sweeps(config.buildSwpSeq[i], config.applySwpSeq[i]);
@@ -236,7 +248,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 		{
 			runSweepThreads(u, flowcase, prob, config.buildSwpSeq[i], config.applySwpSeq[i], numthreads,
 			                numrepeat, factor_basewtime, apply_basewtime, ode_basewtime,
-			                false, opts.logfile, outf);
+			                false, opts.lognres, opts.logfile, outf);
 		}
 	}
 

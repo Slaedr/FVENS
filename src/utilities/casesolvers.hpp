@@ -93,10 +93,11 @@ public:
 
 	/// Solve a case given a spatial discretization context
 	/** Specific case types must provide an implementation of this.
-	 * \param output_reshistory If true, residual history is written to file
+	 * \param output_conv_history If true, residual history and preconditioner timing are written to
+	 *   (two separate) files
 	 * \return An error code (may also throw exceptions)
 	 */
-	virtual int execute(const Spatial<a_real,NVARS> *const prob, const bool output_reshistory,
+	virtual int execute(const Spatial<a_real,NVARS> *const prob, const bool output_conv_history,
 	                    Vec u) const = 0;
 
 	/// Solve a startup problem corresponding to the actual problem to be solved
