@@ -75,7 +75,6 @@ TimingData::TimingData()
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf)
 	: space{spatial}, config{conf}
-	  //tdata{spatial->mesh()->gnelem(), 1, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, false, 0,0,0}
 {
 	tdata.nelem = spatial->mesh()->gnelem();
 }
@@ -223,6 +222,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		tdata.converged = false;
 		if(mpirank == 0)
 			std::cout << "! SteadyForwardEulerSolver: solve(): Exceeded max iterations!\n";
+		throw Tolerance_error("Steady forward Euler did not converge to specified tolerance!");
 	}
 	if(mpirank == 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): Done. ";

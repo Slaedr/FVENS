@@ -79,7 +79,7 @@ int FlowCase::run(const UMesh2dh<a_real>& m, Vec u) const
 	int ierr = 0;
 	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
 
-	ierr = execute(prob, u); CHKERRQ(ierr);
+	ierr = execute(prob, false, u); CHKERRQ(ierr);
 
 	delete prob;
 	return ierr;
@@ -90,14 +90,14 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
                                              const UMesh2dh<a_real>& m, Vec u) const
 {
 	int ierr = 0;
+	std::cout << "\nSetting up flow case with output\n";
 
 	const FlowFV_base<a_real> *const prob = createFlowSpatial(opts, m);
 
 	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
-	std::cout << "***\n";
 
 	try {
-		ierr = execute(prob, u);
+		ierr = execute(prob, opts.lognres, u);
 	}
 	catch (Tolerance_error& e) {
 		std::cout << e.what() << std::endl;
@@ -344,8 +344,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	return tdata;
 }
 
-/// Solve a case for a given spatial problem irrespective of whether and what kind of output is needed
-int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
+int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, const bool outhist, Vec u) const
 {
 	int ierr = 0;
 	
@@ -353,6 +352,30 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) cons
 	TimingData td = execute_main(prob, u); fvens_throw(ierr, "Steady case solver failed!");
 	if(!td.converged)
 		throw Tolerance_error("Main flow solve did not converge!");
+
+	if(outhist) {
+		int rank;
+		MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+		if(rank == 0) {
+			std::ofstream convout(opts.logfile+"-residual_history.log");
+			writeConvergenceHistoryHeader(convout);
+			for(int istp = 0; istp < td.num_timesteps; istp++)
+				writeStepToConvergenceHistory(td.convhis[istp], convout);
+			convout.close();
+
+			convout.open(opts.logfile+"prec-timing.log");
+			convout << std::setw(10) << "# N.threads" << std::setw(18) << "Prec.setup wtime"
+			        << std::setw(18) << "Prec.apply wtime" << std::setw(10) << "Prec.CPU"
+			        << std::setw(15) << "Tot.lin.iters" << std::setw(15) << "Avg.lin.iters"
+			        << std::setw(12) << "Time-steps" << std::setw(12) << "converged?" << '\n';
+			convout << std::setw(10) << td.num_threads << std::setw(18) << td.precsetup_walltime
+			        << std::setw(18) << td.precapply_walltime << std::setw(10) << td.prec_cputime
+			        << std::setw(15) << td.total_lin_iters << std::setw(15) << td.avg_lin_iters
+			        << std::setw(12) << td.num_timesteps << std::setw(12) << (td.converged ? 1:0)
+			        << '\n';
+			convout.close();
+		}
+	}
 
 	return ierr;
 }

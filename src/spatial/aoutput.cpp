@@ -44,7 +44,7 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 
 	a_real h = 1.0/sqrt(m->gnelem());
  
-	std::cout << "FlowFV:   " << log10(h) << "  " 
+	std::cout << "FlowOutput: log mesh size and log entropy:   " << log10(h) << "  " 
 	          << std::setprecision(10) << log10(error) << std::endl;
 
 	ierr = VecRestoreArrayRead(uvec, &uarr);

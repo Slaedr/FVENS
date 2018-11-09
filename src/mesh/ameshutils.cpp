@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <iostream>
+#include <cstring>
 #include "ameshutils.hpp"
 #include "linalg/alinalg.hpp"
 #include "linalg/petsc_assembly.hpp"
@@ -21,36 +22,42 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 	// The implementation must be changed for the multi-process case
 	StatusCode ierr = 0;
 
-	Mat A;
-	CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
-	CHKERRQ(MatSetType(A, MATSEQAIJ));
-	CHKERRQ(MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m.gnelem(), m.gnelem()));
-	CHKERRQ(setJacobianPreallocation<1>(&m, A));
+	// If the ordering requested is not 'natural', reorder the mesh
+	if(std::strcmp(ordering,"natural")) {
+		Mat A;
+		CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
+		CHKERRQ(MatSetType(A, MATSEQAIJ));
+		CHKERRQ(MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m.gnelem(), m.gnelem()));
+		CHKERRQ(setJacobianPreallocation<1>(&m, A));
 
-	Vec u;
-	CHKERRQ(VecCreateSeq(PETSC_COMM_SELF, m.gnelem(), &u));
-	CHKERRQ(VecSet(u,1.0));
+		Vec u;
+		CHKERRQ(VecCreateSeq(PETSC_COMM_SELF, m.gnelem(), &u));
+		CHKERRQ(VecSet(u,1.0));
 
-	ierr = assemble_jacobian(&sd, u, A); CHKERRQ(ierr);
-	CHKERRQ(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
-	CHKERRQ(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
+		ierr = assemble_jacobian(&sd, u, A); CHKERRQ(ierr);
+		CHKERRQ(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
+		CHKERRQ(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
 
-	IS rperm, cperm;
-	const PetscInt *rinds, *cinds;
-	CHKERRQ(MatGetOrdering(A, ordering, &rperm, &cperm));
-	CHKERRQ(ISGetIndices(rperm, &rinds));
-	CHKERRQ(ISGetIndices(cperm, &cinds));
-	// check for symmetric permutation
-	for(a_int i = 0; i < m.gnelem(); i++)
-		assert(rinds[i] == cinds[i]);
+		IS rperm, cperm;
+		const PetscInt *rinds, *cinds;
+		CHKERRQ(MatGetOrdering(A, ordering, &rperm, &cperm));
+		CHKERRQ(ISGetIndices(rperm, &rinds));
+		CHKERRQ(ISGetIndices(cperm, &cinds));
+		// check for symmetric permutation
+		for(a_int i = 0; i < m.gnelem(); i++)
+			assert(rinds[i] == cinds[i]);
 
-	m.reorder_cells(rinds);
+		m.reorder_cells(rinds);
 
-	CHKERRQ(ISRestoreIndices(rperm, &rinds));
-	ierr = ISDestroy(&rperm); CHKERRQ(ierr);
-	ierr = ISDestroy(&cperm); CHKERRQ(ierr);
-	CHKERRQ(MatDestroy(&A));
-	CHKERRQ(VecDestroy(&u));
+		CHKERRQ(ISRestoreIndices(rperm, &rinds));
+		ierr = ISDestroy(&rperm); CHKERRQ(ierr);
+		ierr = ISDestroy(&cperm); CHKERRQ(ierr);
+		CHKERRQ(MatDestroy(&A));
+		CHKERRQ(VecDestroy(&u));
+	}
+	else {
+		std::cout << " reorderMesh: Natural ordering requested; doing nothing." << std::endl;
+	}
 	return ierr;
 }
 
@@ -64,10 +71,10 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 		std::cout << "preprocessMesh: No reordering requested.\n";
 	}
 	else {
-		std::cout << "preprocessMesh: Reording cells in " << ordstr << " ordering.\n";
 		m.compute_topological();
 		m.compute_face_data();
 
+		std::cout << "preprocessMesh: Reording cells in " << ordstr << " ordering.\n";
 		DiffusionMA<1> sd(&m, 1.0, 0.0,
 			[](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
 			{ sourceterm[0] = 0; },
