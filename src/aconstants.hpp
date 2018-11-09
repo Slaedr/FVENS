@@ -23,7 +23,7 @@
 #define A_SMALL_NUMBER 1e-12
 
 /// Number of coupled variables for compressible flow computations
-#define NVARS 4
+//#define NVARS 4
 
 /// Number of quadrature points in each face
 #define NGAUSS 1
@@ -70,18 +70,18 @@ using MVector = Matrix<scalar, Dynamic,Dynamic,RowMajor>;
 /** We could have made this row major, but Eigen complains against defining
  * row-major matrices with only one column, as required by scalar problems.
  */
-template <typename scalar, int nvars>
-using GradArray = std::vector<Eigen::Array<scalar,NDIM,nvars>,
-                              Eigen::aligned_allocator<Eigen::Array<scalar,NDIM,nvars>>>;
+template <typename scalar, int ndim, int nvars>
+using GradArray = std::vector<Eigen::Array<scalar,ndim,nvars>,
+                              Eigen::aligned_allocator<Eigen::Array<scalar,ndim,nvars>>>;
 
 /// An array of fixed-size Eigen matrices each with the number of space dimensions as the size
 /** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of
  * fixed-size vectorizable Eigen arrays; see
  * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
  */
-template <typename scalar>
-using DimMatrixArray = std::vector< Matrix<scalar,NDIM,NDIM>,
-                                    aligned_allocator<Matrix<scalar,NDIM,NDIM>> >;
+template <typename scalar, int ndim>
+using DimMatrixArray = std::vector< Matrix<scalar,ndim,ndim>,
+                                    aligned_allocator<Matrix<scalar,ndim,ndim>> >;
 
 /// A data type for error codes, mostly for use with PETSc
 typedef int StatusCode;

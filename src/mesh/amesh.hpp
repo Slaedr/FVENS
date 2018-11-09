@@ -100,7 +100,7 @@ public:
 	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
 	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
-	/// Returns the total number of nodes in the mesh
+	/// Returns the total number of vertices in the mesh
 	a_int gnpoin() const { return npoin; }
 
 	/// Returns the total number of elements (cells) in the mesh
@@ -124,6 +124,13 @@ public:
 	/// Returns the number of nodes per face in \ref intfac ordering
 	int gnnodeFace(const a_int iface) const { return nnofa[iface]; }
 
+	/// Returns the number of nodes per face, but only for boundary faces in \ref bface ordering
+	int gnnodeBFace(const a_int iface) const
+	{
+		assert(iface < nface);
+		return nnobfa[iface];
+	}
+
 	/// Returns the number of boundary tags available for boundary faces
 	int gnbtag() const{ return nbtag; }
 
@@ -136,7 +143,7 @@ public:
 	void scoords(const a_int pointno, const int dim, const scalar value)
 	{
 		assert(pointno < npoin);
-		assert(dim < NDIM);
+		assert(dim < ndim);
 		coords(pointno,dim) = value;
 	}
 
@@ -178,7 +185,7 @@ public:
 	void compute_volumes();
 
 	/// Computes locations of cell centres
-	/** \param[out] centres Should be logically of size nelem x NDIM.
+	/** \param[out] centres Should be logically of size nelem x ndim.
 	 */
 	void compute_cell_centres(std::vector<scalar>& centres) const;
 
@@ -268,7 +275,7 @@ private:
 		/// Ending index plus one in the relavant array of entities
 		a_int end;
 		/// The (unique) topology of entities in this subset
-		const MEntityTopology& topo;
+		const MGenEntityTopology& topo;
 	};
 
 	/** \name LFM Local face maps for different types of cells

@@ -26,7 +26,7 @@
 #include <iomanip>
 #include <fstream>
 #include <boost/algorithm/string.hpp>
-#include "amesh2dh.hpp"
+#include "amesh.hpp"
 #include "utilities/aoptionparser.hpp"
 
 #ifdef USE_ADOLC
@@ -126,11 +126,13 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	infile >> dums;		// get 'elements'
 
 	const int width_elms = 25;
+	const int max_num_tags = 5;
 	int nelm, elmtype, nbtags, ntags;
 	/// elmtype is the standard element type in the Gmsh 2 mesh format - of either faces or elements
 	ndtag = 0; nbtag = 0;
 	infile >> nelm;
-	amat::Array2d<a_int > elms(nelm,width_elms);
+	amat::Array2d<a_int> elms(nelm,width_elms);
+	amat::Array2d<int> alltags(nelm,max_num_tags);
 	nface = 0; nelem = 0;
 	maxnnofa = 2;
 	int maxnnobfa = 2;       //< Max nodes in any boundary face
@@ -154,10 +156,11 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			if(ndim == 2) {
 				nnofas[i] = 2;
 				infile >> nbtags;
+				assert(nbtags <= max_num_tags);
 				if(nbtags > nbtag) nbtag = nbtags;
 				for(int j = 0; j < nbtags; j++)
-					infile >> elms(i,j+nnofa);		// get tags
-				for(int j = 0; j < 2; j++)
+					infile >> alltags(i,j);
+				for(int j = 0; j < nnofas[i]; j++)
 					infile >> elms(i,j);			// get node numbers
 				nface++;
 			}
@@ -170,9 +173,10 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 				if(maxnnobfa < nnofas[i])
 					maxnnobfa = nnofas[i];
 				infile >> nbtags;
+				assert(nbtags <= max_num_tags);
 				if(nbtags > nbtag) nbtag = nbtags;
 				for(int j = 0; j < nbtags; j++)
-					infile >> elms(i,j+nnofa);		// get tags
+					infile >> alltags(i,j);
 				for(int j = 0; j < 3; j++)
 					infile >> elms(i,j);			// get node numbers
 				nface++;
@@ -182,8 +186,9 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 3;
 			nfaels[i] = 3;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(ndim == 2) {
@@ -204,8 +209,9 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 4;
 			nfaels[i] = 4;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(ndim == 2) {
@@ -225,8 +231,9 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 6;
 			nfaels[i] = 3;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(ndim == 2) {
@@ -246,8 +253,9 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 9;
 			nfaels[i] = 4;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(ndim == 2) {
@@ -267,9 +275,10 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 4;
 			nfaels[i] = 4;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			if(ntags > ndtag) ndtag = ntags;
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(maxnnofa < 3)
@@ -280,9 +289,10 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 8;
 			nfaels[i] = 6;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			if(ntags > ndtag) ndtag = ntags;
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(maxnnofa < 4)
@@ -293,9 +303,10 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 6;
 			nfaels[i] = 5;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			if(ntags > ndtag) ndtag = ntags;
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(maxnnofa < 4)
@@ -306,9 +317,10 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			nnodes[i] = 5;
 			nfaels[i] = 5;
 			infile >> ntags;
+			assert(ntags <= max_num_tags);
 			if(ntags > ndtag) ndtag = ntags;
 			for(int j = 0; j < ntags; j++)
-				infile >> elms(i,j+nnodes[i]);		// get tags
+				infile >> alltags(i,j);
 			for(int j = 0; j < nnodes[i]; j++)
 				infile >> elms(i,j);			// get node numbers
 			if(maxnnofa < 4)
@@ -366,14 +378,14 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 			// -1 to correct for the fact that our numbering starts from zero
 			bface(i,j) = elms(i,j)-1;			
 		for(int j = nnofas[i]; j < nnofas[i]+nbtag; j++)
-			bface(i,j) = elms(i,j);
+			bface(i,j) = alltags(i,j-nnofas[i]);
 	}
 	for(int i = 0; i < nelem; i++)
 	{
 		for(int j = 0; j < nnodes[i+nface]; j++)
 			inpoel(i,j) = elms(i+nface,j)-1;
 		for(int j = 0; j < ndtag; j++)
-			vol_regions(i,j) = elms(i+nface,j+nnodes[i+nface]);
+			vol_regions(i,j) = alltags(i+nface,j);
 		nnode.push_back(nnodes[i+nface]);
 		nfael.push_back(nfaels[i+nface]);
 	}
@@ -393,6 +405,13 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 {
+	assert(ndim == 2);
+
+	// SU2 mesh constants
+	const int su2_line = 3;
+	const int su2_quad = 9;
+	const int su2_tri = 5;
+
 	std::string dum;
 	std::ifstream fin;
 	open_file_toRead(mfile, fin);
@@ -419,11 +438,11 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 		fin >> id;
 		switch(id)
 		{
-			case 5: // triangle
+			case su2_tri: // triangle
 				nnode[iel] = 3;
 				nfael[iel] = 3;
 				break;
-			case 9: // quad
+			case su2_quad: // quad
 				nnode[iel] = 4;
 				nfael[iel] = 4;
 				break;
@@ -482,14 +501,16 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 		nface += numfacs[ib];
 
 		bfacs[ib].resize(numfacs[ib]);
-		nnofa = 2;
 
 		for(a_int iface = 0; iface < numfacs[ib]; iface++)
 		{
-			bfacs[ib][iface].resize(nnofa);
-			int ddum;
-			fin >> ddum;
-			for(int inofa = 0; inofa < nnofa; inofa++)
+			int type;
+			fin >> type;
+			int nnobfatemp = 3;
+			if (type == su2_line)
+				nnobfatemp = 2;
+			bfacs[ib][iface].resize(nnobfatemp);
+			for(int inofa = 0; inofa < nnobfatemp; inofa++)
 				fin >> bfacs[ib][iface][inofa];
 		}
 
