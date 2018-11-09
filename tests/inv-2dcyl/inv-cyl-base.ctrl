@@ -1,8 +1,8 @@
 io {
 	mesh_file                    "from-cmd"
 	solution_output_file         "2dcyl.vtu"
-	log_file_prefix              "2dcyl-log"
-	convergence_history_required false
+	log_file_prefix              "2dcyl"
+	convergence_history_required true
 }
 
 flow_conditions {
