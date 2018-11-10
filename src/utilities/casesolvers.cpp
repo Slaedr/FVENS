@@ -363,7 +363,7 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, const bool 
 				writeStepToConvergenceHistory(td.convhis[istp], convout);
 			convout.close();
 
-			convout.open(opts.logfile+"prec-timing.log");
+			convout.open(opts.logfile+"-prec-timing.log");
 			convout << std::setw(10) << "# N.threads" << std::setw(18) << "Prec.setup wtime"
 			        << std::setw(18) << "Prec.apply wtime" << std::setw(10) << "Prec.CPU"
 			        << std::setw(15) << "Tot.lin.iters" << std::setw(15) << "Avg.lin.iters"

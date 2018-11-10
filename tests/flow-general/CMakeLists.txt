@@ -3,6 +3,17 @@
 add_executable(e_testflow_wallbcs testd_wallbcs.cpp testwallbcs.cpp)
 target_link_libraries(e_testflow_wallbcs fvens_base)
 
+add_executable(runtest_res_hist test_res_hist.cpp)
+
+# List of control files
+set(CONTROL_FILES test_res_hist.sh)
+
+# Process them to include CMake variables
+foreach(file ${CONTROL_FILES})
+  message(STATUS "Configuring control file ${file}")
+  configure_file(${file} ${file})
+endforeach(file)
+
 # Tests
 
 add_test(NAME SpatialFlow_BC_Walls WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

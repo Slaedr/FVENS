@@ -213,6 +213,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	const double finalwtime = MPI_Wtime();
 	const double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);
+	tdata.num_timesteps = step;
 
 	if(mpirank==0)
 		writeStepToConvergenceHistory(convstep, std::cout);

@@ -3,6 +3,7 @@
 set(CONTROL_FILES inv-cyl-gg-hllc_tri.ctrl
   inv-cyl-ls-hllc_quad.ctrl
   expl-cyl-ls-hllc.ctrl)
+
 # Process them to include CMake variables
 foreach(file ${CONTROL_FILES})
   message(STATUS "Configuring control file ${file}")
@@ -35,6 +36,7 @@ add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad_EntropyConvergen
 
 add_test(NAME Flow_Euler_Cylinder_Explicit_LeastSquares_HLLC_Quad_ResidualConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow
+  COMMAND sh ../flow-general/test_res_hist.sh
   ${CMAKE_CURRENT_BINARY_DIR}/expl-cyl-ls-hllc.ctrl
-  --mesh_file ../../testcases/2dcylinder/grids/2dcylquad1.msh )
+  --mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad1.msh
+  --log_file_prefix ${CMAKE_CURRENT_BINARY_DIR}/2dcyl )
