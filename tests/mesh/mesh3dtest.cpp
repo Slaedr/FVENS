@@ -6,7 +6,7 @@ using namespace fvens;
 
 int main(int argc, char *argv[])
 {
-	UMesh m;
+	UMesh<double,3> m;
 	m.readMesh("../common-input/box-tet.msh");
 
 	assert(m.gnelem() == 364-168);
@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	assert(m.gndtag() == 2);
 	assert(m.gnbtag() == 2);
 
-	assert(m.bface(1,m.gnnodeBFace(1))==2);
+	assert(m.gbface(1,m.gnnodeBFace(1))==2);
 
 	return 0;
 }

@@ -78,17 +78,18 @@ public:
 	int gintfacbtags(const a_int face, const int i) const { return intfacbtags.get(face,i); }
 
 	/// Returns the measure of a cell
-	scalar gvol(const a_int ielem) const { return volume.get(ielem,0); }
+	scalar gvol(const a_int ielem) const { return volume[ielem]; }
 
 	/// Returns the components of the unit normal or the measure of a face \sa facemetric
 	scalar gfacemetric(const a_int iface, const int index) const {return facemetric.get(iface,index);}
 
 	/// Returns the unit normal vector as a fixed-size array for a given face of \ref intfac
-	std::array<scalar,ndim> gnormal(const a_int iface) const {
-		if(ndim == 2)
-			return {facemetric.get(iface,0), facemetric.get(iface,1)};
-		else
-			return {facemetric.get(iface,0), facemetric.get(iface,1), facemetric.get(iface,2)};
+	std::array<scalar,ndim> gnormal(const a_int iface) const
+	{
+		std::array<scalar,ndim> n;
+		for(int i = 0; i < ndim; i++)
+			n[i] = facemetric.get(iface,i);
+		return n;
 	}
 
 	/// Get \ref bface index of a face from its \ref intfac index

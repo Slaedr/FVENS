@@ -716,7 +716,7 @@ void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile) const
 			face_type = 8;
 
 		outf << iface+1 << " " << face_type << " " << nbtagout;
-		for(int i = nnofa; i < nnobfa[iface]+nbtag; i++)    // write tags
+		for(int i = nnobfa[iface]; i < nnobfa[iface]+nbtag; i++)    // write tags
 			outf << " " << bface(iface,i);
 		for(int i = 0; i < nbtagout-nbtag; i++)     // write extra tags if needed
 			if(nbtag == 0)
@@ -772,17 +772,17 @@ void UMesh<scalar,ndim>::compute_volumes()
 	for(a_int i = 0; i < nelem; i++)
 	{
 		if(nnode[i] == 3)
-			volume(i,0) = 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,1),1) 
+			volume[i] = 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,1),1) 
 				- coords(inpoel(i,2),1)) - coords(inpoel(i,0),1)*(coords(inpoel(i,1),0) 
 				- coords(inpoel(i,2),0)) + coords(inpoel(i,1),0)*coords(inpoel(i,2),1) 
 				- coords(inpoel(i,2),0)*coords(inpoel(i,1),1));
 		else if(nnode[i]==4)
 		{
-			volume(i,0) = 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,1),1) 
+			volume[i] = 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,1),1) 
 				- coords(inpoel(i,2),1)) - coords(inpoel(i,0),1)*(coords(inpoel(i,1),0)
 				- coords(inpoel(i,2),0)) + coords(inpoel(i,1),0)*coords(inpoel(i,2),1)
 				- coords(inpoel(i,2),0)*coords(inpoel(i,1),1));
-			volume(i,0) += 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,2),1) 
+			volume[i] += 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,2),1) 
 				- coords(inpoel(i,3),1)) - coords(inpoel(i,0),1)*(coords(inpoel(i,2),0)
 				- coords(inpoel(i,3),0)) + coords(inpoel(i,2),0)*coords(inpoel(i,3),1)
 				- coords(inpoel(i,3),0)*coords(inpoel(i,2),1));
@@ -1227,7 +1227,7 @@ void UMesh<scalar,ndim>::compute_faceConnectivity()
 	std::cout << "UMesh: compute_topological(): Number of all faces = " << naface << std::endl;
 
 	//allocate intfac and elemface
-	intfac.resize(naface,nnofa+2);
+	intfac.resize(naface,maxnnofa+2);
 	elemface.resize(nelem,maxnfael);
 
 	//reset face totals
@@ -1412,10 +1412,11 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 	}
 }
 
-template class UMesh<a_real>;
+template class UMesh<a_real,2>;
+template class UMesh<a_real,3>;
 
 #ifdef USE_ADOLC
-template class UMesh2dh<adouble>;
+template class UMesh<adouble,2>;
 #endif
 
 } // end namespace
