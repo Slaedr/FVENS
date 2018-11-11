@@ -392,12 +392,13 @@ void UMesh<scalar,ndim>::readGmsh2(const std::string mfile)
 	infile.close();
 
 	// set flag_bpoin
-	flag_bpoin.resize(npoin,1);
-	flag_bpoin.zeros();
+	flag_bpoin.resize(npoin);
+	std::fill(flag_bpoin.begin(), flag_bpoin.end(), 0.0);
+	//flag_bpoin.zeros();
 	for(int i = 0; i < nface; i++)
 		for(int j = 0; j < maxnnobfa; j++)
 			if(bface(i,j) >= 0)
-				flag_bpoin(bface(i,j)) = 1;
+				flag_bpoin[bface(i,j)] = 1;
 }
 
 /** \todo Generalize to 3D
@@ -490,6 +491,7 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 
 	std::vector<int> tags(nbmarkers);
 	std::vector<a_int> numfacs(nbmarkers);
+	int maxnnobfa = 2;
 	nface = 0;
 
 	for(int ib = 0; ib < nbmarkers; ib++)
@@ -509,6 +511,8 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 			int nnobfatemp = 3;
 			if (type == su2_line)
 				nnobfatemp = 2;
+			maxnnobfa = std::max(maxnnobfa, nnobfatemp);
+
 			bfacs[ib][iface].resize(nnobfatemp);
 			for(int inofa = 0; inofa < nnobfatemp; inofa++)
 				fin >> bfacs[ib][iface][inofa];
@@ -523,15 +527,17 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 
 	std::cout << "UMesh: readSU2: Number of boundary faces = " << nface << std::endl;
 
-	bface.resize(nface,nnofa+nbtag);
+	bface.resize(nface,maxnnobfa+nbtag);
+	nnobfa.resize(nface);
 	a_int count=0;
 	for(int ib = 0; ib < nbmarkers; ib++)
 	{
 		for(a_int iface = 0; iface < numfacs[ib]; iface++)
 		{
-			for(int inofa = 0; inofa < nnofa; inofa++)
+			nnobfa[count] = static_cast<int>(bfacs[ib][iface].size());
+			for(int inofa = 0; inofa < nnobfa[count]; inofa++)
 				bface(count,inofa) = bfacs[ib][iface][inofa];
-			bface(count,nnofa) = tags[ib];
+			bface(count, nnobfa[count]) = tags[ib];
 
 			count++;
 		}
@@ -539,11 +545,11 @@ void UMesh<scalar,ndim>::readSU2(const std::string mfile)
 
 	// Classify points as boundary points or not
 
-	flag_bpoin.resize(npoin,1);
-	flag_bpoin.zeros();
+	flag_bpoin.resize(npoin);
+	std::fill(flag_bpoin.begin(), flag_bpoin.end(), 0.0);
 	for(int i = 0; i < nface; i++)
-		for(int j = 0; j < nnofa; j++)
-			flag_bpoin(bface(i,j)) = 1;
+		for(int j = 0; j < nnobfa[i]; j++)
+			flag_bpoin[bface(i,j)] = 1;
 }
 
 template <typename scalar, int ndim>
@@ -569,6 +575,7 @@ void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
  * it gives the boundary node number (according to bpointsb) of each local node of a bface.
  * \note Only for linear meshes.
  */
+#if 0
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::compute_boundary_points()
 {
@@ -656,28 +663,24 @@ void UMesh<scalar,ndim>::compute_boundary_points()
 		}
 	}
 }
+#endif
 
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::printmeshstats() const
 {
 	std::cout << "UMesh: No. of points: " << npoin << ", no. of elements: " << nelem 
-		<< ", no. of boundary faces " << nface 
-		<< ", max no. of nodes per element: " << maxnnode << ", no. of nodes per face: " << nnofa 
-		<< ", max no. of faces per element: " << maxnfael << std::endl;
+	          << ", no. of boundary faces " << nface 
+	          << ", max no. of nodes per element: " << maxnnode
+	          << ", max no. of nodes per face: " << maxnnofa
+	          << ", max no. of faces per element: " << maxnfael << std::endl;
 }
 
 /** \todo Generalize to 3D
  */
 template <typename scalar, int ndim>
-void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
+void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile) const
 {
 	std::cout << "UMesh: writeGmsh2(): writing mesh to file " << mfile << std::endl;
-	// decide element type first, based on nfael/nnode and nnofa
-	int elm_type = 2;
-	int face_type = 1;
-
-	if(nnofa == 3)
-		face_type = 8;
 
 	std::ofstream outf;
 	open_file_toWrite(mfile, outf);
@@ -708,23 +711,28 @@ void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
 	// boundary faces first
 	for(int iface = 0; iface < nface; iface++)
 	{
+		int face_type = 1;
+		if(nnobfa[iface] == 3)
+			face_type = 8;
+
 		outf << iface+1 << " " << face_type << " " << nbtagout;
-		for(int i = nnofa; i < nnofa+nbtag; i++)    // write tags
+		for(int i = nnofa; i < nnobfa[iface]+nbtag; i++)    // write tags
 			outf << " " << bface(iface,i);
 		for(int i = 0; i < nbtagout-nbtag; i++)     // write extra tags if needed
 			if(nbtag == 0)
 				outf << " " << default_tag;
 			else
 				// different physical tags must have different elementary tags
-				outf << " " << default_tag+bface(iface,nnofa+nbtag-1);
+				outf << " " << default_tag+bface(iface,nnobfa[iface]+nbtag-1);
 
-		for(int i = 0; i < nnofa; i++)
+		for(int i = 0; i < nnobfa[iface]; i++)
 			outf << " " << bface(iface,i)+1;		// write nodes
 		outf << '\n';
 	}
 	//std::cout << "elements\n";
 	for(int iel = 0; iel < nelem; iel++)
 	{
+		int elm_type = 2;
 		if(nnode[iel] == 3)
 			elm_type = 2;
 		else if(nnode[iel] == 4)
@@ -754,27 +762,30 @@ void UMesh<scalar,ndim>::writeGmsh2(const std::string mfile)
 }
 
 // Computes volumes of linear triangles and quads
+/// \todo Extend to all cell types
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::compute_volumes()
 {
-	volume.resize(nelem,1);
+	assert(ndim == 2);
+
+	volume.resize(nelem);
 	for(a_int i = 0; i < nelem; i++)
 	{
 		if(nnode[i] == 3)
-			volume(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
-				- gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0) 
-				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1) 
-				- gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
+			volume(i,0) = 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,1),1) 
+				- coords(inpoel(i,2),1)) - coords(inpoel(i,0),1)*(coords(inpoel(i,1),0) 
+				- coords(inpoel(i,2),0)) + coords(inpoel(i,1),0)*coords(inpoel(i,2),1) 
+				- coords(inpoel(i,2),0)*coords(inpoel(i,1),1));
 		else if(nnode[i]==4)
 		{
-			volume(i,0) = 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,1),1) 
-				- gcoords(ginpoel(i,2),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,1),0)
-				- gcoords(ginpoel(i,2),0)) + gcoords(ginpoel(i,1),0)*gcoords(ginpoel(i,2),1)
-				- gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,1),1));
-			volume(i,0) += 0.5*(gcoords(ginpoel(i,0),0)*(gcoords(ginpoel(i,2),1) 
-				- gcoords(ginpoel(i,3),1)) - gcoords(ginpoel(i,0),1)*(gcoords(ginpoel(i,2),0)
-				- gcoords(ginpoel(i,3),0)) + gcoords(ginpoel(i,2),0)*gcoords(ginpoel(i,3),1)
-				- gcoords(ginpoel(i,3),0)*gcoords(ginpoel(i,2),1));
+			volume(i,0) = 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,1),1) 
+				- coords(inpoel(i,2),1)) - coords(inpoel(i,0),1)*(coords(inpoel(i,1),0)
+				- coords(inpoel(i,2),0)) + coords(inpoel(i,1),0)*coords(inpoel(i,2),1)
+				- coords(inpoel(i,2),0)*coords(inpoel(i,1),1));
+			volume(i,0) += 0.5*(coords(inpoel(i,0),0)*(coords(inpoel(i,2),1) 
+				- coords(inpoel(i,3),1)) - coords(inpoel(i,0),1)*(coords(inpoel(i,2),0)
+				- coords(inpoel(i,3),0)) + coords(inpoel(i,2),0)*coords(inpoel(i,3),1)
+				- coords(inpoel(i,3),0)*coords(inpoel(i,2),1));
 		}
 	}
 }
@@ -812,14 +823,18 @@ void UMesh<scalar,ndim>::compute_topological()
 /** Assumption: order of nodes of boundary faces is such that normal points outside,
  * when normal is calculated as
  * 		nx = y2 - y1, ny = -(x2-x1).
+ *
+ * \todo Extend to 3D
  */
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::compute_face_data()
 {
+	assert(ndim == 2);
+
 	int i, j, p1, p2;
 
 	//Now compute normals and lengths (only linear meshes!)
-	facemetric.resize(naface, 3);
+	facemetric.resize(naface, ndim+1);
 	for(i = 0; i < naface; i++)
 	{
 		facemetric(i,0) = coords(intfac(i,3),1) - coords(intfac(i,2),1);
@@ -852,8 +867,8 @@ void UMesh<scalar,ndim>::compute_face_data()
 				{
 					for(j = 0; j < nbtag; j++)
 					{
-						intfacbtags(ied,j) = bface.get(i,nnofa+j);
-						intfacbtags(ied,j) = bface.get(i,nnofa+j);
+						intfacbtags(ied,j) = bface.get(i,nnobfa[i]+j);
+						intfacbtags(ied,j) = bface.get(i,nnobfa[i]+j);
 					}
 				}
 			}
@@ -864,10 +879,12 @@ void UMesh<scalar,ndim>::compute_face_data()
 #endif
 }
 
-/// This function is only valid in 2D
+/// \todo This function is only valid in 2D - extend to 3D
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::compute_periodic_map(const int bcm, const int axis)
 {
+	assert(ndim == 2);
+
 	if(bcm < 0) {
 		std::cout << " UMesh: No periodic boundary specified.\n";
 		return;
@@ -920,18 +937,21 @@ void UMesh<scalar,ndim>::compute_periodic_map(const int bcm, const int axis)
 	}
 }
 
+/// \todo 3D
 template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::compute_boundary_maps()
 {
+	assert(ndim == 2);
+
 	// iterate over bfaces and find corresponding intfac face for each bface
 	bifmap.resize(nbface,1);
 	ifbmap.resize(nbface,1);
 
-	std::vector<int> fpo(nnofa);
 
 	for(int ibface = 0; ibface < nface; ibface++)
 	{
-		for(int i = 0; i < nnofa; i++)
+		std::vector<int> fpo(nnobfa[ibface]);
+		for(int i = 0; i < nnobfa[ibface]; i++)
 			fpo[i] = bface(ibface,i);
 
 		int inface = -1;
@@ -941,13 +961,13 @@ void UMesh<scalar,ndim>::compute_boundary_maps()
 		{
 			bool final1 = true;
 
-			std::vector<bool> inter(nnofa);
-			for(int b = 0; b < nnofa; b++)
+			std::vector<bool> inter(nnobfa[ibface]);
+			for(int b = 0; b < nnobfa[ibface]; b++)
 				inter[b] = false;						// initially set all bools to false
 
-			for(int j = 0; j < nnofa; j++)
+			for(int j = 0; j < nnobfa[ibface]; j++)
 			{
-				for(int k = 0; k < nnofa; k++)
+				for(int k = 0; k < nnofa[iface]; k++)
 					if(fpo[j] == intfac(iface, 2+k)) {
 						/* if jth node of ibface has a node of iface, it belongs to iface;
 						 * set the corresp. boolean to true
@@ -957,11 +977,11 @@ void UMesh<scalar,ndim>::compute_boundary_maps()
 					}
 			}
 
-			/*for(int i = 0; i < nnofa; i++)
+			/*for(int i = 0; i < nnobfa[]; i++)
 				std::cout << inter[i];
 			std::cout << std::endl;*/
 
-			for(int b = 0; b < nnofa; b++)
+			for(int b = 0; b < nnobfa[ibface]; b++)
 				/* if any node of ibface failed to find a node of iface,
 				 * ibface is not the same as iface
 				 */
@@ -1042,7 +1062,7 @@ void UMesh<scalar,ndim>::compute_intfacbtags()
 	for(int ibface = 0; ibface < nface; ibface++)
 	{
 		for(int j = 0; j < nbtag; j++)
-			intfacbtags(ifbmap(ibface),j) = bface(ibface,nnofa+j);
+			intfacbtags(ifbmap(ibface),j) = bface(ibface,nnobfa[ibface]+j);
 	}
 }
 

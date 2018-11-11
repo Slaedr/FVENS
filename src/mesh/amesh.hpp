@@ -98,7 +98,7 @@ public:
 	a_int gifbmap(const a_int iface) const { return ifbmap(iface); }
 
 	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
-	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
+	int gflag_bpoin(const a_int pointno) const { return flag_bpoin[pointno]; }
 
 	/// Returns the total number of vertices in the mesh
 	a_int gnpoin() const { return npoin; }
@@ -174,12 +174,12 @@ public:
 	/** Stores (in array bpointsb) for each boundary point: the associated global point number
 	 * and the two bfaces associated with it.
 	 */
-	void compute_boundary_points();
+	//void compute_boundary_points();
 
 	void printmeshstats() const;
 
 	/// Writes out the mesh in the Gmsh 2.0 format
-	void writeGmsh2(const std::string mfile);
+	void writeGmsh2(const std::string mfile) const;
 
 	/// Computes areas of linear triangles and quads
 	void compute_volumes();
@@ -336,7 +336,7 @@ private:
 	amat::Array2d<int> vol_regions;
 
 	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
-	amat::Array2d<int> flag_bpoin;
+	std::vector<int> flag_bpoin;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int > esup_p;
@@ -393,7 +393,7 @@ private:
 	amat::Array2d<int > bfacebp;
 
 	/// Contains volume of each element
-	amat::Array2d<scalar> volume;	
+	std::vector<scalar> volume;	
 
 	/// Stores lengths and unit normals for linear mesh faces
 	/** For each face, the first two/three entries the components of the unit normal,

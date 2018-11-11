@@ -11,3 +11,6 @@ mesh3dtest: mesh3d
 
 runmesh3dtest: mesh3dtest
 	./mesh3dtest
+
+clean:
+	rm -f *.o mesh3dtest
