@@ -235,16 +235,6 @@ public:
 	/// Populate [intfacbtags](@ref intfacbtags) with boundary markers of corresponding bfaces
 	void compute_intfacbtags();
 
-	/** \brief Adds high-order nodes to convert a linear mesh to a straight-faced quadratic mesh.
-	 *
-	 * \note Make sure to execute [compute_topological()](@ref compute_topological)
-	 * before calling this function.
-	*/
-	UMesh convertLinearToQuadratic();
-
-	/// Converts quads in a mesh to triangles
-	UMesh convertQuadToTri() const;
-
 private:
 
 	/// Available cell and face types
