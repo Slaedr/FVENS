@@ -28,8 +28,15 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
                              const Vec uvec, Vec __restrict rvec,
                              const bool gettimesteps, Vec __restrict dtm);
 
+/// Computes and assembles the residual Jacobian
 template <typename scalar, int nvars>
 StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const Vec uvec, Mat A);
+
+/// Computes and assembles the residual Jacobian but slower, using non-block PETSc functions
+/** Do not use; only for testing
+ */
+template <typename scalar, int nvars>
+StatusCode assemble_jacobian_slow(const Spatial<scalar,nvars> *const spatial, const Vec uvec, Mat A);
 
 }
 
