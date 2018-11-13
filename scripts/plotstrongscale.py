@@ -32,7 +32,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, opts, imagefo
     elif phase == "apply":
         plotcol = 4
         phasestring = "application"
-    elif phase == "total":
+    elif phase == "all":
         plotcol = 5
 
     for i in range(len(filelist)):
@@ -58,7 +58,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, opts, imagefo
     if maxspeedup < fulldata[-1,0]/ht:
         maxspeedup = fulldata[-1,0]/ht
     plt.xlabel("Number of cores", fontsize="medium")
-    plt.ylabel("Speedup x " + str(basethreads) + " (" + phasestring + ")", fontsize="medium")
+    plt.ylabel("Speedup x " + str(basethreads), fontsize="medium")
 
     ax = plt.axes()
     ymin = basethreads
@@ -69,7 +69,8 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, opts, imagefo
     plt.grid(True)
     plt.legend(loc="best", fontsize="medium")
 
-    plt.savefig(filename.split('/')[-1].split('.')[0]+"-speedup"+"." + imageformatstring, dpi=150)
+    plt.savefig(filename.split('/')[-1].split('.')[0] + "-" + phasestring + "-speedup"+"." \
+            + imageformatstring, dpi=150)
 
 if __name__ == "__main__":
 
