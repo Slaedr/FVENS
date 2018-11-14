@@ -311,6 +311,69 @@ a_real SteadyBackwardEulerSolver<nvars>::expResidualRamp(const a_real cflmin, co
 }
 
 template <int nvars>
+StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl, Vec dtmvec, Mat M)
+{
+	StatusCode ierr = 0;
+	const UMesh2dh<a_real> *const m = space->mesh();
+
+	PetscScalar *dtm;
+	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+
+	// Add pseudo-time terms to diagonal blocks
+	// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
+	//   This is required in case of matrix-free solvers.
+
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
+
+		const Matrix<a_real,nvars,nvars,RowMajor> db
+			= dtm[iel] * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
+	
+#pragma omp critical
+		{
+			MatSetValuesBlocked(M, 1, &iel, 1, &iel, db.data(), ADD_VALUES);
+		}
+	}
+
+	ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
+	return ierr;
+}
+
+template <int nvars>
+StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real cfl, Vec dtmvec, Mat M)
+{
+	StatusCode ierr = 0;
+	const UMesh2dh<a_real> *const m = space->mesh();
+
+	PetscScalar *dtm;
+	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+
+	// Add pseudo-time terms to diagonal blocks
+	// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
+	//   This is required in case of matrix-free solvers.
+
+#pragma omp parallel for default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
+
+		for(int i = 0; i < nvars; i++)
+		{
+			const a_int index = iel*nvars+i;
+#pragma omp critical
+			{
+				MatSetValues(M, 1, &index, 1, &index, &dtm[iel], ADD_VALUES);
+			}
+		}
+	}
+
+	ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
+	return ierr;
+}
+
+template <int nvars>
 StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 {
 	if(config.maxiter <= 0) {
@@ -416,31 +479,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		// (void)resiold;
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.3);
 
-		PetscScalar *dtm;
-		ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
-
 		// Add pseudo-time terms to diagonal blocks
-		// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
+		// NOTE: After the following function call, dtm will contain Vol/(CFL*dt).
 		//   This is required in case of matrix-free solvers.
-
-#pragma omp parallel for default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-		{
-			dtm[iel] = m->garea(iel) / (curCFL*dtm[iel]);
-
-			const Matrix<a_real,nvars,nvars,RowMajor> db
-				= dtm[iel] * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
-	
-#pragma omp critical
-			{
-				MatSetValuesBlocked(M, 1, &iel, 1, &iel, db.data(), ADD_VALUES);
-			}
-		}
-
-		ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
+		ierr = addPseudoTimeTerm(curCFL, dtmvec, M); CHKERRQ(ierr);
 
 		ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-		MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY);
+		ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	
 		/// Freezes the non-zero structure for efficiency in subsequent time steps.
 		ierr = MatSetOption(M, MAT_NEW_NONZERO_LOCATIONS, PETSC_FALSE); CHKERRQ(ierr);

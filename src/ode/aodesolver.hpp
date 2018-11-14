@@ -176,6 +176,18 @@ protected:
 	/// A kind of exponential ramping, designed to be dependent on the residual ratio as base
 	a_real expResidualRamp(const a_real cflmin, const a_real cflmax, const a_real prevcfl,
 			const a_real resratio, const a_real paramup, const a_real paramdown);
+
+	/// Add pseudo-time terms to diagonal blocks
+	/**
+	 * \param[in] cfl CFL number to use
+	 * \param[in,out] dtmvec Should contain the max. allowable time step in input. It is modified to
+	 *   the term added to the diagonal on output, ie, vol / (cfl * dt).
+	 * \param[in,out] M The Jacobian matrix to add the time term to
+	 */
+	StatusCode addPseudoTimeTerm(const a_real cfl, Vec dtmvec, Mat M);
+
+	/// Same as \ref addPseudoTimeTerm but slower, using non-block assembly
+	StatusCode addPseudoTimeTerm_slow(const a_real cfl, Vec dtmvec, Mat M);
 };
 
 /// Base class for unsteady simulations

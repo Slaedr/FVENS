@@ -12,7 +12,14 @@
 -ksp_rtol 1e-1
 -ksp_max_it 30
 
--pc_type bjacobi
+-pc_type ilu
 
--sub_pc_type ilu
+# Additional options (unused by default) for experimenting with the BLASTed preconditioner library
+
+-blasted_pc_type sgs
+-blasted_async_sweeps 1,1
+
+-blasted_async_fact_init_type init_sgs
+-blasted_async_apply_init_type init_jacobi
+-blasted_thread_chunk_size 256
 

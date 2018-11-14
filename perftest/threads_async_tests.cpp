@@ -99,7 +99,7 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVAR
 	if(conv_history_reqd && mpirank==0) {
 		// Prepare convergence history file for this sweeps+threads setting
 		const std::string perflogfile = perflogprefix
-			+ "-sweeps" + std::to_string(nbswps) + "_" + std::to_string(naswps)
+			+ "-sweeps_" + std::to_string(nbswps) + "_" + std::to_string(naswps)
 			+ "-threads" + std::to_string(numthreads) + ".conv";
 
 		convout.open(perflogfile);
