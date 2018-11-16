@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include "physics/aphysics_defs.hpp"
 #include "physics/viscousphysics.hpp"
 #include "utilities/afactory.hpp"
 #include "abctypemap.hpp"

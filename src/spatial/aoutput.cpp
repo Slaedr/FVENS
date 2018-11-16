@@ -8,6 +8,7 @@
 #include <cmath>
 #include "aoutput.hpp"
 #include "utilities/aoptionparser.hpp"
+#include "physics/aphysics_defs.hpp"
 
 namespace fvens {
 

@@ -4,7 +4,7 @@
  * \date 2017 September 13
  */
 
-#include "aphysics.hpp"
+#include "aphysics_defs.hpp"
 #include <iostream>
 #include "utilities/adolcutils.hpp"
 

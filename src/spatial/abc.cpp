@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include "abc.hpp"
+#include "physics/aphysics_defs.hpp"
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
 #endif

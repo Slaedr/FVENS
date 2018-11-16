@@ -12,6 +12,7 @@
 #define FVENS_NONLINEAR_RELAXATION_H
 
 #include "aconstants.hpp"
+#include "physics/aphysics.hpp"
 
 namespace fvens {
 
@@ -26,14 +27,23 @@ public:
 	virtual a_real getLocalRelaxationFactor(const a_real du[nvars], const a_real u[nvars]) const = 0;
 };
 
-class FlowSimpleRelaxation : public NonlinearRelaxation<NVARS>
+/// A simple under-relaxation scheme for implicit flow solves which attempts prevent large changes
+///  in density and pressure
+/** The template parameter is the number of spatial dimensions in the problem.
+ */
+template <int ndim>
+class FlowSimpleRelaxation : public NonlinearRelaxation<ndim+2>
 {
 public:
-	FlowSimpleRelaxation(const a_real min_factor);
+	static constexpr int nvars = ndim+2;
+
+	FlowSimpleRelaxation(const IdealGasPhysics<a_real> physics, const a_real min_factor);
 
 	a_real getLocalRelaxationFactor(const a_real du[nvars], const a_real u[nvars]) const;
 
 protected:
+	/// Gas physics context
+	const IdealGasPhysics<a_real> phy;
 	/// The minimum allowed relaxation factor
 	const a_real minfactor;
 };
