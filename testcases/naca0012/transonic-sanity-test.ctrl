@@ -51,19 +51,21 @@ pseudotime
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  20.0
-		cfl_max                  1000.0
+		cfl_min                  500.0
+		cfl_max                  5000.0
 		tolerance                1e-7
-		max_timesteps            500
+		max_timesteps            100
 	}
 	
 	;; The solver which computes an initial guess for the main solver
 	initialization {	
-		cfl_min                  20.0
+		cfl_min                  50.0
 		cfl_max                  1000.0
 		tolerance                1e-1
 		max_timesteps            100
 	}
+	
+	nonlinear_update_scheme       robust_flow
 }
 
 Jacobian_inviscid_flux       consistent

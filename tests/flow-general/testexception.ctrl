@@ -104,6 +104,8 @@ pseudotime
 		tolerance                1e-1
 		max_timesteps            0
 	}
+	
+	nonlinear_update_scheme    full
 }
 
 ;; Inviscid flux function to use for computing the Jacobian

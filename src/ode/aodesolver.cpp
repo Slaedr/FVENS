@@ -244,19 +244,18 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
  */
 template <int nvars>
 SteadyBackwardEulerSolver<nvars>::
-SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial, 
-                          const SteadySolverConfig& conf,	
-                          KSP ksp)
+SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
+                          const SteadySolverConfig& conf,
+                          KSP ksp, const NonlinearUpdate<nvars> *const nlr)
 
-	: SteadySolver<nvars>(spatial, conf), solver{ksp}
+	: SteadySolver<nvars>(spatial, conf), solver{ksp}, update_relax{nlr}
 {
 	const UMesh2dh<a_real> *const m = space->mesh();
 	Mat M;
 	int ierr;
 	ierr = KSPGetOperators(solver, NULL, &M);
 	ierr = MatCreateVecs(M, &duvec, &rvec);
-	if(ierr)
-		throw "! SteadyBackwardEulerSolver: Could not create residual or update vector!";
+	petsc_throw(ierr, "SteadyBackwardEulerSolver: Could not create residual or update vector!");
 	ierr = createMeshBasedVector(m, &dtmvec);
 	petsc_throw(ierr, "Could not create mesh vector");
 }
@@ -409,20 +408,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	a_real resi = 1.0, resiold = 1.0;
 	a_real initres = 1.0;
 
-	/* Our usage of Eigen Maps in the manner below assumes that VecGetArray returns a pointer to
-	 * the primary underlying storage in PETSc Vec. This usually happens, but not for
-	 * CUDA, CUSP or ViennaCL vecs.
-	 * To be safe, we should use VecGetArray and only construct the map immediately before
-	 * the usage of the map.
-	 */
-	PetscScalar *duarr, *rarr, *uarr;
-	ierr = VecGetArray(duvec, &duarr); CHKERRQ(ierr);
-	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> du(duarr, m->gnelem(), nvars);
-	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
-	Eigen::Map<MVector<a_real>> u(uarr, m->gnelem(), nvars);
-
 	if(config.lognres)
 		tdata.convhis.reserve(100);
 	
@@ -440,12 +425,20 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
+		{
+			PetscScalar *rarr = NULL;
+			ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+			Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
+
 #pragma omp parallel for default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++) {
+			for(a_int iel = 0; iel < m->gnelem(); iel++) {
 #pragma omp simd
-			for(int i = 0; i < nvars; i++) {
-				residual(iel,i) = 0;
+				for(int i = 0; i < nvars; i++) {
+					residual(iel,i) = 0;
+				}
 			}
+
+			ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 		}
 
 		std::vector<int>::iterator it = std::find(amgrecompute.begin(), amgrecompute.end(), step+1);
@@ -506,20 +499,35 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		int linstepsneeded;
 		ierr = KSPGetIterationNumber(solver, &linstepsneeded); CHKERRQ(ierr);
 		tdata.total_lin_iters += linstepsneeded;
-		
+
+		// Update solution and compute residual norm
 		a_real resnorm2 = 0;
+		{
+			PetscScalar *duarr, *uarr, *rarr;
+			ierr = VecGetArray(duvec, &duarr); CHKERRQ(ierr);
+			ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
+			ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
+			Eigen::Map<MVector<a_real>> du(duarr, m->gnelem(), nvars);
+			Eigen::Map<MVector<a_real>> u(uarr, m->gnelem(), nvars);
+			Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 
 #pragma omp parallel default(shared)
-		{
-#pragma omp for
-			for(a_int iel = 0; iel < m->gnelem(); iel++) {
-				u.row(iel) += du.row(iel);
-			}
-#pragma omp for simd reduction(+:resnorm2)
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				resnorm2 += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
+#pragma omp for
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
+				{
+					const a_real omega = update_relax->getLocalRelaxationFactor(&du(iel,0), &u(iel,0));
+					u.row(iel) += omega*du.row(iel);
+				}
+#pragma omp for simd reduction(+:resnorm2)
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
+				{
+					resnorm2 += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
+				}
 			}
+			ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
+			ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
+			ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 		}
 
 		resiold = resi;
@@ -578,10 +586,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 #endif
 	tdata.lin_walltime = linwtime; 
 	tdata.lin_cputime = linctime;
-
-	ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 
 	tdata.converged = false;
 	if(step < config.maxiter && (resi/initres <= config.tol))

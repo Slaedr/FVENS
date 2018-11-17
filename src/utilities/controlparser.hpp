@@ -30,7 +30,9 @@ struct FlowParserOptions
 		vol_output_reqd,                   ///< Whether volume output is required in a text file
 		                                   ///<  in addition to the main VTU output
 		sim_type,                          ///< Steady or unsteady simulation
-		time_integrator;                   ///< Physical time discretization scheme
+		time_integrator,                   ///< Physical time discretization scheme
+		/// How to compute under-relaxation factors for implicit pseudo-time or Newton solvers
+		nl_update_scheme;
 
 	a_real initcfl, endcfl,                  ///< Starting CFL number and max CFL number
 		tolerance,                           ///< Relative tolerance for the whole nonlinear problem
@@ -42,6 +44,7 @@ struct FlowParserOptions
 		final_time,                          ///< Physical time upto which to simulate
 		phy_timestep,                        ///< Constant physical time step for unsteady implicit
 		phy_cfl;                             ///< CFL used only by unsteady explicit solvers
+	a_real min_nl_update;                    ///< Minimum under-relaxation factor for nonlinear updates
 
 	int maxiter,
 		rampstart, rampend,

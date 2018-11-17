@@ -65,6 +65,8 @@ pseudotime
 		tolerance                1e-1
 		max_timesteps            150
 	}
+	
+	nonlinear_update_scheme    robust_flow
 }
 
 

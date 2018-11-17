@@ -81,8 +81,8 @@ pseudotime
 	
 	;; The solver which computes the final solution
 	main {
-		cfl_min                  200.0
-		cfl_max                  2000.0
+		cfl_min                  500.0
+		cfl_max                  5000.0
 		tolerance                1e-6
 		max_timesteps            80
 	}
@@ -90,11 +90,13 @@ pseudotime
 	;; The solver which computes an initial guess for the main solver
 	 ; Uses a first-order spatial discretization for steady cases
 	initialization {	
-		cfl_min                  50.0
-		cfl_max                  500.0
+		cfl_min                  200.0
+		cfl_max                  1000.0
 		tolerance                1e-1
 		max_timesteps            50
 	}
+	
+	nonlinear_update_scheme     full
 }
 
 ;; Inviscid flux function to use for computing the Jacobian for implicit solvers

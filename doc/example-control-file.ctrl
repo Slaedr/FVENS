@@ -4,7 +4,7 @@
 io {
 	mesh_file                    "FVENS/testcases/some_viscous_case/grids/some_mesh.msh"
 	solution_output_file         "visc-case.vtu"
-	log_file_prefix              "visc-case-log"
+	log_file_prefix              "visc-case"
 	convergence_history_required true
 }
 
@@ -116,6 +116,13 @@ pseudotime
 		tolerance                1e-1
 		max_timesteps            50
 	}
+	
+	;; How to compute relaxation factor for nonlinear updates. 'robust_flow' (recommended) or 'full'
+	 ; Only required in case of implicit pseudo-time solvers
+	nonlinear_update_scheme           robust_flow
+	
+	;; Minimum under-relaxation factor for nonlinear updates. Optional, default 0.2.
+	min_nonlinear_relaxation_factor    0.3
 }
 
 ;; Inviscid flux function to use for computing the Jacobian for implicit solvers

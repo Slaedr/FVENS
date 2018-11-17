@@ -5,6 +5,8 @@
 #include "spatial/aoutput.hpp"
 #include "ode/aodesolver.hpp"
 #include "utilities/aoptionparser.hpp"
+#include "utilities/controlparser.hpp"
+#include "utilities/afactory.hpp"
 #include "mesh/ameshutils.hpp"
 
 #undef NDEBUG
@@ -109,7 +111,7 @@ int main(int argc, char* argv[])
 		}
 
 		std::cout << "\n***\n";
-		
+
 		// solution vector
 		Vec u;
 
@@ -131,7 +133,7 @@ int main(int argc, char* argv[])
 			initcfl, endcfl, rampstart, rampend,
 			tolerance, maxiter
 		};
-		
+
 		const SteadySolverConfig startconf {
 			lognres, logfile,
 			firstinitcfl, firstendcfl, firstrampstart, firstrampend,
@@ -140,15 +142,22 @@ int main(int argc, char* argv[])
 
 		SteadySolver<1> *time = nullptr;
 		SteadySolver<1> *starttime = nullptr;
+
+		// This is bad design, but the nonlinear update scheme factory needs a flow options struct
+		//  to build an object, because one update scheme is specific to flow cases.
+		//  Here we just supply the string option to select the trivial update scheme.
+		FlowParserOptions opts;
+		opts.nl_update_scheme = "FULL";
+		const NonlinearUpdate<1> *const nlu = create_const_nonlinearUpdateScheme<1>(opts);
 		
 		if(timesteptype == "IMPLICIT") 
 		{
-			time = new SteadyBackwardEulerSolver<1>(prob, tconf, ksp);
+			time = new SteadyBackwardEulerSolver<1>(prob, tconf, ksp, nlu);
 
 			if(usestarter != 0)
 			{
 				std::cout << "Starting initialization solve..\n";
-				starttime = new SteadyBackwardEulerSolver<1>(startprob, startconf, ksp);
+				starttime = new SteadyBackwardEulerSolver<1>(startprob, startconf, ksp, nlu);
 
 				// solve the starter problem to get the initial solution
 				ierr = starttime->solve(u); CHKERRQ(ierr);

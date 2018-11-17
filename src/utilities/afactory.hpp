@@ -28,6 +28,8 @@
 #include "spatial/agradientschemes.hpp"
 #include "spatial/areconstruction.hpp"
 #include "spatial/flow_spatial.hpp"
+#include "ode/nonlinearrelaxation.hpp"
+#include "utilities/controlparser.hpp"
 
 namespace fvens {
 
@@ -101,6 +103,9 @@ const FlowFV_base<scalar>* create_const_flowSpatialDiscretization(
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 
-}
+/// Generates a nonlinear update (under-relaxation) scheme
+template <int nvars>
+const NonlinearUpdate<nvars>* create_const_nonlinearUpdateScheme(const FlowParserOptions& opts);
 
+}
 #endif

@@ -10,6 +10,7 @@
 #include <tuple>
 #include <petscksp.h>
 #include "spatial/aspatial.hpp"
+#include "nonlinearrelaxation.hpp"
 
 namespace fvens {
 
@@ -108,13 +109,13 @@ public:
 	/// Sets the spatial context and problem configuration, and allocates required data
 	/** \param x A PETSc Vec from which the residual vector is duplicated.
 	 */
-	SteadyForwardEulerSolver(const Spatial<a_real,nvars> *const euler, const Vec x, 
+	SteadyForwardEulerSolver(const Spatial<a_real,nvars> *const euler, const Vec x,
 			const SteadySolverConfig& conf);
-	
+
 	~SteadyForwardEulerSolver();
 
 	/// Solves the steady problem by a first-order explicit method, using local time-stepping
-	/** Currently, the CFL number is constant and set to the 
+	/** Currently, the CFL number is constant and set to the
 	 * ['initial' CFL number](\ref SteadySolverConfig::cflinit).
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
@@ -128,7 +129,7 @@ private:
 	using SteadySolver<nvars>::tdata;
 
 	/// Characteristic local time step for each cell
-	Vec dtmvec;				
+	Vec dtmvec;
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -137,20 +138,20 @@ class SteadyBackwardEulerSolver : public SteadySolver<nvars>
 {
 public:
 	/// Sets required data and sets up the sparse Jacobian storage
-	/** 
+	/**
 	 * \param[in] spatial Spatial discretization context
 	 * \param[in] conf Temporal discretization settings
 	 * \param[in] ksp The PETSc top-level solver context
 	 */
 	SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf,
-		KSP ksp);
-	
+	                          KSP ksp, const NonlinearUpdate<nvars> *const nl_upd);
+
 	~SteadyBackwardEulerSolver();
 
 	/// Runs the time-stepping loop with backward Euler time-stepping
 	/** Stores timing data in a \ref TimingData object that can be retreived by \ref getTimingData.
 	 * Throws an instance of \ref Numerical_error if the residual becomes NaN or inf.
-	 * 
+	 *
 	 * \param[in,out] u The solution vector containing the initial solution and which
 	 *   will contain the final solution on return.
 	 */
@@ -165,11 +166,14 @@ protected:
 	Vec duvec;                             ///< Nonlinear update vector
 
 	/// Characteristic local time step for each cell
-	Vec dtmvec;				
+	Vec dtmvec;
 
 	KSP solver;                            ///< The solver context
 
-	/// Linear CFL ramping 
+	/// For computation of the (local) under-relaxation factor for the nonlinear update
+	const NonlinearUpdate<nvars> *const update_relax;
+
+	/// Linear CFL ramping
 	a_real linearRamp(const a_real cstart, const a_real cend, const int itstart, const int itend,
 			const int itcur) const;
 

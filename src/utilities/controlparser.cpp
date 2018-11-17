@@ -183,6 +183,10 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 		opts.invfluxjac = get_upperCaseString(infopts, "Jacobian_inviscid_flux");
 		if(opts.invfluxjac == "CONSISTENT")
 			opts.invfluxjac = opts.invflux;
+
+		opts.nl_update_scheme = get_upperCaseString(infopts, c_pseudotime+"."+"nonlinear_update_scheme");
+		opts.min_nl_update = infopts.get(c_pseudotime+"."+"min_nonlinear_relaxation_factor",
+		                                           0.2);
 	}
 	
 	// check for some PETSc options

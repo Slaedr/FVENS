@@ -223,11 +223,13 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	};
 
 	SteadySolver<NVARS> * starttime = nullptr;
+	const NonlinearUpdate<NDIM+2> *const nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
 
 	if(opts.pseudotimetype == "IMPLICIT")
 	{
 		if(opts.usestarter != 0) {
-			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, isol.ksp);
+			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, isol.ksp,
+			                                                 nlupdate);
 			std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
 		}
 
@@ -265,6 +267,7 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	}
 
 	delete starttime;
+	delete nlupdate;
 
 	// Note that we destroy the KSP after the startup solve (in fact, after any solve)
 	//  - could be advantageous for some types of algebraic solvers
@@ -292,7 +295,8 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 		opts.tolerance, opts.maxiter,
 	};
 
-	SteadySolver<NVARS> * time = nullptr;
+	SteadySolver<NDIM+2> * time = nullptr;
+	const NonlinearUpdate<NDIM+2> *const nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
 
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
@@ -304,7 +308,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	// setup nonlinear ODE solver for main solve - MUST be done AFTER KSPCreate
 	if(opts.pseudotimetype == "IMPLICIT")
 	{
-		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, isol.ksp);
+		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, isol.ksp, nlupdate);
 		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
 	}
 	else
@@ -336,6 +340,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 #endif
 
 	delete time;
+	delete nlupdate;
 	ierr = isol.destroy(); petsc_throw(ierr, "Could not destroy linear problen LHS");
 #ifdef USE_BLASTED
 	destroyBlastedDataList(&bctx);

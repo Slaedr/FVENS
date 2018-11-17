@@ -8,9 +8,9 @@
 
 -mat_type baij
 
--ksp_type gmres
+-ksp_type fgmres
 -ksp_rtol 1e-1
--ksp_max_it 40
+-ksp_max_it 30
 
 -pc_type bjacobi
 

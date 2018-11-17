@@ -240,4 +240,21 @@ create_const_flowSpatialDiscretization<a_real>(const UMesh2dh<a_real> *const m,
                                                const FlowPhysicsConfig& pconf,
                                                const FlowNumericsConfig& nconf);
 
+template <int nvars>
+const NonlinearUpdate<nvars>* create_const_nonlinearUpdateScheme(const FlowParserOptions& opts)
+{
+	const IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	if(opts.nl_update_scheme == "FULL")
+		return new FullUpdate<nvars>();
+	else if(opts.nl_update_scheme == "ROBUST_FLOW")
+		return new FlowSimpleUpdate<nvars>(phy, opts.min_nl_update);
+	else
+		throw std::invalid_argument("Unsupported nonlinear update scheme!");
+}
+
+template
+const NonlinearUpdate<1>* create_const_nonlinearUpdateScheme(const FlowParserOptions& opts);
+template
+const NonlinearUpdate<NDIM+2>* create_const_nonlinearUpdateScheme(const FlowParserOptions& opts);
+
 }
