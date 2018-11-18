@@ -102,19 +102,19 @@ int main(int argc, char *argv[])
 	// Check if convergence history output files can be opened
 	std::ifstream conv;
 
-	conv.open(outprefix+"-sweeps1_1-threads2.conv");
+	conv.open(outprefix+"-sweeps_1_1-threads2.conv");
 	if(!conv)
 		throw std::ios_base::failure("File not found");
 	conv.close();
-	conv.open(outprefix+"-sweeps1_1-threads4.conv");
+	conv.open(outprefix+"-sweeps_1_1-threads4.conv");
 	if(!conv)
 		throw std::ios_base::failure("File not found");
 	conv.close();
-	conv.open(outprefix+"-sweeps2_3-threads2.conv");
+	conv.open(outprefix+"-sweeps_2_3-threads2.conv");
 	if(!conv)
 		throw std::ios_base::failure("File not found");
 	conv.close();
-	conv.open(outprefix+"-sweeps2_3-threads4.conv");
+	conv.open(outprefix+"-sweeps_2_3-threads4.conv");
 	if(!conv)
 		throw std::ios_base::failure("File not found");
 	conv.close();

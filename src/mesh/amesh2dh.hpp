@@ -147,11 +147,10 @@ public:
 	}
 
 	/// Reads a mesh file
-	/** The file should be in either the Gmsh 2.0 format, the SU2 format,
-	 * or the rDGFLO Domn format. The file extensions should be
+	/** The file should be in either the Gmsh 2.0 format or the SU2 format
+	 * The file extensions should be
 	 * - msh for Gmsh 2.0
 	 * - su2 for SU2 format
-	 * - domn for rDGFLO Domn file.
 	 *
 	 * \note For an SU2 mesh file, string marker names must be replaced with integers
 	 * before this function is called on it.
@@ -163,14 +162,6 @@ public:
 
 	/// Reads a grid in the SU2 format
 	void readSU2(const std::string mfile);
-
-	/** \brief Reads 'domn' format
-	 *
-	 * \note Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
-	 * \deprecated Please use Gmsh format instead.
-	*/
-	[[deprecated("Please use Gmsh files instead")]]
-	void readDomn(const std::string mfile);
 
 	/// Re-orders calls according to some permutation vector
 	/** \warning If reordering is needed, this function must be called immediately after reading

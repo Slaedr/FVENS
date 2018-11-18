@@ -9,6 +9,13 @@
 
 namespace fvens {
 
+/** \brief Reads 'domn' format
+ *
+ * \note Make sure nfael and nnofa are mentioned after ndim and nnode in the mesh file.
+ * \deprecated Please use Gmsh format instead.
+ */
+void readDomn(const std::string mfile, UMesh2dh<scalar>& mesh);
+
 /** \brief Adds high-order nodes to convert a linear mesh to a straight-faced quadratic mesh.
  *
  * \note Make sure to execute [compute_topological()](@ref compute_topological)

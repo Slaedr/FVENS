@@ -6,6 +6,159 @@
 
 namespace fvens {
 
+/** (Deprecated) Reads the RDGFlo 'domn' format.
+   NOTE: Make sure nnofa is mentioned after ndim and ntype in the mesh file.
+   ntype makes no sense for us now.
+   Can only be used for a linear mesh having all cells of the same shape.
+*/
+template <typename scalar>
+void readDomn(const std::string mfile, UMesh2dh<scalar>& m)
+{
+	std::ifstream infile(mfile);
+	if(!infile) {
+		std::cout << "UMesh2dh: Could not open domn mesh file!\n";
+		std::abort();
+	}
+
+	int nnode2, nfael2, ndim;
+
+	// Do file handling here to populate npoin and nelem
+	std::cout << "UMesh2dh: Reading domn mesh file...\n";
+	char ch = '\0'; int dum = 0; double dummy;
+
+	infile >> dum;
+	infile >> ch;
+	for(int i = 0; i < 4; i++)		//skip 4 lines
+		do
+			ch = infile.get();
+		while(ch != '\n');
+	infile >> ndim;
+	infile >> nnode2;
+	infile >> nfael2;
+	infile >> nnofa;
+	infile >> ch;			//get the newline
+	do
+		ch = infile.get();
+	while(ch != '\n');
+	infile >> nelem; infile >> npoin; infile >> nface;
+	infile >> dummy; 				// get time
+	ch = infile.get();			// clear newline
+
+	nnode.resize(nelem,-1);
+	nfael.resize(nelem,-1);
+
+	nbtag = 2;
+	ndtag = 2;
+
+	//std::cout << "\nUTriMesh: Allocating coords..";
+	coords.resize(npoin, NDIM);
+	// temporary array to hold connectivity matrix
+	amat::Array2d<a_int > elms(nelem,nnode2);
+	//std::cout << "UTriMesh: Allocating bface...\n";
+	bface.resize(nface, nnofa + nbtag);
+
+	//std::cout << "UTriMesh: Allocation done.";
+
+	do
+		ch = infile.get();
+	while(ch != '\n');
+
+	//now populate inpoel
+	for(int i = 0; i < nelem; i++)
+	{
+		//infile >> nnode[i];
+		infile >> dum;
+		nnode[i] = nnode2;
+		//nfael[i] = nnode[i];		// NOTE: assuming linear element
+		nfael[i] = nfael2;
+
+		for(int j = 0; j < nnode[i]; j++)
+			infile >> elms(i,j);
+
+		do
+			ch = infile.get();
+		while(ch != '\n');
+	}
+	std::cout << "UMesh2dh: Populated inpoel.\n";
+
+	maxnnode = 3;
+	for(int i = 0; i < nelem; i++)
+		if(nnode[i] > maxnnode)
+			maxnnode = nnode[i];
+
+	inpoel.resize(nelem, maxnnode);
+
+	for(int i = 0; i < nelem; i++)
+		for(int j = 0; j < nnode[i]; j++)
+			inpoel(i,j) = elms.get(i,j);
+
+	//Correct inpoel:
+	for(int i = 0; i < nelem; i++)
+	{
+		for(int j = 0; j < nnode[i]; j++)
+			inpoel(i,j)--;
+	}
+
+	ch = infile.get();
+	do
+		ch = infile.get();
+	while(ch != '\n');
+
+	// populate coords
+	for(int i = 0; i < npoin; i++)
+	{
+		infile >> dum;
+		for(int j = 0; j < NDIM; j++)
+			infile >> coords(i,j);
+	}
+	std::cout << "UMesh2dh: Populated coords.\n";
+
+	// skip initial conditions
+	ch = infile.get();
+	for(int i = 0; i < npoin+2; i++)
+	{
+		do
+			ch = infile.get();
+		while(ch != '\n');
+	}
+
+	// populate bface
+	for(int i = 0; i < nface; i++)
+	{
+		infile >> dum;
+		for(int j = 0; j < NDIM + nbtag; j++)
+		{
+			infile >> bface(i,j);
+		}
+		if (i==nface-1) break;
+		do
+			ch = infile.get();
+		while(ch!='\n');
+	}
+	std::cout << "UMesh2dh: Populated bface. Done reading mesh.\n";
+	//correct first 2 columns of bface
+	for(int i = 0; i < nface; i++)
+		for(int j = 0; j < 2; j++)
+			bface(i,j)--;
+
+	infile.close();
+
+	vol_regions.resize(nelem, ndtag);
+	vol_regions.zeros();
+
+	std::cout << "UMesh2dh: Number of elements: " << nelem << ", number of points: " << npoin
+		<< ", max number of nodes per element: " << maxnnode << std::endl;
+	std::cout << "Number of boundary faces: " << nface << ", Number of dimensions: " << NDIM
+		<< std::endl;
+
+	// set flag_bpoin
+	flag_bpoin.resize(npoin,1);
+	flag_bpoin.zeros();
+	for(int i = 0; i < nface; i++)
+		for(int j = 0; j < nnofa; j++)
+			flag_bpoin(bface(i,j)) = 1;
+}
+
 /**	Adds high-order nodes to convert a linear mesh to a straight-faced quadratic mesh.
  * NOTE: Make sure to execute [compute_topological()](@ref compute_topological)
  * before calling this function.
