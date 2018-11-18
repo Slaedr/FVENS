@@ -159,9 +159,9 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 			for(int j = 0; j < NDIM; j++)
 			{
 				coord[j] = 0;
-				for(int inofa = 0; inofa < m->gnnofa(); inofa++)
+				for(int inofa = 0; inofa < m->gnnofa(iface); inofa++)
 					coord[j] += m->gcoords(ijp[inofa],j);
-				coord[j] /= m->gnnofa();
+				coord[j] /= m->gnnofa(iface);
 
 				output(facecoun,j) = coord[j];
 			}

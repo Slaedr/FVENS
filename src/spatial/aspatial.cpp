@@ -88,12 +88,12 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	assert(NGAUSS == 1);
 	for(a_int ied = 0; ied < m->gnaface(); ied++)
 	{
-		for(int iv = 0; iv < m->gnnofa(); iv++)
+		for(int iv = 0; iv < m->gnnofa(ied); iv++)
 			for(int idim = 0; idim < NDIM; idim++)
 				gr[ied](0,idim) += m->gcoords(m->gintfac(ied,2+iv),idim);
 
 		for(int idim = 0; idim < NDIM; idim++)
-			gr[ied](0,idim) /= m->gnnofa();
+			gr[ied](0,idim) /= m->gnnofa(ied);
 	}
 }
 
@@ -114,10 +114,10 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array
 		{
 			scalar facemidpoint = 0;
 
-			for(int inof = 0; inof < m->gnnofa(); inof++)
+			for(int inof = 0; inof < m->gnnofa(iface); inof++)
 				facemidpoint += m->gcoords(m->gintfac(iface,2+inof),idim);
 
-			facemidpoint /= m->gnnofa();
+			facemidpoint /= m->gnnofa(iface);
 
 			rchg(iface,idim) = 2.0*facemidpoint - rc(ielem,idim);
 		}

@@ -127,8 +127,8 @@ public:
 	/// Returns the number of faces bounding an element
 	int gnfael(const int ielem) const { return nfael[ielem]; }
 
-	/// Returns the number of nodes per face
-	int gnnofa() const { return nnofa; }
+	/// Returns the number of nodes per face for each face ordered by \ref intfac
+	int gnnofa(const int iface) const { return nnofa; }
 
 	/// Returns the number of boundary tags available for boundary faces
 	int gnbtag() const{ return nbtag; }
