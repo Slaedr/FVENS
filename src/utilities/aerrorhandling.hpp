@@ -25,6 +25,14 @@ class Tolerance_error : public Numerical_error
 public:
 	Tolerance_error(const std::string& msg);
 };
+
+/// Exception thrown due to return codes from MPI functions
+class MPI_exception : public std::runtime_error
+{
+public:
+	MPI_exception(const std::string& msg);
+	MPI_exception(const char *const msg);
+};
 	
 /// An exception to throw for errors from PETSc; takes a custom message
 class Petsc_exception : public std::runtime_error
@@ -43,9 +51,18 @@ inline void fvens_throw(const int ierr, const std::string str) {
 		throw std::runtime_error(str);
 }
 
-/// Throw an error from an error code related to PETSc
-/** \param ierr An expression which, if true, triggers the exception
- * \param str A short string message describing the error
+/// Throw an error from an error code related to MPI
+/** \param ierr an expression which, if true, triggers the exception
+ * \param str a short string message describing the error
+ */
+inline void mpi_throw(const int ierr, const std::string str) {
+	if(ierr != 0) 
+		throw fvens::MPI_exception(str);
+}
+
+/// throw an error from an error code related to petsc
+/** \param ierr an expression which, if true, triggers the exception
+ * \param str a short string message describing the error
  */
 inline void petsc_throw(const int ierr, const std::string str) {
 	if(ierr != 0) 

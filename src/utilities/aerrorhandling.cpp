@@ -7,6 +7,14 @@
 
 namespace fvens {
 	
+MPI_exception::MPI_exception(const std::string& msg) 
+	: std::runtime_error(std::string("MPI error: ")+msg)
+{ }
+
+MPI_exception::MPI_exception(const char *const msg) 
+	: std::runtime_error(std::string("MPI error: ") + std::string(msg))
+{ }
+	
 Petsc_exception::Petsc_exception(const std::string& msg) 
 	: std::runtime_error(std::string("PETSc error: ")+msg)
 { }
