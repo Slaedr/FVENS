@@ -70,7 +70,7 @@ if __name__ == "__main__":
     opts = { \
             "marklist" : ['.', 'x', '+', '^', 'v', '<', '>', 'd'],
             "colorlist" : ['k', 'b', 'r', 'g', 'c', 'm', 'k'],
-            "linetype" : ['-', '--', '-.', ':', '--', '--'],
+            "linetype" : ['-', '--', '-.', ':', '--', '--', '--'],
             "linewidth" : 0.75,
             "marksize" : 5,
             "markedgewidth" : 1 \
