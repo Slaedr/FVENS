@@ -85,6 +85,28 @@ public:
 	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
 	                                    const bool gettimesteps, a_real *const dtm) const = 0;
 
+	/// Computes gradients of flow variables
+	/** Layout of the gradient vector...
+	 */
+	virtual StatusCode compute_gradients(const scalar *const u, scalar *const gradients) const = 0;
+
+	/// Reconstructs cell-centred values to at faces
+	virtual StatusCide reconstruct(const scalar *const u, const scalar *const gradients,
+	                               scalar *const __restrict uleft,
+	                               scalar *const __restrict uright) const = 0;
+
+	/// Computes fluxes into the residual vector
+	virtual StatusCode compute_fluxes(const scalar *const u,
+	                                  const scalar *const uleft, const scalar *const uright,
+	                                  scalar *const residual) const = 0;
+
+	/// Computes the maximum allowable time step at each cell
+	/** This is the volume of the cell divided by the integral over the cell boundary of
+	 * the spectral radius of the analytical flux Jacobian.
+	 */
+	virtual StatusCode compute_max_timestep(const scalar *const uleft, const scalar *const uright,
+	                                        scalar *const timsteps) const = 0;
+
 	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
 	 * \param[in] grad Gradients of converved variables at cell-centres
@@ -177,8 +199,8 @@ class FlowFV : public FlowFV_base<scalar>
 public:
 	/// Sets data and initializes the numerics
 	FlowFV(const UMesh2dh<scalar> *const mesh,                  ///< Mesh context
-		const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
-		const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
+	       const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
+	       const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
 	);
 
 	~FlowFV();
@@ -191,6 +213,34 @@ public:
 	 */
 	StatusCode compute_residual(const scalar *const u, scalar *const residual,
 	                            const bool gettimesteps, a_real *const dtm) const;
+
+	/// Computes gradients of primitive flow variables
+	/** Layout of the gradient vector...
+	 * \param[in] u The conserved variables in all subdomain cells and neighboring cells of other
+	 *   subdomains
+	 * \param[in,out] gradients Pre-allocated (uninitialized) storage for the gradients of primitive
+	 *  variables at all subdomain cells.
+	 */
+	StatusCode compute_gradients(const scalar *const u, scalar *const __restrict gradients) const;
+
+	/// Reconstructs cell-centred values to faces
+	/** In case of second-order schemes, primitive variables are reconstructed.
+	 */
+	StatusCode reconstruct(const scalar *const u, const scalar *const gradients,
+	                       scalar *const __restrict uleft,
+	                       scalar *const __restrict uright) const;
+
+	/// Computes fluxes into the residual vector
+	StatusCode compute_fluxes(const scalar *const u,
+	                          const scalar *const uleft, const scalar *const uright,
+	                          scalar *const residual) const;
+
+	/// Computes the maximum allowable time step at each cell
+	/** This is the volume of the cell divided by the integral over the cell boundary of
+	 * the spectral radius of the analytical flux Jacobian.
+	 */
+	StatusCode compute_max_timestep(const scalar *const uleft, const scalar *const uright,
+	                             scalar *const timsteps) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** \see Spatial::compute_local_jacobian_interior

@@ -512,6 +512,36 @@ void UMesh2dh<scalar>::printmeshstats() const
 }
 
 template <typename scalar>
+a_int UMesh2dh<scalar>::gPhyBFaceStart() const { return 0; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gPhyBFaceEnd() const { return nbface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gConnBFaceStart() const { return nbface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gConnBFaceEnd() const { return nbface + nconnface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gBFaceStart() const { return 0; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gBFaceEnd() const { return nbface+nconnface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gSubDomFaceStart() const { return nbface + nconnface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gSubDomFaceEnd() const { return naface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gDomFaceStart() const { return nbface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gDomFaceEnd() const { return naface; }
+
+template <typename scalar>
 void UMesh2dh<scalar>::writeGmsh2(const std::string mfile)
 {
 	std::cout << "UMesh2dh: writeGmsh2(): writing mesh to file " << mfile << std::endl;

@@ -71,6 +71,8 @@ public:
 	/// Returns an entry from the face data structure \ref intfac
 	/** \param face Index of the face about which data is needed
 	 *   (NOT the same as the index in \ref bface, this is the index in \ref intfac)
+	 *   Note that boundary faces, connectivity faces or interior faces can be accessed using
+	 *   \ref FaceIterators.
 	 * \param i An integer which specifies what information is returned:
 	 *  - 0: Left cell index
 	 *  - 1: Right cell index (or for a boundary face, \ref nelem + face index)
@@ -78,6 +80,47 @@ public:
 	 *  - 3: Global index of the `second' or `ending' node of the face
 	 */
 	a_int gintfac(const a_int face, const int i) const { return intfac.get(face,i); }
+
+	/// \defgroup FaceIterators Iterators over faces indexed according to \ref intfac
+	/// @{
+
+	/// Start of physical boundary faces
+	a_int gPhyBFaceStart() const;
+
+	/// One index past the end of physical boundary faces
+	a_int gPhyBFaceEnd() const;
+
+	/// Start of connection boundary faces (faces connecting this subdomain to other subdomains)
+	a_int gConnBFaceStart() const;
+
+	/// One past the end of connection boundary faces
+	a_int gConnBFaceEnd() const;
+
+	/// Start of all boundary faces - physical and connectivity
+	/** Physical boundary and connectivity faces are stored contiguously.
+	 */
+	a_int gBFaceStart() const;
+
+	/// One index past the end of all boundary faces
+	a_int gBFaceEnd() const;
+
+	/// Start of subdomain faces (all faces other than boundary faces)
+	a_int gSubDomFaceStart() const;
+
+	/// One past the end of subdomain faces
+	a_int gSubDomFaceEnd() const;
+
+	/// Start of connection boundary and subdomain faces
+	/** Beginning of the list of all faces other than physical boundary faces in \ref intfac.
+	 * Note that it's guaranteed that conection boundary faces and subdomain faces will be stored
+	 * contiguously.
+	 */
+	a_int gDomFaceStart() const;
+
+	/// One past the end of connection+subdomain faces
+	a_int gDomFaceEnd() const;
+
+	/// @}
 
 	/// Returns the boundary marker of a face indexed by \ref intfac.
 	int gintfacbtags(const a_int face, const int i) const { return intfacbtags.get(face,i); }
@@ -123,6 +166,9 @@ public:
 
 	/// Returns the total number of faces, both boundary and internal ('Get Number of All FACEs')
 	a_int gnaface() const {return naface; }
+
+	/// Returns the number of connectivity faces (faces adjacent to cells in another subdomain)
+	a_int gnConnFace() const { return nconnface; }
 
 	/// Returns the number of faces bounding an element
 	int gnfael(const int ielem) const { return nfael[ielem]; }
@@ -243,7 +289,10 @@ private:
 	int maxnfael;                   ///< Maximum number of faces per element for any element
 	int nnofa;                      ///< number of nodes in a face
 	a_int naface;                   ///< total number of (internal and boundary) faces
-	a_int nbface;                   ///< number of boundary faces as calculated \sa compute_topological
+	/// number of physical boundary faces as calculated in \sa compute_topological
+	a_int nbface;
+	/// Number of connection boundary faces (connection to other subdomains)
+	a_int nconnface;
 	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
 	int nbtag;                      ///< number of tags for each boundary face
 	int ndtag;                      ///< number of tags for each element
@@ -252,10 +301,17 @@ private:
 	amat::Array2d<scalar> coords;
 
 	/// Interconnectivity matrix: lists node numbers of nodes in each element
-	amat::Array2d<a_int > inpoel;
+	amat::Array2d<a_int> inpoel;
 
-	/// Boundary face data: lists nodes belonging to a boundary face and contains boudnary markers
-	amat::Array2d<a_int > bface;
+	/// Physical boundary face data
+	/// Lists nodes belonging to a boundary face and contains boundary markers
+	amat::Array2d<a_int> bface;
+
+	/// Connection boundary face data
+	/** Contains, for each connectivity boundary face, the index of the subdomain that it connects to
+	 *   and the index of the cell in that subdomain that it connects to, in that order.
+	 */
+	amat::Array2d<a_int> connface;
 
 	/// Holds volume region markers, if any
 	amat::Array2d<int> vol_regions;
@@ -264,28 +320,30 @@ private:
 	amat::Array2d<int> flag_bpoin;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
-	amat::Array2d<a_int > esup_p;
+	amat::Array2d<a_int> esup_p;
 
 	/// List of elements surrounding each point
 	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p).
 	 */
-	amat::Array2d<a_int > esup;
+	amat::Array2d<a_int> esup;
 
 	/// Lists of indices of psup corresponding to nodes (points)
-	amat::Array2d<a_int > psup_p;
+	amat::Array2d<a_int> psup_p;
 
 	/// List of nodes surrounding nodes
 	/** Integers pointing to particular nodes' node lists are stored in [psup_p](@ref psup_p)
 	 */
-	amat::Array2d<a_int > psup;
+	amat::Array2d<a_int> psup;
 
 	/// Elements surrounding elements \sa gesuel
-	amat::Array2d<a_int > esuel;
+	amat::Array2d<a_int> esuel;
 
 	/// Face data structure - contains info about elements and nodes associated with a face
-	/** For details, see \ref gintfac, the accessor function for intfac.
+	/** Currently stores physical boundary faces first, followed by connectivity faces and then
+	 * subdomain faces.
+	 * For details, see \ref gintfac, the accessor function for intfac.
 	 */
-	amat::Array2d<a_int > intfac;
+	amat::Array2d<a_int> intfac;
 
 	/// Holds boundary tags (markers) corresponding to intfac \sa gintfac
 	amat::Array2d<int> intfacbtags;

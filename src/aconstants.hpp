@@ -59,15 +59,15 @@ typedef double a_real;
  */
 typedef int a_int;
 
-using Eigen::Dynamic;
-using Eigen::RowMajor;
-using Eigen::ColMajor;
-using Eigen::Matrix;
-using Eigen::aligned_allocator;
+// using Eigen::Dynamic;
+// using Eigen::RowMajor;
+// using Eigen::ColMajor;
+// using Eigen::Matrix;
+// using Eigen::aligned_allocator;
 
 /// Multi-vector type, used for storing mesh functions like the residual
 template <typename scalar>
-using MVector = Matrix<scalar, Dynamic,Dynamic,RowMajor>;
+using MVector = Eigen::Matrix<scalar, Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>;
 
 /// Spatial gradients of flow variables for all cells in the mesh
 /** We could have made this row major, but Eigen complains against defining
@@ -83,11 +83,16 @@ using GradArray = std::vector<Eigen::Array<scalar,NDIM,nvars>,
  * [this](http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html).
  */
 template <typename scalar>
-using DimMatrixArray = std::vector< Matrix<scalar,NDIM,NDIM>,
-                                    aligned_allocator<Matrix<scalar,NDIM,NDIM>> >;
+using DimMatrixArray = std::vector< Eigen::Matrix<scalar,NDIM,NDIM>,
+                                    Eigen::aligned_allocator<Eigen::Matrix<scalar,NDIM,NDIM>> >;
+
+/// Fixed-size Eigen array for storing things like the spatial gradient of a vector field
+template <typename scalar, int ndim, int nvars>
+using GradBlock_t = Eigen::Array<scalar,ndim,nvars,Eigen::ColMajor|Eigen::DontAlign>;
 
 /// A data type for error codes, mostly for use with PETSc
 typedef int StatusCode;
+
 }
 
 #endif

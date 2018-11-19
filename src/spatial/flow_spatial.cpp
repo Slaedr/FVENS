@@ -415,11 +415,67 @@ void FlowFV<scalar,secondOrder,constVisc>
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
+void
+FlowFV<scalar,secondOrderRequested,constVisc>::compute_gradients(const scalar *const uvec,
+                                                                 scalar *const gradients) const
+{
+	amat::Array2d<scalar> ug, uleft;
+	ug.resize(m->gnbface(),NVARS);
+	uleft.resize(m->gnaface(), NVARS);
+	GradBlock_t<scalar,NDIM,NVARS> *const grads
+		= reinterpret_cast<GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
+
+	Eigen::Map<const MVector<scalar>> u(uvec, m->gnelem(), NVARS);
+
+#pragma omp parallel default(shared)
+	{
+		// first, set cell-centered values of boundary cells as left-side values of boundary faces
+#pragma omp for
+		for(a_int ied = m->gBFaceStart(); ied < m->gBFaceEnd(); ied++)
+		{
+			const a_int ielem = m->gintfac(ied,0);
+			for(int ivar = 0; ivar < NVARS; ivar++)
+				uleft(ied,ivar) = u(ielem,ivar);
+		}
+	}
+
+	if(secondOrderRequested)
+	{
+		// get cell average values at ghost cells using BCs
+		compute_boundary_states(uleft, ug);
+
+		MVector<scalar> up(m->gnelem()+m->gnConnFace(), NVARS);
+
+		// convert cell-centered state vectors to primitive variables
+#pragma omp parallel default(shared)
+		{
+#pragma omp for
+			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
+			{
+				physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
+			}
+
+#pragma omp for
+			for(a_int iel = 0; iel < m->gnelem()+m->gnConnFace(); iel++)
+				physics.getPrimitiveFromConserved(&uvec[iel*NVARS], &up(iel,0));
+		}
+
+		// reconstruct
+		gradcomp->compute_gradients(up, ug, grads);
+	}
+	else {
+#pragma omp parallel for simd default(shared)
+		for(a_int i = 0; i < m->gnelem()*NVARS*NDIM; i++)
+			gradients[i] = 0;
+	}
+}
+
+template<typename scalar, bool secondOrderRequested, bool constVisc>
 StatusCode
-FlowFV<scalar,secondOrderRequested,constVisc> ::compute_residual(const scalar *const uarr,
-                                                                 scalar *const __restrict rarr,
-                                                                 const bool gettimesteps,
-                                                                 a_real *const __restrict dtm) const
+FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *const uarr,
+                                                                scalar *const __restrict rarr,
+                                                                const bool gettimesteps,
+                                                                a_real *const __restrict dtm) const
 {
 	StatusCode ierr = 0;
 	amat::Array2d<scalar> integ, ug, uleft, uright;
