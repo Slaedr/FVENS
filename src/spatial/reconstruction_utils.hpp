@@ -15,7 +15,7 @@ namespace fvens {
 template <typename scalar, int nvars>
 static inline scalar
 linearExtrapolate(const scalar ucell,                          ///< Relevant cell centred value
-                  const Eigen::Array<scalar,NDIM,nvars>& grad, ///< Gradients
+                  const GradBlock_t<scalar,NDIM,nvars>& grad,  ///< Gradients
                   const int ivar,                              ///< Index of physical variable to be
                   ///<  reconstructed
                   const a_real lim,                            ///< Limiter value
@@ -34,7 +34,7 @@ linearExtrapolate(const scalar ucell,                          ///< Relevant cel
  * \param[in] ivar The index of the physical variable whose gradient magnitude is needed
  */
 template <typename scalar, int nvars>
-static inline scalar gradientMagnitude2(const Eigen::Array<scalar,NDIM,nvars>& grad, const int ivar)
+static inline scalar gradientMagnitude2(const GradBlock_t<scalar,NDIM,nvars>& grad, const int ivar)
 {
 	scalar res = 0;
 	for(int j = 0; j < NDIM; j++)

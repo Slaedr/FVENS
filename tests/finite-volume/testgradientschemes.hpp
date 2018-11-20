@@ -13,7 +13,7 @@ namespace fvens_tests {
 
 using fvens::a_real;
 using fvens::a_int;
-using fvens::Matrix;
+using Eigen::Matrix;
 using Eigen::RowMajor;
 
 /// A 'spatial discretization' that does nothing but carry out tests on gradient schemes etc
@@ -38,7 +38,7 @@ public:
 	{ }
 
 	virtual void getGradients(const fvens::MVector<a_real>& u,
-	                          fvens::GradArray<a_real,1>& grads) const
+	                          fvens::GradBlock_t<a_real,NDIM,1> *const grads) const
 	{ }
 
 	/// Test if weighted least-squares reconstruction is '1-exact'

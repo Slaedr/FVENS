@@ -21,9 +21,9 @@ public:
 			std::function <
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 			> source);
-	
+
 	virtual void getGradients(const MVector<a_real>& u,
-	                          GradArray<a_real,nvars>& grads) const = 0;
+	                          GradBlock_t<a_real,NDIM,nvars> *const grads) const = 0;
 	
 	virtual ~Diffusion();
 
@@ -74,19 +74,18 @@ public:
 
 	void compute_local_jacobian_interior(const a_int iface,
 	                                     const a_real *const ul, const a_real *const ur,
-	                                     Matrix<a_real,nvars,nvars,RowMajor>& L,
-	                                     Matrix<a_real,nvars,nvars,RowMajor>& U) const;
+	                                     Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L,
+	                                     Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& U) const;
 
 	void compute_local_jacobian_boundary(const a_int iface,
 	                                     const a_real *const ul,
-	                                     Matrix<a_real,nvars,nvars,RowMajor>& L) const;
+	                                     Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const;
 
-	
 	/*void add_source(const MVector<scalar>& u, 
 			MVector<scalar>& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
 	void getGradients(const MVector<a_real>& u,
-	                  GradArray<a_real,nvars>& grads) const;
+	                  GradBlock_t<a_real,NDIM,nvars> *const grads) const;
 
 	~DiffusionMA();
 

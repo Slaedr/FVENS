@@ -255,7 +255,7 @@ protected:
 	const double cfl;
 
 	/// Coefficients of TVD schemes
-	const Matrix<a_real, Dynamic,Dynamic> tvdcoeffs;
+	const Eigen::Matrix<a_real, Eigen::Dynamic,Eigen::Dynamic> tvdcoeffs;
 
 private:
 	/// Characteristic local time step for each cell

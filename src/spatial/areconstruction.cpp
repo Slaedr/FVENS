@@ -50,7 +50,7 @@ template <typename scalar, int nvars>
 void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 		const MVector<scalar>& u,
 		const amat::Array2d<scalar>& ug,
-		const GradArray<scalar,nvars>& grads,
+		const GradBlock_t<scalar,NDIM,nvars> *const grads,
 		amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
 	// (a) internal faces
@@ -65,9 +65,9 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 			for(int i = 0; i < nvars; i++)
 			{
 				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
-						&gr[ied](0,0), &ri(ielem,0));
+				                               &gr[ied](0,0), &ri(ielem,0));
 				ufr(ied,i) = linearExtrapolate(u(jelem,i), grads[jelem], i, 1.0,
-						&gr[ied](0,0), &ri(jelem,0));
+				                               &gr[ied](0,0), &ri(jelem,0));
 			}
 		}
 
@@ -79,7 +79,7 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 			for(int i = 0; i < nvars; i++)
 			{
 				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
-						&gr[ied](0,0), &ri(ielem,0));
+				                               &gr[ied](0,0), &ri(ielem,0));
 			}
 		}
 	}

@@ -42,9 +42,9 @@
 namespace fvens {
 
 /// Returns an array containing TVD Runge-Kutta coefficients for high-order accuracy
-static Matrix<a_real,Dynamic,Dynamic> initialize_TVDRK_Coeffs(const int _order) 
+static Eigen::Matrix<a_real,Eigen::Dynamic,Eigen::Dynamic> initialize_TVDRK_Coeffs(const int _order) 
 {
-	Matrix<a_real,Dynamic,Dynamic> tvdrk(_order,3);
+	Eigen::Matrix<a_real,Eigen::Dynamic,Eigen::Dynamic> tvdrk(_order,3);
 	if(_order == 1) {
 		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
 	}
@@ -327,8 +327,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl,
 	{
 		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
 
-		const Matrix<a_real,nvars,nvars,RowMajor> db
-			= dtm[iel] * Matrix<a_real,nvars,nvars,RowMajor>::Identity();
+		const Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor> db
+			= dtm[iel] * Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Identity();
 	
 #pragma omp critical
 		{

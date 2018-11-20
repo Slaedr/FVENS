@@ -66,10 +66,12 @@ public:
 	 * corresponding to the face. The negative of L and U are added to the
 	 * diagonal blocks of the respective cells.
 	 */
-	virtual void compute_local_jacobian_interior(const a_int iface,
-	                                             const a_real *const ul, const a_real *const ur,
-	                                             Matrix<a_real,nvars,nvars,RowMajor>& L,
-	                                             Matrix<a_real,nvars,nvars,RowMajor>& U) const = 0;
+	virtual void
+	compute_local_jacobian_interior(const a_int iface,
+	                                const a_real *const ul, const a_real *const ur,
+	                                Eigen::Matrix <a_real,nvars,nvars,Eigen::RowMajor>& L,
+	                                Eigen::Matrix <a_real,nvars,nvars,Eigen::RowMajor>& U
+	                                ) const = 0;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
 	/** The convention is that L is the negative of the matrix that is added to the diagonal block
@@ -77,12 +79,13 @@ public:
 	 */
 	virtual void compute_local_jacobian_boundary(const a_int iface,
 	                                             const a_real *const ul,
-	                                             Matrix<a_real,nvars,nvars,RowMajor>& L) const = 0;
+	                                             Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L
+	                                             ) const = 0;
 
 
 	/// Computes gradients of field variables and stores them in the argument
 	virtual void getGradients(const MVector<a_real>& u,
-	                          GradArray<a_real,nvars>& grads) const = 0;
+	                          GradBlock_t<a_real,NDIM,nvars> *const grads) const = 0;
 
 	/// Exposes access to the mesh context
 	const UMesh2dh<scalar>* mesh() const

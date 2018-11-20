@@ -142,12 +142,12 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 		out.exportVolumeData(umat, opts.volnameprefix);
 	
 	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
-	GradArray<a_real,NVARS> grad;
+	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
 	grad.resize(m.gnelem());
-	prob->getGradients(umat, grad);
+	prob->getGradients(umat, &grad[0]);
 
 	const std::tuple<a_real,a_real,a_real> fnls 
-		{ prob->computeSurfaceData(umat, grad, opts.lwalls[0], output)};
+		{ prob->computeSurfaceData(umat, &grad[0], opts.lwalls[0], output)};
 
 	delete prob;
 

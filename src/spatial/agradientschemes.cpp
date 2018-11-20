@@ -30,10 +30,9 @@ ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
 { }
 
 template<typename scalar, int nvars>
-void ZeroGradients<scalar,nvars>::compute_gradients(
-		const MVector<scalar>& u,
-		const amat::Array2d<scalar>& ug,
-		GradArray<scalar,nvars>& grad ) const
+void ZeroGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
+                                                    const amat::Array2d<scalar>& ug,
+                                                    GradBlock_t<scalar,NDIM,nvars> *const grad) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -56,7 +55,7 @@ template<typename scalar, int nvars>
 void GreenGaussGradients<scalar,nvars>::compute_gradients(
 		const MVector<scalar>& u,
 		const amat::Array2d<scalar>& ug,
-		GradArray<scalar,nvars>& grad ) const
+		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
 {
 #pragma omp parallel default(shared)
 	{
@@ -159,7 +158,7 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		V[iel] = Matrix<scalar,NDIM,NDIM>::Zero();
+		V[iel] = Eigen::Matrix<scalar,NDIM,NDIM>::Zero();
 	}
 
 	// compute LHS of least-squares problem
@@ -226,21 +225,20 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 }
 
 template <typename scalar, int nvars>
-using FMultiVectorArray = std::vector<Matrix<scalar,NDIM,nvars>,
-                                      aligned_allocator<Matrix<scalar,NDIM,nvars>> >;
+using FMultiVectorArray = std::vector<Eigen::Matrix<scalar,NDIM,nvars,Eigen::DontAlign>>;
 
 template<typename scalar, int nvars>
 void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		const MVector<scalar>& u,
 		const amat::Array2d<scalar>& ug,
-		GradArray<scalar,nvars>& grad ) const
+		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
 {
 	FMultiVectorArray<scalar,nvars> f;
 	f.resize(m->gnelem());
 
 #pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-		f[ielem] = Matrix<scalar,NDIM,nvars>::Zero();
+		f[ielem] = Eigen::Matrix<scalar,NDIM,nvars>::Zero();
 
 	// compute least-squares RHS
 
@@ -310,7 +308,8 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 #pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
-		Matrix <scalar,NDIM,nvars> d = V[ielem]*f[ielem];
+		/// \todo TODO: Optimize weighted least-squares final assignment
+		Eigen::Matrix <scalar,NDIM,nvars> d = V[ielem]*f[ielem];
 		for(short ivar = 0; ivar < nvars; ivar++)
 		{
 			for(short idim = 0; idim < NDIM; idim++)

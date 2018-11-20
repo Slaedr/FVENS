@@ -87,8 +87,9 @@ void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& i
 
 template <typename scalar>
 void FlowFV_base<scalar>::compute_boundary_state(const int ied,
-                                         const scalar *const ins,
-                                         scalar *const gs        ) const
+                                                 const scalar *const ins,
+                                                 scalar *const gs
+                                                 ) const
 {
 	const std::array<scalar,NDIM> n = m->gnormal(ied);
 	bcs.at(m->gintfacbtags(ied,0))->computeGhostState(ins, &n[0], gs);
@@ -96,7 +97,7 @@ void FlowFV_base<scalar>::compute_boundary_state(const int ied,
 
 template <typename scalar>
 void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
-                               GradArray<scalar,NVARS>& grads) const
+                                       GradBlock_t<scalar,NDIM,NVARS> *const grads) const
 {
 	amat::Array2d<scalar> ug(m->gnbface(),NVARS);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -122,7 +123,7 @@ static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa) {
 template <typename scalar>
 std::tuple<scalar,scalar,scalar>
 FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
-                                         const GradArray<scalar,NVARS>& grad,
+                                         const GradBlock_t<scalar,NDIM,NVARS> *const grad,
                                          const int iwbcm,
                                          MVector<scalar>& output) const
 {
@@ -252,12 +253,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 {
 }
 
+/// \todo TODO: We can now take addresses of GradBlock_t's. Optimize.
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
 ::compute_viscous_flux(const a_int iface,
                        const scalar *const ucell_l, const scalar *const ucell_r,
                        const amat::Array2d<scalar>& ug,
-                       const GradArray<scalar,NVARS>& grads,
+                       const GradBlock_t<scalar,NDIM,NVARS> *const grads,
                        const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
                        scalar *const __restrict vflux) const
 {
@@ -463,11 +465,35 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_gradients(const scalar *c
 		// reconstruct
 		gradcomp->compute_gradients(up, ug, grads);
 	}
-	else {
+	else
+	{
 #pragma omp parallel for simd default(shared)
 		for(a_int i = 0; i < m->gnelem()*NVARS*NDIM; i++)
 			gradients[i] = 0;
 	}
+}
+
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+void FlowFV<scalar,secondOrderRequested,constVisc>
+::reconstruct(const scalar *const u, const scalar *const gradients,
+              scalar *const __restrict uleft,
+              scalar *const __restrict uright) const
+{
+}
+
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+void FlowFV<scalar,secondOrderRequested,constVisc>
+::compute_fluxes(const scalar *const u,
+                 const scalar *const uleft, const scalar *const uright,
+                 scalar *const residual) const
+{
+}
+
+template<typename scalar, bool secondOrderRequested, bool constVisc>
+void FlowFV<scalar,secondOrderRequested,constVisc>
+::compute_max_timestep(const scalar *const uleft, const scalar *const uright,
+                       scalar *const timsteps) const
+{
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
@@ -483,7 +509,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
-	GradArray<scalar,NVARS> grads;
+	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
 
 	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
 	Eigen::Map<MVector<scalar>> residual(rarr, m->gnelem(), NVARS);
@@ -509,7 +535,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 	if(secondOrderRequested)
 	{
 		// for storing cell-centred gradients at interior cells and ghost cells
-		grads.resize(m->gnelem());
+		grads = new GradBlock_t<scalar,NDIM,NVARS>[m->gnelem()];
 
 		// get cell average values at ghost cells using BCs
 		compute_boundary_states(uleft, ug);
@@ -684,6 +710,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 			}
 	} // end parallel region
 
+	delete [] grads;
 	return ierr;
 }
 
@@ -691,8 +718,8 @@ template<typename scalar, bool order2, bool constVisc>
 void FlowFV<scalar,order2,constVisc>
 ::compute_local_jacobian_interior(const a_int iface,
                                   const a_real *const ul, const a_real *const ur,
-                                  Matrix<a_real,NVARS,NVARS,RowMajor>& L,
-                                  Matrix<a_real,NVARS,NVARS,RowMajor>& U) const
+                                  Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& L,
+                                  Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& U) const
 {
 	assert(iface >= m->gnbface());
 
@@ -717,14 +744,14 @@ template<typename scalar, bool order2, bool constVisc>
 void FlowFV<scalar,order2,constVisc>
 ::compute_local_jacobian_boundary(const a_int iface,
                                   const a_real *const ul,
-                                  Matrix<a_real,NVARS,NVARS,RowMajor>& left) const
+                                  Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& left) const
 {
 	const std::array<a_real,NDIM> n = m->gnormal(iface);
 	const a_real len = m->gfacemetric(iface,2);
 
 	a_real uface[NVARS];
-	Matrix<a_real,NVARS,NVARS,RowMajor> drdl;
-	Matrix<a_real,NVARS,NVARS,RowMajor> right;
+	Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor> drdl;
+	Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor> right;
 
 	bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0],
 	                                                               uface, &drdl(0,0));

@@ -62,11 +62,10 @@ MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
 { }
 
 template <typename scalar, int nvars>
-void MUSCLVanAlbada<scalar,nvars>::compute_face_values(const MVector<scalar>& u, 
-                                                       const amat::Array2d<scalar>& ug,
-                                                       const GradArray<scalar,nvars>& grads,
-                                                       amat::Array2d<scalar>& ufl,
-                                                       amat::Array2d<scalar>& ufr) const
+void MUSCLVanAlbada<scalar,nvars>
+::compute_face_values(const MVector<scalar>& u, const amat::Array2d<scalar>& ug,
+                      const GradBlock_t<scalar,NDIM,nvars> *const grads,
+                      amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
@@ -82,7 +81,7 @@ void MUSCLVanAlbada<scalar,nvars>::compute_face_values(const MVector<scalar>& u,
 				grad[j] = grads[ielem](j,i);
 			
 			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-					u(ielem,i), ug(ied,i), grad);
+			                                              u(ielem,i), ug(ied,i), grad);
 			
 			scalar phi_l = (2.0*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (ug(ied,i) - u(ielem,i))*(ug(ied,i) - u(ielem,i)) + eps);
@@ -108,9 +107,9 @@ void MUSCLVanAlbada<scalar,nvars>::compute_face_values(const MVector<scalar>& u,
 			}
 
 			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-					u(ielem,i), u(jelem,i), gradl);
+			                                              u(ielem,i), u(jelem,i), gradl);
 			const scalar deltap = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-					u(ielem,i), u(jelem,i), gradr);
+			                                              u(ielem,i), u(jelem,i), gradr);
 			
 			scalar phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);

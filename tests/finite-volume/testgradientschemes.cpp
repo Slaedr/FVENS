@@ -38,7 +38,7 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 	const GradientScheme<a_real,1> *const wls
 		= create_const_gradientscheme<a_real,1>(reconst_type, m, rc);
 
-	GradArray<a_real,1> grads(m->gnelem());
+	std::vector<GradBlock_t<a_real,NDIM,1>> grads(m->gnelem());
 	MVector<a_real> u(m->gnelem(),1);
 	amat::Array2d<a_real> ug(m->gnbface(),1);
 	amat::Array2d<a_real> uleft(m->gnaface(),1);
@@ -51,10 +51,10 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 		ug(i,0) = linearfunc(&rc(i+m->gnelem()));
 
 	// get gradients
-	wls->compute_gradients(u, ug, grads);
+	wls->compute_gradients(u, ug, &grads[0]);
 
 	LinearUnlimitedReconstruction<a_real,1> lur(m, rc, gr);
-	lur.compute_face_values(u, ug, grads, uleft, uright);
+	lur.compute_face_values(u, ug, &grads[0], uleft, uright);
 
 	constexpr a_real a_epsilon = std::numeric_limits<a_real>::epsilon();
 	a_real errnorm = 0;

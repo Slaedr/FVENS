@@ -88,24 +88,24 @@ public:
 	/// Computes gradients of flow variables
 	/** Layout of the gradient vector...
 	 */
-	virtual StatusCode compute_gradients(const scalar *const u, scalar *const gradients) const = 0;
+	virtual void compute_gradients(const scalar *const u, scalar *const gradients) const = 0;
 
 	/// Reconstructs cell-centred values to at faces
-	virtual StatusCide reconstruct(const scalar *const u, const scalar *const gradients,
-	                               scalar *const __restrict uleft,
-	                               scalar *const __restrict uright) const = 0;
+	virtual void reconstruct(const scalar *const u, const scalar *const gradients,
+	                         scalar *const __restrict uleft,
+	                         scalar *const __restrict uright) const = 0;
 
 	/// Computes fluxes into the residual vector
-	virtual StatusCode compute_fluxes(const scalar *const u,
-	                                  const scalar *const uleft, const scalar *const uright,
-	                                  scalar *const residual) const = 0;
+	virtual void compute_fluxes(const scalar *const u,
+	                            const scalar *const uleft, const scalar *const uright,
+	                            scalar *const residual) const = 0;
 
 	/// Computes the maximum allowable time step at each cell
 	/** This is the volume of the cell divided by the integral over the cell boundary of
 	 * the spectral radius of the analytical flux Jacobian.
 	 */
-	virtual StatusCode compute_max_timestep(const scalar *const uleft, const scalar *const uright,
-	                                        scalar *const timsteps) const = 0;
+	virtual void compute_max_timestep(const scalar *const uleft, const scalar *const uright,
+	                                  scalar *const timsteps) const = 0;
 
 	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
@@ -118,13 +118,14 @@ public:
 	 * \todo Write unit tests
 	 * \todo Generalize to 3D
 	 */
-	std::tuple<scalar,scalar,scalar> computeSurfaceData(const MVector<scalar>& u,
-	                                                    const GradArray<scalar,NVARS>& grad,
-	                                                    const int iwbcm,
-	                                                    MVector<scalar>& output) const;
+	std::tuple<scalar,scalar,scalar>
+	computeSurfaceData(const MVector<scalar>& u,
+	                   const GradBlock_t<scalar,NDIM,NVARS> *const grad,
+	                   const int iwbcm,
+	                   MVector<scalar>& output) const;
 
 	/// Computes gradients of converved variables
-	void getGradients(const MVector<scalar>& u, GradArray<scalar,NVARS>& grads) const;
+	void getGradients(const MVector<scalar>& u, GradBlock_t<scalar,NDIM,NVARS> *const grads) const;
 
 protected:
 
@@ -221,41 +222,41 @@ public:
 	 * \param[in,out] gradients Pre-allocated (uninitialized) storage for the gradients of primitive
 	 *  variables at all subdomain cells.
 	 */
-	StatusCode compute_gradients(const scalar *const u, scalar *const __restrict gradients) const;
+	void compute_gradients(const scalar *const u, scalar *const __restrict gradients) const;
 
 	/// Reconstructs cell-centred values to faces
 	/** In case of second-order schemes, primitive variables are reconstructed.
 	 */
-	StatusCode reconstruct(const scalar *const u, const scalar *const gradients,
-	                       scalar *const __restrict uleft,
-	                       scalar *const __restrict uright) const;
+	void reconstruct(const scalar *const u, const scalar *const gradients,
+	                 scalar *const __restrict uleft,
+	                 scalar *const __restrict uright) const;
 
 	/// Computes fluxes into the residual vector
-	StatusCode compute_fluxes(const scalar *const u,
-	                          const scalar *const uleft, const scalar *const uright,
-	                          scalar *const residual) const;
+	void compute_fluxes(const scalar *const u,
+	                    const scalar *const uleft, const scalar *const uright,
+	                    scalar *const residual) const;
 
 	/// Computes the maximum allowable time step at each cell
 	/** This is the volume of the cell divided by the integral over the cell boundary of
 	 * the spectral radius of the analytical flux Jacobian.
 	 */
-	StatusCode compute_max_timestep(const scalar *const uleft, const scalar *const uright,
-	                             scalar *const timsteps) const;
+	void compute_max_timestep(const scalar *const uleft, const scalar *const uright,
+	                          scalar *const timsteps) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** \see Spatial::compute_local_jacobian_interior
 	 */
 	void compute_local_jacobian_interior(const a_int iface,
 	                                     const a_real *const ul, const a_real *const ur,
-	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& L,
-	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& U) const;
+	                                     Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& L,
+	                                     Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& U) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
 	/** \see Spatial::compute_local_jacobian_boundary
 	 */
 	void compute_local_jacobian_boundary(const a_int iface,
 	                                     const a_real *const ul,
-	                                     Matrix<a_real,NVARS,NVARS,RowMajor>& L) const;
+	                                     Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& L) const;
 
 protected:
 	using Spatial<scalar,NVARS>::m;
@@ -297,7 +298,7 @@ protected:
 	void compute_viscous_flux(const a_int iface,
 	                          const scalar *const ucell_l, const scalar *const ucell_r,
 	                          const amat::Array2d<scalar>& ug,
-	                          const GradArray<scalar,NVARS>& grads,
+	                          const GradBlock_t<scalar,NDIM,NVARS> *const grads,
 	                          const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
 	                          scalar *const vflux) const;
 

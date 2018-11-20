@@ -43,17 +43,18 @@ inline void Diffusion<nvars>::compute_boundary_state(const int ied,
 
 template<int nvars>
 void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates,
-                                                amat::Array2d<a_real>& bounstates) const
+                                               amat::Array2d<a_real>& bounstates) const
 {
 	for(a_int ied = 0; ied < m->gnbface(); ied++)
 		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
 }
 
 template<int nvars>
-DiffusionMA<nvars>::DiffusionMA(const UMesh2dh<a_real> *const mesh,
-		const a_real diffcoeff, const a_real bvalue,
-	std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf,
-		const std::string grad_scheme)
+DiffusionMA<nvars>
+::DiffusionMA(const UMesh2dh<a_real> *const mesh,
+              const a_real diffcoeff, const a_real bvalue,
+              std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf,
+              const std::string grad_scheme)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
 	  gradcomp {create_const_gradientscheme<a_real,nvars>(grad_scheme, m, rc)}
 { }
@@ -87,11 +88,11 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 			uleft(ied,ivar) = u(ielem,ivar);
 	}
 
-	GradArray<a_real,nvars> grads;
+	std::vector<GradBlock_t<a_real,NDIM,nvars>> grads;
 	grads.resize(m->gnelem());
 
 	compute_boundary_states(uleft, ug);
-	gradcomp->compute_gradients(u, ug, grads);
+	gradcomp->compute_gradients(u, ug, &grads[0]);
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
@@ -181,10 +182,11 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 }
 
 template<int nvars>
-void DiffusionMA<nvars>::compute_local_jacobian_interior(const a_int iface,
-                                                         const a_real *const ul, const a_real *const ur,
-                                                         Matrix<a_real,nvars,nvars,RowMajor>& L,
-                                                         Matrix<a_real,nvars,nvars,RowMajor>& U) const
+void DiffusionMA<nvars>
+::compute_local_jacobian_interior(const a_int iface,
+                                  const a_real *const ul, const a_real *const ur,
+                                  Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L,
+                                  Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& U) const
 {
 	const a_real len = m->gfacemetric(iface,2);
 
@@ -200,8 +202,8 @@ void DiffusionMA<nvars>::compute_local_jacobian_interior(const a_int iface,
 	// Compute the face gradient Jacobian; we don't actually need the gradient, however..
 	getFaceGradientAndJacobian_thinLayer(iface, ul, ur, du, du, grad, dgradl, dgradr);
 
-	L = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
-	U = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
+	U = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
 	for(int ivar = 0; ivar < nvars; ivar++)
 	{
 		// compute nu*(d(-grad u)/du_l . n) * l
@@ -215,9 +217,10 @@ void DiffusionMA<nvars>::compute_local_jacobian_interior(const a_int iface,
 }
 
 template<int nvars>
-void DiffusionMA<nvars>::compute_local_jacobian_boundary(const a_int iface,
-                                                         const a_real *const ul,
-                                                         Matrix<a_real,nvars,nvars,RowMajor>& L) const
+void DiffusionMA<nvars>
+::compute_local_jacobian_boundary(const a_int iface,
+                                  const a_real *const ul,
+                                  Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const
 {
 	const a_real len = m->gfacemetric(iface,2);
 
@@ -233,7 +236,7 @@ void DiffusionMA<nvars>::compute_local_jacobian_boundary(const a_int iface,
 	// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
 	getFaceGradientAndJacobian_thinLayer(iface, ul, ul, du, du, grad, dgradl, dgradr);
 
-	L = Matrix<a_real,nvars,nvars,RowMajor>::Zero();
+	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
 	for(int ivar = 0; ivar < nvars; ivar++)
 	{
 		// compute nu*(d(-grad u)/du_l . n) * l
@@ -245,7 +248,7 @@ void DiffusionMA<nvars>::compute_local_jacobian_boundary(const a_int iface,
 
 template <int nvars>
 void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
-                                      GradArray<a_real,nvars>& grads) const
+                                      GradBlock_t<a_real,NDIM,nvars> *const grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
@@ -254,7 +257,7 @@ void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	gradcomp->compute_gradients(u, ug, grads);
+	gradcomp->compute_gradients(u, ug, &grads[0]);
 }
 
 template<int nvars>

@@ -169,14 +169,15 @@ void FlowOutput::exportVolumeData(const MVector<a_real>& u, std::string volfile)
 
 /** \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
  */
-void FlowOutput::exportSurfaceData(const MVector<a_real>& u, const std::vector<int> wbcm, 
-		std::vector<int> obcm, const std::string basename) const
+void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
+                                   const std::vector<int> wbcm, std::vector<int> obcm,
+                                   const std::string basename                         ) const
 {
 	// Get conserved variables' gradients
-	GradArray<a_real,NVARS> grad;
+	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
 	grad.resize(m->gnelem());
 
-	space->getGradients(u, grad);
+	space->getGradients(u, &grad[0]);
 
 	// get number of faces in wall boundary and other boundary
 	
@@ -198,14 +199,12 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u, const std::vector<i
 		
 		MVector<a_real> output(nwbfaces[im], 2+NDIM);
 
-		//a_int facecoun = 0;			// face iteration counter for this boundary marker
-		//a_real totallen = 0;		// total area of the surface with this boundary marker
 		a_real Cdf=0, Cdp=0, Cl=0;
 
 		fout << "#  x \t y \t Cp  \t Cf \n";
 
 		// iterate over faces having this boundary marker
-		std::tie(Cl, Cdp, Cdf) = space->computeSurfaceData(u, grad, wbcm[im], output);
+		std::tie(Cl, Cdp, Cdf) = space->computeSurfaceData(u, &grad[0], wbcm[im], output);
 
 		// write out the output
 
@@ -233,7 +232,7 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u, const std::vector<i
 		std::ofstream fout;
 		open_file_toWrite(fname, fout);
 		
-		Matrix<a_real,Dynamic,Dynamic> output(nobfaces[im], 2+NDIM);
+		MVector<a_real> output(nobfaces[im], 2+NDIM);
 		a_int facecoun = 0;
 
 		fout << "#   x         y          u           v\n";

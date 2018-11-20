@@ -23,7 +23,7 @@ public:
     
 	virtual void compute_face_values(const MVector<scalar>& unknowns, 
 	                                 const amat::Array2d<scalar>& unknow_ghost, 
-	                                 const GradArray<scalar,nvars>& grads,
+	                                 const GradBlock_t<scalar,NDIM,nvars> *const grads,
 	                                 amat::Array2d<scalar>& uface_left,
 	                                 amat::Array2d<scalar>& uface_right) const = 0;
 
@@ -77,7 +77,7 @@ public:
     
 	void compute_face_values(const MVector<scalar>& unknowns, 
 	                         const amat::Array2d<scalar>& unknow_ghost, 
-	                         const GradArray<scalar,nvars>& grads,
+	                         const GradBlock_t<scalar,NDIM,nvars> *const grads,
 	                         amat::Array2d<scalar>& uface_left,
 	                         amat::Array2d<scalar>& uface_right) const;
 protected:

@@ -34,11 +34,10 @@ WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh2dh<scalar> *con
 }
 
 template <typename scalar, int nvars>
-void WENOReconstruction<scalar,nvars>::compute_face_values(const MVector<scalar>& u, 
-                                                           const amat::Array2d<scalar>& ug,
-                                                           const GradArray<scalar,nvars>& grads,
-                                                           amat::Array2d<scalar>& ufl,
-                                                           amat::Array2d<scalar>& ufr) const
+void WENOReconstruction<scalar,nvars>
+::compute_face_values(const MVector<scalar>& u, const amat::Array2d<scalar>& ug,
+                      const GradBlock_t<scalar,NDIM,nvars> *const grads,
+                      amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
 	// first compute limited derivatives at each cell
 
@@ -52,11 +51,13 @@ void WENOReconstruction<scalar,nvars>::compute_face_values(const MVector<scalar>
 			zeros(lgrad, NDIM);
 
 			// Central stencil
-			const scalar denom = pow( gradientMagnitude2(grads[ielem],ivar) + epsilon , gamma );
-			const scalar w = lambda / denom;
-			wsum += w;
-			for(int j = 0; j < NDIM; j++)
-				lgrad[j] += w*grads[ielem](j,ivar);
+			{
+				const scalar denom = pow( gradientMagnitude2(grads[ielem],ivar) + epsilon , gamma );
+				const scalar w = lambda / denom;
+				wsum += w;
+				for(int j = 0; j < NDIM; j++)
+					lgrad[j] += w*grads[ielem](j,ivar);
+			}
 
 			// Biased stencils
 			for(int jel = 0; jel < m->gnfael(ielem); jel++)
@@ -108,7 +109,7 @@ BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh2dh<scalar
 template <typename scalar, int nvars>
 void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scalar>& u, 
                                                         const amat::Array2d<scalar>& ug, 
-                                                        const GradArray<scalar,nvars>& grads,
+                                                        const GradBlock_t<scalar,NDIM,nvars> *const grads,
                                                         amat::Array2d<scalar>& ufl,
                                                         amat::Array2d<scalar>& ufr) const
 {
@@ -196,7 +197,7 @@ template <typename scalar, int nvars>
 void VenkatakrishnanLimiter<scalar,nvars>
 ::compute_face_values(const MVector<scalar>& u,
                       const amat::Array2d<scalar>& ug, 
-                      const GradArray<scalar,nvars>& grads,
+                      const GradBlock_t<scalar,NDIM,nvars> *const grads,
                       amat::Array2d<scalar>& ufl,
                       amat::Array2d<scalar>& ufr) const
 {

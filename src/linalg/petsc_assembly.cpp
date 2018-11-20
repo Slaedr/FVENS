@@ -54,6 +54,8 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
 template <typename scalar, int nvars>
 StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const Vec uvec, Mat A)
 {
+	using Eigen::Matrix; using Eigen::RowMajor;
+
 	StatusCode ierr = 0;
 
 	const UMesh2dh<scalar> *const m = spatial->mesh();
@@ -135,6 +137,8 @@ assemble_jacobian<a_real,NVARS>(const Spatial<a_real,NVARS> *const spatial, cons
 template <typename scalar, int nvars>
 StatusCode assemble_jacobian_slow(const Spatial<scalar,nvars> *const spatial, const Vec uvec, Mat A)
 {
+	using Eigen::Matrix; using Eigen::RowMajor;
+
 	StatusCode ierr = 0;
 
 	const UMesh2dh<scalar> *const m = spatial->mesh();
