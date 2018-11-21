@@ -660,7 +660,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 		// for storing cell-centred gradients at interior cells and ghost cells
 		grads = new GradBlock_t<scalar,NDIM,NVARS>[m->gnelem()];
 
-		// get cell average values at ghost cells using BCs
+		// get cell average values at ghost cells using BCs for reconstruction
 		compute_boundary_states(uleft, ug);
 
 		MVector<scalar> up(m->gnelem(), NVARS);
@@ -718,120 +718,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 		}
 	}
 
-	// set right (ghost) state for boundary faces
+	// get right (ghost) state at boundary faces for computing fluxes
 	compute_boundary_states(uleft,uright);
 
-	// Compute fluxes.
-	/**
-	 * The integral of the spectral radius of the (one-sided analytical) flux Jacobian over
-	 * each face \f$ f_i \f$ is also computed and summed over for each cell \f$ K \f$:
-	 * \f[
-	 * \sum_{f_i \in \partial K} \int_{f_i} (|v_n| + c + \lamba_v) \mathrm{d}\gamma
-	 * \f]
-	 * so that time steps can be calculated for explicit time stepping and/or steady problems.
-	 * Note that the reconstructed state is used to compute the spectral radius.
-	 * \f$ \lambda_v \f$ is an estimate of the spectral radius of the viscous flux Jacobian, taken
-	 * from \cite{blazek}.
-	 */
+	compute_fluxes(uarr, &grads[0](0,0), uleft, uright, ug, rarr);
 
-#pragma omp parallel default(shared)
-	{
-#pragma omp for
-		for(a_int ied = 0; ied < m->gnaface(); ied++)
-		{
-			scalar n[NDIM];
-			n[0] = m->gfacemetric(ied,0);
-			n[1] = m->gfacemetric(ied,1);
-			const scalar len = m->gfacemetric(ied,2);
-			const int lelem = m->gintfac(ied,0);
-			const int relem = m->gintfac(ied,1);
-			scalar fluxes[NVARS];
-
-			inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, fluxes);
-
-			// integrate over the face
-			for(int ivar = 0; ivar < NVARS; ivar++)
-					fluxes[ivar] *= len;
-
-			if(pconfig.viscous_sim)
-			{
-				// get viscous fluxes
-				scalar vflux[NVARS];
-				const scalar *const urt = (ied < m->gnbface()) ? nullptr : &uarr[relem*NVARS];
-				compute_viscous_flux(ied, &uarr[lelem*NVARS], urt, ug, grads, uleft, uright,
-				                     vflux);
-
-				for(int ivar = 0; ivar < NVARS; ivar++)
-					fluxes[ivar] += vflux[ivar]*len;
-			}
-
-			/// We assemble the negative of the residual ( M du/dt + r(u) = 0).
-			for(int ivar = 0; ivar < NVARS; ivar++) {
-#pragma omp atomic
-				residual(lelem,ivar) -= fluxes[ivar];
-			}
-			if(relem < m->gnelem()) {
-				for(int ivar = 0; ivar < NVARS; ivar++) {
-#pragma omp atomic
-					residual(relem,ivar) += fluxes[ivar];
-				}
-			}
-
-			// compute max allowable time steps
-			if(gettimesteps)
-			{
-				//calculate speeds of sound
-				const scalar ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
-				const scalar cj = physics.getSoundSpeedFromConserved(&uright(ied,0));
-				//calculate normal velocities
-				const scalar vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
-				const scalar vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
-
-				scalar specradi = (fabs(vni)+ci)*len;
-				scalar specradj = (fabs(vnj)+cj)*len;
-
-				if(pconfig.viscous_sim)
-				{
-					scalar mui, muj;
-					if(constVisc) {
-						mui = physics.getConstantViscosityCoeff();
-						muj = physics.getConstantViscosityCoeff();
-					}
-					else {
-						mui = physics.getViscosityCoeffFromConserved(&uleft(ied,0));
-						muj = physics.getViscosityCoeffFromConserved(&uright(ied,0));
-					}
-					const scalar coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
-					const scalar coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
-
-					specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
-					if(relem < m->gnelem())
-						specradj += coj*muj/physics.Pr * len*len/m->garea(relem);
-				}
-
-#pragma omp atomic
-				integ(lelem) += specradi;
-
-				if(relem < m->gnelem()) {
-#pragma omp atomic
-					integ(relem) += specradj;
-				}
-			}
-		}
-
-#pragma omp barrier
-
-		if(gettimesteps)
-#ifdef USE_ADOLC
-#pragma omp for
-#else
-#pragma omp for simd
-#endif
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
-			{
-				dtm[iel] = getvalue<scalar>(m->garea(iel)/integ(iel));
-			}
-	} // end parallel region
+	if(gettimesteps)
+		compute_max_timestep(uleft, uright, dtm);
 
 	delete [] grads;
 	return ierr;
