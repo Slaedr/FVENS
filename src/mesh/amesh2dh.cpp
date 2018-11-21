@@ -32,7 +32,7 @@ namespace fvens {
 
 template <typename scalar>
 UMesh2dh<scalar>::UMesh2dh()
-	: isBoundaryMaps{false}
+	: nconnface{0}, isBoundaryMaps{false}
 {  }
 
 template <typename scalar>

@@ -427,7 +427,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_gradients(const scalar *c
 	GradBlock_t<scalar,NDIM,NVARS> *const grads
 		= reinterpret_cast<GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
 
-	Eigen::Map<const MVector<scalar>> u(uvec, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<scalar>> u(uvec, m->gnelem()+m->gnConnFace(), NVARS);
 
 #pragma omp parallel default(shared)
 	{
@@ -468,7 +468,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_gradients(const scalar *c
 	else
 	{
 #pragma omp parallel for simd default(shared)
-		for(a_int i = 0; i < m->gnelem()*NVARS*NDIM; i++)
+		for(a_int i = 0; i < (m->gnelem()+m->gnConnFace())*NVARS*NDIM; i++)
 			gradients[i] = 0;
 	}
 }
@@ -483,17 +483,140 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
-::compute_fluxes(const scalar *const u,
-                 const scalar *const uleft, const scalar *const uright,
-                 scalar *const residual) const
+::compute_fluxes(const scalar *const u, const scalar *const gradients,
+                 const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
+                 const amat::Array2d<scalar>& ug,
+                 scalar *const res) const
 {
+	const GradBlock_t<scalar,NDIM,NVARS> *const grads
+		= reinterpret_cast<const GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
+	Eigen::Map<MVector<scalar>> residual(res, m->gnelem(), NVARS);
+
+	// Compute fluxes.
+	/**
+	 * The integral of the spectral radius of the (one-sided analytical) flux Jacobian over
+	 * each face \f$ f_i \f$ is also computed and summed over for each cell \f$ K \f$:
+	 * \f[
+	 * \sum_{f_i \in \partial K} \int_{f_i} (|v_n| + c + \lamba_v) \mathrm{d}\gamma
+	 * \f]
+	 * so that time steps can be calculated for explicit time stepping and/or steady problems.
+	 * Note that the reconstructed state is used to compute the spectral radius.
+	 * \f$ \lambda_v \f$ is an estimate of the spectral radius of the viscous flux Jacobian, taken
+	 * from \cite{blazek}.
+	 */
+
+#pragma omp parallel for default(shared)
+	for(a_int ied = 0; ied < m->gnaface(); ied++)
+	{
+		scalar n[NDIM];
+		n[0] = m->gfacemetric(ied,0);
+		n[1] = m->gfacemetric(ied,1);
+		scalar len = m->gfacemetric(ied,2);
+		const int lelem = m->gintfac(ied,0);
+		const int relem = m->gintfac(ied,1);
+		scalar fluxes[NVARS];
+
+		inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, fluxes);
+
+		// integrate over the face
+		for(int ivar = 0; ivar < NVARS; ivar++)
+			fluxes[ivar] *= len;
+
+		if(pconfig.viscous_sim)
+		{
+			// get viscous fluxes
+			scalar vflux[NVARS];
+			const scalar *const ucellright = (ied < m->gnbface()) ? nullptr : &u[relem*NVARS];
+			compute_viscous_flux(ied, &u[lelem*NVARS], ucellright, ug, grads, uleft, uright,
+			                     vflux);
+
+			for(int ivar = 0; ivar < NVARS; ivar++)
+				fluxes[ivar] += vflux[ivar]*len;
+		}
+
+		/// We assemble the negative of the residual ( M du/dt + r(u) = 0).
+		for(int ivar = 0; ivar < NVARS; ivar++) {
+#pragma omp atomic update
+			residual(lelem,ivar) -= fluxes[ivar];
+		}
+		if(relem < m->gnelem()) {
+			for(int ivar = 0; ivar < NVARS; ivar++) {
+#pragma omp atomic update
+				residual(relem,ivar) += fluxes[ivar];
+			}
+		}
+	}
 }
 
+// compute max allowable time steps
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
-::compute_max_timestep(const scalar *const uleft, const scalar *const uright,
-                       scalar *const timsteps) const
+::compute_max_timestep(const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
+                       a_real *const timesteps) const
 {
+	amat::Array2d<a_real> integ(m->gnelem(),1);
+#pragma omp parallel for simd default(shared)
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		integ(iel) = 0.0;
+	}
+
+#pragma omp parallel for default(shared)
+	for(a_int ied = 0; ied < m->gnaface(); ied++)
+	{
+		scalar n[NDIM];
+		n[0] = m->gfacemetric(ied,0);
+		n[1] = m->gfacemetric(ied,1);
+		const scalar len = m->gfacemetric(ied,2);
+		const int lelem = m->gintfac(ied,0);
+		const int relem = m->gintfac(ied,1);
+		//calculate speeds of sound
+		const scalar ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
+		const scalar cj = physics.getSoundSpeedFromConserved(&uright(ied,0));
+		//calculate normal velocities
+		const scalar vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
+		const scalar vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
+
+		scalar specradi = (fabs(vni)+ci)*len;
+		scalar specradj = (fabs(vnj)+cj)*len;
+
+		if(pconfig.viscous_sim)
+		{
+			scalar mui, muj;
+			if(constVisc) {
+				mui = physics.getConstantViscosityCoeff();
+				muj = physics.getConstantViscosityCoeff();
+			}
+			else {
+				mui = physics.getViscosityCoeffFromConserved(&uleft(ied,0));
+				muj = physics.getViscosityCoeffFromConserved(&uright(ied,0));
+			}
+			const scalar coi = std::max(4.0/(3*uleft(ied,0)), physics.g/uleft(ied,0));
+			const scalar coj = std::max(4.0/(3*uright(ied,0)), physics.g/uright(ied,0));
+
+			specradi += coi*mui/physics.Pr * len*len/m->garea(lelem);
+			if(relem < m->gnelem())
+				specradj += coj*muj/physics.Pr * len*len/m->garea(relem);
+		}
+
+#pragma omp atomic update
+		integ(lelem) += getvalue<scalar>(specradi);
+
+		if(relem < m->gnelem()) {
+#pragma omp atomic update
+			integ(relem) += getvalue<scalar>(specradj);
+		}
+	}
+
+#ifdef USE_ADOLC
+#pragma omp parallel for default(shared)
+#else
+#pragma omp parallel for simd default(shared)
+#endif
+	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	{
+		timesteps[iel] = getvalue<scalar>(m->garea(iel))/integ(iel);
+	}
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
@@ -619,7 +742,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 			scalar n[NDIM];
 			n[0] = m->gfacemetric(ied,0);
 			n[1] = m->gfacemetric(ied,1);
-			scalar len = m->gfacemetric(ied,2);
+			const scalar len = m->gfacemetric(ied,2);
 			const int lelem = m->gintfac(ied,0);
 			const int relem = m->gintfac(ied,1);
 			scalar fluxes[NVARS];

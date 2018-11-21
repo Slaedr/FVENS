@@ -85,28 +85,6 @@ public:
 	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
 	                                    const bool gettimesteps, a_real *const dtm) const = 0;
 
-	/// Computes gradients of flow variables
-	/** Layout of the gradient vector...
-	 */
-	virtual void compute_gradients(const scalar *const u, scalar *const gradients) const = 0;
-
-	/// Reconstructs cell-centred values to at faces
-	virtual void reconstruct(const scalar *const u, const scalar *const gradients,
-	                         scalar *const __restrict uleft,
-	                         scalar *const __restrict uright) const = 0;
-
-	/// Computes fluxes into the residual vector
-	virtual void compute_fluxes(const scalar *const u,
-	                            const scalar *const uleft, const scalar *const uright,
-	                            scalar *const residual) const = 0;
-
-	/// Computes the maximum allowable time step at each cell
-	/** This is the volume of the cell divided by the integral over the cell boundary of
-	 * the spectral radius of the analytical flux Jacobian.
-	 */
-	virtual void compute_max_timestep(const scalar *const uleft, const scalar *const uright,
-	                                  scalar *const timsteps) const = 0;
-
 	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
 	 * \param[in] grad Gradients of converved variables at cell-centres
@@ -232,16 +210,18 @@ public:
 	                 scalar *const __restrict uright) const;
 
 	/// Computes fluxes into the residual vector
-	void compute_fluxes(const scalar *const u,
-	                    const scalar *const uleft, const scalar *const uright,
-	                    scalar *const residual) const;
+	void compute_fluxes(const scalar *const u, const scalar *const gradients,
+	                    const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
+	                    const amat::Array2d<scalar>& ug,
+	                    scalar *const res) const;
 
 	/// Computes the maximum allowable time step at each cell
 	/** This is the volume of the cell divided by the integral over the cell boundary of
 	 * the spectral radius of the analytical flux Jacobian.
 	 */
-	void compute_max_timestep(const scalar *const uleft, const scalar *const uright,
-	                          scalar *const timsteps) const;
+	void compute_max_timestep(const amat::Array2d<scalar>& uleft,
+	                          const amat::Array2d<scalar>& uright,
+	                          a_real *const timesteps) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** \see Spatial::compute_local_jacobian_interior
