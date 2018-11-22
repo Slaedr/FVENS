@@ -627,8 +627,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
                                                                 a_real *const __restrict dtm) const
 {
 	StatusCode ierr = 0;
-	amat::Array2d<scalar> integ, ug, uleft, uright;
-	integ.resize(m->gnelem(), 1);
+	amat::Array2d<scalar> ug, uleft, uright;
 	ug.resize(m->gnbface(),NVARS);
 	uleft.resize(m->gnaface(), NVARS);
 	uright.resize(m->gnaface(), NVARS);
@@ -639,12 +638,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 
 #pragma omp parallel default(shared)
 	{
-#pragma omp for simd
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
-		{
-			integ(iel) = 0.0;
-		}
-
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
 #pragma omp for
 		for(a_int ied = 0; ied < m->gnbface(); ied++)
