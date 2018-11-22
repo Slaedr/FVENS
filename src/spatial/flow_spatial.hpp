@@ -190,8 +190,8 @@ public:
 	 * Invokes flux calculation and adds the fluxes to the residual vector,
 	 * and also computes local time steps.
 	 */
-	StatusCode compute_residual(const scalar *const u, scalar *const residual,
-	                            const bool gettimesteps, a_real *const dtm) const;
+	StatusCode compute_residual(const Vec u, Vec residual,
+	                            const bool gettimesteps, Vec timesteps) const;
 
 	/// Computes gradients of primitive flow variables
 	/** Layout of the gradient vector...

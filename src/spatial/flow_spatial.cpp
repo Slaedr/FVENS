@@ -621,10 +621,10 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 StatusCode
-FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *const uarr,
-                                                                scalar *const __restrict rarr,
+FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
+                                                                Vec rvec,
                                                                 const bool gettimesteps,
-                                                                a_real *const __restrict dtm) const
+                                                                Vec timesteps) const
 {
 	StatusCode ierr = 0;
 	amat::Array2d<scalar> ug, uleft, uright;
@@ -633,6 +633,15 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 	uright.resize(m->gnaface(), NVARS);
 	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
 
+	PetscInt locnelem;
+	const PetscScalar *uarr;
+	PetscScalar *rarr, *dtm = NULL;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % NVARS == 0);
+	locnelem /= NVARS;
+	assert(locnelem == m->gnelem());
+
+	const scalar *const uarr = getVecAsReadOnlyArray<scalar>(uvec);
 	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
 	Eigen::Map<MVector<scalar>> residual(rarr, m->gnelem(), NVARS);
 
@@ -720,6 +729,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const scalar *co
 		compute_max_timestep(uleft, uright, dtm);
 
 	delete [] grads;
+	restoreReadOnlyArraytoVec<scalar>(uvec, &uarr);
 	return ierr;
 }
 
