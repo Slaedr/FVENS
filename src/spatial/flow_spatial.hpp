@@ -80,10 +80,10 @@ public:
 	 * \param[in] u The state at which the residual is to be computed
 	 * \param[in|out] residual The residual is added to this
 	 * \param[in] gettimesteps Whether time-step computation is required
-	 * \param[in,out] dtm Local time steps are stored in this (shoud be pre-allocated)
+	 * \param[in,out] timesteps Local time steps are stored in this (shoud be pre-allocated)
 	 */
-	virtual StatusCode compute_residual(const scalar *const u, scalar *const __restrict residual,
-	                                    const bool gettimesteps, a_real *const dtm) const = 0;
+	virtual StatusCode compute_residual(const Vec u, Vec residual,
+	                                    const bool gettimesteps, Vec timesteps) const = 0;
 
 	/// Computes Cp, Csf, Cl, Cd_p and Cd_sf on one surface
 	/** \param[in] u The multi-vector containing conserved variables
@@ -192,22 +192,6 @@ public:
 	 */
 	StatusCode compute_residual(const Vec u, Vec residual,
 	                            const bool gettimesteps, Vec timesteps) const;
-
-	/// Computes gradients of primitive flow variables
-	/** Layout of the gradient vector...
-	 * \param[in] u The conserved variables in all subdomain cells and neighboring cells of other
-	 *   subdomains
-	 * \param[in,out] gradients Pre-allocated (uninitialized) storage for the gradients of primitive
-	 *  variables at all subdomain cells.
-	 */
-	void compute_gradients(const scalar *const u, scalar *const __restrict gradients) const;
-
-	/// Reconstructs cell-centred values to faces
-	/** In case of second-order schemes, primitive variables are reconstructed.
-	 */
-	void reconstruct(const scalar *const u, const scalar *const gradients,
-	                 scalar *const __restrict uleft,
-	                 scalar *const __restrict uright) const;
 
 	/// Computes fluxes into the residual vector
 	void compute_fluxes(const scalar *const u, const scalar *const gradients,

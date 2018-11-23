@@ -1,6 +1,7 @@
 #include <iostream>
 #include "diffusion.hpp"
 #include "utilities/afactory.hpp"
+#include "linalg/petscutils.hpp"
 
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
@@ -66,14 +67,21 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<int nvars>
-StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
-                                                a_real *const __restrict rarr,
-                                                const bool gettimesteps,
-                                                a_real *const dtm) const
+StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
+                                                const bool gettimesteps, Vec timesteps) const
 {
 	StatusCode ierr = 0;
 
+	PetscInt locnelem;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % nvars == 0);
+	locnelem /= nvars;
+	assert(locnelem == m->gnelem());
+
+	const a_real *uarr = getVecAsReadOnlyArray<a_real>(uvec);
 	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), nvars);
+
+	a_real *rarr = getVecAsArray<a_real>(rvec);
 	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 
 	amat::Array2d<a_real> uleft;
@@ -165,6 +173,10 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		}
 	}
 
+	a_real *dtm = nullptr;
+	if(gettimesteps)
+		dtm = getVecAsArray<a_real>(timesteps);
+
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -177,6 +189,12 @@ StatusCode DiffusionMA<nvars>::compute_residual(const a_real *const uarr,
 		for(int ivar = 0; ivar < nvars; ivar++)
 			residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
 	}
+
+	if(gettimesteps)
+		restoreArraytoVec(timesteps, &dtm);
+
+	restoreArraytoVec<a_real>(rvec, &rarr);
+	restoreReadOnlyArraytoVec<a_real>(uvec, &uarr);
 
 	return ierr;
 }

@@ -7,6 +7,7 @@
 
 namespace fvens {
 
+#if 0
 template <typename scalar, int nvars>
 StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
                              const Vec uvec, Vec __restrict rvec,
@@ -50,6 +51,16 @@ StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
 
 	return ierr;
 }
+
+template StatusCode
+assemble_residual<a_real,1>(const Spatial<a_real,1> *const spatial,
+                            const Vec uvec, Vec __restrict rvec,
+                            const bool gettimesteps, Vec dtm);
+template StatusCode
+assemble_residual<a_real,NVARS>(const Spatial<a_real,NVARS> *const spatial,
+                                const Vec uvec, Vec __restrict rvec,
+                                const bool gettimesteps, Vec dtm);
+#endif
 
 template <typename scalar, int nvars>
 StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const Vec uvec, Mat A)
@@ -119,15 +130,6 @@ StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const V
 
 	return ierr;
 }
-
-template StatusCode
-assemble_residual<a_real,1>(const Spatial<a_real,1> *const spatial,
-                            const Vec uvec, Vec __restrict rvec,
-                            const bool gettimesteps, Vec dtm);
-template StatusCode
-assemble_residual<a_real,NVARS>(const Spatial<a_real,NVARS> *const spatial,
-                                const Vec uvec, Vec __restrict rvec,
-                                const bool gettimesteps, Vec dtm);
 
 template StatusCode
 assemble_jacobian<a_real,1>(const Spatial<a_real,1> *const spatial, const Vec uvec, Mat A);

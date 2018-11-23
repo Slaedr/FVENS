@@ -23,9 +23,9 @@
 #include "physics/viscousphysics.hpp"
 #include "utilities/afactory.hpp"
 #include "abctypemap.hpp"
-#include "flow_spatial.hpp"
-
 #include "utilities/adolcutils.hpp"
+#include "linalg/petscutils.hpp"
+#include "flow_spatial.hpp"
 
 namespace fvens {
 
@@ -417,71 +417,6 @@ void FlowFV<scalar,secondOrder,constVisc>
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
-void
-FlowFV<scalar,secondOrderRequested,constVisc>::compute_gradients(const scalar *const uvec,
-                                                                 scalar *const gradients) const
-{
-	amat::Array2d<scalar> ug, uleft;
-	ug.resize(m->gnbface(),NVARS);
-	uleft.resize(m->gnaface(), NVARS);
-	GradBlock_t<scalar,NDIM,NVARS> *const grads
-		= reinterpret_cast<GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
-
-	Eigen::Map<const MVector<scalar>> u(uvec, m->gnelem()+m->gnConnFace(), NVARS);
-
-#pragma omp parallel default(shared)
-	{
-		// first, set cell-centered values of boundary cells as left-side values of boundary faces
-#pragma omp for
-		for(a_int ied = m->gBFaceStart(); ied < m->gBFaceEnd(); ied++)
-		{
-			const a_int ielem = m->gintfac(ied,0);
-			for(int ivar = 0; ivar < NVARS; ivar++)
-				uleft(ied,ivar) = u(ielem,ivar);
-		}
-	}
-
-	if(secondOrderRequested)
-	{
-		// get cell average values at ghost cells using BCs
-		compute_boundary_states(uleft, ug);
-
-		MVector<scalar> up(m->gnelem()+m->gnConnFace(), NVARS);
-
-		// convert cell-centered state vectors to primitive variables
-#pragma omp parallel default(shared)
-		{
-#pragma omp for
-			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
-			{
-				physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
-			}
-
-#pragma omp for
-			for(a_int iel = 0; iel < m->gnelem()+m->gnConnFace(); iel++)
-				physics.getPrimitiveFromConserved(&uvec[iel*NVARS], &up(iel,0));
-		}
-
-		// reconstruct
-		gradcomp->compute_gradients(up, ug, grads);
-	}
-	else
-	{
-#pragma omp parallel for simd default(shared)
-		for(a_int i = 0; i < (m->gnelem()+m->gnConnFace())*NVARS*NDIM; i++)
-			gradients[i] = 0;
-	}
-}
-
-template<typename scalar, bool secondOrderRequested, bool constVisc>
-void FlowFV<scalar,secondOrderRequested,constVisc>
-::reconstruct(const scalar *const u, const scalar *const gradients,
-              scalar *const __restrict uleft,
-              scalar *const __restrict uright) const
-{
-}
-
-template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
 ::compute_fluxes(const scalar *const u, const scalar *const gradients,
                  const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
@@ -634,16 +569,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
 
 	PetscInt locnelem;
-	const PetscScalar *uarr;
-	PetscScalar *rarr, *dtm = NULL;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % NVARS == 0);
 	locnelem /= NVARS;
 	assert(locnelem == m->gnelem());
 
-	const scalar *const uarr = getVecAsReadOnlyArray<scalar>(uvec);
+	const scalar *uarr = getVecAsReadOnlyArray<scalar>(uvec);
 	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
-	Eigen::Map<MVector<scalar>> residual(rarr, m->gnelem(), NVARS);
 
 #pragma omp parallel default(shared)
 	{
@@ -723,10 +655,16 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	// get right (ghost) state at boundary faces for computing fluxes
 	compute_boundary_states(uleft,uright);
 
+	scalar *rarr = getVecAsArray<scalar>(rvec);
 	compute_fluxes(uarr, &grads[0](0,0), uleft, uright, ug, rarr);
+	restoreArraytoVec(rvec, &rarr);
 
 	if(gettimesteps)
+	{
+		a_real *dtm = getVecAsArray<a_real>(timesteps);
 		compute_max_timestep(uleft, uright, dtm);
+		restoreArraytoVec(timesteps, &dtm);
+	}
 
 	delete [] grads;
 	restoreReadOnlyArraytoVec<scalar>(uvec, &uarr);

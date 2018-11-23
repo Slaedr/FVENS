@@ -162,7 +162,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 
 		// update residual
-		ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
+		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		a_real errmass = 0;
 		const PetscScalar *dtm;
@@ -462,7 +462,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		
 		// update residual and local time steps
-		ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
+		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = assemble_jacobian(space, uvec, M); CHKERRQ(ierr);
@@ -684,7 +684,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 			}
 
 			// update residual
-			ierr = assemble_residual(space, uvec, rvec, true, dtmvec); CHKERRQ(ierr);
+			ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 			// update time step for the first stage of each time step
 			if(istage == 0)

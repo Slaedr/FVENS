@@ -67,10 +67,8 @@ public:
 			                                           ///< scheme to use
 			);
 	
-	StatusCode compute_residual(const a_real *const uarr,
-	                            a_real *const rarr, 
-	                            const bool gettimesteps, 
-	                            a_real *const dtm) const;
+	StatusCode compute_residual(const Vec u, Vec residual,
+	                            const bool gettimesteps, Vec timesteps) const;
 
 	void compute_local_jacobian_interior(const a_int iface,
 	                                     const a_real *const ul, const a_real *const ur,

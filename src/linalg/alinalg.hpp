@@ -20,6 +20,11 @@
 
 namespace fvens {
 
+/// Sets up global vectors with storage with ghost locations for connectivity boundaries
+/** \param[in] nvars Number of physical variables per grid location
+ */
+StatusCode setupSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v);
+
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context
  * \param[in|out] A The matrix to pre-allocate for

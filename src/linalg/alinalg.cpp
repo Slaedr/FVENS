@@ -7,6 +7,16 @@
 
 namespace fvens {
 
+StatusCode setupSystemVector(const UMesh2dh<a_real> *const m, const int bs, Vec *const v)
+{
+	StatusCode ierr = 0;
+	ierr = VecCreateGhostBlock(PETSC_COMM_WORLD, bs, m->gnelem()*bs, PETSC_DECIDE, m->gnConnFace(),
+	                           m->getConnectivityGlobalIndices(), v);
+	CHKERRQ(ierr);
+	ierr = VecSetFromOptions(*v); CHKERRQ(ierr);
+	return ierr;
+}
+
 template <int nvars>
 static StatusCode setJacobianSizes(const UMesh2dh<a_real> *const m, Mat A) 
 {
@@ -140,7 +150,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
 
 	// y <- -r(u + eps/xnorm * x)
-	ierr = assemble_residual(spatial, aux, y, false, dummy); CHKERRQ(ierr);
+	ierr = spatial->compute_residual(aux, y, false, dummy); CHKERRQ(ierr);
 
 	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
 	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);

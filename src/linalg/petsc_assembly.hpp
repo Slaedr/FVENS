@@ -23,10 +23,10 @@ namespace fvens {
  * \param[in] gettimesteps Whether time-step computation is required
  * \param[out] dtm Local time steps are stored in this
  */
-template <typename scalar, int nvars>
-StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
-                             const Vec uvec, Vec __restrict rvec,
-                             const bool gettimesteps, Vec __restrict dtm);
+// template <typename scalar, int nvars>
+// StatusCode assemble_residual(const Spatial<scalar,nvars> *const spatial,
+//                              const Vec uvec, Vec __restrict rvec,
+//                              const bool gettimesteps, Vec __restrict dtm);
 
 /// Computes and assembles the residual Jacobian
 template <typename scalar, int nvars>

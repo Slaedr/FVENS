@@ -182,6 +182,14 @@ public:
 	/// Returns the number of domain tags available for elements
 	int gndtag() const { return ndtag; }
 
+	/// Returns the array of global element indices corresponding to external elements across
+	///  connectivity boundary faces of this subdomain
+	const a_int *getConnectivityGlobalIndices() const
+	{
+		assert(connGlobalIndices.size() > 0);
+		return &connGlobalIndices[0];
+	}
+
 	/// Set coordinates of a certain point
 	/** 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
 	 */
@@ -384,6 +392,8 @@ private:
 	 * The unit normal points towards the cell with greater index.
 	 */
 	amat::Array2d<scalar> facemetric;
+
+	std::vector<a_int> connGlobalIndices;
 
 	/// Compute lists of elements (cells) surrounding each point \sa esup
 	/** \note This function is required to be called before some other topology-related computations.
