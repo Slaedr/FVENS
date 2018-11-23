@@ -217,9 +217,9 @@ public:
 	/// Reads a grid in the SU2 format
 	void readSU2(const std::string mfile);
 
-	/// Re-orders calls according to some permutation vector
+	/// Re-orders cells according to some permutation vector locally in the subdomain
 	/** \warning If reordering is needed, this function must be called immediately after reading
-	 * the mesh.
+	 * and distributing the mesh.
 	 */
 	void reorder_cells(const PetscInt *const permvec);
 
@@ -286,6 +286,9 @@ public:
 
 	/// Populate [intfacbtags](@ref intfacbtags) with boundary markers of corresponding bfaces
 	void compute_intfacbtags();
+
+	/// The mesh partitioner needs direct access to the mesh
+	friend StatusCode partitionMesh(UMesh2dh<a_real>& mesh);
 
 private:
 	a_int npoin;                    ///< Number of nodes

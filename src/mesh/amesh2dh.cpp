@@ -21,7 +21,9 @@
 #include <iomanip>
 #include <fstream>
 #include <boost/algorithm/string.hpp>
+
 #include "amesh2dh.hpp"
+#include "utilities/mpiutils.hpp"
 #include "utilities/aoptionparser.hpp"
 
 #ifdef USE_ADOLC
@@ -43,13 +45,16 @@ UMesh2dh<scalar>::~UMesh2dh()
 template <typename scalar>
 void UMesh2dh<scalar>::readMesh(const std::string mfile)
 {
-	std::vector<std::string> parts;
-	boost::split(parts, mfile, boost::is_any_of("."));
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	if (mpirank == 0) {
+		std::vector<std::string> parts;
+		boost::split(parts, mfile, boost::is_any_of("."));
 
-	if(parts[parts.size()-1] == "su2")
-		readSU2(mfile);
-	else
-		readGmsh2(mfile);
+		if(parts[parts.size()-1] == "su2")
+			readSU2(mfile);
+		else
+			readGmsh2(mfile);
+	}
 }
 
 /// Reads mesh from Gmsh 2 format file
