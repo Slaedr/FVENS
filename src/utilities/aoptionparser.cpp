@@ -8,7 +8,6 @@
 #include "aerrorhandling.hpp"
 #include <iostream>
 #include <cstdlib>
-//#include <boost/algorithm/string.hpp>
 #include <boost/program_options/cmdline.hpp>
 #include <boost/program_options/parsers.hpp>
 #include <petscsys.h>
@@ -16,23 +15,6 @@
 namespace fvens {
 
 namespace po = boost::program_options;
-
-void open_file_toRead(const std::string file, std::ifstream& fin)
-{
-	fin.open(file);
-	if(!fin) {
-		std::cout << "! Could not open file "<< file <<" !\n";
-		std::abort();
-	}
-}
-
-void open_file_toWrite(const std::string file, std::ofstream& fout)
-{
-	fout.open(file);
-	if(!fout) {
-		throw std::runtime_error("Could not open file " + file);
-	}
-}
 
 po::variables_map parse_cmd_options(const int argc, const char *const argv[],
                                     po::options_description& desc)

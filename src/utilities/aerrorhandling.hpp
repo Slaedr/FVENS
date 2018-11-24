@@ -8,6 +8,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <fstream>
 
 namespace fvens {
 
@@ -68,6 +69,12 @@ inline void petsc_throw(const int ierr, const std::string str) {
 	if(ierr != 0) 
 		throw fvens::Petsc_exception(str);
 }
+
+/// Opens a file for reading but aborts in case of an error
+void open_file_toRead(const std::string file, std::ifstream& fin);
+
+/// Opens a file for writing but throws in case of an error
+void open_file_toWrite(const std::string file, std::ofstream& fout);
 
 }
 

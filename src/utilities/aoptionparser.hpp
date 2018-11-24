@@ -14,12 +14,6 @@
 
 namespace fvens {
 
-/// Opens a file for reading but aborts in case of an error
-void open_file_toRead(const std::string file, std::ifstream& fin);
-
-/// Opens a file for writing but aborts in case of an error
-void open_file_toWrite(const std::string file, std::ofstream& fout);
-
 /// Parses command line parameters into a map
 boost::program_options::variables_map
 parse_cmd_options(const int argc, const char *const argv[],

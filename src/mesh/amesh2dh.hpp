@@ -147,7 +147,7 @@ public:
 	a_int gifbmap(const a_int iface) const { return ifbmap(iface); }
 
 	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
-	int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
+	//int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
 	/// Returns the total number of nodes in the mesh
 	a_int gnpoin() const { return npoin; }
@@ -335,7 +335,7 @@ private:
 	amat::Array2d<int> vol_regions;
 
 	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
-	amat::Array2d<int> flag_bpoin;
+	//amat::Array2d<int> flag_bpoin;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int> esup_p;

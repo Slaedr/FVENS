@@ -24,7 +24,6 @@
 
 #include "amesh2dh.hpp"
 #include "utilities/mpiutils.hpp"
-#include "utilities/aoptionparser.hpp"
 
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
