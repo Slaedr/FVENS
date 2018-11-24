@@ -40,7 +40,7 @@ def plotquantity(filelist, quantname, numits, labellist, opts, imageformatstring
                     label=labellist[i])
             plt.xlabel("Pseudo-time steps", fontsize="medium")
             plt.ylabel("Log of L2 norm of energy residual", fontsize="medium")
-        elif quantname == "walltime":
+        elif quantname == "res_walltime":
             plt.plot(data[numits:,3], data[numits:,1], \
                     lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
                     marker=opts['marklist'][i], ms=opts['marksize'], \
@@ -48,6 +48,15 @@ def plotquantity(filelist, quantname, numits, labellist, opts, imageformatstring
                     markevery=list(range(0,pltdatalen,opts['markinterval'])), \
                     label=labellist[i])
             plt.xlabel("Wall-clock time (s)", fontsize="medium")
+            plt.ylabel("Log of L2 norm of energy residual", fontsize="medium")
+        elif quantname == "res_linits":
+            plt.plot(data[numits:,5], data[numits:,1], \
+                    lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
+                    marker=opts['marklist'][i], ms=opts['marksize'], \
+                    mew=opts['markedgewidth'], \
+                    markevery=list(range(0,pltdatalen,opts['markinterval'])), \
+                    label=labellist[i])
+            plt.xlabel("Number of linear solver iterations", fontsize="medium")
             plt.ylabel("Log of L2 norm of energy residual", fontsize="medium")
         elif quantname == "cfl":
             plt.plot(data[numits:,0], data[numits:,6], \
@@ -89,6 +98,7 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv)
 
     plotquantity(args.files[1:], "residual", args.start_iter, args.labels, opts, args.format)
-    plotquantity(args.files[1:], "walltime", args.start_iter, args.labels, opts, args.format)
+    plotquantity(args.files[1:], "res_walltime", args.start_iter, args.labels, opts, args.format)
     plotquantity(args.files[1:], "cfl", args.start_iter, args.labels, opts, args.format)
+    plotquantity(args.files[1:], "res_linits", args.start_iter, args.labels, opts, args.format)
 

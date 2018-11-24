@@ -124,6 +124,8 @@ int main(int argc, char *argv[])
 		return -2;
 	}
 
+	MPI_Init(&argc, &argv);
+
 	std::string whichtest = argv[1];
 	int err = 0;
 
@@ -152,5 +154,6 @@ int main(int argc, char *argv[])
 	else
 		throw "Invalid test";
 
+	MPI_Finalize();
 	return err;
 }

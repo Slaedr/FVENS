@@ -254,11 +254,11 @@ void UMesh2dh<scalar>::readGmsh2(const std::string mfile)
 	infile.close();
 
 	// set flag_bpoin
-	flag_bpoin.resize(npoin,1);
-	flag_bpoin.zeros();
-	for(int i = 0; i < nface; i++)
-		for(int j = 0; j < nnofa; j++)
-			flag_bpoin(bface(i,j)) = 1;
+	// flag_bpoin.resize(npoin,1);
+	// flag_bpoin.zeros();
+	// for(int i = 0; i < nface; i++)
+	// 	for(int j = 0; j < nnofa; j++)
+	// 		flag_bpoin(bface(i,j)) = 1;
 }
 
 template <typename scalar>
@@ -389,11 +389,11 @@ void UMesh2dh<scalar>::readSU2(const std::string mfile)
 
 	// Classify points as boundary points or not
 
-	flag_bpoin.resize(npoin,1);
-	flag_bpoin.zeros();
-	for(int i = 0; i < nface; i++)
-		for(int j = 0; j < nnofa; j++)
-			flag_bpoin(bface(i,j)) = 1;
+	// flag_bpoin.resize(npoin,1);
+	// flag_bpoin.zeros();
+	// for(int i = 0; i < nface; i++)
+	// 	for(int j = 0; j < nnofa; j++)
+	// 		flag_bpoin(bface(i,j)) = 1;
 }
 
 template <typename scalar>

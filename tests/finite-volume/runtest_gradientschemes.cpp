@@ -13,6 +13,8 @@ int main(int argc, char *argv[])
 		std::exit(-1);
 	}
 
+	MPI_Init(&argc, &argv);
+
 	int ierr = 0;
 
 	UMesh2dh<a_real> m;
@@ -31,5 +33,6 @@ int main(int argc, char *argv[])
 		std::exit(-2);
 	}
 
+	MPI_Finalize();
 	return ierr;
 }

@@ -11,7 +11,10 @@
 
 namespace fvens {
 
-StatusCode partitionMesh(UMesh2dh<a_real>& mesh);
+/// Partitions the mesh in a trivial manner after reading it in on rank 0
+void partitionMeshTrivial(UMesh2dh<a_real>& mesh);
+
+//void partitionMesh(UMesh2dh<a_real>& mesh);
 
 }
 

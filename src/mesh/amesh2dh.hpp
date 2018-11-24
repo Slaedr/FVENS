@@ -287,10 +287,17 @@ public:
 	/// Populate [intfacbtags](@ref intfacbtags) with boundary markers of corresponding bfaces
 	void compute_intfacbtags();
 
-	/// The mesh partitioner needs direct access to the mesh
-	friend StatusCode partitionMesh(UMesh2dh<a_real>& mesh);
+	/// The initial mesh partitioner needs direct access to the mesh
+	friend void partitionMeshTrivial(UMesh2dh<a_real>& mesh);
 
 private:
+	// Global properties
+
+	a_int npoinglobal;
+	a_int nelemglobal;
+
+	// Local properties
+
 	a_int npoin;                    ///< Number of nodes
 	a_int nelem;                    ///< Number of elements
 	a_int nface;                    ///< Number of boundary faces
