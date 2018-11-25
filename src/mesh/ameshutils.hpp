@@ -12,6 +12,9 @@
 
 namespace fvens {
 
+/// Returns a ready-to-use mesh object from the path to mesh file
+UMesh2dh<a_real> constructMesh(const std::string mesh_path);
+
 /// Computes various entity lists required for mesh traversal, also reorders the cells if requested
 /** This can, and should, be called immediately after [reading](UMesh2dh::readMesh) the mesh.
  * Does not compute [periodic boundary maps](UMesh2dh::compute_periodic_map);

@@ -66,6 +66,11 @@ public:
 	/// Deep copy
 	Array2d(const Array2d<T>& other);
 
+	/// Move constructor
+	/** Performs a shallow copy and then nulls the other array, which finally becomes a 0x0 array.
+	 */
+	Array2d(Array2d<T>&& other);
+
 	~Array2d()
 	{
 		delete [] elems;

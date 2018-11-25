@@ -41,8 +41,7 @@ int main(int argc, char *argv[])
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 	std::string testchoice = argv[2];
 
-	UMesh2dh<a_real> m;
-	m.readMesh(opts.meshfile);
+	UMesh2dh<a_real> m(readMesh(opts.meshfile));
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();

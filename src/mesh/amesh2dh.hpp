@@ -9,6 +9,7 @@
 #include <vector>
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
+#include "meshreaders.hpp"
 
 namespace fvens {
 
@@ -18,6 +19,8 @@ class UMesh2dh
 {
 public:
 	UMesh2dh();
+
+	UMesh2dh(const MeshData& md);
 
 	~UMesh2dh();
 
@@ -200,23 +203,6 @@ public:
 		coords(pointno,dim) = value;
 	}
 
-	/// Reads a mesh file
-	/** The file should be in either the Gmsh 2.0 format or the SU2 format
-	 * The file extensions should be
-	 * - msh for Gmsh 2.0
-	 * - su2 for SU2 format
-	 *
-	 * \note For an SU2 mesh file, string marker names must be replaced with integers
-	 * before this function is called on it.
-	 */
-	void readMesh(const std::string mfile);
-
-	/// Reads a mesh from a Gmsh 2 format file
-	void readGmsh2(const std::string mfile);
-
-	/// Reads a grid in the SU2 format
-	void readSU2(const std::string mfile);
-
 	/// Re-orders cells according to some permutation vector locally in the subdomain
 	/** \warning If reordering is needed, this function must be called immediately after reading
 	 * and distributing the mesh.
@@ -231,7 +217,7 @@ public:
 	void printmeshstats() const;
 
 	/// Writes out the mesh in the Gmsh 2.0 format
-	void writeGmsh2(const std::string mfile);
+	void writeGmsh2(const std::string mfile) const;
 
 	/// Computes areas of linear triangles and quads
 	void compute_areas();
@@ -306,12 +292,6 @@ private:
 	std::vector<int> nfael;         ///< number of faces to an element for each element
 	int maxnfael;                   ///< Maximum number of faces per element for any element
 	int nnofa;                      ///< number of nodes in a face
-	a_int naface;                   ///< total number of (internal and boundary) faces
-	/// number of physical boundary faces as calculated in \sa compute_topological
-	a_int nbface;
-	/// Number of connection boundary faces (connection to other subdomains)
-	a_int nconnface;
-	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
 	int nbtag;                      ///< number of tags for each boundary face
 	int ndtag;                      ///< number of tags for each element
 
@@ -325,6 +305,13 @@ private:
 	/// Lists nodes belonging to a boundary face and contains boundary markers
 	amat::Array2d<a_int> bface;
 
+	a_int naface;                   ///< total number of (internal and boundary) faces
+	/// number of physical boundary faces as calculated in \sa compute_topological
+	a_int nbface;
+	/// Number of connection boundary faces (connection to other subdomains)
+	a_int nconnface;
+	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
+
 	/// Connection boundary face data
 	/** Contains, for each connectivity boundary face, the index of the subdomain that it connects to
 	 *   and the index of the cell in that subdomain that it connects to, in that order.
@@ -333,9 +320,6 @@ private:
 
 	/// Holds volume region markers, if any
 	amat::Array2d<int> vol_regions;
-
-	/// Holds 1 or 0 for each point depending on whether or not that point is a boundary point
-	//amat::Array2d<int> flag_bpoin;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int> esup_p;

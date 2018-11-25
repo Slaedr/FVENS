@@ -22,6 +22,7 @@
 #include <fstream>
 #include <boost/algorithm/string.hpp>
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/mpiutils.hpp"
 
 #include "meshreaders.hpp"
 
@@ -31,7 +32,7 @@ namespace fvens {
 static MeshData readGmsh2(const std::string mfile);
 static MeshData readSU2(const std::string mfile);
 
-Meshdata readMesh(const std::string mfile)
+MeshData readMesh(const std::string mfile)
 {
 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 	MeshData mdata;
@@ -215,7 +216,7 @@ MeshData readGmsh2(const std::string mfile)
 	else std::cout << "readGmsh2(): WARNING: There is no boundary data!" << std::endl;
 
 	m.inpoel.resize(m.nelem, m.maxnnode);
-	vol_regions.resize(m.nelem, m.ndtag);
+	m.vol_regions.resize(m.nelem, m.ndtag);
 
 	std::cout << "readGmsh2(): No. of points: " << m.npoin
 		<< ", number of elements: " << m.nelem
@@ -239,7 +240,7 @@ MeshData readGmsh2(const std::string mfile)
 		for(int j = 0; j < nnodes[i+m.nface]; j++)
 			m.inpoel(i,j) = elms(i+m.nface,j)-1;
 		for(int j = 0; j < m.ndtag; j++)
-			vol_regions(i,j) = elms(i+m.nface,j+nnodes[i+m.nface]);
+			m.vol_regions(i,j) = elms(i+m.nface,j+nnodes[i+m.nface]);
 		m.nnode.push_back(nnodes[i+m.nface]);
 		m.nfael.push_back(nfaels[i+m.nface]);
 	}

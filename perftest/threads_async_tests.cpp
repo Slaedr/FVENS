@@ -210,7 +210,7 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 	StatusCode ierr = 0;
 
 	// Set up mesh
-	const UMesh2dh<a_real> m = constructMesh(opts,"");
+	const UMesh2dh<a_real> m = constructMeshFlow(opts,"");
 	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
 
 	// solution vector

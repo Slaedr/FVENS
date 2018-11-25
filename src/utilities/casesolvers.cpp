@@ -21,14 +21,11 @@
 namespace fvens {
 
 /// Prepare a mesh for use in a fluid simulation
-UMesh2dh<a_real> constructMesh(const FlowParserOptions& opts, const std::string mesh_suffix)
+UMesh2dh<a_real> constructMeshFlow(const FlowParserOptions& opts, const std::string mesh_suffix)
 {
 	// Set up mesh
 	const std::string meshfile = opts.meshfile + mesh_suffix;
-	UMesh2dh<a_real> m;
-	m.readMesh(meshfile);
-	int ierr = preprocessMesh(m); 
-	fvens_throw(ierr, "Mesh could not be preprocessed!");
+	UMesh2dh<a_real> m(constructMesh(meshfile));
 
 	// check if there are any periodic boundaries
 	for(auto it = opts.bcconf.begin(); it != opts.bcconf.end(); it++) {

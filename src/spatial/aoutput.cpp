@@ -538,7 +538,7 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh2dh<
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, fvens::UMesh2dh<a_real>& m)
+void writeMeshToVtu(std::string fname, const fvens::UMesh2dh<a_real>& m)
 {
 	std::cout << "Writing vtu output...\n";
 	std::ofstream out(fname);

@@ -49,10 +49,21 @@ struct MeshData
 	/// Physical boundary face data
 	///  Lists nodes belonging to a boundary face and contains boundary markers
 	amat::Array2d<a_int> bface;
+
+	/// Volume tags
+	amat::Array2d<a_int> vol_regions;
 };
 
 /// Reads a mesh from a file
-Meshdata readMesh(const std::string mfile);
+/** The file should be in either the Gmsh 2.0 format or the SU2 format
+ * The file extensions should be
+ * - msh for Gmsh 2.0
+ * - su2 for SU2 format
+ *
+ * \note For an SU2 mesh file, string marker names must be replaced with integers
+ * before this function is called on it.
+ */
+MeshData readMesh(const std::string mfile);
 
 }
 

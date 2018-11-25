@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		// Mesh file suffix
 		std::string meshsuffix = std::to_string(imesh) + ".msh";
 		//Mesh
-		const UMesh2dh<a_real> m = constructMesh(opts, meshsuffix);
+		const UMesh2dh<a_real> m = constructMeshFlow(opts, meshsuffix);
 
 		// solution vector
 		Vec u;

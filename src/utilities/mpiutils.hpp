@@ -7,11 +7,12 @@
 #ifndef FVENS_MPIUTILS_H
 #define FVENS_MPIUTILS_H
 
+#include <mpi.h>
 #include "aerrorhandling.hpp"
 
 namespace fvens {
 
-int get_mpi_size(MPI_Comm comm)
+inline int get_mpi_size(MPI_Comm comm)
 {
 	int size;
 	int ierr = MPI_Comm_rank(comm, &size);
@@ -19,7 +20,7 @@ int get_mpi_size(MPI_Comm comm)
 	return size;
 }
 
-int get_mpi_rank(MPI_Comm comm)
+inline int get_mpi_rank(MPI_Comm comm)
 {
 	int rank;
 	int ierr = MPI_Comm_rank(comm, &rank);

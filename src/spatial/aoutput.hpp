@@ -109,7 +109,7 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh2dh<a_real>
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, UMesh2dh<a_real>& m);
+void writeMeshToVtu(std::string fname, const UMesh2dh<a_real>& m);
 
 /// Prints out the column of headers of convergence history to a file
 void writeConvergenceHistoryHeader(std::ostream& outf);

@@ -7,6 +7,7 @@
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
 #include "utilities/afactory.hpp"
+#include "utilities/casesolvers.hpp"
 #include "mesh/ameshutils.hpp"
 
 #undef NDEBUG
@@ -90,9 +91,9 @@ int main(int argc, char* argv[])
 	{
 		std::string meshfile = meshprefix + std::to_string(imesh) + ".msh";
 
-		UMesh2dh<a_real> m;
-		m.readMesh(meshfile);
-		CHKERRQ(preprocessMesh(m));
+		const UMesh2dh<a_real> m = constructMesh(meshfile);
+		// m.readMesh(meshfile);
+		// CHKERRQ(preprocessMesh(m));
 
 		// set up problem
 		

@@ -9,6 +9,7 @@
 #include "linalg/alinalg.hpp"
 #include "linalg/petsc_assembly.hpp"
 #include "spatial/diffusion.hpp"
+#include "utilities/aerrorhandling.hpp"
 
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
@@ -88,6 +89,15 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 	m.compute_face_data();
 
 	return 0;
+}
+
+UMesh2dh<a_real> constructMesh(const std::string mesh_path)
+{
+	// Set up mesh
+	UMesh2dh<a_real> m(readMesh(mesh_path));
+	int ierr = preprocessMesh(m); 
+	fvens_throw(ierr, "Mesh could not be preprocessed!");
+	return m;
 }
 
 /* Returns a list of cell indices corresponding to the start of each level.

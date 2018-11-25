@@ -81,11 +81,11 @@ skin-friction drag respectively");
 	std::vector<double> lh(nmesh), clerrors(nmesh), cdperrors(nmesh), cdsferrors(nmesh),
 		clslopes(nmesh-1), cdpslopes(nmesh-1), cdsfslopes(nmesh-1);
 
-	for(int imesh = 0; imesh < nmesh; imesh++) 
+	for(int imesh = 0; imesh < nmesh; imesh++)
 	{
 		// Mesh
 		std::string meshsuffix = std::to_string(imesh) + ".msh";
-		const UMesh2dh<a_real> m = constructMesh(opts, meshsuffix);
+		const UMesh2dh<a_real> m = constructMeshFlow(opts, meshsuffix);
 		
 		// solution vector
 		Vec u;

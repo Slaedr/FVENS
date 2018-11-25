@@ -32,6 +32,16 @@ Array2d<T>::Array2d(const Array2d<T>& other)
 }
 
 template <typename T>
+Array2d<T>::Array2d(Array2d<T>&& other)
+	: nrows{other.nrows}, ncols{other.ncols}, size{other.size}, elems{other.elems}
+{
+	other.elems = nullptr;
+	other.nrows=0;
+	other.ncols=0;
+	other.size=0;
+}
+
+template <typename T>
 Array2d<T>& Array2d<T>::operator=(const Array2d<T>& rhs)
 {
 #ifdef DEBUG

@@ -129,9 +129,9 @@ int main(int argc, char *argv[])
 	std::string whichtest = argv[1];
 	int err = 0;
 
-	UMesh2dh<a_real> m;
+	const MeshData md = readMesh(argv[2]);
+	UMesh2dh<a_real> m(md);
 
-	m.readMesh(argv[2]);
 	m.compute_topological();
 
 	if(whichtest == "esup") {

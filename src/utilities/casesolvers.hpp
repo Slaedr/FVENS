@@ -47,7 +47,7 @@ struct FlowSolutionFunctionals
  * \param mesh_suffix A string to concatenate to the
  *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
  */
-UMesh2dh<a_real> constructMesh(const FlowParserOptions& opts, const std::string mesh_suffix);
+UMesh2dh<a_real> constructMeshFlow(const FlowParserOptions& opts, const std::string mesh_suffix);
 
 /// Create a spatial discretization context for the flow problem
 const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
