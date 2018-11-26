@@ -274,7 +274,11 @@ public:
 	void compute_intfacbtags();
 
 	/// The initial mesh partitioner needs direct access to the mesh
-	friend void partitionMeshTrivial(UMesh2dh<a_real>& mesh);
+	friend UMesh2dh<a_real> partitionMeshTrivial(const MeshData& global_mesh);
+
+	/// Populates this process's share of mesh arrays from the global arrays
+	friend void splitMeshArrays(const MeshData& gm, const std::vector<int>& glbElemDist,
+	                            UMesh2dh<a_real>& lm);
 
 private:
 	// Global properties

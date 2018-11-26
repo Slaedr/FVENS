@@ -3,44 +3,76 @@
  */
 
 #include <iostream>
+#include <map>
 #include "meshpartitioning.hpp"
 #include "utilities/mpiutils.hpp"
 
 namespace fvens {
 
-static a_int getNumLocalElems(const int rank, const MeshData& gm,
-                              const a_int *const glbElemDist)
+/// Computes the number of elements on each process
+/** \param gm The global mesh
+ * \param glbElemDist The MPI rank to which each element in the global mesh goes - assumed to be
+ *   accessible only on rank 0.
+ * \return A vector of number of elements. On rank zero, it is of length nprocs. On all other ranks,
+ *   it has length 1 and contains the number of elements on that rank only.
+ */
+static std::vector<a_int> getNumLocalElems(const MeshData& gm,
+                                           const std::vector<a_int>& glbElemDist)
 {
-	a_int nlocelem = 0;
-	//#pragma omp parallel for default(shared) reduction(+:nlocelem)
-	for(a_int iel = 0; iel < gm.nelem; iel++) {
-		if(glbElemDist[iel] == rank)
-			nlocelem++;
+	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	const int nranks = get_mpi_size(MPI_COMM_WORLD);
+	std::vector<a_int> nlocelem;
+
+	if(rank == 0) {
+		nlocelem.resize(nranks);
+		std::fill(nlocelem.begin(), nlocelem.end(), 0);
+		assert(static_cast<a_int>(glbElemDist.size()) == gm.nelem);
+
+		for(a_int iel = 0; iel < gm.nelem; iel++)
+			nlocelem[glbElemDist[iel]]++;
 	}
+	else {
+		nlocelem.resize(1);
+	}
+
+	a_int mylocelem;
+	MPI_Scatter(&nlocelem[0], 1, FVENS_MPI_INT, &mylocelem, 1, FVENS_MPI_INT, 0, MPI_COMM_WORLD);
+	if(rank != 0)
+		nlocelem[0] = mylocelem;
+	else
+		assert(nlocelem[0] == mylocelem);
+
+#ifdef DEBUG
+	if(rank == 0) {
+		std::cout << " Number of elems on each rank:\n";
+		for(int i = 0; i < nranks; i++)
+			std::cout << "  Rank " << i << ": " << nlocelem[i] << '\n';
+		std::cout << std::endl;
+	} else {
+		std::cout << " Number of elems on rank " << rank << ": " << nlocelem[0] << std::endl;
+	}
+	MPI_Barrier(MPI_COMM_WORLD);
+#endif
 	return nlocelem;
 }
 
 /// Get local elem-node connectivity matrix, number of nodes per elem and number of faces per elem,
 ///  and mapping from local to global element numbering from root process to respective processes
-static void getDataFromRoot(const MeshData& gm, const a_int nlocelem,
-                            amat::Array2d<a_int>& inpoel, std::vector<int>& nnode,
-                            std::vector<int>& nfael, std::vector<int>& loc2globElem)
+static void getElemDataFromRoot(const MeshData& gm, const std::vector<a_int>& numlocalelems,
+                                const std::vector<int>& glbElemDist,
+                                amat::Array2d<a_int>& inpoel, std::vector<int>& nnode,
+                                std::vector<int>& nfael, std::vector<int>& loc2globElem)
 {
 	const int nranks = get_mpi_size(MPI_COMM_WORLD);
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 
-	// transfer local sizes from each rank to root
-	std::vector<a_int> localelemsizes;
-	if(rank == 0) localelemsizes.resize(nranks);
-	MPI_Gather((void*)&nlocelem, 1, FVENS_MPI_INT, (void*)&localelemsizes[0],1,FVENS_MPI_INT, 0,
-	           MPI_COMM_WORLD);
-
 	// transfer element data from root to each rank
 	if(rank == 0) {
-		for(int irnk = 0; irnk < nranks; irnk++) {
-			amat::Array2d<a_int> inpoelbuffer(localelemsizes[irnk],gm.maxnnode);
-			std::vector<int> nnodebuffer(localelemsizes[irnk]), nfaelbuffer(localelemsizes[irnk]);
-			std::vector <int> loc2globElembuffer(localelemsizes[irnk]);
+		for(int irnk = 0; irnk < nranks; irnk++)
+		{
+			amat::Array2d<a_int> inpoelbuffer(numlocalelems[irnk],gm.maxnnode);
+			std::vector<int> nnodebuffer(numlocalelems[irnk]), nfaelbuffer(numlocalelems[irnk]);
+			std::vector <int> loc2globElembuffer(numlocalelems[irnk]);
 
 			a_int lociel = 0;
 			for(a_int iel = 0; iel < gm.nelem; iel++) {
@@ -57,7 +89,7 @@ static void getDataFromRoot(const MeshData& gm, const a_int nlocelem,
 			assert(lociel == localelemsizes[irnk]);
 
 			MPI_Request req[4];
-			MPI_Isend(&inpoelbuffer[0], lociel*gm.maxnnode, FVENS_MPI_INT, irnk, 0, MPI_COMM_WORLD,
+			MPI_Isend(&inpoelbuffer(0,0), lociel*gm.maxnnode, FVENS_MPI_INT, irnk, 0, MPI_COMM_WORLD,
 			          &req[0]);
 			MPI_Isend(&nnodebuffer[0], lociel, FVENS_MPI_INT, irnk, 1, MPI_COMM_WORLD, &req[1]);
 			MPI_Isend(&nfaelbuffer[0], lociel, FVENS_MPI_INT, irnk, 2, MPI_COMM_WORLD, &req[2]);
@@ -66,51 +98,140 @@ static void getDataFromRoot(const MeshData& gm, const a_int nlocelem,
 			MPI_Status statuses[4];
 			int ierr = MPI_Waitall(4, req, statuses);
 			assert(ierr == MPI_SUCCESS);
+			(void)ierr;
 		}
 	}
 
 	MPI_Request req[4];
-	MPI_Irecv(&inpoel(0,0), localelemsizes[rank]*gm.maxnnode, FVENS_MPI_INT, 0, 0,
+	MPI_Irecv(&inpoel(0,0), numlocalelems[0]*gm.maxnnode, FVENS_MPI_INT, 0, 0,
 	          MPI_COMM_WORLD, &req[0]);
-	MPI_Irecv(&nnode[0], localelemsizes[rank], FVENS_MPI_INT, 0, 1, MPI_COMM_WORLD, &req[1]);
-	MPI_Irecv(&nfael[0], lociel, FVENS_MPI_INT, 0, 2, MPI_COMM_WORLD, &req[2]);
-	MPI_Irecv(&loc2globElem[0], lociel, FVENS_MPI_INT, 0, 3, MPI_COMM_WORLD, &req[3]);
+	MPI_Irecv(&nnode[0], numlocalelems[0], FVENS_MPI_INT, 0, 1, MPI_COMM_WORLD, &req[1]);
+	MPI_Irecv(&nfael[0], numlocalelems[0], FVENS_MPI_INT, 0, 2, MPI_COMM_WORLD, &req[2]);
+	MPI_Irecv(&loc2globElem[0], numlocalelems[0], FVENS_MPI_INT, 0, 3, MPI_COMM_WORLD, &req[3]);
 	MPI_Status statuses[4];
 	int ierr = MPI_Waitall(4, req, statuses);
 	assert(ierr == MPI_SUCCESS);
 	(void)ierr;
 }
 
-/// Populates this process's share of mesh arrays from the global arrays
-/** Assumptions: gm's integers and the array glbElemDist are available on all ranks.
- * gm's arrays are only available on rank 0.
+/// Determines what points are needed for each rank and transfers the required points from rank 0
+/** \param[in] gm The global mesh
+ * \param[out] lnpoin Number of local points requried for this rank.
+ * \param[out] lcoords Coordinates of the points requried for this rank.
+ * \return A map from global indices corresponding to points present in the calling rank to
+ * the local indices.
  */
-static void splitMeshArrays(const MeshData& gm,
-                            const a_int *const glbElemDist,
-                            UMesh2dh<a_real>& lm)
+static std::map<a_int,a_int> splitPointData(const MeshData& gm,
+                                            const amat::Array2d<a_int>& linpoel,
+                                            const std::vector<int>& lnnode,
+                                            int& lnpoin, amat::Array2d<a_real>& lcoords)
 {
 	const int nranks = get_mpi_size(MPI_COMM_WORLD);
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 
-	const a_int nlocelem = getNumLocalElems(rank, gm, glbElemDist);
+	// get global indices of the points needed on this rank
+	std::vector<a_int> locpoints;
+	locpoints.reserve(2*gm.npoin/nranks);
+	for(a_int iel = 0; iel < linpoel.rows(); iel++)
+		for(int inode = 0; inode < lnnode[iel]; inode++)
+			locpoints.push_back(linpoel(iel,inode));
 
-	lm.nelem = nlocelem;
-	lm.inpoel.resize(nlocelem, gm.maxnnode);
-	lm.nnode.resize(nlocelem);
-	lm.nfael.resize(nlocelem);
-	std::vector<a_int> loc2globElem(nlocelem);  // mapping from local elem index to global elem index
+	// sort and remove duplicates
+	std::sort(locpoints.begin(), locpoints.end());
+	auto endpoint = std::unique(locpoints.begin(), locpoints.end());
+	locpoints.erase(endpoint, locpoints.end());
 
-	getDataFromRoot(gm, nlocelem, lm.inpoel, lm.nnode, lm.nfael, loc2globElem);
+	lnpoin = static_cast<a_int>(locpoints.size());
+	lcoords.resize(lnpoin,NDIM);
 
-	std::vector<int> locpoints(gm.npoin,0);
+	// Get the global-to-local point index map
+	std::map<a_int,a_int> glbToLocPointMap;
+	for(a_int i = 0; i < lnpoin; i++)
+		glbToLocPointMap[locpoints[i]] = i;
+
+	// Get number of local points for each rank into rank 0
+	std::vector<size_t> locpointsizes;
+	if(rank == 0)
+		locpointsizes.resize(nranks);
+	size_t locpointsz = locpoints.size();
+	MPI_Gather(&locpointsz, 1, MPI_UNSIGNED_LONG_LONG, &locpointsizes[0], 1, MPI_UNSIGNED_LONG_LONG,
+	           0, MPI_COMM_WORLD);
+
+	// Transfer the actual point indices to root process
+	if(rank != 0)
+		MPI_Send(&locpoints[0], locpoints.size(), FVENS_MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+	if(rank == 0)
+	{
+		for(int irnk = 0; irnk < nranks; irnk++)
+		{
+			// Get the point indices requried for this rank
+			std::vector<a_int> pointinds(locpointsizes[irnk]);
+			if(irnk != 0)
+				MPI_Recv(&pointinds[0], locpointsizes[irnk], FVENS_MPI_INT, irnk, 0, MPI_COMM_WORLD,
+			         MPI_STATUS_IGNORE);
+			else
+				std::copy(locpoints.begin(), locpoints.end(), pointinds.begin());
+
+			amat::Array2d<a_real> loccoords(locpointsizes[irnk],NDIM);
+			a_int globpointer = 0, locpointer = 0;
+			while(globpointer < gm.npoin && locpointer < static_cast<a_int>(locpointsizes[irnk]))
+			{
+				if(globpointer == pointinds[locpointer])
+				{
+					for(int i = 0; i < NDIM; i++)
+						loccoords(locpointer,i) = gm.coords(globpointer,i);
+					locpointer++;
+				}
+				globpointer++;
+			}
+
+			if(locpointer != static_cast<a_int>(locpointsizes[irnk]))
+				throw std::logic_error("Could not account for all nodes!");
+
+			if(irnk != 0)
+				MPI_Send(&loccoords(0,0), locpointsizes[irnk]*NDIM, FVENS_MPI_REAL, irnk, 1,
+				          MPI_COMM_WORLD);
+			else
+				for(a_int ip = 0; ip < static_cast<a_int>(locpointsizes[0]); ip++)
+					for(int j = 0; j < NDIM; j++)
+						lcoords(ip,j) = loccoords(ip,j);
+		}
+	}
+
+	MPI_Status status;
+	MPI_Recv(&lcoords(0,0), lnpoin*NDIM, FVENS_MPI_REAL, 0, 1, MPI_COMM_WORLD, &status);
+	assert(status == MPI_SUCCESS);
+
+	return glbToLocPointMap;
+}
+
+void splitMeshArrays(const MeshData& gm,
+                     const std::vector<int>& glbElemDist,
+                     UMesh2dh<a_real>& lm)
+{
+	// const int nranks = get_mpi_size(MPI_COMM_WORLD);
+	// const int rank = get_mpi_rank(MPI_COMM_WORLD);
+
+	const std::vector<a_int> numlocelems = getNumLocalElems(gm, glbElemDist);
+
+	// Get local sizes from root
+
+	lm.nelem = numlocelems[0];
+	lm.inpoel.resize(numlocelems[0], gm.maxnnode);
+	lm.nnode.resize(numlocelems[0]);
+	lm.nfael.resize(numlocelems[0]);
+	std::vector<a_int> loc2globElem(numlocelems[0]); // mapping from local elem index to global elem index
+
+	getElemDataFromRoot(gm, numlocelems, glbElemDist, lm.inpoel, lm.nnode, lm.nfael, loc2globElem);
+
+	std::map<a_int,a_int> glob2locPoint = splitPointData(gm, lm.inpoel, lm.nnode, lm.npoin, lm.coords);
+
+	// use the point mapping to localize the inpoel arrays of local meshes
+	//  This could be an expensive process because each lookup of glob2locPoint is log(lm.npoin).
 	for(a_int iel = 0; iel < lm.nelem; iel++)
-		for(int inode = 0; inode < lm.nnode[iel]; inode++)
-			locpoints[lm.inpoel(iel,inode)] = 1;
-	a_int nlocpoin=0;
-	for(a_int ip = 0; ip < gm.npoin; ip++)
-		nlocpoin += locpoints[ip];
-	lm.npoin = nlocpoin;
-	lm.coords.reize(nlocpoin);
+		for(int i = 0; i < lm.nnode[iel]; i++)
+			lm.inpoel(iel,i) = glob2locPoint[lm.inpoel(iel,i)];
 
 #ifdef DEBUG
 	std::cout << " Rank " << rank << ": Number of elems = " << lm.nelem
@@ -138,15 +259,19 @@ UMesh2dh<a_real> partitionMeshTrivial(const MeshData& gm)
 	if(err)
 		throw std::logic_error("Trivial partition does not add up!");
 
-	const std::vector<a_int> glbElemDist(gm.nelem,0);
-	for(int irank = 0; irank < nranks; irank++) {
-		for(a_int iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
-			glbElemDist[iel] = irank;
+	std::vector<int> glbElemDist(1,0);
+	if(rank == 0)
+	{
+		glbElemDist.resize(gm.nelem);
+		for(int irank = 0; irank < nranks; irank++) {
+			for(a_int iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
+				glbElemDist[iel] = irank;
+		}
+		for(a_int iel = nranks*numloceleminit; iel < gm.nelem; iel++)
+			glbElemDist[iel] = nranks-1;
 	}
-	for(a_int iel = nranks*numloceleminit; iel < gm.nelem; iel++)
-		glbElemDist[iel] = nranks-1;
 
-	splitMeshArrays(gm, &glbElemDist[0], lm);
+	splitMeshArrays(gm, glbElemDist, lm);
 
 	return lm;
 }

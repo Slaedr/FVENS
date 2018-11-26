@@ -24,7 +24,8 @@ add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
   spatial/flow_spatial.cpp spatial/aspatial.cpp spatial/agradientschemes.cpp
   spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
   spatial/aoutput.cpp spatial/diffusion.cpp
-  mesh/ameshutils.cpp mesh/amesh2dh.cpp mesh/meshreaders.cpp utilities/aarray2d.cpp
+  mesh/ameshutils.cpp mesh/amesh2dh.cpp mesh/meshpartitioning.cpp mesh/meshreaders.cpp
+  utilities/aarray2d.cpp
   )
 target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB} ${ADOLC_LIB})
 if(WITH_BLASTED)
