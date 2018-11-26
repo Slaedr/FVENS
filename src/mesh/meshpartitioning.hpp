@@ -11,8 +11,8 @@
 
 namespace fvens {
 
-/// Partitions the mesh in a trivial manner after reading it in on rank 0
-void partitionMeshTrivial(UMesh2dh<a_real>& mesh);
+/// Given the global mesh on rank 0, partitions it in a trivial manner
+MeshData partitionMeshTrivial(const MeshData& global_mesh);
 
 //void partitionMesh(UMesh2dh<a_real>& mesh);
 

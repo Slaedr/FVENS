@@ -26,7 +26,7 @@
 
 namespace fvens{
 
-/// Data to be read from a file or trivially computed while reading the file
+/// Data which is read from a mesh file
 struct MeshData
 {
 	a_int npoin;                    ///< Number of nodes
@@ -51,11 +51,13 @@ struct MeshData
 	amat::Array2d<a_int> bface;
 
 	/// Volume tags
-	amat::Array2d<a_int> vol_regions;
+	amat::Array2d<int> vol_regions;
 };
 
 /// Reads a mesh from a file
-/** The file should be in either the Gmsh 2.0 format or the SU2 format
+/** The mesh is read only on rank 0. The numbers of different mesh entities is broadcast to all ranks.
+ * 
+ * The file should be in either the Gmsh 2.0 format or the SU2 format
  * The file extensions should be
  * - msh for Gmsh 2.0
  * - su2 for SU2 format

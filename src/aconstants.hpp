@@ -53,11 +53,15 @@ using std::fabs;
 /// The floating-point type to use for all float computations
 typedef double a_real;
 
+#define FVENS_MPI_REAL MPI_DOUBLE
+
 /// Integer type to use for indexing etc
 /** Using signed types for this might be better than using unsigned types,
  * eg., to iterate backwards over an entire array (down to index 0).
  */
 typedef int a_int;
+
+#define FVENS_MPI_INT MPI_INT
 
 // using Eigen::Matrix;
 // using Eigen::RowMajor;

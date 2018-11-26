@@ -313,8 +313,10 @@ private:
 	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
 
 	/// Connection boundary face data
-	/** Contains, for each connectivity boundary face, the index of the subdomain that it connects to
-	 *   and the index of the cell in that subdomain that it connects to, in that order.
+	/** Contains, for each connectivity boundary face,
+	 *   the index of the other subdomain that it connects to,
+	 *   the index of the cell in this subdomain that it is a part of, and
+	 *   the index of the cell in the other subdomain that it connects to, in that order.
 	 */
 	amat::Array2d<a_int> connface;
 
