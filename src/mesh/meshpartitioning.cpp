@@ -9,6 +9,39 @@
 
 namespace fvens {
 
+UMesh2dh<a_real>
+ReplicatedGlobalMeshPartitioner::
+restrictMeshToPartitions(const UMesh2dh<a_real>& gm,
+                         const std::vector<int>& elemdist) const
+{
+	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	// const int nranks = get_mpi_size(MPI_COMM_WORLD);
+
+	UMesh2dh<a_real> lm;
+	lm.nelem = 0;
+	for(a_int iel = 0; iel < gm.nelem; iel++)
+		if(elemdist[iel] == rank)
+			lm.nelem++;
+
+	// 1. Copy inpoel, get local to global elem map
+	// 2. Copy points, get global to local point map
+	// 3. Convert inpoel entries from global indices to local
+	// 4. Use point global-to-local map to identify global bfaces that are needed in this rank.
+	//    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
+	// 5. Compute global and local esuel. Also compute the intfac and elemface for the local mesh.
+	//    Use these and local-to-global elem map to build the connect face structure.
+
+	return lm;
+}
+
+UMesh2dh<a_real>
+TrivialReplicatedGlobalMeshPartitioner::
+partition(const UMesh2dh<a_real>& gm) const
+{
+	UMesh2dh<a_real> lm;
+	return lm;
+}
+
 /// Computes the number of elements on each process
 /** \param gm The global mesh
  * \param glbElemDist The MPI rank to which each element in the global mesh goes - assumed to be

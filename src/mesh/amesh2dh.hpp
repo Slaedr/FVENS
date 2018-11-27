@@ -13,6 +13,8 @@
 
 namespace fvens {
 
+class ReplicatedGlobalMeshPartitioner;
+
 /// Hybrid unstructured mesh class supporting triangular and quadrangular elements
 template <typename scalar>
 class UMesh2dh
@@ -279,6 +281,8 @@ public:
 	/// Populates this process's share of mesh arrays from the global arrays
 	friend void splitMeshArrays(const MeshData& gm, const std::vector<int>& glbElemDist,
 	                            UMesh2dh<a_real>& lm);
+
+	friend class ReplicatedGlobalMeshPartitioner;
 
 private:
 	// Global properties

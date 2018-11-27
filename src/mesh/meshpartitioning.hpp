@@ -11,6 +11,26 @@
 
 namespace fvens {
 
+/// Memory-inefficient partitioner that assumes the global mesh is available on all partitions
+class ReplicatedGlobalMeshPartitioner
+{
+public:
+	/// Given the global mesh, returns the localized mesh on this rank
+	virtual UMesh2dh<a_real> partition(const UMesh2dh<a_real>& global_mesh) const = 0;
+
+protected:
+	/// Given a partition of the elements and the global mesh, returns the localized mesh on this rank
+	UMesh2dh<a_real> restrictMeshToPartitions(const UMesh2dh<a_real>& global_mesh,
+	                                          const std::vector<int>& elem_partition) const;
+};
+
+/// Partitions the mesh trivially based on the initial global element ordering
+class TrivialReplicatedGlobalMeshPartitioner : public ReplicatedGlobalMeshPartitioner
+{
+public:
+	UMesh2dh<a_real> partition(const UMesh2dh<a_real>& global_mesh) const;
+};
+
 /// Given the global mesh on rank 0, partitions it in a trivial manner
 UMesh2dh<a_real> partitionMeshTrivial(const MeshData& global_mesh);
 
@@ -20,8 +40,6 @@ UMesh2dh<a_real> partitionMeshTrivial(const MeshData& global_mesh);
  */
 void splitMeshArrays(const MeshData& gm, const std::vector<int>& glbElemDist,
                      UMesh2dh<a_real>& lm);
-
-//void partitionMesh(UMesh2dh<a_real>& mesh);
 
 }
 
