@@ -19,7 +19,7 @@ def setAxisParams(ax, baseLineWidth):
     ax.grid(which='major', axis='y', lw=0.5*baseLineWidth, linestyle='-', color='0.75')
     ax.grid(which='minor', axis='y', lw=0.5*baseLineWidth, linestyle=':', color='0.75')
 
-def plotstrongscaling(filelist, basethreads, ht, phase, labellist, opts, imageformatstring):
+def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, opts, imageformatstring):
     plt.close()
     markdivisor = 20
     maxspeedup = 1.0
@@ -51,7 +51,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, opts, imagefo
                 lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
                 marker=opts['marklist'][i], ms=opts['marksize'], \
                 mew=opts['markedgewidth'], \
-                label=labellist[i])
+                label=labellist[i]+labelstr)
 
     # Note that we now just use data from the last file to be processed in the list of files
     plt.plot(fulldata[:,0]/ht, fulldata[:,0]/ht, lw=opts['linewidth']+0.1, ls=':', label="Ideal")
@@ -98,5 +98,6 @@ if __name__ == "__main__":
     parser.add_argument("--format", default="png", help = "Output format")
     args = parser.parse_args(sys.argv)
 
-    plotstrongscaling(args.files[1:], args.basethreads, args.ht, args.phase, args.labels, opts, args.format)
+    plotstrongscaling(args.files[1:], args.basethreads, args.ht, args.phase, args.labels, args.labelstr,
+            opts, args.format)
 

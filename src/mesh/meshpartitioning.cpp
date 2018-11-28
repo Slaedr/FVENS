@@ -9,10 +9,11 @@
 
 namespace fvens {
 
-UMesh2dh<a_real>
-ReplicatedGlobalMeshPartitioner::
-restrictMeshToPartitions(const UMesh2dh<a_real>& gm,
-                         const std::vector<int>& elemdist) const
+ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
+	: gm{global_mesh}
+{ }
+
+UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 	// const int nranks = get_mpi_size(MPI_COMM_WORLD);
@@ -23,23 +24,132 @@ restrictMeshToPartitions(const UMesh2dh<a_real>& gm,
 		if(elemdist[iel] == rank)
 			lm.nelem++;
 
-	// 1. Copy inpoel, get local to global elem map
-	// 2. Copy points, get global to local point map
-	// 3. Convert inpoel entries from global indices to local
-	// 4. Use point global-to-local map to identify global bfaces that are needed in this rank.
-	//    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
+	lm.maxnnode = gm.maxnnode;
+	lm.maxnfael = gm.maxnfael;
+	lm.nnofa = gm.nnofa;
+
+	//! 1. Copy inpoel, get local to global elem map
+	lm.inpoel.resize(lm.nelem, gm.maxnnode);
+	lm.nfael.resize(lm.nelem);
+	lm.nnode.resize(lm.nelem);
+	lm.nbtag = gm.nbtag;
+	lm.ndtag = gm.ndtag;
+	assert(gm.ndtag == gm.vol_regions.cols());
+	lm.vol_regions.resize(lm.nelem, gm.vol_regions.cols());
+	const std::vector<a_int> elemLoc2Glob = extractInpoel(lm);
+
+	//! 2. Copy required point coords into local mesh; get global to local point map
+	const std::map<a_int,a_int> pointGlob2Loc = extractPointCoords(lm);
+
+	//! 3. Convert inpoel entries from global indices to local
+	for(a_int iel = 0; iel < lm.nelem; iel++)
+		for(int j = 0; j < lm.nnode[iel]; j++)
+			lm.inpoel(iel,j) = pointGlob2Loc[lm.inpoel(iel,j)];
+
+	//! 4. Use point global-to-local map to identify global bfaces that are needed in this rank.
+	//!    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
+	lm.nface = 0;
+	std::vector<std::array<a_int,4>> tbfaces;         // assuming max 4 points per face
+	assert(gm.nnofa < 4);
+	for(a_int iface = 0; iface < gm.nface; iface++)
+	{
+		bool reqd = true;
+		std::array<a_int,4> locbfpoints;
+		for(int j = 0; j < gm.nnofa; j++)
+		{
+			a_int locpointind = -1;
+			try {
+				locbfpoints[j] = pointGlob2Loc.at(gm.bface(iface,j));
+			} catch (const std::out_of_range& oor) {
+				reqd = false;
+				break;
+			}
+		}
+		if(reqd) {
+			tbfaces.push_back(locbfpoints);
+			lm.nface++;
+		}
+	}
+
+	tbfaces.shrink_to_fit();
+	lm.bface.resize(lm.nface, lm.nnofa+lm.nbtag);
+
 	// 5. Compute global and local esuel. Also compute the intfac and elemface for the local mesh.
 	//    Use these and local-to-global elem map to build the connect face structure.
 
 	return lm;
 }
 
-UMesh2dh<a_real>
-TrivialReplicatedGlobalMeshPartitioner::
-partition(const UMesh2dh<a_real>& gm) const
+std::vector<a_int>
+ReplicatedGlobalMeshPartitioner::extractInpoel(UMesh2dh<a_real>& lm) const
 {
-	UMesh2dh<a_real> lm;
-	return lm;
+	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	std::vector<a_int> elemLoc2Glob(lm.nelem);
+
+	a_int lociel = 0;
+	for(a_int iel = 0; iel < gm.nelem; iel++)
+		if(elemdist[iel] == rank)
+		{
+			elemLoc2Glob[lociel] = iel;
+			for(int j = 0; j < gm.nnode[iel]; j++)
+				lm.inpoel(lociel,j) = gm.inpoel(iel,j);
+			for(int j = 0; j < gm.vol_regions.cols(); j++)
+				lm.vol_regions(lociel,j) = gm.vol_regions(iel,j);
+			lm.nnode[lociel] = gm.nnode[iel];
+			lm.nfael[lociel] = gm.nfael[iel];
+			lociel++;
+		}
+	assert(lociel == lm.nelem);
+	return elemLoc2Glob;
+}
+
+std::map<a_int,a_int> ReplicatedGlobalMeshPartitioner::extractPointCoords(UMesh2dh<a_real>& lm) const
+{
+	//const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	const int nranks = get_mpi_size(MPI_COMM_WORLD);
+
+	// get global indices of the points needed on this rank
+	std::vector<a_int> locpoints;
+	locpoints.reserve(2*gm.npoin/nranks);
+	for(a_int iel = 0; iel < lm.inpoel.rows(); iel++)
+		for(int inode = 0; inode < lm.nnode[iel]; inode++)
+			locpoints.push_back(lm.inpoel(iel,inode));
+
+	// sort and remove duplicates
+	std::sort(locpoints.begin(), locpoints.end());
+	auto endpoint = std::unique(locpoints.begin(), locpoints.end());
+	locpoints.erase(endpoint, locpoints.end());
+
+	lm.npoin = static_cast<a_int>(locpoints.size());
+	lm.coords.resize(lm.npoin,NDIM);
+
+	// Get the global-to-local point index map - this has n log n cost.
+	std::map<a_int,a_int> glbToLocPointMap;
+	for(a_int i = 0; i < lm.npoin; i++)
+		glbToLocPointMap[locpoints[i]] = i;
+
+	a_int globpointer = 0, locpointer = 0;
+	while(globpointer < gm.npoin && locpointer < lm.npoin)
+	{
+		if(globpointer == locpoints[locpointer])
+		{
+			for(int i = 0; i < NDIM; i++)
+				lm.coords(locpointer,i) = gm.coords(globpointer,i);
+			locpointer++;
+		}
+		globpointer++;
+	}
+
+	return glbToLocPointMap;
+}
+
+TrivialReplicatedGlobalMeshPartitioner::
+TrivialReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
+	: ReplicatedGlobalMeshPartitioner(global_mesh)
+{ }
+
+void TrivialReplicatedGlobalMeshPartitioner::compute_partition()
+{
 }
 
 /// Computes the number of elements on each process

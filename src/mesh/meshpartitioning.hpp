@@ -15,20 +15,46 @@ namespace fvens {
 class ReplicatedGlobalMeshPartitioner
 {
 public:
-	/// Given the global mesh, returns the localized mesh on this rank
-	virtual UMesh2dh<a_real> partition(const UMesh2dh<a_real>& global_mesh) const = 0;
+	/// Sets the global mesh to partition
+	/** The mesh must be setup with all topological connectivity structures before passing here.
+	 */
+	ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& global_mesh);
+	
+	/// Given the global mesh, computes the distribution of the elements
+	virtual void compute_partition() = 0;
+
+	/// Given a partition of the elements and the global mesh, returns the localized mesh on this rank
+	UMesh2dh<a_real> restrictMeshToPartitions() const;
 
 protected:
-	/// Given a partition of the elements and the global mesh, returns the localized mesh on this rank
-	UMesh2dh<a_real> restrictMeshToPartitions(const UMesh2dh<a_real>& global_mesh,
-	                                          const std::vector<int>& elem_partition) const;
+	/// Extracts the local element-node connectivity info from the global mesh into the argument mesh
+	/** Important: The local inpoel still contains global node indices at the end of this.
+	 * Also populates the local nnode and nfael arrays.
+	 * \param[in,out] The local mesh to update inpoel, nnode, nfael, and vol_regions in.
+	 *   These arrays must be pre-allocated. Local number of elements nelem must be set beforehand.
+	 * \return the local-to-global element map
+	 */
+	std::vector<a_int> extractInpoel(UMesh2dh<a_real>& local_mesh) const;
+
+	/// The global mesh to partition
+	const UMesh2dh<a_real>& gm;
+
+	/// The distribution of elements among the ranks
+	/** Supposed to hold the rank where each element of the global mesh is supposed to go
+	 */
+	std::vector<int> elemdist;
 };
 
 /// Partitions the mesh trivially based on the initial global element ordering
 class TrivialReplicatedGlobalMeshPartitioner : public ReplicatedGlobalMeshPartitioner
 {
 public:
-	UMesh2dh<a_real> partition(const UMesh2dh<a_real>& global_mesh) const;
+	/// Sets the global mesh to partition
+	/** The mesh must be setup with all topological connectivity structures before passing here.
+	 */
+	TrivialReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& global_mesh);
+
+	void compute_partition();
 };
 
 /// Given the global mesh on rank 0, partitions it in a trivial manner
