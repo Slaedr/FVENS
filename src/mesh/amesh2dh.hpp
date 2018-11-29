@@ -14,9 +14,9 @@
 namespace fvens {
 
 /// Index of something w.r.t. the element it is associated with
-typedef EIndex int;
+typedef int EIndex;
 /// Index of something (usually a node) w.r.t. the face it is associated with
-typedef FIndex int;
+typedef int FIndex;
 
 class ReplicatedGlobalMeshPartitioner;
 
@@ -335,7 +335,7 @@ private:
 	amat::Array2d<a_int> connface;
 
 	/// Stores global element indices of each element in this subdomain
-	std::vector<a_int> globElemInd;
+	std::vector<a_int> globalElemIndex;
 
 	/// Holds volume region markers, if any
 	amat::Array2d<int> vol_regions;
@@ -416,7 +416,7 @@ private:
 	 *
 	 * The current implementation works only in 2D.
 	 */
-	EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) {
+	EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) const {
 		return iface + inode;
 	}
 

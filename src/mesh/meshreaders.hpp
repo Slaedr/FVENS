@@ -55,7 +55,7 @@ struct MeshData
 };
 
 /// Reads a mesh from a file
-/** The mesh is read only on rank 0. The numbers of different mesh entities is broadcast to all ranks.
+/** NO: The mesh is read only on rank 0. The numbers of different mesh entities is broadcast to all ranks.
  * 
  * The file should be in either the Gmsh 2.0 format or the SU2 format
  * The file extensions should be

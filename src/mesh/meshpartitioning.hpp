@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <map>
+#include <tuple>
 #include "amesh2dh.hpp"
 
 namespace fvens {
@@ -18,7 +19,7 @@ class ReplicatedGlobalMeshPartitioner
 {
 public:
 	/// Sets the global mesh to partition
-	/** The mesh must be setup with all topological connectivity structures before passing here.
+	/** The mesh must be setup with the element adjacency list (esuel) before passing here.
 	 */
 	ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& global_mesh);
 	
@@ -52,11 +53,13 @@ protected:
 	 */
 	void extractbfaces(const std::map<a_int,a_int>& pointGlobal2Local, UMesh2dh<a_real>& lm) const;
 
-	/// Marks cells of this subdomain which are adjacent to physical boundary faces
+	/// Marks cells and points of this subdomain which are adjacent to physical boundary faces
 	/** As a by-product, also computes the number of physical boundary points in the local mesh in
 	 * nbpoin.
+	 * \return A tuple with first entry the vector of element marks and the second that of points
 	 */
-	std::vector<bool> markLocalBoundaryCells(const UMesh2dh<a_real>& lm) const;
+	std::tuple<std::vector<bool>,std::vector<bool>>
+	markLocalBoundaryCellsAndPoints(const UMesh2dh<a_real>& lm) const;
 
 	/// The global mesh to partition
 	const UMesh2dh<a_real>& gm;

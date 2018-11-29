@@ -143,6 +143,53 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m)
 	return levels;
 }
 
+std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_real>& m2)
+{
+	std::array<bool,8> isequal;
+	isequal[0] = (m1.gnelem() == m2.gnelem());
+	isequal[1] = (m1.gnpoin() == m2.gnpoin());
+	isequal[2] = (m1.gnface() == m2.gnface());
+	isequal[3] = true;
+	isequal[4] = true;
+	isequal[5] = true;
+	isequal[6] = true;
+	isequal[7] = true;
+
+	for(a_int i = 0; i < m1.gnelem(); i++) {
+		if(m1.gnnode(i) != m2.gnnode(i)) {
+			isequal[6] = false;
+			break;
+		}
+		if(m1.gnfael(i) != m2.gnfael(i)) {
+			isequal[7] = false;
+			break;
+		}
+		for(int j = 0; j < m1.gnnode(i); j++) {
+			if(m1.ginpoel(i,j) != m2.ginpoel(i,j)) {
+				isequal[3] = false;
+				break;
+			}
+		}
+	}
+	for(a_int i = 0; i < m1.gnpoin(); i++) {
+		for(int j = 0; j < NDIM; j++)
+			if(std::abs(m1.gcoords(i,j)-m2.gcoords(i,j)) > std::numeric_limits<a_real>::epsilon())
+			{
+				isequal[4] = false;
+				break;
+			}
+	}
+	static_assert(NDIM==2);  // change the hard-coded "2" below before removing this line
+	for(a_int i = 0; i < m1.gnface(); i++)
+		for(int j = 0; j < 2 +m1.gnbtag(); j++)
+			if(m1.gbface(i,j) != m2.gbface(i,j)) {
+				isequal[5] = false;
+				break;
+			}
+
+	return isequal;
+}
+
 template StatusCode preprocessMesh(UMesh2dh<a_real>& m);
 
 template StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd,

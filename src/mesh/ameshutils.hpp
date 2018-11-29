@@ -44,5 +44,7 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 template <typename scalar>
 std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m);
 
+std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_real>& m2);
+
 }
 #endif

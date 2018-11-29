@@ -3,6 +3,9 @@
 add_executable(exec_testmesh mesh.cpp)
 target_link_libraries(exec_testmesh fvens_base)
 
+add_executable(exec_disttestmesh distributedmesh.cpp)
+target_link_libraries(exec_disttestmesh fvens_base)
+
 # Tests
 
 add_test(NAME Mesh_Topology_ElemSurrElem

@@ -34,33 +34,31 @@ static MeshData readSU2(const std::string mfile);
 
 MeshData readMesh(const std::string mfile)
 {
-	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	// const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 	MeshData mdata;
 
-	if (mpirank == 0) {
-		std::vector<std::string> parts;
-		boost::split(parts, mfile, boost::is_any_of("."));
+	std::vector<std::string> parts;
+	boost::split(parts, mfile, boost::is_any_of("."));
 
-		if(parts[parts.size()-1] == "su2")
-			mdata = readSU2(mfile);
-		else
-			mdata = readGmsh2(mfile);
-	}
+	if(parts[parts.size()-1] == "su2")
+		mdata = readSU2(mfile);
+	else
+		mdata = readGmsh2(mfile);
 
 	// broadcast global mesh size data to all ranks
-	a_int numdata[] = {mdata.npoin, mdata.nelem, mdata.nface, mdata.maxnnode, mdata.maxnfael,
-	                   mdata.nnofa, mdata.nbtag, mdata.ndtag};
-	MPI_Bcast((void*)numdata, 8, FVENS_MPI_INT, 0, MPI_COMM_WORLD);
-	if(mpirank != 0) {
-		mdata.npoin = numdata[0];
-		mdata.nelem = numdata[1];
-		mdata.nface = numdata[2];
-		mdata.maxnnode = (int)numdata[3];
-		mdata.maxnfael = (int)numdata[4];
-		mdata.nnofa = (int)numdata[5];
-		mdata.nbtag = (int)numdata[6];
-		mdata.ndtag = (int)numdata[7];
-	}
+	// a_int numdata[] = {mdata.npoin, mdata.nelem, mdata.nface, mdata.maxnnode, mdata.maxnfael,
+	//                    mdata.nnofa, mdata.nbtag, mdata.ndtag};
+	// MPI_Bcast((void*)numdata, 8, FVENS_MPI_INT, 0, MPI_COMM_WORLD);
+	// if(mpirank != 0) {
+	// 	mdata.npoin = numdata[0];
+	// 	mdata.nelem = numdata[1];
+	// 	mdata.nface = numdata[2];
+	// 	mdata.maxnnode = (int)numdata[3];
+	// 	mdata.maxnfael = (int)numdata[4];
+	// 	mdata.nnofa = (int)numdata[5];
+	// 	mdata.nbtag = (int)numdata[6];
+	// 	mdata.ndtag = (int)numdata[7];
+	// }
 
 	return mdata;
 }

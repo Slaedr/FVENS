@@ -10,7 +10,7 @@
 namespace fvens {
 
 ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
-	: gm{global_mesh}
+	: gm{globalmesh}
 { }
 
 UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
@@ -36,7 +36,8 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	lm.ndtag = gm.ndtag;
 	assert(gm.ndtag == gm.vol_regions.cols());
 	lm.vol_regions.resize(lm.nelem, gm.vol_regions.cols());
-	lm.globElemInd = extractInpoel(lm);
+
+	lm.globalElemIndex = extractInpoel(lm);
 
 	//! 2. Copy required point coords into local mesh; get global to local and local-to-global point maps
 	std::vector<a_int> pointLoc2Glob;
@@ -45,7 +46,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	//! 3. Convert inpoel entries from global indices to local
 	for(a_int iel = 0; iel < lm.nelem; iel++)
 		for(int j = 0; j < lm.nnode[iel]; j++)
-			lm.inpoel(iel,j) = pointGlob2Loc[lm.inpoel(iel,j)];
+			lm.inpoel(iel,j) = pointGlob2Loc.at(lm.inpoel(iel,j));
 
 	//! 4. Use point global-to-local map to identify global bfaces that are needed in this rank.
 	//!    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
@@ -54,13 +55,11 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	//! 5. Compute local esuel and mark those elements that neighbor a physical boundary face
 	lm.compute_elementsSurroundingPoints();
 	lm.compute_elementsSurroundingElements();
-	const std::vector<bool> isBounElem = markLocalBoundaryCells(lm);
+	const std::tuple<std::vector<bool>,std::vector<bool>> isBounEntity
+		= markLocalBoundaryCellsAndPoints(lm);
 
-	//! 6. Compute global and local esuel. Also compute the intfac and elemface for the local mesh.
-	//!    Use these and local-to-global elem map to build the connectivity face structure.
-
-	gm.compute_elementsSurroundingPoints();
-	gm.compute_elementsSurroundingElements();
+	//! 6. Compute local esuel. Use this, the global esuel and local-to-global elem map to
+	//!    build the connectivity face structure.
 	lm.nconnface = 0;
 
 	// Non-negative if an element contains a connectivity face, in which case
@@ -69,15 +68,20 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 
 	for(a_int iel = 0; iel < lm.nelem; iel++)
 	{
-		if(!isBounElem[iel])
+		if(!std::get<0>(isBounEntity)[iel]) {
 			for(EIndex ifa = 0; ifa < lm.nfael[iel]; ifa++)
 				if(lm.esuel(iel,ifa) >= lm.nelem) {
 					lm.nconnface++;
 					connElemLocalFace[iel] = ifa;
 				}
+		}
+		else {
+			// TODO: Element adjacent to a physical boundary face but may contain a connectivity face
+			//  Use whether points are physical boundary points to identify connectivity faces
+		}
 	}
 
-	lm.connface.resize(nconnface,4);
+	lm.connface.resize(lm.nconnface,4);
 	a_int icofa = 0;
 	for(a_int iel = 0; iel < lm.nelem; iel++)
 	{
@@ -93,9 +97,9 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			for(FIndex linofa = 0; linofa < lm.nnofa; linofa++)
 				locfacepoints[linofa] = lm.inpoel(iel, lm.getNodeEIndex(iel,localConnFace,linofa));
 
-			const a_int glind = lm.globElemInd[iel];
+			const a_int glind = lm.globalElemIndex[iel];
 
-			// identify the face of the global element that is the face we need
+			// identify the face of the global element which matches the index of connectivity face
 			for(EIndex jgf = 0; jgf < gm.nfael[glind]; jgf++)
 			{
 				bool matched = true;
@@ -107,17 +111,24 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 					{
 						if(pointLoc2Glob[locfacepoints[linofa]] == globpoint)
 						{
+							// this point (jnofa) is matched, now check the next one
 							pointmatched = true;
 							break;
 						}
 					}
-					if(!pointmatched)
+					if(!pointmatched) {
+						// the global point corresponding to jnofa did not match any point in the
+						//  local face 'localConnFace', so the the face jgf is not the one we need.
+						//  Go the next face of element glind.
 						matched = false;
+						break;
+					}
 				}
 
 				if(matched) {
-					lm.connface(icofa,2) = glbElemDist[glind];
-					lm.connface(icofa,3) = glind;
+					// both points of face jgf match local face 'localConnFace'
+					lm.connface(icofa,2) = elemdist[glind];
+					lm.connface(icofa,3) = gm.esuel(glind,jgf);
 					break;
 				}
 			}
@@ -211,7 +222,6 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 		std::array<a_int,6> locbfpoints;
 		for(int j = 0; j < gm.nnofa; j++)
 		{
-			a_int locpointind = -1;
 			try {
 				locbfpoints[j] = pointGlob2Loc.at(gm.bface(iface,j));
 			} catch (const std::out_of_range& oor) {
@@ -233,8 +243,8 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 			lm.bface(iface,j) = tbfaces[iface][j];
 }
 
-std::vector<bool> ReplicatedGlobalMeshPartitioner::
-markLocalBoundaryCells(const UMesh2dh<a_real>& lm) const
+std::tuple<std::vector<bool>,std::vector<bool>> ReplicatedGlobalMeshPartitioner::
+markLocalBoundaryCellsAndPoints(const UMesh2dh<a_real>& lm) const
 {
 	std::vector<bool> isBounPoin(lm.npoin,false);
 
@@ -245,13 +255,13 @@ markLocalBoundaryCells(const UMesh2dh<a_real>& lm) const
 		}
 	}
 
+	a_int nbpoin = 0;   // not returned, but might be useful
 	std::vector<int> elemmark(lm.nelem,0);
-	lm.nbpoin = 0;
 	for(a_int ip = 0; ip < lm.npoin; ip++)
 		if(isBounPoin[ip]) {
-			lm.nbpoin++;
+			nbpoin++;
 			for(a_int ielp = lm.esup_p(ip); ielp < lm.esup_p(ip+1); ielp++)
-				elemmark[esup(ielp)] += 1;
+				elemmark[lm.esup(ielp)] += 1;
 		}
 
 	std::vector<bool> isBounElem(lm.nelem,false);
@@ -263,23 +273,38 @@ markLocalBoundaryCells(const UMesh2dh<a_real>& lm) const
 		{
 			const a_int poin = lm.bface(iface,inode);
 			for(a_int ielp = lm.esup_p(poin); ielp < lm.esup_p(poin+1); ielp++)
-				if(elemmark[lm.esup(ielp)] == lm.nnofa) {
-					isBounElem[lm.esup(ielp)] = true;
-					bfaceElem[iface] = lm.esup(ielp);
+			{
+				const a_int inelem = lm.esup(ielp);
+				if(elemmark[inelem] == lm.nnofa) {
+					isBounElem[inelem] = true;
+					bfaceElem[iface] = inelem;
 				}
+			}
 		}
 	}
 
-	return isBounElem;
+	(void)nbpoin;
+	return std::tie(isBounElem,isBounPoin);
 }
 
 TrivialReplicatedGlobalMeshPartitioner::
 TrivialReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
-	: ReplicatedGlobalMeshPartitioner(global_mesh)
+	: ReplicatedGlobalMeshPartitioner(globalmesh)
 { }
 
 void TrivialReplicatedGlobalMeshPartitioner::compute_partition()
 {
+	const int nranks = get_mpi_size(MPI_COMM_WORLD);
+	const int numloceleminit = gm.gnelem() / nranks;
+	//const int numlocalelemremain = gm.gnelem() % nranks;
+	elemdist.resize(gm.gnelem());
+
+	for(int irank = 0; irank < nranks; irank++) {
+		for(a_int iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
+			elemdist[iel] = irank;
+	}
+	for(a_int iel = nranks*numloceleminit; iel < gm.gnelem(); iel++)
+		elemdist[iel] = nranks-1;
 }
 
 /// Computes the number of elements on each process
