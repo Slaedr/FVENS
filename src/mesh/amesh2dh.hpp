@@ -13,6 +13,11 @@
 
 namespace fvens {
 
+/// Index of something w.r.t. the element it is associated with
+typedef EIndex int;
+/// Index of something (usually a node) w.r.t. the face it is associated with
+typedef FIndex int;
+
 class ReplicatedGlobalMeshPartitioner;
 
 /// Hybrid unstructured mesh class supporting triangular and quadrangular elements
@@ -322,11 +327,15 @@ private:
 
 	/// Connection boundary face data
 	/** Contains, for each connectivity boundary face,
-	 *   the index of the other subdomain that it connects to,
-	 *   the index of the cell in this subdomain that it is a part of, and
-	 *   the index of the cell in the other subdomain that it connects to, in that order.
+	 *   the index of the cell in this subdomain that it is a part of,
+	 *   the local face number in that cell which is the same as this face,
+	 *   the index of the other subdomain that it connects to, and
+	 *   the global index of the cell in the other subdomain that it connects to, in that order.
 	 */
 	amat::Array2d<a_int> connface;
+
+	/// Stores global element indices of each element in this subdomain
+	std::vector<a_int> globElemInd;
 
 	/// Holds volume region markers, if any
 	amat::Array2d<int> vol_regions;
@@ -398,6 +407,18 @@ private:
 	amat::Array2d<scalar> facemetric;
 
 	std::vector<a_int> connGlobalIndices;
+
+	/// Get the index of a node w.r.t. an element (ie., get the node's "EIndex") from
+	///  its index in a face of that element
+	/** \param ielem Element index in the subdomain
+	 * \param faceEIndex Index of a face in the element w.r.t. the element (ie., the face's EIndex)
+	 * \param nodeFIndex Index of a node in the face above w.r.t. the face (ie., the node's FIndex)
+	 *
+	 * The current implementation works only in 2D.
+	 */
+	EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) {
+		return iface + inode;
+	}
 
 	/// Compute lists of elements (cells) surrounding each point \sa esup
 	/** \note This function is required to be called before some other topology-related computations.

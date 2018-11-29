@@ -7,6 +7,8 @@
 #ifndef FVENS_MESH_PARTITIONING_H
 #define FVENS_MESH_PARTITIONING_H
 
+#include <vector>
+#include <map>
 #include "amesh2dh.hpp"
 
 namespace fvens {
@@ -35,6 +37,26 @@ protected:
 	 * \return the local-to-global element map
 	 */
 	std::vector<a_int> extractInpoel(UMesh2dh<a_real>& local_mesh) const;
+
+	/// Extracts point coordinates required by this rank
+	/** \param lm The local mesh with inpoel pre-computed in terms of the global point indices
+	 *    \ref extractInpoel
+	 * \param[out] locpoints The global point indices of local points
+	 * \return The local point indices of global points required by this rank
+	 */
+	std::map<a_int,a_int> extractPointCoords(UMesh2dh<a_real>& lm,
+	                                         std::vector<a_int>& locpoints) const;
+
+	/// Extracts the physical boundary faces which are a part of the subdomain on this rank
+	/** \param pointGlobal2Local Map from global to local indices for points present in this rank.
+	 */
+	void extractbfaces(const std::map<a_int,a_int>& pointGlobal2Local, UMesh2dh<a_real>& lm) const;
+
+	/// Marks cells of this subdomain which are adjacent to physical boundary faces
+	/** As a by-product, also computes the number of physical boundary points in the local mesh in
+	 * nbpoin.
+	 */
+	std::vector<bool> markLocalBoundaryCells(const UMesh2dh<a_real>& lm) const;
 
 	/// The global mesh to partition
 	const UMesh2dh<a_real>& gm;
