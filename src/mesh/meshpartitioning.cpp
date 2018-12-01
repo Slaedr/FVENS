@@ -34,6 +34,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	lm.nnode.resize(lm.nelem);
 	lm.nbtag = gm.nbtag;
 	lm.ndtag = gm.ndtag;
+	std::cout << "NDtag = " << gm.ndtag << ", cols= " << gm.vol_regions.cols() << std::endl;
 	assert(gm.ndtag == gm.vol_regions.cols());
 	lm.vol_regions.resize(lm.nelem, gm.vol_regions.cols());
 
@@ -58,36 +59,46 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	const std::tuple<std::vector<bool>,std::vector<bool>> isBounEntity
 		= markLocalBoundaryCellsAndPoints(lm);
 
-	//! 6. Compute local esuel. Use this, the global esuel and local-to-global elem map to
+	//! 6. Use local esuel, the global esuel and local-to-global elem map to
 	//!    build the connectivity face structure.
 	lm.nconnface = 0;
 
-	// Non-negative if an element contains a connectivity face, in which case
-	//  it stores the connectivity face's index w.r.t. the element (its EIndex) in this subdomain
-	std::vector<EIndex> connElemLocalFace(lm.nelem, -1);
+	// Non-negative if an element contains at least one connectivity face, in which case
+	//  it stores the connectivity faces' index w.r.t. the element (their EIndex) in this subdomain
+	std::vector<std::vector<EIndex>> connElemLocalFace(lm.nelem);
 
 	for(a_int iel = 0; iel < lm.nelem; iel++)
 	{
-		if(!std::get<0>(isBounEntity)[iel]) {
-			for(EIndex ifa = 0; ifa < lm.nfael[iel]; ifa++)
-				if(lm.esuel(iel,ifa) >= lm.nelem) {
-					lm.nconnface++;
-					connElemLocalFace[iel] = ifa;
+		// Check whether face points are physical boundary points to identify connectivity faces
+		for(EIndex iface = 0; iface < lm.nfael[iel]; iface++)
+		{
+			if(lm.esuel(iel,iface) == -1)
+			{
+				bool isconnface = true;
+				for(FIndex inode = 0; inode < lm.nnofa; inode++)
+				{
+					// get subdomain index of this point and check if it's on a physical boundary
+					const a_int locpoint = lm.inpoel(iel,lm.getNodeEIndex(iel,iface,inode));
+					if(std::get<1>(isBounEntity)[locpoint]) {
+						isconnface = false;
+						break;
+					}
 				}
-		}
-		else {
-			// TODO: Element adjacent to a physical boundary face but may contain a connectivity face
-			//  Use whether points are physical boundary points to identify connectivity faces
+				if(isconnface) {
+					connElemLocalFace[iel].push_back(iface);
+				}
+			}
 		}
 	}
 
-	lm.connface.resize(lm.nconnface,4);
+	if(lm.nconnface > 0)
+		lm.connface.resize(lm.nconnface,4);
 	a_int icofa = 0;
 	for(a_int iel = 0; iel < lm.nelem; iel++)
 	{
-		const EIndex localConnFace = connElemLocalFace[iel];
-		if(localConnFace > 0)
+		for(size_t iconface = 0; iconface < connElemLocalFace[iel].size(); iconface++)
 		{
+			const EIndex localConnFace = connElemLocalFace[iel][iconface];
 			lm.connface(icofa,0) = iel;
 			lm.connface(icofa,1) = localConnFace;
 			lm.connface(icofa,2) = -1;
@@ -140,7 +151,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 		}
 	}
 
-	assert(icofa == nconnface);
+	assert(icofa == lm.nconnface);
 
 	return lm;
 }
@@ -214,8 +225,8 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 {
 	lm.nface = 0;
 	std::vector<std::array<a_int,6>> tbfaces;         // assuming max 4 points and 2 tags per face
-	assert(gm.nnofa < 4);
-	assert(gm.nbtag < 2);
+	assert(gm.nnofa <= 4);
+	assert(gm.nbtag <= 2);
 	for(a_int iface = 0; iface < gm.nface; iface++)
 	{
 		bool reqd = true;
@@ -384,7 +395,7 @@ static void getElemDataFromRoot(const MeshData& gm, const std::vector<a_int>& nu
 				}
 			}
 
-			assert(lociel == localelemsizes[irnk]);
+			assert(lociel == numlocalelems[irnk]);
 
 			MPI_Request req[4];
 			MPI_Isend(&inpoelbuffer(0,0), lociel*gm.maxnnode, FVENS_MPI_INT, irnk, 0, MPI_COMM_WORLD,
@@ -499,7 +510,7 @@ static std::map<a_int,a_int> splitPointData(const MeshData& gm,
 
 	MPI_Status status;
 	MPI_Recv(&lcoords(0,0), lnpoin*NDIM, FVENS_MPI_REAL, 0, 1, MPI_COMM_WORLD, &status);
-	assert(status == MPI_SUCCESS);
+	assert(status.MPI_ERROR == MPI_SUCCESS);
 
 	return glbToLocPointMap;
 }
@@ -509,7 +520,6 @@ void splitMeshArrays(const MeshData& gm,
                      UMesh2dh<a_real>& lm)
 {
 	// const int nranks = get_mpi_size(MPI_COMM_WORLD);
-	// const int rank = get_mpi_rank(MPI_COMM_WORLD);
 
 	const std::vector<a_int> numlocelems = getNumLocalElems(gm, glbElemDist);
 
@@ -532,6 +542,7 @@ void splitMeshArrays(const MeshData& gm,
 			lm.inpoel(iel,i) = glob2locPoint[lm.inpoel(iel,i)];
 
 #ifdef DEBUG
+	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 	std::cout << " Rank " << rank << ": Number of elems = " << lm.nelem
 	          << ", number of nodes = " << lm.npoin << std::endl;
 #endif

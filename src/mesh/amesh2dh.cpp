@@ -40,7 +40,7 @@ template <typename scalar>
 UMesh2dh<scalar>::UMesh2dh(const MeshData& md)
 	: npoin{md.npoin}, nelem{md.nelem}, nface{md.nface}, nnode(md.nnode), maxnnode{md.maxnnode},
 	  nfael(md.nfael), maxnfael{md.maxnfael}, nnofa{md.nnofa}, nbtag{md.nbtag}, ndtag{md.ndtag},
-	  coords(md.coords), inpoel(md.inpoel), bface(md.bface)
+	  coords(md.coords), inpoel(md.inpoel), bface(md.bface), vol_regions(md.vol_regions)
 {  }
 
 template <typename scalar>

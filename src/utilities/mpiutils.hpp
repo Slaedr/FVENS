@@ -15,7 +15,7 @@ namespace fvens {
 inline int get_mpi_size(MPI_Comm comm)
 {
 	int size;
-	int ierr = MPI_Comm_rank(comm, &size);
+	int ierr = MPI_Comm_size(comm, &size);
 	mpi_throw(ierr, "Could not get size!");
 	return size;
 }
