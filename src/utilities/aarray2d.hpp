@@ -132,9 +132,14 @@ public:
 	///  to set the element at 1st row and 2nd column to 141
 	T& operator()(const a_int x, const a_int y=0)
 	{
-		assert(x < nrows);
-		assert(y < ncols);
-		assert(x >= 0 && y >= 0);
+#ifdef DEBUG
+		if(x >= nrows)
+			throw std::out_of_range("Row index");
+		if(y >= ncols)
+			throw std::out_of_range("Col index");
+		if(x < 0 || y < 0)
+			throw std::out_of_range("Less than zero");
+#endif
 		return elems[x*ncols + y];
 	}
 	

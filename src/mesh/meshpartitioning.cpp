@@ -53,7 +53,9 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	//!    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
 	extractbfaces(pointGlob2Loc, lm);
 
-	//! 5. Compute local esuel and mark those elements that neighbor a physical boundary face
+	std::cout << "Rank " << rank << ": extracted bface" << std::endl;
+	//! 5. Compute local esuel and mark elements that neighbor and points that lie on
+	//!    a physical boundary face
 	lm.compute_elementsSurroundingPoints();
 	lm.compute_elementsSurroundingElements();
 	const std::tuple<std::vector<bool>,std::vector<bool>> isBounEntity
@@ -77,7 +79,8 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 				bool isconnface = true;
 				for(FIndex inode = 0; inode < lm.nnofa; inode++)
 				{
-					// get subdomain index of this point and check if it's on a physical boundary
+					// Get subdomain index of this point and check if it's on a physical boundary
+					//  If it is, it's not on a connectivity boundary
 					const a_int locpoint = lm.inpoel(iel,lm.getNodeEIndex(iel,iface,inode));
 					if(std::get<1>(isBounEntity)[locpoint]) {
 						isconnface = false;
@@ -90,6 +93,8 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			}
 		}
 	}
+
+	std::cout << "Rank " << rank << ": got connelemface" << std::endl;
 
 	if(lm.nconnface > 0)
 		lm.connface.resize(lm.nconnface,4);
@@ -150,6 +155,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			icofa++;
 		}
 	}
+	std::cout << "Rank " << rank << ": done restricting" << std::endl;
 
 	assert(icofa == lm.nconnface);
 
