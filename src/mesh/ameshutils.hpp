@@ -44,6 +44,17 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 template <typename scalar>
 std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m);
 
+/// Compares two meshes for equality
+/** \return An array of booleans which represents whether the following, in order, are the same:
+ *  - number of elements
+ *  - number of points
+ *  - number of physical boundary faces
+ *  - number of nodes per element for each element
+ *  - number of faces per element for each element
+ *  - element-point interconnectivity list
+ *  - boundary faces' array along with boundary tags
+ *  - coordinates of points
+ */
 std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_real>& m2);
 
 }

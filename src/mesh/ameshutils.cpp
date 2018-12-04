@@ -157,16 +157,16 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 
 	for(a_int i = 0; i < m1.gnelem(); i++) {
 		if(m1.gnnode(i) != m2.gnnode(i)) {
-			isequal[6] = false;
+			isequal[3] = false;
 			break;
 		}
 		if(m1.gnfael(i) != m2.gnfael(i)) {
-			isequal[7] = false;
+			isequal[4] = false;
 			break;
 		}
 		for(int j = 0; j < m1.gnnode(i); j++) {
 			if(m1.ginpoel(i,j) != m2.ginpoel(i,j)) {
-				isequal[3] = false;
+				isequal[5] = false;
 				break;
 			}
 		}
@@ -175,7 +175,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 		for(int j = 0; j < NDIM; j++)
 			if(std::abs(m1.gcoords(i,j)-m2.gcoords(i,j)) > std::numeric_limits<a_real>::epsilon())
 			{
-				isequal[4] = false;
+				isequal[7] = false;
 				break;
 			}
 	}
@@ -183,7 +183,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 	for(a_int i = 0; i < m1.gnface(); i++)
 		for(int j = 0; j < 2 +m1.gnbtag(); j++)
 			if(m1.gbface(i,j) != m2.gbface(i,j)) {
-				isequal[5] = false;
+				isequal[6] = false;
 				break;
 			}
 

@@ -74,7 +74,6 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	//!    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
 	extractbfaces(pointGlob2Loc, lm);
 
-	std::cout << "Rank " << rank << ": extracted bface" << std::endl;
 	//! 5. Compute local esuel and mark elements that neighbor and points that lie on
 	//!    a physical boundary face
 	lm.compute_elementsSurroundingPoints();
@@ -84,34 +83,33 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 
 	//! 6. Use local esuel, the global esuel and local-to-global elem map to
 	//!    build the connectivity face structure.
-	lm.nconnface = 0;
 	const std::vector<std::vector<EIndex>> connElemLocalFace
 		= getConnectivityFaceEIndices(lm, isPhyBounPoint);
 
-	for(int irnk = 0; irnk < nranks; irnk++) {
-		MPI_Barrier(MPI_COMM_WORLD);
-		if(rank == irnk)
-		{
-			for(a_int i = 0; i < lm.nelem; i++)
-			{
-				std::cout << "Esuel: ";
-				for(EIndex j = 0; j < lm.nfael[i]; j++)
-					std::cout << " " << lm.esuel(i,j);
-				std::cout << std::endl;
-				for(size_t j = 0; j < connElemLocalFace[i].size(); j++)
-					std::cout << "\t" << connElemLocalFace[i][j];
-				std::cout << std::endl;
-			}
-			std::cout << "Array printed" << std::endl;
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
+	lm.nconnface = 0;
+	for(a_int i = 0; i < lm.nelem; i++)
+		lm.nconnface += static_cast<a_int>(connElemLocalFace[i].size());
 
-	std::cout << "Rank " << rank << ": got connelemface" << std::endl;
+	// for(int irnk = 0; irnk < nranks; irnk++) {
+	// 	MPI_Barrier(MPI_COMM_WORLD);
+	// 	if(rank == irnk)
+	// 	{
+	// 		for(a_int i = 0; i < lm.nelem; i++)
+	// 		{
+	// 			std::cout << "Esuel: ";
+	// 			for(EIndex j = 0; j < lm.nfael[i]; j++)
+	// 				std::cout << " " << lm.esuel(i,j);
+	// 			std::cout << std::endl;
+	// 			for(size_t j = 0; j < connElemLocalFace[i].size(); j++)
+	// 				std::cout << "\t" << connElemLocalFace[i][j];
+	// 			std::cout << std::endl;
+	// 		}
+	// 		std::cout << "Array printed" << std::endl;
+	// 	}
+	// 	MPI_Barrier(MPI_COMM_WORLD);
+	// }
+	// std::cout << "Rank " << rank << ": num conn faces = " << lm.nconnface << std::endl;
 
-	/*************************
-	 * WORKS TILL HERE
-	 *************************/
 
 	if(lm.nconnface > 0)
 		lm.connface.resize(lm.nconnface,4);
@@ -172,7 +170,6 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			icofa++;
 		}
 	}
-	std::cout << "Rank " << rank << ": done restricting" << std::endl;
 
 	assert(icofa == lm.nconnface);
 
@@ -289,39 +286,6 @@ markLocalPhysicalBoundaryPoints(const UMesh2dh<a_real>& lm) const
 			isBounPoin[lm.bface(iface,inode)] = true;
 		}
 	}
-
-	// a_int nbpoin = 0;   // not returned, but might be useful
-	// std::vector<int> elemmark(lm.nelem,0);
-	// for(a_int ip = 0; ip < lm.npoin; ip++)
-	// 	if(isBounPoin[ip]) {
-	// 		nbpoin++;
-	// 		for(a_int ielp = lm.esup_p(ip); ielp < lm.esup_p(ip+1); ielp++)
-	// 			elemmark[lm.esup(ielp)] += 1;
-	// 	}
-
-	// std::vector<bool> isBounElem(lm.nelem,false);
-
-	// // subdomain element index associated with each physical boundary face
-	// std::vector<a_int> bfaceElem(lm.nface,-1);
-
-	// for(a_int iface = 0; iface < lm.nface; iface++)
-	// {
-	// 	for(int inode = 0; inode < lm.nnofa; inode++)
-	// 	{
-	// 		const a_int poin = lm.bface(iface,inode);
-	// 		for(a_int ielp = lm.esup_p(poin); ielp < lm.esup_p(poin+1); ielp++)
-	// 		{
-	// 			const a_int inelem = lm.esup(ielp);
-	// 			if(elemmark[inelem] >= lm.nnofa) {
-	// 				isBounElem[inelem] = true;
-	// 				bfaceElem[iface] = inelem;
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// (void)nbpoin;
-	// return std::tie(isBounElem,isBounPoin);
 	return isBounPoin;
 }
 
