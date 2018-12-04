@@ -252,6 +252,8 @@ MeshData readGmsh2(const std::string mfile)
 	{
 		for(int j = 0; j < nnodes[i+m.nface]; j++)
 			m.inpoel(i,j) = elms(i+m.nface,j)-1;
+		for(int j = nnodes[i+m.nface]; j < m.maxnnode; j++)
+			m.inpoel(i,j) = -1;
 		for(int j = 0; j < m.ndtag; j++)
 			m.vol_regions(i,j) = elms(i+m.nface,j+nnodes[i+m.nface]);
 		m.nnode.push_back(nnodes[i+m.nface]);

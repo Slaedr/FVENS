@@ -53,13 +53,20 @@ protected:
 	 */
 	void extractbfaces(const std::map<a_int,a_int>& pointGlobal2Local, UMesh2dh<a_real>& lm) const;
 
-	/// Marks cells and points of this subdomain which are adjacent to physical boundary faces
+	/// Marks points of this subdomain which are adjacent to physical boundary faces
 	/** As a by-product, also computes the number of physical boundary points in the local mesh in
 	 * nbpoin.
-	 * \return A tuple with first entry the vector of element marks and the second that of points
+	 * \return The vector of point marks
 	 */
-	std::tuple<std::vector<bool>,std::vector<bool>>
-	markLocalBoundaryCellsAndPoints(const UMesh2dh<a_real>& lm) const;
+	std::vector<bool> markLocalPhysicalBoundaryPoints(const UMesh2dh<a_real>& lm) const;
+
+	/// Returns a list of containing, for each local element, face E-indices that are connectivity
+	///  faces, if any
+	/** \param[in] isPhyBounPoint For each local point, whether or not it lies on a physical boundary
+	 */
+	std::vector<std::vector<EIndex>> getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
+	                                                             const std::vector<bool>& isPhyBounPoint)
+		const;
 
 	/// The global mesh to partition
 	const UMesh2dh<a_real>& gm;

@@ -416,8 +416,8 @@ private:
 	 *
 	 * The current implementation works only in 2D.
 	 */
-	EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) const {
-		return iface + inode;
+	constexpr EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) const {
+		return (iface + inode) % nnode[ielem];
 	}
 
 	/// Compute lists of elements (cells) surrounding each point \sa esup

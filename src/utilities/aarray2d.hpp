@@ -180,6 +180,9 @@ public:
 	void setup(const a_int nr, const a_int nc);
 };
 
+template <typename T>
+bool areEqual_array2d(const Array2d<T>& a, const Array2d<T>& b);
+
 
 } //end namespace amat
 } // namespace fvens

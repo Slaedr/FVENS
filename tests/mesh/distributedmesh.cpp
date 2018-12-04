@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstdlib>
 #include "utilities/mpiutils.hpp"
 #include "mesh/meshpartitioning.hpp"
 #include "mesh/ameshutils.hpp"
@@ -26,9 +27,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	const std::string globalmeshfile = argv[1];
+	// const std::string firststring = argv[1];
+	// const int basepos = (firststring == "gdb") ? 2 : 1;
+	const int basepos = 1;
+
+	const std::string globalmeshfile = argv[basepos];
 	std::vector<std::string> localmeshfiles;
-	for(int i = 2; i < argc; i++)
+	for(int i = basepos+1; i < argc; i++)
 		localmeshfiles.push_back(argv[i]);
 
 	UMesh2dh<a_real> gm(readMesh(globalmeshfile));

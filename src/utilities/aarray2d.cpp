@@ -160,5 +160,18 @@ template class Array2d<a_int>;
 template class Array2d<adouble>;
 #endif
 
+template <typename T>
+bool areEqual_array2d(const Array2d<T>& a, const Array2d<T>& b)
+{
+	if(a.rows() != b.rows()) return false;
+	if(a.cols() != b.cols()) return false;
+	if(a.msize() != b.msize()) return false;
+	for(a_int i = 0; i < a.rows(); i++)
+		for(a_int j = 0; j < a.cols(); j++)
+			if(std::abs(a(i,j)-b(i,j)) > std::numeric_limits<T>::epsilon())
+			   return false;
+	return true;
+}
+
 }
 }

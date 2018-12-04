@@ -28,6 +28,15 @@ inline int get_mpi_rank(MPI_Comm comm)
 	return rank;
 }
 
+/// Waits until a debugger is attached and a variable is changed
+/** Only activated if environment variable FVENS_MPI_DEBUG is set.
+ * Waits until a variable called 'debugger_attached' is set to 1 using the attached debugger.
+ * \note Compiles only on Unix-like systems.
+ * Ref: Tom Fogal. "Debugging MPI programs with the GNU debugger". Version 1.1.0. February 2014.
+ *   http://www.sci.utah.edu/~tfogal/academic/Fogal-ParallelDebugging.pdf
+ */
+void wait_for_debugger();
+
 }
 
 #endif
