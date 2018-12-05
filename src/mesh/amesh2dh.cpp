@@ -20,6 +20,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 
 #include "amesh2dh.hpp"
@@ -410,6 +411,7 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 	// this is used to keep track of faces we've visited
 	std::vector<a_int> periodicmap(nbface,-1);
 
+	static_assert(NDIM == 2, "Periodic map not implemented for 3D!");
 	const int ax = 1-axis;  //< The axis along which we'll compare the faces' locations
 
 	/* Whenever we come across a face that's not been processed, we'll set mapped faces
@@ -700,6 +702,55 @@ void UMesh2dh<scalar>::compute_elementsSurroundingElements()
 				lpoin(lhelp(i)) = 0;
 		}
 	}
+}
+
+template <typename scalar>
+std::vector<a_int> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
+{
+	std::vector<a_int> interiorelem(nface);
+
+	for(a_int iface = 0; iface < nface; iface++)
+	{
+		// First get sorted list of elements around each point of this face.
+		// NOTE: In 3D, nnofa below has to be replaced by nnobfa[iface], the number of nodes per
+		//  face for physical boundary faces
+		std::vector<std::vector<a_int>> nbdelems(nnofa);
+		for(int j = 0; j < nnofa; j++)
+		{
+			const a_int point = bface(iface,j);
+			for(a_int isup_p = esup_p(point); isup_p < esup_p(point+1); isup_p++)
+				nbdelems[j].push_back(esup(isup_p));
+
+			std::sort(nbdelems[j].begin(), nbdelems[j].end());  // for using set_intersection below
+		}
+
+		// Compute the intersection of the elements surrounding each of the points of this face.
+		//  initialize with the elements surrounding the first point.
+		std::vector<a_int> intersection;
+		for(unsigned int j = 0; j < nbdelems[0].size(); j++)
+			intesection.push_back(nbdelems[0][j]);
+		for(int j = 1; j < nnofa; j++)
+		{
+			std::vector<a_int> temp(intersection.size());
+			auto it = std::set_intersection(nbdelems[j].begin(), nbdelems[j].end(),
+			                                intersection.begin(), intersection.end(), temp.begin());
+
+			assert(it-temp.begin() >= 0);
+			assert(it-temp.begin() <= static_cast<ptrdiff_t>(intersection.size()));
+
+			std::copy(temp.begin(), it, intersection.begin());
+			intersection.resize(it-temp.begin());
+		}
+
+		if(intersection.size() > 1) {
+			throw std::logic_error("More than one neighboring element found for bface "
+			                       + std::to_string(iface));
+		}
+
+		interiorelem[iface] = intersection[0];
+	}
+
+	return interiorelem;
 }
 
 template <typename scalar>
