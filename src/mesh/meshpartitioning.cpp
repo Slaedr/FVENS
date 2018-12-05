@@ -16,7 +16,6 @@ ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh2dh<
 UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
-	const int nranks = get_mpi_size(MPI_COMM_WORLD);
 
 	UMesh2dh<a_real> lm;
 	lm.nelem = 0;
@@ -47,6 +46,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	for(a_int ip = 0; ip < lm.npoin; ip++)
 		assert(pointGlob2Loc.at(pointLoc2Glob[ip]) == ip);
 #endif
+	// const int nranks = get_mpi_size(MPI_COMM_WORLD);
 	// for(int irnk = 0; irnk < nranks; irnk++) {
 	// 	MPI_Barrier(MPI_COMM_WORLD);
 	// 	if(rank == irnk) {
@@ -158,7 +158,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 
 				if(matched) {
 					// both points of face jgf match local face 'localConnFace'
-					lm.connface(icofa,2) = elemdist[glind];
+					lm.connface(icofa,2) = elemdist[gm.esuel(glind,jgf)];
 					lm.connface(icofa,3) = gm.esuel(glind,jgf);
 					break;
 				}

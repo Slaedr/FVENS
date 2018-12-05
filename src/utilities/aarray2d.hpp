@@ -116,14 +116,6 @@ public:
 		return elems[i*ncols + j];
 	}
 
-	void set(a_int i, a_int j, T data)
-	{
-		assert(i < nrows);
-		assert(j < ncols);
-		assert(i>=0 && j>=0);
-		elems[i*ncols + j] = data;
-	}
-
 	a_int rows() const { return nrows; }
 	a_int cols() const { return ncols; }
 	a_int msize() const { return size; }
@@ -132,14 +124,9 @@ public:
 	///  to set the element at 1st row and 2nd column to 141
 	T& operator()(const a_int x, const a_int y=0)
 	{
-#ifdef DEBUG
-		if(x >= nrows)
-			throw std::out_of_range("Row index");
-		if(y >= ncols)
-			throw std::out_of_range("Col index");
-		if(x < 0 || y < 0)
-			throw std::out_of_range("Less than zero");
-#endif
+		assert(x < nrows);
+		assert(y < ncols);
+		assert(x >= 0 && y >= 0);
 		return elems[x*ncols + y];
 	}
 	
@@ -147,6 +134,7 @@ public:
 	const T& operator()(const a_int x, const a_int y=0) const
 	{
 		assert(x < nrows);
+		assert(y < ncols);
 		assert(x >= 0 && y >= 0);
 		return elems[x*ncols + y];
 	}

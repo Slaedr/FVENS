@@ -46,14 +46,26 @@ public:
 		return inpoel.get(elemnum, localnodenum);
 	}
 
-	/// Returns global node indices or boundary tags corresponding to local node indices of a face
-	/** \note The face indexing here could be different from the indexing in the
+	/// Access to physical boundary face information in this subdomain (if any)
+	/** Returns global node indices or boundary tags corresponding to local node indices of a face
+	 * \note The face indexing here could be different from the indexing in the
 	 * [face data structure](\ref intfac) \sa gintfac
 	 */
 	a_int gbface(const a_int facenum, const int locindex) const
 	{
 		return bface.get(facenum, locindex);
 	}
+
+	/// Access to the connectivity boundary face information in case of multiprocess runs
+	/** \param[in] icface Connectivity face index in arbirtray order
+	 * \param[in] infoindex To query information about the face:
+	 *  - 0: Subdomain index of the element this face belongs to
+	 *  - 1: The EIndex of the face in the element it belongs to
+	 *  - 2: The subdomain rank of the other adjacent element which is external (to this subdomain)
+	 *  - 3: The global element index of the external neighboring element
+	 */
+	a_int gconnface(const a_int icface, const int infoindex) const
+	{ return connface(icface, infoindex); }
 
 	/// Returns elements surrounding points; to be used with \ref gesup_p
 	a_int gesup(const a_int i) const { return esup.get(i); }
@@ -77,6 +89,9 @@ public:
 	/// Returns the face number in the [face data structure](\ref intfac) corresponding to
 	/// the local face index of an element
 	a_int gelemface(const a_int ielem, const int inode) const { return elemface.get(ielem,inode); }
+
+	/// Returns the global element index of an element of this subdomain
+	a_int gglobalElemIndex(const a_int iel) const { return globalElemIndex[iel]; }
 
 	/// Returns an entry from the face data structure \ref intfac
 	/** \param face Index of the face about which data is needed
@@ -328,7 +343,7 @@ private:
 	/// Connection boundary face data
 	/** Contains, for each connectivity boundary face,
 	 *   the index of the cell in this subdomain that it is a part of,
-	 *   the local face number in that cell which is the same as this face,
+	 *   the local face EIndex of the boundary face in that cell
 	 *   the index of the other subdomain that it connects to, and
 	 *   the global index of the cell in the other subdomain that it connects to, in that order.
 	 */
