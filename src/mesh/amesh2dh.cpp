@@ -41,7 +41,8 @@ template <typename scalar>
 UMesh2dh<scalar>::UMesh2dh(const MeshData& md)
 	: npoin{md.npoin}, nelem{md.nelem}, nbface{md.nbface}, nnode(md.nnode), maxnnode{md.maxnnode},
 	  nfael(md.nfael), maxnfael{md.maxnfael}, nnofa{md.nnofa}, nbtag{md.nbtag}, ndtag{md.ndtag},
-	  coords(md.coords), inpoel(md.inpoel), bface(md.bface), vol_regions(md.vol_regions)
+	  coords(md.coords), inpoel(md.inpoel), bface(md.bface), vol_regions(md.vol_regions),
+	  nconnface{0}
 {  }
 
 template <typename scalar>
@@ -678,7 +679,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 	std::cout << "UMesh2dh: compute_faceConnectivity(): Total number of faces= " << naface << std::endl;
 
 	//allocate intfac and elemface
-	intfac.resize(naface,nnofa+2);
+	intfac.resize(naface+nconnface,nnofa+2);
 	elemface.resize(nelem,maxnfael);
 	btags.resize(nbface,nbtag);
 
@@ -690,11 +691,24 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 			intfac(iface,2+inode) = bface(iface,inode);
 		for(int j = nnofa; j < nnofa+nbtag; j++)
 			btags(iface,j-nnofa) = bface(iface,j);
-	 
+ 
 		esuel(intelems[iface].first, intelems[iface].second) = nelem+iface;
 		elemface(intelems[iface].first, intelems[iface].second) = iface;
 	}
 
+	// connectivity faces
+	// for(a_int iface = 0; iface < nconnface; iface++)
+	// {
+	// 	const a_int inelem = connface(iface,0);
+	// 	intfac(nbface+iface,0) = inelem;
+	// 	elemface(inelem,connface(iface,1)) = nbface+iface;
+	// 	intfac(nbface+iface,1) = nelem+nbface+iface;
+
+	// 	for(FIndex inode = 0; inode < nnofa; inode++)
+	// 		intfac(nbface+iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
+	// }
+
+	// naface = nbface+nconnface;
 	naface = nbface;
 	for(a_int ie = 0; ie < nelem; ie++)
 	{

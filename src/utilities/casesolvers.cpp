@@ -220,10 +220,11 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	};
 
 	SteadySolver<NVARS> * starttime = nullptr;
-	const NonlinearUpdate<NDIM+2> *const nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
+	const NonlinearUpdate<NDIM+2> *nlupdate = nullptr;
 
 	if(opts.pseudotimetype == "IMPLICIT")
 	{
+		nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
 		if(opts.usestarter != 0) {
 			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, isol.ksp,
 			                                                 nlupdate);
@@ -293,7 +294,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	};
 
 	SteadySolver<NDIM+2> * time = nullptr;
-	const NonlinearUpdate<NDIM+2> *const nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
+	const NonlinearUpdate<NDIM+2> *nlupdate = nullptr;
 
 #ifdef USE_BLASTED
 	Blasted_data_list bctx = newBlastedDataList();
@@ -305,6 +306,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	// setup nonlinear ODE solver for main solve - MUST be done AFTER KSPCreate
 	if(opts.pseudotimetype == "IMPLICIT")
 	{
+		nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
 		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, isol.ksp, nlupdate);
 		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
 	}

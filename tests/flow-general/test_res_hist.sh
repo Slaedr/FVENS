@@ -23,7 +23,12 @@ case $key in
 esac
 done
 
-@SEQEXEC@ @THREADOPTS@ @SEQTASKS@ @CMAKE_BINARY_DIR@/fvens_steady $orig_options
+@SEQEXEC@ @THREADOPTS@ @SEQTASKS@ @CMAKE_BINARY_DIR@/tests/e_testflow $orig_options
+retval=$?
+if [ $retval -ne 0 ]; then
+	echo 'Test failed!!!'
+	exit $retval
+fi
 
 @CMAKE_CURRENT_BINARY_DIR@/runtest_res_hist $logfileprefix
 

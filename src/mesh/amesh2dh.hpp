@@ -331,6 +331,9 @@ private:
 	/// Lists nodes belonging to a boundary face and contains boundary markers
 	amat::Array2d<a_int> bface;
 
+	/// Holds volume region markers, if any
+	amat::Array2d<int> vol_regions;
+
 	a_int naface;                   ///< total number of (internal and boundary) faces
 	/// Number of connection boundary faces (connection to other subdomains)
 	a_int nconnface;
@@ -347,9 +350,6 @@ private:
 
 	/// Stores global element indices of each element in this subdomain
 	std::vector<a_int> globalElemIndex;
-
-	/// Holds volume region markers, if any
-	amat::Array2d<int> vol_regions;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<a_int> esup_p;
