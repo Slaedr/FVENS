@@ -148,7 +148,7 @@ public:
 	/// @}
 
 	/// Returns the boundary marker of a face indexed by \ref intfac.
-	int gintfacbtags(const a_int face, const int i) const { return intfacbtags.get(face,i); }
+	int gbtags(const a_int face, const int i) const { return btags.get(face,i); }
 
 	/// Returns the measure of a cell
 	scalar garea(const a_int ielem) const { return area.get(ielem,0); }
@@ -251,7 +251,7 @@ public:
 	 */
 	void compute_topological();
 
-	/// Computes unit normals and lengths, and sets boundary face tags for all faces in intfacbtags
+	/// Computes unit normals and lengths, and sets boundary face tags for all faces in btags
 	/** \note Uses intfac, so call only after compute_topological, only for linear mesh
 	 * \note The normal vector is the UNIT normal vector.
 	 * \sa facemetric
@@ -265,7 +265,7 @@ public:
 	 *  periodic boundaries, such that their face-centres are aligned.
 	 *
 	 * \warning Requires \ref compute_topological and \ref compute_face_data to have been called
-	 * beforehand, because \ref intfac and \ref intfacbtags is needed.
+	 * beforehand, because \ref intfac and \ref btags is needed.
 	 *
 	 * \param[in] bcm Marker of one set of periodic boundaries
 	 * \param[in] axis The index of the coordinate which is different for the two boundaries
@@ -378,7 +378,7 @@ private:
 	amat::Array2d<a_int> intfac;
 
 	/// Holds boundary tags (markers) corresponding to intfac \sa gintfac
-	amat::Array2d<int> intfacbtags;
+	amat::Array2d<int> btags;
 
 	/// Holds face numbers of faces making up an element
 	amat::Array2d<a_int> elemface;

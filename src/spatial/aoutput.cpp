@@ -185,9 +185,9 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		for(int im = 0; im < static_cast<int>(wbcm.size()); im++)
-			if(m->gintfacbtags(iface,0) == wbcm[im]) nwbfaces[im]++;
+			if(m->gbtags(iface,0) == wbcm[im]) nwbfaces[im]++;
 		for(int im = 0; im < static_cast<int>(obcm.size()); im++)
-			if(m->gintfacbtags(iface,0) == obcm[im]) nobfaces[im]++;
+			if(m->gbtags(iface,0) == obcm[im]) nobfaces[im]++;
 	}
 
 	// Iterate over wall boundary markers
@@ -239,7 +239,7 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 
 		for(a_int iface = 0; iface < m->gnbface(); iface++)
 		{
-			if(m->gintfacbtags(iface,0) == obcm[im])
+			if(m->gbtags(iface,0) == obcm[im])
 			{
 				a_int lelem = m->gintfac(iface,0);
 				/*a_real n[NDIM];

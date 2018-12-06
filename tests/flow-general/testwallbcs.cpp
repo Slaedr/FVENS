@@ -27,7 +27,7 @@ int TestFlowFV::testWalls(const a_real *const u) const
 		a_real flux[NVARS];
 		inviflux->get_flux(u,ug,n,flux);
 		
-		if(bcs.at(m->gintfacbtags(iface,0))->bctype == ADIABATIC_WALL_BC)
+		if(bcs.at(m->gbtags(iface,0))->bctype == ADIABATIC_WALL_BC)
 		{
 			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;
@@ -41,19 +41,19 @@ int TestFlowFV::testWalls(const a_real *const u) const
 			}
 		}
 
-		/*if(m->gintfacbtags(iface,0) == pconfig.isothermalwall_id)
+		/*if(m->gbtags(iface,0) == pconfig.isothermalwall_id)
 			if(std::fabs(flux[0]) > ZERO_TOL) {
 				ierr = 1;
 				std::cerr << "! Normal mass flux at isothermal wall is nonzero!\n";
 			}*/
 
-		/*if(m->gintfacbtags(iface,0) == pconfig.isothermalbaricwall_id)
+		/*if(m->gbtags(iface,0) == pconfig.isothermalbaricwall_id)
 			if(std::fabs(flux[0]) > ZERO_TOL) {
 				ierr = 1;
 				std::cerr << "! Normal mass flux at isothermalbaric wall is nonzero!\n";
 			}*/
 		
-		if(bcs.at(m->gintfacbtags(iface,0))->bctype == SLIP_WALL_BC)
+		if(bcs.at(m->gbtags(iface,0))->bctype == SLIP_WALL_BC)
 		{
 			if(std::fabs(flux[0]) > FLUX_TOL) {
 				ierr = 1;

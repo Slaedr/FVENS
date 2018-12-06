@@ -92,7 +92,7 @@ void FlowFV_base<scalar>::compute_boundary_state(const int ied,
                                                  ) const
 {
 	const std::array<scalar,NDIM> n = m->gnormal(ied);
-	bcs.at(m->gintfacbtags(ied,0))->computeGhostState(ins, &n[0], gs);
+	bcs.at(m->gbtags(ied,0))->computeGhostState(ins, &n[0], gs);
 }
 
 template <typename scalar>
@@ -143,7 +143,7 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 	// iterate over faces having this boundary marker
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		if(m->gintfacbtags(iface,0) == iwbcm)
+		if(m->gbtags(iface,0) == iwbcm)
 		{
 			const a_int lelem = m->gintfac(iface,0);
 			scalar n[NDIM];
@@ -710,7 +710,7 @@ void FlowFV<scalar,order2,constVisc>
 	Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor> drdl;
 	Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor> right;
 
-	bcs.at(m->gintfacbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0],
+	bcs.at(m->gbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0],
 	                                                               uface, &drdl(0,0));
 
 	inviflux->get_jacobian(ul, uface, &n[0], &left(0,0), &right(0,0));

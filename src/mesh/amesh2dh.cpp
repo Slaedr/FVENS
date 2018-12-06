@@ -389,7 +389,7 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 	 */
 	for(a_int iface = 0; iface < nbface; iface++)
 	{
-		if(intfacbtags(iface,0) == bcm)
+		if(btags(iface,0) == bcm)
 		{
 			if(periodicmap[iface] > -1)
 				continue;
@@ -400,7 +400,7 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 			// Faces before iface have already been paired
 			for(a_int jface = iface+1; jface < nbface; jface++)
 			{
-				if(intfacbtags(jface,0) == bcm)
+				if(btags(jface,0) == bcm)
 				{
 					const scalar cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
 
@@ -680,7 +680,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 	//allocate intfac and elemface
 	intfac.resize(naface,nnofa+2);
 	elemface.resize(nelem,maxnfael);
-	intfacbtags.resize(nbface,nbtag);
+	btags.resize(nbface,nbtag);
 
 	for(a_int iface = 0; iface < nbface; iface++)
 	{
@@ -689,7 +689,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		for(FIndex inode = 0; inode < nnofa; inode++)
 			intfac(iface,2+inode) = bface(iface,inode);
 		for(int j = nnofa; j < nnofa+nbtag; j++)
-			intfacbtags(iface,j-nnofa) = bface(iface,j);
+			btags(iface,j-nnofa) = bface(iface,j);
 	 
 		esuel(intelems[iface].first, intelems[iface].second) = nelem+iface;
 		elemface(intelems[iface].first, intelems[iface].second) = iface;
