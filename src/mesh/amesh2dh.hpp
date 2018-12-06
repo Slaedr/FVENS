@@ -287,13 +287,28 @@ public:
 	 */
 	void compute_boundary_maps();
 
-	/// Writes the boundary point maps [ifbmap](@ref ifbmap) and [bifmap](@ref bifmap) to a file
-	void writeBoundaryMapsToFile(std::string mapfile);
-	/// Reads the boundary point maps [ifbmap](@ref ifbmap) and [bifmap](@ref bifmap) from a file
-	void readBoundaryMapsFromFile(std::string mapfile);
-
 	/// Populate [intfacbtags](@ref intfacbtags) with boundary markers of corresponding bfaces
 	void compute_intfacbtags();
+
+	/// Get the index of a node w.r.t. an element (ie., get the node's "EIndex") from
+	///  its index in a face of that element
+	/** \param ielem Element index in the subdomain
+	 * \param faceEIndex Index of a face in the element w.r.t. the element (ie., the face's EIndex)
+	 * \param nodeFIndex Index of a node in the face above w.r.t. the face (ie., the node's FIndex)
+	 *
+	 * The current implementation works only in 2D.
+	 */
+	constexpr EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) const {
+		static_assert(NDIM==2);
+		return (iface + inode) % nnode[ielem];
+	}
+
+	/// Returns the EIndex of an intfac face in a certain element
+	/** Returns negative if the face is not present in that element.
+	 * \warning If iface is a physical boundary face, this function will always work. But if iface is
+	 *  an interior face defined according to \ref intfac, obviously intfac must be available.
+	 */
+	EIndex getFaceEIndex(const a_int iface, const a_int elem) const;
 
 	/// The initial mesh partitioner needs direct access to the mesh
 	friend UMesh2dh<a_real> partitionMeshTrivial(const MeshData& global_mesh);
@@ -423,18 +438,6 @@ private:
 
 	std::vector<a_int> connGlobalIndices;
 
-	/// Get the index of a node w.r.t. an element (ie., get the node's "EIndex") from
-	///  its index in a face of that element
-	/** \param ielem Element index in the subdomain
-	 * \param faceEIndex Index of a face in the element w.r.t. the element (ie., the face's EIndex)
-	 * \param nodeFIndex Index of a node in the face above w.r.t. the face (ie., the node's FIndex)
-	 *
-	 * The current implementation works only in 2D.
-	 */
-	constexpr EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) const {
-		return (iface + inode) % nnode[ielem];
-	}
-
 	/// Compute lists of elements (cells) surrounding each point \sa esup
 	/** \note This function is required to be called before some other topology-related computations.
 	 */
@@ -445,6 +448,12 @@ private:
 	 * \sa compute_elementsSurroundingPoints
 	 */
 	void compute_elementsSurroundingElements();
+
+	/// Computes the interior element associated with each physical boundary face of this subdomain
+	/** \return A pair with the interior element index as the first entry and
+	 *    the EIndex of the face in that element as the second entry.
+	 */
+	std::vector<std::pair<a_int,EIndex>> compute_phyBFaceNeighboringElements() const;
 
 	/** \brief Computes, for each face, the elements on either side, the starting node and
 	 * the ending node of the face. These are stored in \ref intfac.

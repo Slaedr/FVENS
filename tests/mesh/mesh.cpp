@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include "../test.hpp"
 #include <iostream>
 #include <fstream>
@@ -5,11 +6,12 @@
 #include "mesh/amesh2dh.hpp"
 #include "mesh/ameshutils.hpp"
 
-#undef NDEBUG
 #include <cassert>
 
 using namespace fvens;
 
+/// For each element in the esup list of a point, check if that point is actually part of each
+///  of those elements.
 template<typename scalar>
 int test_topology_internalconsistency_esup(const UMesh2dh<scalar>& m)
 {
@@ -32,6 +34,31 @@ int test_topology_internalconsistency_esup(const UMesh2dh<scalar>& m)
 	return 0;
 }
 
+/// For each mesh face, check if the left and right elements actually contain that face
+template<typename scalar>
+int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
+{
+	static_assert(NDIM==2);
+
+	for(a_int iface = 0; iface < m.gnface(); iface++)
+	{
+		const a_int lelem = m.gintfac(iface,0);
+		//const bool pass = checkWhetherFaceIsInElement(m, iface, lelem);
+		const EIndex locface = m.getFaceEIndex(iface, lelem);
+		assert(locface >= 0);
+	}
+	for(a_int iface = m.gnface(); iface < m.gnaface(); iface++)
+	{
+		const a_int lelem = m.gintfac(iface,0);
+		const a_int relem = m.gintfac(iface,1);
+		const EIndex locface1 = m.getFaceEIndex(iface, lelem);
+		assert(locface1 >= 0);
+		const EIndex locface2 = m.getFaceEIndex(iface, relem);
+		assert(locface2 >= 0);
+	}
+	return 0;
+}
+
 template<typename scalar>
 int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
 {
@@ -48,8 +75,10 @@ int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
 	int ierr = 0;
 
 	for(int i = 0; i < numfaces; i++) {
-		assert(m.gintfac(m.gifbmap(faces1[i]),1) == m.gintfac(m.gifbmap(faces2[i]),0));
-		assert(m.gintfac(m.gifbmap(faces1[i]),0) == m.gintfac(m.gifbmap(faces2[i]),1));
+		// assert(m.gintfac(m.gifbmap(faces1[i]),1) == m.gintfac(m.gifbmap(faces2[i]),0));
+		// assert(m.gintfac(m.gifbmap(faces1[i]),0) == m.gintfac(m.gifbmap(faces2[i]),1));
+		assert(m.gintfac(faces1[i],1) == m.gintfac(faces2[i],0));
+		assert(m.gintfac(faces1[i],0) == m.gintfac(faces2[i],1));
 	}
 
 	return ierr;
@@ -136,6 +165,9 @@ int main(int argc, char *argv[])
 
 	if(whichtest == "esup") {
 		err = test_topology_internalconsistency_esup(m);
+	}
+	else if(whichtest == "intfac") {
+		err = test_topology_internalconsistency_intfac(m);
 	}
 	else if(whichtest == "periodic") {
 		err = test_periodic_map(m, 4, 0);

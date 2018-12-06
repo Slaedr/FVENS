@@ -347,11 +347,10 @@ void UMesh2dh<scalar>::compute_topological()
 template <typename scalar>
 void UMesh2dh<scalar>::compute_face_data()
 {
-	int i, j, p1, p2;
-
+	static_assert(NDIM==2);
 	//Now compute normals and lengths (only linear meshes!)
 	facemetric.resize(naface, 3);
-	for(i = 0; i < naface; i++)
+	for(a_int i = 0; i < naface; i++)
 	{
 		facemetric(i,0) = coords(intfac(i,3),1) - coords(intfac(i,2),1);
 		facemetric(i,1) = -1.0*(coords(intfac(i,3),0) - coords(intfac(i,2),0));
@@ -362,34 +361,34 @@ void UMesh2dh<scalar>::compute_face_data()
 	}
 
 	//Populate boundary flags in intfacbtags
-#ifdef DEBUG
-	std::cout << "UTriMesh: compute_face_data(): Storing boundary flags in intfacbtags...\n";
-#endif
-	intfacbtags.resize(nbface,nbtag);
-	for(int ied = 0; ied < nbface; ied++)
-	{
-		p1 = intfac(ied,2);
-		p2 = intfac(ied,3);
+// #ifdef DEBUG
+// 	std::cout << "UTriMesh: compute_face_data(): Storing boundary flags in intfacbtags...\n";
+// #endif
+// 	intfacbtags.resize(nbface,nbtag);
+// 	for(int ied = 0; ied < nbface; ied++)
+// 	{
+// 		p1 = intfac(ied,2);
+// 		p2 = intfac(ied,3);
 
-		if(nbface != nface) {
-			std::cout <<"UMesh2dh: Calculation of number of boundary faces is wrong!" << std::endl;
-			break;
-		}
-		for(i = 0; i < nface; i++)
-		{
-			if(bface(i,0) == p1 || bface(i,1) == p1)
-			{
-				if(bface(i,1) == p2 || bface(i,0) == p2)
-				{
-					for(j = 0; j < nbtag; j++)
-					{
-						intfacbtags(ied,j) = bface.get(i,nnofa+j);
-						intfacbtags(ied,j) = bface.get(i,nnofa+j);
-					}
-				}
-			}
-		}
-	}
+// 		if(nbface != nface) {
+// 			std::cout <<"UMesh2dh: Calculation of number of boundary faces is wrong!" << std::endl;
+// 			break;
+// 		}
+// 		for(i = 0; i < nface; i++)
+// 		{
+// 			if(bface(i,0) == p1 || bface(i,1) == p1)
+// 			{
+// 				if(bface(i,1) == p2 || bface(i,0) == p2)
+// 				{
+// 					for(j = 0; j < nbtag; j++)
+// 					{
+// 						intfacbtags(ied,j) = bface.get(i,nnofa+j);
+// 						intfacbtags(ied,j) = bface.get(i,nnofa+j);
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_face_data(): Done.\n";
 #endif
@@ -512,48 +511,6 @@ void UMesh2dh<scalar>::compute_boundary_maps()
 			continue;
 		}
 	}
-	isBoundaryMaps = true;
-}
-
-template <typename scalar>
-void UMesh2dh<scalar>::writeBoundaryMapsToFile(std::string mapfile)
-{
-	if(isBoundaryMaps == false) {
-		std::cout << "UMesh2d: writeBoundaryMapsToFile(): ! Boundary maps not available!"
-			<< std::endl;
-		return;
-	}
-	std::ofstream ofile(mapfile);
-	ofile << nbface << '\n'<< "bifmap\n";
-	for(int i = 0; i < nbface; i++)
-		ofile << bifmap.get(i) << ' ';
-	ofile << '\n';
-	ofile << "ifbmap\n";
-	for(int i = 0; i < nbface; i++)
-		ofile << ifbmap.get(i) << ' ';
-	ofile << '\n';
-	ofile.close();
-}
-
-template <typename scalar>
-void UMesh2dh<scalar>::readBoundaryMapsFromFile(std::string mapfile)
-{
-	std::ifstream ofile(mapfile);
-	std::string dum; int sz;
-	ofile >> sz >>  dum;
-	std::cout << "UMesh2d: readBoundaryMapsFromFile(): Number of boundary faces in file = "
-		<< sz << std::endl;
-	bifmap.resize(sz,1);
-	ifbmap.resize(sz,1);
-
-	for(int i = 0; i < nbface; i++)
-		ofile >> bifmap(i);
-
-	ofile >> dum;
-	for(int i = 0; i < nbface; i++)
-		ofile >> ifbmap(i);
-
-	ofile.close();
 	isBoundaryMaps = true;
 }
 
@@ -705,9 +662,64 @@ void UMesh2dh<scalar>::compute_elementsSurroundingElements()
 }
 
 template <typename scalar>
-std::vector<a_int> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
+EIndex UMesh2dh<scalar>::getFaceEIndex(const a_int iface, const a_int lelem) const
 {
-	std::vector<a_int> interiorelem(nface);
+	static_assert(NDIM==2);
+
+	EIndex face = -1;
+
+	if(iface >= nface)
+		assert(intfac.rows() > 0);
+
+	for(EIndex ifael = 0; ifael < gnfael(lelem); ifael++)
+	{
+		bool facefound = true;
+
+		// iterate over each node of the element's face to see if
+		//  all nodes of the intfac face are matched
+		// below, gnnofa needs to be replaced by the number of nodes in the inofa-th face of the element
+		for(FIndex inofa = 0; inofa < gnnofa(iface); inofa++)
+		{
+			const a_int node = ginpoel(lelem,getNodeEIndex(lelem,ifael,inofa));
+			bool nodefound = false;
+			for(FIndex jnofa = 0; jnofa < gnnofa(iface); jnofa++)
+			{
+				// NOTE: If iface is a phy boundary face, we use bface. Else intfac must be used.
+				if(iface < nface) {
+					if(bface(iface,jnofa) == node) {
+						nodefound = true;
+						break;
+					}
+				}
+				else {
+					if(gintfac(iface,jnofa+2) == node) {
+						nodefound = true;
+						break;
+					}
+				}
+			}
+			// if this node of lelem does not any node of iface,
+			//  move on to the next face of the lelem.
+			if(!nodefound) {
+				facefound = false;
+				break;
+			}
+		}
+
+		if(facefound)
+		{
+			face = ifael;
+			break;
+		}
+	}
+
+	return face;
+}
+
+template <typename scalar>
+std::vector<std::pair<a_int,EIndex>> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
+{
+	std::vector<std::pair<a_int,EIndex>> interiorelem(nface);
 
 	for(a_int iface = 0; iface < nface; iface++)
 	{
@@ -724,11 +736,11 @@ std::vector<a_int> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
 			std::sort(nbdelems[j].begin(), nbdelems[j].end());  // for using set_intersection below
 		}
 
-		// Compute the intersection of the elements surrounding each of the points of this face.
-		//  initialize with the elements surrounding the first point.
+		// Compute the intersection of the sets of elements surrounding each point of this face.
+		//  Initialize with the elements surrounding the first point.
 		std::vector<a_int> intersection;
 		for(unsigned int j = 0; j < nbdelems[0].size(); j++)
-			intesection.push_back(nbdelems[0][j]);
+			intersection.push_back(nbdelems[0][j]);
 		for(int j = 1; j < nnofa; j++)
 		{
 			std::vector<a_int> temp(intersection.size());
@@ -747,7 +759,11 @@ std::vector<a_int> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
 			                       + std::to_string(iface));
 		}
 
-		interiorelem[iface] = intersection[0];
+		interiorelem[iface].first = intersection[0];
+
+		// find the EIndex of the face
+		interiorelem[iface].second = getFaceEIndex(iface, intersection[0]);
+		assert(interiorelem[iface].second >= 0);
 	}
 
 	return interiorelem;
@@ -759,24 +775,29 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 #ifdef DEBUG
 	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
 #endif
-	nbface = naface = 0;
-	// first run: calculate nbface
-	for(int ie = 0; ie < nelem; ie++)
-	{
-		for(int in = 0; in < nfael[ie]; in++)
-		{
-			int je = esuel(ie,in);
-			if(je == -1)
-			{
-				//esuel(ie,in) = nelem+nbface;
-				nbface++;
-			}
-		}
-	}
-	std::cout << "UMesh2dh: compute_topological(): Number of boundary faces = "
-		<< nbface << std::endl;
+
+	const std::vector<std::pair<a_int,EIndex>> intelems = compute_phyBFaceNeighboringElements();
+
+	// nbface = naface = 0;
+	// // first run: calculate nbface
+	// for(int ie = 0; ie < nelem; ie++)
+	// {
+	// 	for(int in = 0; in < nfael[ie]; in++)
+	// 	{
+	// 		int je = esuel(ie,in);
+	// 		if(je == -1)
+	// 		{
+	// 			nbface++;
+	// 		}
+	// 	}
+	// }
+	// std::cout << "UMesh2dh: compute_topological(): Number of boundary faces = "
+	// 	<< nbface << std::endl;
+
+	nbface = nface;
+
 	// calculate number of internal faces
-	naface = nbface;
+	naface = nface;
 	for(int ie = 0; ie < nelem; ie++)
 	{
 		for(int in = 0; in < nfael[ie]; in++)
@@ -785,53 +806,65 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 			if(je > ie && je < nelem) naface++;
 		}
 	}
-	std::cout << "UMesh2dh: compute_topological(): Number of all faces = " << naface << std::endl;
+	std::cout << "UMesh2dh: compute_faceConnectivity(): Total number of faces= " << naface << std::endl;
 
 	//allocate intfac and elemface
 	intfac.resize(naface,nnofa+2);
 	elemface.resize(nelem,maxnfael);
 
-	//reset face totals
-	nbface = naface = 0;
+	// // reset face totals
+	// nbface = naface = 0;
+	// //second run: populate intfac
+	// for(a_int ie = 0; ie < nelem; ie++)
+	// {
+	// 	for(int in = 0; in < nnode[ie]; in++)
+	// 	{
+	// 		const a_int je = esuel(ie,in);
+	// 		if(je == -1)
+	// 		{
+	// 			const int in1 = (in+1)%nnode[ie];
+	// 			esuel(ie,in) = nelem+nbface;
+	// 			intfac(nbface,0) = ie;
+	// 			intfac(nbface,1) = nelem+nbface;
+	// 			intfac(nbface,2) = inpoel(ie,in);
+	// 			intfac(nbface,3) = inpoel(ie,in1);
+	// 			elemface(ie,in) = nbface;
 
-	int in1, je, jnode;
+	// 			nbface++;
+	// 		}
+	// 	}
+	// }
 
-	//second run: populate intfac
-	for(int ie = 0; ie < nelem; ie++)
+	intfacbtags.resize(nface,nbtag);
+	for(a_int iface = 0; iface < nface; iface++)
 	{
-		for(int in = 0; in < nnode[ie]; in++)
-		{
-			je = esuel(ie,in);
-			if(je == -1)
-			{
-				in1 = (in+1)%nnode[ie];
-				esuel(ie,in) = nelem+nbface;
-				intfac(nbface,0) = ie;
-				intfac(nbface,1) = nelem+nbface;
-				intfac(nbface,2) = inpoel(ie,in);
-				intfac(nbface,3) = inpoel(ie,in1);
-				elemface(ie,in) = nbface;
-
-				nbface++;
-			}
-		}
+		intfac(iface,0) = intelems[iface].first;
+		intfac(iface,1) = nelem+iface;
+		for(FIndex inode = 0; inode < nnofa; inode++)
+			intfac(iface,2+inode) = bface(iface,inode);
+		for(int j = nnofa; j < nnofa+nbtag; j++)
+			intfacbtags(iface,j-nnofa) = bface(iface,j);
+	 
+		esuel(intelems[iface].first, intelems[iface].second) = nelem+iface;
+		elemface(intelems[iface].first, intelems[iface].second) = iface;
 	}
-	naface = nbface;
-	for(int ie = 0; ie < nelem; ie++)
+
+	naface = nface;
+	for(a_int ie = 0; ie < nelem; ie++)
 	{
-		for(int in = 0; in < nnode[ie]; in++)
+		for(EIndex in = 0; in < nnode[ie]; in++)
 		{
-			je = esuel(ie,in);
+			const a_int je = esuel(ie,in);
 			if(je > ie && je < nelem)
 			{
-				in1 = (in+1)%nnode[ie];
+				const EIndex in1 = (in+1)%nnode[ie];
 				intfac(naface,0) = ie;
 				intfac(naface,1) = je;
 				intfac(naface,2) = inpoel.get(ie,in);
 				intfac(naface,3) = inpoel.get(ie,in1);
 
 				elemface(ie,in) = naface;
-				for(jnode = 0; jnode < nnode[je]; jnode++)
+				for(EIndex jnode = 0; jnode < nnode[je]; jnode++)
 					if(inpoel.get(ie,in1) == inpoel.get(je,jnode))
 						elemface(je,jnode) = naface;
 

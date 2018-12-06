@@ -35,6 +35,6 @@ Plane Surface(8) = {8,7};
 Recombine Surface{8};
 
 //physical 
-Physical Line(2) = {1,2,3,4};
+Physical Line(2) = {-1,-2,-3,-4};
 Physical Line(4) = {31,32};
 Physical Surface(1) = {8};

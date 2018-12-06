@@ -11,6 +11,9 @@ target_link_libraries(exec_disttestmesh fvens_base)
 add_test(NAME Mesh_Topology_ElemSurrElem
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
   esup ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/2dcylinderhybrid.msh)
+add_test(NAME Mesh_Topology_FaceStructure
+  COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
+  intfac ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/2dcylinderhybrid.msh)
 add_test(NAME Mesh_Periodic
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh periodic
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testperiodic.msh)
