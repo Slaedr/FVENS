@@ -243,11 +243,11 @@ extractPointCoords(UMesh2dh<a_real>& lm, std::vector<a_int>& locpoints) const
 void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>& pointGlob2Loc,
                                                     UMesh2dh<a_real>& lm) const
 {
-	lm.nface = 0;
+	lm.nbface = 0;
 	std::vector<std::array<a_int,6>> tbfaces;         // assuming max 4 points and 2 tags per face
 	assert(gm.nnofa <= 4);
 	assert(gm.nbtag <= 2);
-	for(a_int iface = 0; iface < gm.nface; iface++)
+	for(a_int iface = 0; iface < gm.nbface; iface++)
 	{
 		bool reqd = true;
 		std::array<a_int,6> locbfpoints;
@@ -264,12 +264,12 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 			for(int j = 0; j < gm.nbtag; j++)
 				locbfpoints[gm.nnofa+j] = gm.bface(iface,gm.nnofa+j);
 			tbfaces.push_back(locbfpoints);
-			lm.nface++;
+			lm.nbface++;
 		}
 	}
 
-	lm.bface.resize(lm.nface, lm.nnofa+lm.nbtag);
-	for(a_int iface = 0; iface < lm.nface; iface++)
+	lm.bface.resize(lm.nbface, lm.nnofa+lm.nbtag);
+	for(a_int iface = 0; iface < lm.nbface; iface++)
 		for(int j = 0; j < lm.nnofa+lm.nbtag; j++)
 			lm.bface(iface,j) = tbfaces[iface][j];
 }
@@ -280,7 +280,7 @@ markLocalPhysicalBoundaryPoints(const UMesh2dh<a_real>& lm) const
 {
 	std::vector<bool> isBounPoin(lm.npoin,false);
 
-	for(a_int iface = 0; iface < lm.nface; iface++)
+	for(a_int iface = 0; iface < lm.nbface; iface++)
 	{
 		for(int inode = 0; inode < lm.nnofa; inode++) {
 			isBounPoin[lm.bface(iface,inode)] = true;

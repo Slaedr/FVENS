@@ -31,7 +31,7 @@ struct MeshData
 {
 	a_int npoin;                    ///< Number of nodes
 	a_int nelem;                    ///< Number of elements
-	a_int nface;                    ///< Number of boundary faces
+	a_int nbface;                   ///< Number of boundary faces
 	std::vector<int> nnode;         ///< number of nodes to an element, for each element
 	int maxnnode;                   ///< Maximum number of nodes per element for any element
 	std::vector<int> nfael;         ///< number of faces to an element for each element

@@ -148,7 +148,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 	std::array<bool,8> isequal;
 	isequal[0] = (m1.gnelem() == m2.gnelem());
 	isequal[1] = (m1.gnpoin() == m2.gnpoin());
-	isequal[2] = (m1.gnface() == m2.gnface());
+	isequal[2] = (m1.gnbface() == m2.gnbface());
 	isequal[3] = true;
 	isequal[4] = true;
 	isequal[5] = true;
@@ -180,7 +180,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 			}
 	}
 	static_assert(NDIM==2);  // change the hard-coded "2" below before removing this line
-	for(a_int i = 0; i < m1.gnface(); i++)
+	for(a_int i = 0; i < m1.gnbface(); i++)
 		for(int j = 0; j < 2 +m1.gnbtag(); j++)
 			if(m1.gbface(i,j) != m2.gbface(i,j)) {
 				isequal[6] = false;

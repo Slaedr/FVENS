@@ -40,14 +40,14 @@ int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
 {
 	static_assert(NDIM==2);
 
-	for(a_int iface = 0; iface < m.gnface(); iface++)
+	for(a_int iface = 0; iface < m.gnbface(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
 		//const bool pass = checkWhetherFaceIsInElement(m, iface, lelem);
 		const EIndex locface = m.getFaceEIndex(iface, lelem);
 		assert(locface >= 0);
 	}
-	for(a_int iface = m.gnface(); iface < m.gnaface(); iface++)
+	for(a_int iface = m.gnbface(); iface < m.gnaface(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
 		const a_int relem = m.gintfac(iface,1);
@@ -65,9 +65,6 @@ int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
 	m.compute_face_data();
 	m.compute_periodic_map(bcm,axis);
 
-	// map intfac faces to mesh faces for testing
-	m.compute_boundary_maps();
-
 	const int numfaces = 5;
 	const a_int faces1[] = {8,9,10,11,12};
 	const a_int faces2[] = {25,24,23,22,21};
@@ -75,8 +72,6 @@ int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
 	int ierr = 0;
 
 	for(int i = 0; i < numfaces; i++) {
-		// assert(m.gintfac(m.gifbmap(faces1[i]),1) == m.gintfac(m.gifbmap(faces2[i]),0));
-		// assert(m.gintfac(m.gifbmap(faces1[i]),0) == m.gintfac(m.gifbmap(faces2[i]),1));
 		assert(m.gintfac(faces1[i],1) == m.gintfac(faces2[i],0));
 		assert(m.gintfac(faces1[i],0) == m.gintfac(faces2[i],1));
 	}

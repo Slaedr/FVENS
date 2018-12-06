@@ -165,12 +165,6 @@ public:
 #endif
 	}
 
-	/// Get \ref bface index of a face from its \ref intfac index
-	a_int gbifmap(const a_int iface) const { return bifmap(iface); }
-
-	/// Get \ref intfac index of a face from its \ref bface index
-	a_int gifbmap(const a_int iface) const { return ifbmap(iface); }
-
 	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
 	//int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
@@ -180,10 +174,7 @@ public:
 	/// Returns the total number of elements (cells) in the mesh
 	a_int gnelem() const { return nelem; }
 
-	/// Returns the total number of boundary faces in the mesh
-	a_int gnface() const { return nface; }
-
-	/// Returns the total number of boundary faces; practically synonymous with \ref gnface
+	/// Returns the total number of physical boundary faces
 	a_int gnbface() const { return nbface; }
 
 	/// Returns the number of nodes in an element
@@ -282,14 +273,6 @@ public:
 	 */
 	void compute_periodic_map(const int bcm, const int axis);
 
-	/// Iterates over bfaces and finds the corresponding intfac face for each bface
-	/** Stores this data in the boundary label maps \ref ifbmap and \ref bifmap.
-	 */
-	void compute_boundary_maps();
-
-	/// Populate [intfacbtags](@ref intfacbtags) with boundary markers of corresponding bfaces
-	void compute_intfacbtags();
-
 	/// Get the index of a node w.r.t. an element (ie., get the node's "EIndex") from
 	///  its index in a face of that element
 	/** \param ielem Element index in the subdomain
@@ -329,7 +312,7 @@ private:
 
 	a_int npoin;                    ///< Number of nodes
 	a_int nelem;                    ///< Number of elements
-	a_int nface;                    ///< Number of boundary faces
+	a_int nbface;                    ///< Number of boundary faces
 	std::vector<int> nnode;         ///< number of nodes to an element, for each element
 	int maxnnode;                   ///< Maximum number of nodes per element for any element
 	std::vector<int> nfael;         ///< number of faces to an element for each element
@@ -349,8 +332,6 @@ private:
 	amat::Array2d<a_int> bface;
 
 	a_int naface;                   ///< total number of (internal and boundary) faces
-	/// number of physical boundary faces as calculated in \sa compute_topological
-	a_int nbface;
 	/// Number of connection boundary faces (connection to other subdomains)
 	a_int nconnface;
 	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points

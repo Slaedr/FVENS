@@ -97,7 +97,7 @@ MeshData readGmsh2(const std::string mfile)
 	m.ndtag = 0; m.nbtag = 0;
 	infile >> nelm;
 	amat::Array2d<a_int > elms(nelm,width_elms);
-	m.nface = 0; m.nelem = 0;
+	m.nbface = 0; m.nelem = 0;
 	std::vector<int> nnodes(nelm,0);
 	std::vector<int> nfaels(nelm,0);
 	//std::cout << "UMesh2d: readGmsh2(): Total number of elms is " << nelm << std::endl;
@@ -120,7 +120,7 @@ MeshData readGmsh2(const std::string mfile)
 					infile >> elms(i,j+m.nnofa);		// get tags
 				for(int j = 0; j < m.nnofa; j++)
 					infile >> elms(i,j);			// get node numbers
-				m.nface++;
+				m.nbface++;
 				break;
 			case(8): // quadratic edge
 				m.nnofa = 3;
@@ -130,7 +130,7 @@ MeshData readGmsh2(const std::string mfile)
 					infile >> elms(i,j+m.nnofa);		// get tags
 				for(int j = 0; j < m.nnofa; j++)
 					infile >> elms(i,j);			// get node numbers
-				m.nface++;
+				m.nbface++;
 				break;
 			case(2): // linear triangles
 				nnodes[i] = 3;
@@ -215,7 +215,7 @@ MeshData readGmsh2(const std::string mfile)
 	m.nfael.reserve(m.nelem);
 
 	// calculate max nnode and nfael
-	m.maxnnode = nnodes[m.nface]; m.maxnfael = nfaels[m.nface];
+	m.maxnnode = nnodes[m.nbface]; m.maxnfael = nfaels[m.nbface];
 	for(int i = 0; i < nelm; i++)
 	{
 		if(nnodes[i] > m.maxnnode)
@@ -224,8 +224,8 @@ MeshData readGmsh2(const std::string mfile)
 			m.maxnfael = nfaels[i];
 	}
 
-	if(m.nface > 0)
-		m.bface.resize(m.nface, m.nnofa+m.nbtag);
+	if(m.nbface > 0)
+		m.bface.resize(m.nbface, m.nnofa+m.nbtag);
 	else std::cout << "readGmsh2(): WARNING: There is no boundary data!" << std::endl;
 
 	m.inpoel.resize(m.nelem, m.maxnnode);
@@ -233,14 +233,14 @@ MeshData readGmsh2(const std::string mfile)
 
 	std::cout << "readGmsh2(): No. of points: " << m.npoin
 		<< ", number of elements: " << m.nelem
-		<< ",\nnumber of boundary faces " << m.nface
+		<< ",\nnumber of boundary faces " << m.nbface
 		<< ", max no. of nodes per element: " << m.maxnnode
 		<< ",\nno. of nodes per face: " << m.nnofa
 		<< ", max faces per element: " << m.maxnfael << std::endl;
 
 	// write into inpoel and bface
-	// the first nface rows to be read are boundary faces
-	for(int i = 0; i < m.nface; i++)
+	// the first nbface rows to be read are boundary faces
+	for(int i = 0; i < m.nbface; i++)
 	{
 		for(int j = 0; j < m.nnofa; j++)
 			// -1 to correct for the fact that our numbering starts from zero
@@ -250,14 +250,14 @@ MeshData readGmsh2(const std::string mfile)
 	}
 	for(int i = 0; i < m.nelem; i++)
 	{
-		for(int j = 0; j < nnodes[i+m.nface]; j++)
-			m.inpoel(i,j) = elms(i+m.nface,j)-1;
-		for(int j = nnodes[i+m.nface]; j < m.maxnnode; j++)
+		for(int j = 0; j < nnodes[i+m.nbface]; j++)
+			m.inpoel(i,j) = elms(i+m.nbface,j)-1;
+		for(int j = nnodes[i+m.nbface]; j < m.maxnnode; j++)
 			m.inpoel(i,j) = -1;
 		for(int j = 0; j < m.ndtag; j++)
-			m.vol_regions(i,j) = elms(i+m.nface,j+nnodes[i+m.nface]);
-		m.nnode.push_back(nnodes[i+m.nface]);
-		m.nfael.push_back(nfaels[i+m.nface]);
+			m.vol_regions(i,j) = elms(i+m.nbface,j+nnodes[i+m.nbface]);
+		m.nnode.push_back(nnodes[i+m.nbface]);
+		m.nfael.push_back(nfaels[i+m.nbface]);
 	}
 	infile.close();
 
@@ -346,7 +346,7 @@ MeshData readSU2(const std::string mfile)
 
 	std::vector<int> tags(nbmarkers);
 	std::vector<a_int> numfacs(nbmarkers);
-	m.nface = 0;
+	m.nbface = 0;
 
 	for(int ib = 0; ib < nbmarkers; ib++)
 	{
@@ -354,7 +354,7 @@ MeshData readSU2(const std::string mfile)
 		tags[ib] = std::stoi(dum);
 		std::getline(fin, dum, '='); std::getline(fin,dum);
 		numfacs[ib] = std::stoi(dum);
-		m.nface += numfacs[ib];
+		m.nbface += numfacs[ib];
 
 		bfacs[ib].resize(numfacs[ib]);
 		m.nnofa = 2;
@@ -375,9 +375,9 @@ MeshData readSU2(const std::string mfile)
 
 	fin.close();
 
-	std::cout << "UMesh2dh: readSU2: Number of boundary faces = " << m.nface << std::endl;
+	std::cout << "UMesh2dh: readSU2: Number of boundary faces = " << m.nbface << std::endl;
 
-	m.bface.resize(m.nface,m.nnofa+m.nbtag);
+	m.bface.resize(m.nbface,m.nnofa+m.nbtag);
 	a_int count=0;
 	for(int ib = 0; ib < nbmarkers; ib++)
 	{
