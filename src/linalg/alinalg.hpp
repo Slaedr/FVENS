@@ -23,7 +23,12 @@ namespace fvens {
 /// Sets up global vectors with storage with ghost locations for connectivity boundaries
 /** \param[in] nvars Number of physical variables per grid location
  */
-StatusCode setupSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v);
+StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v);
+
+/// Creates a Vec with one unknown per mesh cell
+/** Currently, a 'sequential' Vec is created.
+ */
+StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v);
 
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context
@@ -41,11 +46,6 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A);
 /// Computes the amount of memory to be reserved for the Jacobian matrix
 template <int nvars>
 StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A);
-
-/// Creates a Vec with one unknown per mesh cell
-/** Currently, a 'sequential' Vec is created.
- */
-StatusCode createMeshBasedVector(const UMesh2dh<a_real> *const m, Vec *const v);
 
 /// Matrix-free Jacobian of the flux
 /** An object of this type is associated with a specific spatial discretization context.

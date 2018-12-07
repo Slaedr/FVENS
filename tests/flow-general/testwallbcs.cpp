@@ -15,7 +15,7 @@ int TestFlowFV::testWalls(const a_real *const u) const
 {
 	int ierr = 0;
 
-	for(int iface = 0; iface < m->gnbface(); iface++)
+	for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		a_real ug[NVARS];
 		a_real n[NDIM];

@@ -97,7 +97,7 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<a_real,n
 	StatusCode ierr = VecDuplicate(uvec, &rvec);
 	petsc_throw(ierr, "Could not duplicate vec");
 
-	ierr = createMeshBasedVector(m, &dtmvec);
+	ierr = createSystemVector(m, 1, &dtmvec);
 	petsc_throw(ierr, "Could not create mesh vector");
 }
 
@@ -256,7 +256,7 @@ SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
 	ierr = KSPGetOperators(solver, NULL, &M);
 	ierr = MatCreateVecs(M, &duvec, &rvec);
 	petsc_throw(ierr, "SteadyBackwardEulerSolver: Could not create residual or update vector!");
-	ierr = createMeshBasedVector(m, &dtmvec);
+	ierr = createSystemVector(m, 1, &dtmvec);
 	petsc_throw(ierr, "Could not create mesh vector");
 }
 
@@ -399,7 +399,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	}
 
 	// get list of iterations at which to recompute AMG interpolation operators, if used
-	std::vector<int> amgrecompute = parseOptionalPetscCmd_intArray("-amg_recompute_interpolation",3);
+	const std::vector<int> amgrecompute
+		= parseOptionalPetscCmd_intArray("-amg_recompute_interpolation",3);
 
 	bool tocomputeamginterpolation = false;
 
@@ -441,7 +442,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 		}
 
-		std::vector<int>::iterator it = std::find(amgrecompute.begin(), amgrecompute.end(), step+1);
+		std::vector<int>::const_iterator it = std::find(amgrecompute.begin(), amgrecompute.end(), step+1);
 		if(it != amgrecompute.end()) {
 			if(mpirank == 0) {
 				std::cout << " SteadyBackwardEulerSolver: solve(): Recomputing AMG interpolation if ";
@@ -620,7 +621,7 @@ TVDRKSolver<nvars>::TVDRKSolver(const Spatial<a_real,nvars> *const spatial,
 {
 	int ierr = VecDuplicate(uvec, &rvec);
 	petsc_throw(ierr, "! TVDRKSolver: Could not create residual vector!");
-	ierr = createMeshBasedVector(space->mesh(), &dtmvec);
+	ierr = createSystemVector(space->mesh(), 1, &dtmvec);
 	petsc_throw(ierr, "Could not create dt vec");
 	std::cout << " TVDRKSolver: Initialized TVD RK solver of order " << order <<
 		", CFL = " << cfl << std::endl;

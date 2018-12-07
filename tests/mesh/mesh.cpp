@@ -40,14 +40,13 @@ int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
 {
 	static_assert(NDIM==2);
 
-	for(a_int iface = 0; iface < m.gnbface(); iface++)
+	for(a_int iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
-		//const bool pass = checkWhetherFaceIsInElement(m, iface, lelem);
 		const EIndex locface = m.getFaceEIndex(iface, lelem);
 		assert(locface >= 0);
 	}
-	for(a_int iface = m.gnbface(); iface < m.gnaface(); iface++)
+	for(a_int iface = m.gSubDomFaceStart(); iface < m.gSubDomFaceEnd(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
 		const a_int relem = m.gintfac(iface,1);
@@ -55,6 +54,12 @@ int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
 		assert(locface1 >= 0);
 		const EIndex locface2 = m.getFaceEIndex(iface, relem);
 		assert(locface2 >= 0);
+	}
+	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
+	{
+		const a_int lelem = m.gintfac(iface,0);
+		const EIndex locface = m.getFaceEIndex(iface, lelem);
+		assert(locface >= 0);
 	}
 	return 0;
 }

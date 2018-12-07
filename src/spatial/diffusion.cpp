@@ -46,7 +46,7 @@ template<int nvars>
 void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates,
                                                amat::Array2d<a_real>& bounstates) const
 {
-	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
 }
 
@@ -89,7 +89,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	uleft.resize(m->gnbface(),nvars);	// Modified
 	ug.resize(m->gnbface(),nvars);
 
-	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
 		for(int ivar = 0; ivar < nvars; ivar++)
@@ -103,7 +103,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	gradcomp->compute_gradients(u, ug, &grads[0]);
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
@@ -134,13 +134,16 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 			/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
 			residual(lelem,ivar) -= flux;
+
+			if(relem < m->gnelem()) {
 #pragma omp atomic
-			residual(relem,ivar) += flux;
+				residual(relem,ivar) += flux;
+			}
 		}
 	}
 
 #pragma omp parallel for default(shared)
-	for(int iface = 0; iface < m->gnbface(); iface++)
+	for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_real len = m->gfacemetric(iface,2);
@@ -168,7 +171,6 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 			flux *= (-diffusivity*len);
 
 			/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
-#pragma omp atomic
 			residual(lelem,ivar) -= flux;
 		}
 	}

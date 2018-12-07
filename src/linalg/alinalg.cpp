@@ -7,7 +7,14 @@
 
 namespace fvens {
 
-StatusCode setupSystemVector(const UMesh2dh<a_real> *const m, const int bs, Vec *const v)
+StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v)
+{
+	StatusCode ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem()*nvars, v);
+	CHKERRQ(ierr);
+	return ierr;
+}
+
+StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int bs, Vec *const v)
 {
 	StatusCode ierr = 0;
 	ierr = VecCreateGhostBlock(PETSC_COMM_WORLD, bs, m->gnelem()*bs, PETSC_DECIDE, m->gnConnFace(),
@@ -82,12 +89,6 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
 
 template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh<a_real> *const m, Mat *const A);
 template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *const A);
-
-StatusCode createMeshBasedVector(const UMesh2dh<a_real> *const m, Vec *const v)
-{
-	StatusCode ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem(), v); CHKERRQ(ierr);
-	return ierr;
-}
 
 template<int nvars>
 MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const s)

@@ -13,6 +13,7 @@
 #include "utilities/aoptionparser.hpp"
 #include "spatial/aoutput.hpp"
 #include "mesh/ameshutils.hpp"
+#include "mpiutils.hpp"
 
 #ifdef USE_BLASTED
 #include <blasted_petsc.h>
@@ -50,7 +51,8 @@ const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
 
 int initializeSystemVector(const FlowParserOptions& opts, const UMesh2dh<a_real>& m, Vec *const u)
 {
-	int ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u); CHKERRQ(ierr);
+	//int ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u); CHKERRQ(ierr);
+	int ierr = createSystemVector(&m, NVARS, u); CHKERRQ(ierr);
 
 	const IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	const std::array<a_real,NVARS> uinf = phy.compute_freestream_state(opts.alpha);
@@ -358,8 +360,8 @@ int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, const bool 
 		throw Tolerance_error("Main flow solve did not converge!");
 
 	if(outhist) {
-		int rank;
-		MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+		const int rank = get_mpi_rank(PETSC_COMM_WORLD);
+		//MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 		if(rank == 0) {
 			std::ofstream convout(opts.logfile+"-residual_history.log");
 			writeConvergenceHistoryHeader(convout);

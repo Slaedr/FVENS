@@ -32,7 +32,7 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 
 	std::array<a_real,NVARS> uinf = phy->compute_freestream_state(angleOfAttack);
 
-	a_real sinf = phy->getEntropyFromConserved(&uinf[0]);
+	const a_real sinf = phy->getEntropyFromConserved(&uinf[0]);
 
 	amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
@@ -43,7 +43,7 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 	}
 	error = sqrt(error);
 
-	a_real h = 1.0/sqrt(m->gnelem());
+	const a_real h = 1.0/sqrt(m->gnelem());
  
 	std::cout << "FlowOutput: log mesh size and log entropy:   " << log10(h) << "  " 
 	          << std::setprecision(10) << log10(error) << std::endl;
@@ -167,7 +167,8 @@ void FlowOutput::exportVolumeData(const MVector<a_real>& u, std::string volfile)
 	fout.close();
 }
 
-/** \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
+/** \todo Generalize for MPI runs.
+ * \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
  */
 void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
                                    const std::vector<int> wbcm, std::vector<int> obcm,
@@ -182,7 +183,8 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 	// get number of faces in wall boundary and other boundary
 	
 	std::vector<int> nwbfaces(wbcm.size(),0), nobfaces(obcm.size(),0);
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		for(int im = 0; im < static_cast<int>(wbcm.size()); im++)
 			if(m->gbtags(iface,0) == wbcm[im]) nwbfaces[im]++;

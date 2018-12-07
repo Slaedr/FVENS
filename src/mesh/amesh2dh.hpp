@@ -157,8 +157,10 @@ public:
 
 	/// @}
 
-	/// Returns the boundary marker of a face indexed by \ref intfac.
-	int gbtags(const a_int face, const int i) const { return btags.get(face,i); }
+	/// Returns the boundary marker of a boundary face indexed by \ref intfac.
+	/** Note that the index passed here must be in the range gPhyBFaceStart to gPhyBFaceEnd.
+	 */
+	int gbtags(const a_int face, const int i) const { return btags.get(face-gPhyBFaceStart(),i); }
 
 	/// Returns the measure of a cell
 	scalar garea(const a_int ielem) const { return area.get(ielem,0); }

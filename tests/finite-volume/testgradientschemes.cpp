@@ -61,12 +61,15 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 	a_real lrerrnorm = 0;
 
 	// Compute RMS errors
-	for(a_int iface = 0; iface < m->gnbface(); iface++) {
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++) {
 		errnorm += std::pow(uleft(iface,0) - linearfunc(&gr[iface](0,0)),2);
 	}
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++) {
+	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++) {
 		lrerrnorm += std::pow(uleft(iface,0)-uright(iface,0),2);
 		errnorm += std::pow(uleft(iface,0)-linearfunc(&gr[iface](0,0)),2);
+	}
+	for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++) {
+		errnorm += std::pow(uleft(iface,0) - linearfunc(&gr[iface](0,0)),2);
 	}
 
 	errnorm = std::sqrt(errnorm/m->gnaface());

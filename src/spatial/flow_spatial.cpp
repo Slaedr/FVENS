@@ -141,7 +141,7 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 	scalar flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
 
 	// iterate over faces having this boundary marker
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		if(m->gbtags(iface,0) == iwbcm)
 		{
@@ -154,8 +154,8 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 
 			// coords of face center
 			a_int ijp[NDIM];
-			ijp[0] = m->gintfac(iface,2);
-			ijp[1] = m->gintfac(iface,3);
+			for(int j = 0; j < NDIM; j++)
+				ijp[j] = m->gintfac(iface,2+j);
 			scalar coord[NDIM];
 			for(int j = 0; j < NDIM; j++)
 			{

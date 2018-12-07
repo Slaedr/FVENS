@@ -36,7 +36,7 @@ namespace fvens {
 template<typename scalar, int nvars>
 Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
-	rc.resize(m->gnelem()+m->gnbface(), NDIM);
+	rc.resize(m->gnelem()+m->gnbface()+m->gnConnFace(), NDIM);
 	gr = new amat::Array2d<scalar>[m->gnaface()];
 	for(int i = 0; i <  m->gnaface(); i++) {
 		gr[i].resize(NGAUSS, NDIM);
@@ -56,14 +56,17 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 		}
 	}
 
+	/** \todo Transfer cell centre data from neighboring subdomains for connectivity ghost cells.
+	 */
+
 	amat::Array2d<scalar> rchg(m->gnbface(),NDIM);
 
 	compute_ghost_cell_coords_about_midpoint(rchg);
 	//compute_ghost_cell_coords_about_face(rchg);
 
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
-		a_int relem = m->gintfac(iface,1);
+		const a_int relem = m->gintfac(iface,1);
 		for(int idim = 0; idim < NDIM; idim++)
 			rc(relem,idim) = rchg(iface,idim);
 	}
@@ -86,7 +89,7 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 
 	// Compute coords of face centres (NGAUSS == 1)
 	assert(NGAUSS == 1);
-	for(a_int ied = 0; ied < m->gnaface(); ied++)
+	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
 		for(int iv = 0; iv < m->gnnofa(ied); iv++)
 			for(int idim = 0; idim < NDIM; idim++)
@@ -106,7 +109,7 @@ Spatial<scalar,nvars>::~Spatial()
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg)
 {
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int ielem = m->gintfac(iface,0);
 
@@ -130,7 +133,8 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg)
 {
-	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	static_assert(NDIM==2);
+	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
 		const scalar nx = m->gfacemetric(ied,0);
