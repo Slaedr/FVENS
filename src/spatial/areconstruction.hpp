@@ -41,7 +41,9 @@ public:
 
 /// Calculate values of variables at left and right sides of each face 
 /// based on computed derivatives but without limiter.
-/** ug (cell centered flow variables at ghost cells) are not used for this
+/** ug (cell centered flow variables at ghost cells) are not used for this.
+ * In domain decomposition frameworks, node that this reconstruction does NOT need the cell gradients
+ * of connectivity ghost cells.
  */
 template <typename scalar, int nvars>
 class LinearUnlimitedReconstruction : public SolutionReconstruction<scalar,nvars>

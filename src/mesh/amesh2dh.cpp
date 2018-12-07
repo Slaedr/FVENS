@@ -692,16 +692,18 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		elemface(intelems[iface].first, intelems[iface].second) = iface;
 	}
 
-	// connectivity faces
+	// // Connectivity faces FIRST so that connectivity ghost cells can be placed right after
+	// //  subdomain cells in grid vectors.
 	// for(a_int iface = 0; iface < nconnface; iface++)
 	// {
 	// 	const a_int inelem = connface(iface,0);
-	// 	intfac(nbface+iface,0) = inelem;
-	// 	elemface(inelem,connface(iface,1)) = nbface+iface;
-	// 	intfac(nbface+iface,1) = nelem+nbface+iface;
+	// 	intfac(iface,0) = inelem;
+	// 	esuel(inelem,connface(iface,1)) = nelem+iface;
+	// 	elemface(inelem,connface(iface,1)) = iface;
+	// 	intfac(iface,1) = nelem+iface;
 
 	// 	for(FIndex inode = 0; inode < nnofa; inode++)
-	// 		intfac(nbface+iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
+	// 		intfac(iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
 	// }
 
 	// naface = nbface+nconnface;

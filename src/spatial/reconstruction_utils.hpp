@@ -11,7 +11,9 @@
 
 namespace fvens {
 
-/// Reconstructs a face value
+/// Reconstructs a face value by a "limited linear" extrapolation
+/** Note that depending on the limiter, this could be nonlinear.
+ */
 template <typename scalar, int nvars>
 static inline scalar
 linearExtrapolate(const scalar ucell,                          ///< Relevant cell centred value

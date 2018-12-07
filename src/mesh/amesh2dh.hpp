@@ -88,7 +88,9 @@ public:
 
 	/// Returns the face number in the [face data structure](\ref intfac) corresponding to
 	/// the local face index of an element
-	a_int gelemface(const a_int ielem, const int inode) const { return elemface.get(ielem,inode); }
+	/** For a connectivity ghost cell, only elemface(ielem,0) is defined.
+	 */
+	a_int gelemface(const a_int ielem, const EIndex ifael) const { return elemface.get(ielem,ifael); }
 
 	/// Returns the global element index of an element of this subdomain
 	a_int gglobalElemIndex(const a_int iel) const { return globalElemIndex[iel]; }

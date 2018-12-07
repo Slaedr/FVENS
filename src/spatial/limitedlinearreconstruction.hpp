@@ -14,6 +14,17 @@ namespace fvens {
 /// at each cell
 /** References: \cite xia2014, \cite dumbser2007.
  *
+ * \warning In the domain decomposition framework,
+ * note that this reconstruction is non-compact even in the cell-centred gradients. Cell gradients of
+ * connectivity ghost cells are required.
+ * 
+ * If this limiter is used, then the computation of the residual in a cell requires
+ * cell-centred state variables at that cell, its neighbors, its neighbors' neighbors and even
+ * *their* neighbors! In other words, if only cell-centred states are communicated, three layers of
+ * ghost cells are needed. If only one layer of ghost cells is used, then three messages are needed -
+ * the neighbors' cell centred values, then their cell gradients and finally the shared face's
+ * reconstructed value on the neighbors' side.
+ *
  * Note that we do not take the 'oscillation indicator' as the square of the magnitude of 
  * the gradient, like (it seems) in Dumbser & Kaeser, but unlike in Xia et. al.
  */
@@ -42,6 +53,9 @@ protected:
 };
 
 /// Non-differentiable multidimensional slope limiter for linear reconstruction
+/** In domain decomposition frameworks, node that this reconstruction does NOT need the cell gradients
+ * of connectivity ghost cells.
+ */
 template <typename scalar, int nvars>
 class BarthJespersenLimiter : public SolutionReconstruction<scalar,nvars>
 {
@@ -63,6 +77,9 @@ protected:
 };
 
 /// Differentiable modification of Barth-Jespersen limiter
+/** In domain decomposition frameworks, node that this reconstruction does NOT need the cell gradients
+ * of connectivity ghost cells.
+ */
 template <typename scalar, int nvars>
 class VenkatakrishnanLimiter: public SolutionReconstruction<scalar,nvars>
 {

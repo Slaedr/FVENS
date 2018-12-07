@@ -65,7 +65,7 @@ void WENOReconstruction<scalar,nvars>
 				const a_int jelem = m->gesuel(ielem,jel);
 
 				// ignore ghost cells
-				if(jelem >= m->gnelem())
+				if(jelem >= m->gnelem()+m->gnConnFace())
 					continue;
 
 				const scalar denom = pow( gradientMagnitude2(grads[jelem],ivar) + epsilon , gamma );
