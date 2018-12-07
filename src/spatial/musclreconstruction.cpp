@@ -68,7 +68,7 @@ void MUSCLVanAlbada<scalar,nvars>
                       amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
 #pragma omp parallel for default(shared)
-	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
 		const a_int jelem = m->gintfac(ied,1);
@@ -79,20 +79,25 @@ void MUSCLVanAlbada<scalar,nvars>
 			scalar grad[NDIM];
 			for(int j = 0; j < NDIM; j++)
 				grad[j] = grads[ielem](j,i);
-			
+
 			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
 			                                              u(ielem,i), ug(ied,i), grad);
-			
+
 			scalar phi_l = (2.0*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (ug(ied,i) - u(ielem,i))*(ug(ied,i) - u(ielem,i)) + eps);
+
 			if( phi_l < 0.0) phi_l = 0.0;
 
 			ufl(ied,i) = musclReconstructLeft(u(ielem,i), ug(ied,i), deltam, phi_l);
 		}
 	}
-	
+
+	/** MUSCL resconstruction is compact in the cell gradients. So assuming connectivity ghost cells
+	 * have updated gradients, we can compute resconstructed values without any more communication.
+	 * This property is shared with linear reconstruction but is opposed to WENO reconstruction.
+	 */
 #pragma omp parallel for default(shared)
-	for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+	for(a_int ied = m->gDomFaceStart(); ied < m->gDomFaceEnd(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
 		const a_int jelem = m->gintfac(ied,1);
@@ -113,10 +118,12 @@ void MUSCLVanAlbada<scalar,nvars>
 			
 			scalar phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
+
 			if( phi_l < 0.0) phi_l = 0.0;
 
 			scalar phi_r = (2*deltap * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltap*deltap + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
+
 			if( phi_r < 0.0) phi_r = 0.0;
 
 			ufl(ied,i) = musclReconstructLeft(u(ielem,i), u(jelem,i), deltam, phi_l);

@@ -62,7 +62,7 @@ pseudotime
 		cfl_min                  50.0
 		cfl_max                  1000.0
 		tolerance                1e-1
-		max_timesteps            100
+		max_timesteps            20
 	}
 	
 	nonlinear_update_scheme       robust_flow
