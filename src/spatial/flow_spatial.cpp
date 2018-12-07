@@ -441,7 +441,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	 */
 
 #pragma omp parallel for default(shared)
-	for(a_int ied = 0; ied < m->gnaface(); ied++)
+	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
 		scalar n[NDIM];
 		n[0] = m->gfacemetric(ied,0);
@@ -497,7 +497,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int ied = 0; ied < m->gnaface(); ied++)
+	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
 		scalar n[NDIM];
 		n[0] = m->gfacemetric(ied,0);
@@ -581,7 +581,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	{
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
 #pragma omp for
-		for(a_int ied = 0; ied < m->gnbface(); ied++)
+		for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
 			for(int ivar = 0; ivar < NVARS; ivar++)
@@ -603,7 +603,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 #pragma omp parallel default(shared)
 		{
 #pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++)
+			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 			{
 				physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
 			}
@@ -621,13 +621,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 #pragma omp parallel default(shared)
 		{
 #pragma omp for
-			for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+			for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
 			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
 				physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
 			}
 #pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++)
+			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
 				physics.getConservedFromPrimitive(&ug(iface,0), &ug(iface,0));
@@ -638,9 +638,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	{
 		// if order is 1, set the face data same as cell-centred data for all faces
 
-		// set both left and right states for all interior faces
+		// set both left and right states for all interior and connectivity faces
 #pragma omp parallel for default(shared)
-		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+		for(a_int ied = m->gDomFaceStart(); ied < m->gDomFaceEnd(); ied++)
 		{
 			a_int ielem = m->gintfac(ied,0);
 			a_int jelem = m->gintfac(ied,1);
@@ -678,7 +678,8 @@ void FlowFV<scalar,order2,constVisc>
                                   Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& L,
                                   Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& U) const
 {
-	assert(iface >= m->gnbface());
+	assert(iface >= m->gDomFaceStart());
+	assert(iface < m->gDomFaceEnd());
 
 	a_real n[NDIM];
 	n[0] = m->gfacemetric(iface,0);
@@ -703,6 +704,9 @@ void FlowFV<scalar,order2,constVisc>
                                   const a_real *const ul,
                                   Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& left) const
 {
+	assert(iface >= m->gPhyBFaceStart());
+	assert(iface < m->gPhyBFaceEnd());
+
 	const std::array<a_real,NDIM> n = m->gnormal(iface);
 	const a_real len = m->gfacemetric(iface,2);
 
@@ -710,8 +714,7 @@ void FlowFV<scalar,order2,constVisc>
 	Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor> drdl;
 	Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor> right;
 
-	bcs.at(m->gbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0],
-	                                                               uface, &drdl(0,0));
+	bcs.at(m->gbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0], uface, &drdl(0,0));
 
 	inviflux->get_jacobian(ul, uface, &n[0], &left(0,0), &right(0,0));
 

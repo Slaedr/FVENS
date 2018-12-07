@@ -121,21 +121,13 @@ public:
 	/// One past the end of connection boundary faces
 	a_int gConnBFaceEnd() const;
 
-	/// Start of all boundary faces - physical and connectivity
-	/** Physical boundary and connectivity faces are stored contiguously.
-	 */
-	a_int gBFaceStart() const;
-
-	/// One index past the end of all boundary faces
-	a_int gBFaceEnd() const;
-
-	/// Start of subdomain faces (all faces other than boundary faces)
+	/// Start of subdomain faces (faces in the interior of the subdomain)
 	a_int gSubDomFaceStart() const;
 
 	/// One past the end of subdomain faces
 	a_int gSubDomFaceEnd() const;
 
-	/// Start of connection boundary and subdomain faces
+	/// Start of connection boundary and interior subdomain faces
 	/** Beginning of the list of all faces other than physical boundary faces in \ref intfac.
 	 * Note that it's guaranteed that conection boundary faces and subdomain faces will be stored
 	 * contiguously.
@@ -144,6 +136,22 @@ public:
 
 	/// One past the end of connection+subdomain faces
 	a_int gDomFaceEnd() const;
+
+	/// Start of the (contiguous) list of interior and physical boundary faces
+	/** Connectivity faces are not included.
+	 */
+	// a_int gSubDomAndPhyBFaceStart() const;
+
+	/// One past the end of the (contiguous) list of interior and physical boundary faces
+	/** Connectivity faces are not included.
+	 */
+	// a_int gSubDomAndPhyBFaceEnd() const;
+
+	/// Beginning of the list of all faces
+	a_int gFaceStart() const;
+
+	/// One past the end of the list of all faces
+	a_int gFaceEnd() const;
 
 	/// @}
 

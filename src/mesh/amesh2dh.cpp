@@ -183,12 +183,6 @@ template <typename scalar>
 a_int UMesh2dh<scalar>::gConnBFaceEnd() const { return nbface + nconnface; }
 
 template <typename scalar>
-a_int UMesh2dh<scalar>::gBFaceStart() const { return 0; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gBFaceEnd() const { return nbface+nconnface; }
-
-template <typename scalar>
 a_int UMesh2dh<scalar>::gSubDomFaceStart() const { return nbface + nconnface; }
 
 template <typename scalar>
@@ -199,6 +193,12 @@ a_int UMesh2dh<scalar>::gDomFaceStart() const { return nbface; }
 
 template <typename scalar>
 a_int UMesh2dh<scalar>::gDomFaceEnd() const { return naface; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gFaceStart() const { return 0; }
+
+template <typename scalar>
+a_int UMesh2dh<scalar>::gFaceEnd() const { return naface; }
 
 template <typename scalar>
 void UMesh2dh<scalar>::writeGmsh2(const std::string mfile) const
@@ -660,10 +660,6 @@ std::vector<std::pair<a_int,EIndex>> UMesh2dh<scalar>::compute_phyBFaceNeighbori
 template <typename scalar>
 void UMesh2dh<scalar>::compute_faceConnectivity()
 {
-#ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Computing intfac..." << std::endl;
-#endif
-
 	const std::vector<std::pair<a_int,EIndex>> intelems = compute_phyBFaceNeighboringElements();
 
 	// calculate number of internal faces

@@ -68,11 +68,9 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 		}
 
 #pragma omp for
-		for(a_int iface = 0; iface < m->gnbface(); iface++)
+		for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 		{
-			scalar areainv1;
-			scalar ut[nvars];
-			scalar dL, dR, mid[NDIM];
+			scalar dL, dR;
 
 			const a_int ielem = m->gintfac(iface,0);
 			const a_int jelem = m->gintfac(iface,1);   // ghost cell index
@@ -81,50 +79,47 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
-				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
+				const scalar mid = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
+				dL += (mid-rc(ielem,idim))*(mid-rc(ielem,idim));
+				dR += (mid-rc(jelem,idim))*(mid-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
-			areainv1 = 1.0/m->garea(ielem);
+			const scalar areainv1 = 1.0/m->garea(ielem);
 
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar]= (u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
+				const scalar ut=(u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
 
 				for(int idim = 0; idim < NDIM; idim++)
-					grad[ielem](idim,ivar) += (ut[ivar] * m->gfacemetric(iface,idim))*areainv1;
+					grad[ielem](idim,ivar) += (ut * m->gfacemetric(iface,idim))*areainv1;
 			}
 		}
 
 #pragma omp for
-		for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+		for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 		{
-			a_int ielem, jelem, ip1, ip2;
-			scalar areainv1, areainv2;
-			scalar ut[nvars];
-			scalar dL, dR, mid[NDIM];
+			scalar dL, dR;
 
-			ielem = m->gintfac(iface,0);
-			jelem = m->gintfac(iface,1);
-			ip1 = m->gintfac(iface,2);
-			ip2 = m->gintfac(iface,3);
+			const a_int ielem = m->gintfac(iface,0);
+			const a_int jelem = m->gintfac(iface,1);
+			const a_int ip1 = m->gintfac(iface,2);
+			const a_int ip2 = m->gintfac(iface,3);
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				mid[idim] = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
-				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
+				const scalar mid = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
+				dL += (mid-rc(ielem,idim))*(mid-rc(ielem,idim));
+				dR += (mid-rc(jelem,idim))*(mid-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
-			areainv1 = 1.0/m->garea(ielem);
-			areainv2 = 1.0/m->garea(jelem);
+			const scalar areainv1 = 1.0/m->garea(ielem);
+			const scalar areainv2 = 1.0/m->garea(jelem);
 
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				ut[ivar] = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
+				const scalar ut = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
 
 				for(int idim = 0; idim < NDIM; idim++)
 				{
@@ -133,13 +128,44 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 #else
 #pragma omp atomic update
 #endif
-					grad[ielem](idim,ivar) += (ut[ivar] * m->gfacemetric(iface,idim))*areainv1;
+					grad[ielem](idim,ivar) += (ut * m->gfacemetric(iface,idim))*areainv1;
 #ifdef USE_ADOLC
 #pragma omp critical
 #else
 #pragma omp atomic update
 #endif
-					grad[jelem](idim,ivar) -= (ut[ivar] * m->gfacemetric(iface,idim))*areainv2;
+					grad[jelem](idim,ivar) -= (ut * m->gfacemetric(iface,idim))*areainv2;
+				}
+			}
+		}
+
+#pragma omp for
+		for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
+		{
+			scalar dL, dR;
+
+			const a_int ielem = m->gintfac(iface,0);
+			const a_int jelem = m->gintfac(iface,1);
+			const a_int ip1 = m->gintfac(iface,2);
+			const a_int ip2 = m->gintfac(iface,3);
+			dL = 0; dR = 0;
+			for(int idim = 0; idim < NDIM; idim++)
+			{
+				const scalar mid = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
+				dL += (mid-rc(ielem,idim))*(mid-rc(ielem,idim));
+				dR += (mid-rc(jelem,idim))*(mid-rc(jelem,idim));
+			}
+			dL = 1.0/sqrt(dL);
+			dR = 1.0/sqrt(dR);
+			const scalar areainv1 = 1.0/m->garea(ielem);
+
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				const scalar ut = (u(ielem,ivar)*dL + u(jelem,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
+
+				for(int idim = 0; idim < NDIM; idim++)
+				{
+					grad[ielem](idim,ivar) += (ut * m->gfacemetric(iface,idim))*areainv1;
 				}
 			}
 		}
@@ -164,7 +190,7 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 	// compute LHS of least-squares problem
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int ielem = m->gintfac(iface,0);
 		const a_int jelem = m->gintfac(iface,1);
@@ -188,7 +214,7 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 	{
 		const a_int ielem = m->gintfac(iface,0);
 		const a_int jelem = m->gintfac(iface,1);
@@ -218,6 +244,25 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 	}
 
 #pragma omp parallel for default(shared)
+	for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
+	{
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
+		scalar w2 = 0, dr[NDIM];
+		for(int idim = 0; idim < NDIM; idim++)
+		{
+			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
+			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+		}
+		w2 = 1.0/(w2);
+
+		for(int i = 0; i<NDIM; i++)
+			for(int j = 0; j < NDIM; j++) {
+				V[ielem](i,j) += w2*dr[i]*dr[j];
+			}
+	}
+
+#pragma omp parallel for default(shared)
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		V[ielem] = V[ielem].inverse().eval();
@@ -243,22 +288,22 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 	// compute least-squares RHS
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int ielem = m->gintfac(iface,0);
 		const a_int jelem = m->gintfac(iface,1);
 		scalar w2 = 0, dr[NDIM], du[nvars];
-		for(short idim = 0; idim < NDIM; idim++)
+		for(int idim = 0; idim < NDIM; idim++)
 		{
 			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 			du[ivar] = u(ielem,ivar) - ug(iface,ivar);
 
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			for(int jdim = 0; jdim < NDIM; jdim++)
 #ifdef USE_ADOLC
@@ -271,22 +316,22 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 	{
-		a_int ielem = m->gintfac(iface,0);
-		a_int jelem = m->gintfac(iface,1);
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
 		scalar w2 = 0, dr[NDIM], du[nvars];
-		for(short idim = 0; idim < NDIM; idim++)
+		for(int idim = 0; idim < NDIM; idim++)
 		{
 			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
 			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 			du[ivar] = u(ielem,ivar) - u(jelem,ivar);
 
-		for(short ivar = 0; ivar < nvars; ivar++)
+		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			for(int jdim = 0; jdim < NDIM; jdim++) {
 #ifdef USE_ADOLC
@@ -301,6 +346,30 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 #pragma omp atomic update
 #endif
 				f[jelem](jdim,ivar) += w2*dr[jdim]*du[ivar];
+			}
+		}
+	}
+
+#pragma omp parallel for default(shared)
+	for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
+	{
+		const a_int ielem = m->gintfac(iface,0);
+		const a_int jelem = m->gintfac(iface,1);
+		scalar w2 = 0, dr[NDIM], du[nvars];
+		for(int idim = 0; idim < NDIM; idim++)
+		{
+			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
+			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+		}
+		w2 = 1.0/(w2);
+
+		for(int ivar = 0; ivar < nvars; ivar++)
+			du[ivar] = u(ielem,ivar) - u(jelem,ivar);
+
+		for(int ivar = 0; ivar < nvars; ivar++)
+		{
+			for(int jdim = 0; jdim < NDIM; jdim++) {
+				f[ielem](jdim,ivar) += w2*dr[jdim]*du[ivar];
 			}
 		}
 	}

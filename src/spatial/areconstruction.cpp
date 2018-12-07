@@ -53,14 +53,25 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 		const GradBlock_t<scalar,NDIM,nvars> *const grads,
 		amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
-	// (a) internal faces
 #pragma omp parallel default(shared)
 	{
-#pragma omp for
-		for(a_int ied = m->gnbface(); ied < m->gnaface(); ied++)
+#pragma omp for nowait
+		for(a_int ied = m->gConnBFaceStart(); ied < m->gConnBFaceEnd(); ied++)
 		{
-			a_int ielem = m->gintfac(ied,0);
-			a_int jelem = m->gintfac(ied,1);
+			const a_int ielem = m->gintfac(ied,0);
+
+			for(int i = 0; i < nvars; i++)
+			{
+				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
+				                               &gr[ied](0,0), &ri(ielem,0));
+			}
+		}
+
+#pragma omp for nowait
+		for(a_int ied = m->gSubDomFaceStart(); ied < m->gSubDomFaceEnd(); ied++)
+		{
+			const a_int ielem = m->gintfac(ied,0);
+			const a_int jelem = m->gintfac(ied,1);
 
 			for(int i = 0; i < nvars; i++)
 			{
@@ -72,9 +83,9 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 		}
 
 #pragma omp for
-		for(a_int ied = 0; ied < m->gnbface(); ied++)
+		for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		{
-			a_int ielem = m->gintfac(ied,0);
+			const a_int ielem = m->gintfac(ied,0);
 
 			for(int i = 0; i < nvars; i++)
 			{
