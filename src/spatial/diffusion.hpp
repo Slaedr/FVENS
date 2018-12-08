@@ -47,8 +47,8 @@ protected:
 	void compute_boundary_state(const int ied, const a_real *const ins, a_real *const bs) const;
 	
 	/// Dirichlet BC for all boundaries
-	void compute_boundary_states(const amat::Array2d<a_real>& instates, 
-			amat::Array2d<a_real>& bounstates) const;
+	void compute_boundary_states(const a_real *const instates, 
+	                             a_real *const bounstates) const;
 };
 
 /// Spatial discretization of diffusion operator with constant diffusivity 

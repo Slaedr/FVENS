@@ -171,36 +171,6 @@ void UMesh2dh<scalar>::printmeshstats() const
 }
 
 template <typename scalar>
-a_int UMesh2dh<scalar>::gPhyBFaceStart() const { return 0; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gPhyBFaceEnd() const { return nbface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gConnBFaceStart() const { return nbface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gConnBFaceEnd() const { return nbface + nconnface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gSubDomFaceStart() const { return nbface + nconnface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gSubDomFaceEnd() const { return naface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gDomFaceStart() const { return nbface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gDomFaceEnd() const { return naface; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gFaceStart() const { return 0; }
-
-template <typename scalar>
-a_int UMesh2dh<scalar>::gFaceEnd() const { return naface; }
-
-template <typename scalar>
 void UMesh2dh<scalar>::writeGmsh2(const std::string mfile) const
 {
 	std::cout << "UMesh2dh: writeGmsh2(): writing mesh to file " << mfile << std::endl;
@@ -660,54 +630,54 @@ std::vector<std::pair<a_int,EIndex>> UMesh2dh<scalar>::compute_phyBFaceNeighbori
 template <typename scalar>
 void UMesh2dh<scalar>::compute_faceConnectivity()
 {
-	const std::vector<std::pair<a_int,EIndex>> intelems = compute_phyBFaceNeighboringElements();
-
 	// calculate number of internal faces
-	naface = nbface;
+	ninface = 0;
 	for(int ie = 0; ie < nelem; ie++)
 	{
 		for(int in = 0; in < nfael[ie]; in++)
 		{
 			int je = esuel(ie,in);
-			if(je > ie && je < nelem) naface++;
+			if(je > ie && je < nelem) {
+				ninface++;
+			}
 		}
 	}
+
+	naface = ninface + nbface + nconnface;
 	std::cout << "UMesh2dh: compute_faceConnectivity(): Total number of faces= " << naface << std::endl;
 
 	//allocate intfac and elemface
-	intfac.resize(naface+nconnface,nnofa+2);
+	intfac.resize(naface,nnofa+2);
 	elemface.resize(nelem,maxnfael);
 	btags.resize(nbface,nbtag);
 
-	for(a_int iface = 0; iface < nbface; iface++)
+	// Connectivity faces go first so that connectivity ghost cells can be placed right after
+	//  subdomain cells in grid vectors.
+
+	connBFaceStart = 0;
+	connBFaceEnd = nconnface;
+	for(a_int iface = 0; iface < nconnface; iface++)
 	{
-		intfac(iface,0) = intelems[iface].first;
+		const a_int inelem = connface(iface,0);
+		intfac(iface,0) = inelem;
+		esuel(inelem,connface(iface,1)) = nelem+iface;
+		elemface(inelem,connface(iface,1)) = iface;
 		intfac(iface,1) = nelem+iface;
+
 		for(FIndex inode = 0; inode < nnofa; inode++)
-			intfac(iface,2+inode) = bface(iface,inode);
-		for(int j = nnofa; j < nnofa+nbtag; j++)
-			btags(iface,j-nnofa) = bface(iface,j);
- 
-		esuel(intelems[iface].first, intelems[iface].second) = nelem+iface;
-		elemface(intelems[iface].first, intelems[iface].second) = iface;
+			intfac(iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
 	}
 
-	// // Connectivity faces FIRST so that connectivity ghost cells can be placed right after
-	// //  subdomain cells in grid vectors.
-	// for(a_int iface = 0; iface < nconnface; iface++)
-	// {
-	// 	const a_int inelem = connface(iface,0);
-	// 	intfac(iface,0) = inelem;
-	// 	esuel(inelem,connface(iface,1)) = nelem+iface;
-	// 	elemface(inelem,connface(iface,1)) = iface;
-	// 	intfac(iface,1) = nelem+iface;
+	// Next, subdomain interior faces
 
-	// 	for(FIndex inode = 0; inode < nnofa; inode++)
-	// 		intfac(iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
-	// }
+	subDomFaceStart = nconnface;
+	subDomFaceEnd = nconnface + ninface;
 
-	// naface = nbface+nconnface;
-	naface = nbface;
+	static_assert(NDIM == 2);   // only remove after generalizing the loop below to 3D
+
+	a_int faceindex = nconnface;
+	//a_int faceindex = nbface;
+
 	for(a_int ie = 0; ie < nelem; ie++)
 	{
 		for(EIndex in = 0; in < nnode[ie]; in++)
@@ -716,20 +686,48 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 			if(je > ie && je < nelem)
 			{
 				const EIndex in1 = (in+1)%nnode[ie];
-				intfac(naface,0) = ie;
-				intfac(naface,1) = je;
-				intfac(naface,2) = inpoel.get(ie,in);
-				intfac(naface,3) = inpoel.get(ie,in1);
+				intfac(faceindex,0) = ie;
+				intfac(faceindex,1) = je;
+				intfac(faceindex,2) = inpoel.get(ie,in);
+				intfac(faceindex,3) = inpoel.get(ie,in1);
 
-				elemface(ie,in) = naface;
+				elemface(ie,in) = faceindex;
 				for(EIndex jnode = 0; jnode < nnode[je]; jnode++)
 					if(inpoel.get(ie,in1) == inpoel.get(je,jnode))
-						elemface(je,jnode) = naface;
+						elemface(je,jnode) = faceindex;
 
-				naface++;
+				faceindex++;
 			}
 		}
 	}
+
+	assert(faceindex == ninface);
+
+	domFaceStart = 0;
+	domFaceEnd = nconnface + ninface;
+
+	// finally, phyical boundary faces
+
+	phyBFaceStart = nconnface+ninface;
+	phyBFaceEnd = nconnface+ninface+nbface;
+	assert(phyBFaceEnd == naface);
+	const std::vector<std::pair<a_int,EIndex>> intelems = compute_phyBFaceNeighboringElements();
+
+	for(a_int iface = nconnface+ninface; iface < naface; iface++)
+	{
+		const a_int ibounface = iface - nconnface - ninface;
+
+		intfac(iface,0) = intelems[ibounface].first;
+		intfac(iface,1) = nelem + nconnface + ibounface;
+		for(FIndex inode = 0; inode < nnofa; inode++)
+			intfac(iface,2+inode) = bface(ibounface,inode);
+		for(int j = nnofa; j < nnofa+nbtag; j++)
+			btags(ibounface,j-nnofa) = bface(ibounface,j);
+ 
+		esuel(intelems[ibounface].first, intelems[ibounface].second) = nelem+nconnface+ibounface;
+		elemface(intelems[ibounface].first, intelems[ibounface].second) = iface;
+	}
+
 }
 
 /** \todo: There is an issue with psup for some boundary nodes

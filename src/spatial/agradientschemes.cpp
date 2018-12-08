@@ -89,7 +89,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
-				const scalar ut=(u(ielem,ivar)*dL + ug(iface,ivar)*dR)/(dL+dR) * m->gfacemetric(iface,2);
+				const scalar ut = (u(ielem,ivar)*dL + ug(iface-m->gPhyBFaceStart(),ivar)*dR)/(dL+dR)
+					* m->gfacemetric(iface,2);
 
 				for(int idim = 0; idim < NDIM; idim++)
 					grad[ielem](idim,ivar) += (ut * m->gfacemetric(iface,idim))*areainv1;
@@ -301,7 +302,7 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		w2 = 1.0/(w2);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
-			du[ivar] = u(ielem,ivar) - ug(iface,ivar);
+			du[ivar] = u(ielem,ivar) - ug(iface-m->gPhyBFaceStart(),ivar);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{

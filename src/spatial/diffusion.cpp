@@ -43,11 +43,13 @@ inline void Diffusion<nvars>::compute_boundary_state(const int ied,
 }
 
 template<int nvars>
-void Diffusion<nvars>::compute_boundary_states(const amat::Array2d<a_real>& instates,
-                                               amat::Array2d<a_real>& bounstates) const
+void Diffusion<nvars>::compute_boundary_states(const a_real *const instates,
+                                               a_real *const bounstates) const
 {
 	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
-		compute_boundary_state(ied, &instates(ied,0), &bounstates(ied,0));
+		compute_boundary_state(ied,
+		                       &instates [(ied-m->gPhyBFaceStart())*nvars],
+		                       &bounstates[(ied-m->gPhyBFaceStart())*nvars]);
 }
 
 template<int nvars>
@@ -93,13 +95,13 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	{
 		const a_int ielem = m->gintfac(ied,0);
 		for(int ivar = 0; ivar < nvars; ivar++)
-			uleft(ied,ivar) = u(ielem,ivar);
+			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
 
 	std::vector<GradBlock_t<a_real,NDIM,nvars>> grads;
 	grads.resize(m->gnelem());
 
-	compute_boundary_states(uleft, ug);
+	compute_boundary_states(&uleft(0,0), &ug(0,0));
 	gradcomp->compute_gradients(u, ug, &grads[0]);
 
 #pragma omp parallel for default(shared)
@@ -160,7 +162,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 		a_real gradf[NDIM][nvars];
 		getFaceGradient_modifiedAverage
-			(iface, &uarr[lelem*nvars], &ug(iface,0), gradl, gradr, gradf);
+			(iface, &uarr[lelem*nvars], &ug(iface-m->gPhyBFaceStart(),0), gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
@@ -273,7 +275,7 @@ void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
-		a_int lelem = m->gintfac(iface,0);
+		const a_int lelem = m->gintfac(iface+m->gPhyBFaceStart(),0);
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 

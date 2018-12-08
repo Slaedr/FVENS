@@ -79,7 +79,7 @@ void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& i
                                                   amat::Array2d<scalar>& bs ) const
 {
 #pragma omp parallel for default(shared)
-	for(a_int ied = 0; ied < m->gnbface(); ied++)
+	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
 	}
@@ -583,7 +583,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 #pragma omp for
 		for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		{
-			a_int ielem = m->gintfac(ied,0);
+			const a_int ielem = m->gintfac(ied,0);
 			for(int ivar = 0; ivar < NVARS; ivar++)
 				uleft(ied,ivar) = u(ielem,ivar);
 		}
@@ -642,8 +642,8 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 #pragma omp parallel for default(shared)
 		for(a_int ied = m->gDomFaceStart(); ied < m->gDomFaceEnd(); ied++)
 		{
-			a_int ielem = m->gintfac(ied,0);
-			a_int jelem = m->gintfac(ied,1);
+			const a_int ielem = m->gintfac(ied,0);
+			const a_int jelem = m->gintfac(ied,1);
 			for(int ivar = 0; ivar < NVARS; ivar++)
 			{
 				uleft(ied,ivar) = u(ielem,ivar);

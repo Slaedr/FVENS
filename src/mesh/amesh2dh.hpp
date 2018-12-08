@@ -80,9 +80,16 @@ public:
 	a_int gpsup_p(const a_int i) const { return psup_p.get(i); }
 
 	/// Returns the element adjacent to a given element corresponding to the given local face
-	/** Note that the local face number `j' would be the one between local node j and
+	/** Note that in 2D, the local face number `j' would be the one between local node j and
 	 * local node (j+1) % nfael, where nfael is the total number of faces bounding the given
 	 * element.
+	 *
+	 * The connectivity ghost cell opposite the intfac face at index iface is assigned the index
+	 * nelem+iface.
+	 * The physical boundary ghost cell opposite the intfac face at index iface is assigned the index
+	 * nelem+nconnface+iface.
+	 * This function returns the correct element index for respective faces.
+	 * This assignment is done by \ref compute_faceConnectivity or \ref compute_topological.
 	 */
 	a_int gesuel(const a_int ielem, const int jface) const { return esuel.get(ielem, jface); }
 
@@ -112,48 +119,38 @@ public:
 	/// @{
 
 	/// Start of physical boundary faces
-	a_int gPhyBFaceStart() const;
+	a_int gPhyBFaceStart() const { return phyBFaceStart; }
 
 	/// One index past the end of physical boundary faces
-	a_int gPhyBFaceEnd() const;
+	a_int gPhyBFaceEnd() const { return phyBFaceEnd; }
 
 	/// Start of connection boundary faces (faces connecting this subdomain to other subdomains)
-	a_int gConnBFaceStart() const;
+	a_int gConnBFaceStart() const { return connBFaceStart; }
 
 	/// One past the end of connection boundary faces
-	a_int gConnBFaceEnd() const;
+	a_int gConnBFaceEnd() const { return connBFaceEnd; }
 
 	/// Start of subdomain faces (faces in the interior of the subdomain)
-	a_int gSubDomFaceStart() const;
+	a_int gSubDomFaceStart() const { return subDomFaceStart; }
 
 	/// One past the end of subdomain faces
-	a_int gSubDomFaceEnd() const;
+	a_int gSubDomFaceEnd() const { return subDomFaceEnd; }
 
 	/// Start of connection boundary and interior subdomain faces
 	/** Beginning of the list of all faces other than physical boundary faces in \ref intfac.
 	 * Note that it's guaranteed that conection boundary faces and subdomain faces will be stored
 	 * contiguously.
 	 */
-	a_int gDomFaceStart() const;
+	a_int gDomFaceStart() const { return domFaceStart; }
 
 	/// One past the end of connection+subdomain faces
-	a_int gDomFaceEnd() const;
-
-	/// Start of the (contiguous) list of interior and physical boundary faces
-	/** Connectivity faces are not included.
-	 */
-	// a_int gSubDomAndPhyBFaceStart() const;
-
-	/// One past the end of the (contiguous) list of interior and physical boundary faces
-	/** Connectivity faces are not included.
-	 */
-	// a_int gSubDomAndPhyBFaceEnd() const;
+	a_int gDomFaceEnd() const { return domFaceEnd; }
 
 	/// Beginning of the list of all faces
-	a_int gFaceStart() const;
+	a_int gFaceStart() const { return 0; }
 
 	/// One past the end of the list of all faces
-	a_int gFaceEnd() const;
+	a_int gFaceEnd() const { return naface; }
 
 	/// @}
 
@@ -194,6 +191,9 @@ public:
 
 	/// Returns the total number of faces, both boundary and internal ('Get Number of All FACEs')
 	a_int gnaface() const {return naface; }
+
+	/// Number of interior faces in the mesh subdomain
+	a_int gninface() const { return ninface; }
 
 	/// Returns the number of connectivity faces (faces adjacent to cells in another subdomain)
 	a_int gnConnFace() const { return nconnface; }
@@ -347,9 +347,19 @@ private:
 	amat::Array2d<int> vol_regions;
 
 	a_int naface;                   ///< total number of (internal and boundary) faces
+	a_int ninface;                  ///< Total number of interior faces
 	/// Number of connection boundary faces (connection to other subdomains)
 	a_int nconnface;
 	a_int nbpoin;                   ///< number of boundary points \sa compute_boundary_points
+
+	a_int connBFaceStart;           ///< Starting index of list of connectivity faces
+	a_int connBFaceEnd;             ///< One past the end of the list of connectivity faces
+	a_int subDomFaceStart;          ///< Start of list of interior faces of this subdomain
+	a_int subDomFaceEnd;            ///< One past of the end of the list of interior faces
+	a_int domFaceStart;             ///< Start of list of connectivity and subdomain faces
+	a_int domFaceEnd;               ///< One past the end of the list of connectivity and subdomain faces
+	a_int phyBFaceStart;            ///< Start of the list of physical boundary faces
+	a_int phyBFaceEnd;              ///< One past the end of the list of physical boundary faces
 
 	/// Connection boundary face data
 	/** Contains, for each connectivity boundary face,

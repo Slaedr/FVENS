@@ -56,7 +56,8 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 		}
 	}
 
-	/** \todo Transfer cell centre data from neighboring subdomains for connectivity ghost cells.
+	/** \todo Transfer cell centre data from neighboring subdomains for connectivity ghost cells
+	 * into rc(nelem:nconnface,:).
 	 */
 
 	amat::Array2d<scalar> rchg(m->gnbface(),NDIM);
@@ -68,7 +69,7 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	{
 		const a_int relem = m->gintfac(iface,1);
 		for(int idim = 0; idim < NDIM; idim++)
-			rc(relem,idim) = rchg(iface,idim);
+			rc(relem,idim) = rchg(iface - m->gPhyBFaceStart(),idim);
 	}
 
 	//Calculate and store coordinates of Gauss points
@@ -122,7 +123,7 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array
 
 			facemidpoint /= m->gnnofa(iface);
 
-			rchg(iface,idim) = 2.0*facemidpoint - rc(ielem,idim);
+			rchg(iface-m->gPhyBFaceStart(),idim) = 2.0*facemidpoint - rc(ielem,idim);
 		}
 	}
 }

@@ -80,7 +80,7 @@ StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const V
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 
@@ -96,7 +96,7 @@ StatusCode assemble_jacobian(const Spatial<scalar,nvars> *const spatial, const V
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gnbface(); iface < m->gnaface(); iface++)
+	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
