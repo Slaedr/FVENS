@@ -302,8 +302,10 @@ public:
 	/** Returns negative if the face is not present in that element.
 	 * \warning If iface is a physical boundary face, this function will always work. But if iface is
 	 *  an interior face defined according to \ref intfac, obviously intfac must be available.
+	 * \param[in] phyboundary If true, iface is interpreted as a bface index between 0 and nbface.
+	 *   If false, iface is interpreted as an intfac index.
 	 */
-	EIndex getFaceEIndex(const a_int iface, const a_int elem) const;
+	EIndex getFaceEIndex(const bool phyboundary, const a_int iface, const a_int elem) const;
 
 	/// The initial mesh partitioner needs direct access to the mesh
 	friend UMesh2dh<a_real> partitionMeshTrivial(const MeshData& global_mesh);

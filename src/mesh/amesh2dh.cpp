@@ -360,20 +360,22 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 	 */
 	for(a_int iface = 0; iface < nbface; iface++)
 	{
+		const a_int ifacface = gPhyBFaceStart() + iface;
 		if(btags(iface,0) == bcm)
 		{
 			if(periodicmap[iface] > -1)
 				continue;
 
 			// get relevant coordinate of face centre
-			const scalar ci = (coords(intfac(iface,2),ax)+coords(intfac(iface,3),ax))/2.0;
+			const scalar ci = (coords(intfac(ifacface,2),ax)+coords(intfac(ifacface,3),ax))/2.0;
 
 			// Faces before iface have already been paired
 			for(a_int jface = iface+1; jface < nbface; jface++)
 			{
+				const a_int jfacface = jface + gPhyBFaceStart();
 				if(btags(jface,0) == bcm)
 				{
-					const scalar cj = (coords(intfac(jface,2),ax)+coords(intfac(jface,3),ax))/2.0;
+					const scalar cj = (coords(intfac(jfacface,2),ax)+coords(intfac(jfacface,3),ax))/2.0;
 
 					// 1e-11 is seemingly the best tolerance Gmsh can offer
 					if(fabs(ci-cj) <= 1e-8)
@@ -383,8 +385,8 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 
 						// the ghost cell at iface is same as the interior cell at jface
 						//  and vice versa
-						intfac(iface,1) = intfac(jface,0);
-						intfac(jface,1) = intfac(iface,0);
+						intfac(ifacface,1) = intfac(jfacface,0);
+						intfac(jfacface,1) = intfac(ifacface,0);
 						break;
 					}
 				}
@@ -520,13 +522,14 @@ void UMesh2dh<scalar>::compute_elementsSurroundingElements()
 }
 
 template <typename scalar>
-EIndex UMesh2dh<scalar>::getFaceEIndex(const a_int iface, const a_int lelem) const
+EIndex UMesh2dh<scalar>::getFaceEIndex(const bool phyboundary, const a_int iface,
+                                       const a_int lelem) const
 {
 	static_assert(NDIM==2);
 
 	EIndex face = -1;
 
-	if(iface >= nbface)
+	if(!phyboundary)
 		assert(intfac.rows() > 0);
 
 	for(EIndex ifael = 0; ifael < gnfael(lelem); ifael++)
@@ -543,7 +546,7 @@ EIndex UMesh2dh<scalar>::getFaceEIndex(const a_int iface, const a_int lelem) con
 			for(FIndex jnofa = 0; jnofa < gnnofa(iface); jnofa++)
 			{
 				// NOTE: If iface is a phy boundary face, we use bface. Else intfac must be used.
-				if(iface < nbface) {
+				if(phyboundary) {
 					if(bface(iface,jnofa) == node) {
 						nodefound = true;
 						break;
@@ -620,7 +623,7 @@ std::vector<std::pair<a_int,EIndex>> UMesh2dh<scalar>::compute_phyBFaceNeighbori
 		interiorelem[iface].first = intersection[0];
 
 		// find the EIndex of the face
-		interiorelem[iface].second = getFaceEIndex(iface, intersection[0]);
+		interiorelem[iface].second = getFaceEIndex(true, iface, intersection[0]);
 		assert(interiorelem[iface].second >= 0);
 	}
 
@@ -664,6 +667,8 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		elemface(inelem,connface(iface,1)) = iface;
 		intfac(iface,1) = nelem+iface;
 
+		// Note that the face always 'points outside' the subdomain, because it always 
+		//  'points outside' the cell.
 		for(FIndex inode = 0; inode < nnofa; inode++)
 			intfac(iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
 	}

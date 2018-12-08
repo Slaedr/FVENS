@@ -43,22 +43,22 @@ int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
 	for(a_int iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
-		const EIndex locface = m.getFaceEIndex(iface, lelem);
+		const EIndex locface = m.getFaceEIndex(false, iface, lelem);
 		assert(locface >= 0);
 	}
 	for(a_int iface = m.gSubDomFaceStart(); iface < m.gSubDomFaceEnd(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
 		const a_int relem = m.gintfac(iface,1);
-		const EIndex locface1 = m.getFaceEIndex(iface, lelem);
+		const EIndex locface1 = m.getFaceEIndex(false, iface, lelem);
 		assert(locface1 >= 0);
-		const EIndex locface2 = m.getFaceEIndex(iface, relem);
+		const EIndex locface2 = m.getFaceEIndex(false, iface, relem);
 		assert(locface2 >= 0);
 	}
 	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 	{
 		const a_int lelem = m.gintfac(iface,0);
-		const EIndex locface = m.getFaceEIndex(iface, lelem);
+		const EIndex locface = m.getFaceEIndex(false, iface, lelem);
 		assert(locface >= 0);
 	}
 	return 0;
@@ -77,8 +77,8 @@ int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
 	int ierr = 0;
 
 	for(int i = 0; i < numfaces; i++) {
-		assert(m.gintfac(faces1[i],1) == m.gintfac(faces2[i],0));
-		assert(m.gintfac(faces1[i],0) == m.gintfac(faces2[i],1));
+		assert(m.gintfac(m.gPhyBFaceStart()+faces1[i],1) == m.gintfac(m.gPhyBFaceStart()+faces2[i],0));
+		assert(m.gintfac(m.gPhyBFaceStart()+faces1[i],0) == m.gintfac(m.gPhyBFaceStart()+faces2[i],1));
 	}
 
 	return ierr;

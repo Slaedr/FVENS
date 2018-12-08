@@ -38,7 +38,9 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 
 	lm.globalElemIndex = extractInpoel(lm);
 
-	//! 2. Copy required point coords into local mesh; get global to local and local-to-global point maps
+	/*! 2. Copy required point coords into local mesh
+	 *     get global to local and local-to-global point maps
+	 */
 	std::vector<a_int> pointLoc2Glob;
 	const std::map<a_int,a_int> pointGlob2Loc = extractPointCoords(lm, pointLoc2Glob);
 
@@ -70,19 +72,22 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 		for(int j = 0; j < lm.nnode[iel]; j++)
 			lm.inpoel(iel,j) = pointGlob2Loc.at(lm.inpoel(iel,j));
 
-	//! 4. Use point global-to-local map to identify global bfaces that are needed in this rank.
-	//!    Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
+	/*! 4. Use point global-to-local map to identify global bfaces that are needed in this rank.
+	 *     Copy them. In 3D this will be N^(2/3) log n. (N is global size, n is local size)
+	 */
 	extractbfaces(pointGlob2Loc, lm);
 
-	//! 5. Compute local esuel and mark elements that neighbor and points that lie on
-	//!    a physical boundary face
+	/*! 5. Compute local esuel and mark elements that neighbor and points that lie on
+	 *     a physical boundary face
+	 */
 	lm.compute_elementsSurroundingPoints();
 	lm.compute_elementsSurroundingElements();
 	const std::vector<bool> isPhyBounPoint = markLocalPhysicalBoundaryPoints(lm);
 	assert(isPhyBounPoint.size() == static_cast<size_t>(lm.npoin));
 
-	//! 6. Use local esuel, the global esuel and local-to-global elem map to
-	//!    build the connectivity face structure.
+	/*! 6. Use local esuel, the global esuel and local-to-global elem map 
+	 *     to build the connectivity face structure.
+	 */
 	const std::vector<std::vector<EIndex>> connElemLocalFace
 		= getConnectivityFaceEIndices(lm, isPhyBounPoint);
 

@@ -26,7 +26,7 @@ public:
 	/// Given the global mesh, computes the distribution of the elements
 	virtual void compute_partition() = 0;
 
-	/// Given a partition of the elements and the global mesh, returns the localized mesh on this rank
+	/// Computes the localized mesh on this rank given a partition of the cells of the global mesh
 	UMesh2dh<a_real> restrictMeshToPartitions() const;
 
 protected:

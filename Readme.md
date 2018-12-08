@@ -94,6 +94,8 @@ Contributors
 - Luis Hernandez
 - Aditya Kashi
 
+[![Built with Spacemacs](https://cdn.rawgit.com/syl20bnr/spacemacs/442d025779da2f62fc86c2082703697714db6514/assets/spacemacs-badge.svg)](http://spacemacs.org)
+
 ---
 
 Copyright (C) 2016 - 2018, Aditya Kashi. See LICENSE.md for terms of redistribution with/without modification and those of linking.
