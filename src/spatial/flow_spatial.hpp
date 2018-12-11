@@ -146,8 +146,7 @@ protected:
 	 * Currently does not use characteristic BCs.
 	 * \todo Implement and test characteristic BCs
 	 */
-	void compute_boundary_states(const amat::Array2d<scalar>& instates,
-			amat::Array2d<scalar>& bounstates) const;
+	void compute_boundary_states(const scalar *const instates, scalar *const ghoststates) const;
 
 	/// Computes ghost cell state across one face
 	/** \param[in] ied Face id in face data structure intfac

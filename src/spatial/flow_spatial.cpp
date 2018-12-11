@@ -75,13 +75,14 @@ FlowFV_base<scalar>::~FlowFV_base()
 }
 
 template <typename scalar>
-void FlowFV_base<scalar>::compute_boundary_states(const amat::Array2d<scalar>& ins,
-                                                  amat::Array2d<scalar>& bs ) const
+void FlowFV_base<scalar>::compute_boundary_states(const scalar *const ins, scalar *const gs) const
 {
 #pragma omp parallel for default(shared)
 	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
-		compute_boundary_state(ied, &ins(ied,0), &bs(ied,0));
+		compute_boundary_state(ied,
+		                       ins + (ied-m->gPhyBFaceStart())*NVARS,
+		                       gs  + (ied-m->gPhyBFaceStart())*NVARS);
 	}
 }
 
@@ -100,10 +101,10 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
                                        GradBlock_t<scalar,NDIM,NVARS> *const grads) const
 {
 	amat::Array2d<scalar> ug(m->gnbface(),NVARS);
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
+		compute_boundary_state(iface, &u(lelem,0), &ug(iface-m->gPhyBFaceStart(),0));
 	}
 
 	gradcomp->compute_gradients(u, ug, grads);
@@ -275,12 +276,12 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	const scalar *in_ucr = nullptr;
 	//const scalar *in_gradl = nullptr, *in_gradr = nullptr;
 
-	if(iface < m->gnbface())
+	if(iface >= m->gPhyBFaceStart() && iface < m->gPhyBFaceEnd())
 	{
 		// boundary face
 		if(secondOrderRequested)
 		{
-			in_ucr = &ug(iface,0);
+			in_ucr = &ug(iface-m->gPhyBFaceStart(),0);
 
 			// Use the same gradients on both sides of a boundary face;
 			// this will amount to just using the one-sided gradient for the modified average
@@ -595,15 +596,16 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		grads = new GradBlock_t<scalar,NDIM,NVARS>[m->gnelem()];
 
 		// get cell average values at ghost cells using BCs for reconstruction
-		compute_boundary_states(uleft, ug);
+		compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &ug(0,0));
 
 		MVector<scalar> up(m->gnelem(), NVARS);
 
 		// convert cell-centered state vectors to primitive variables
 #pragma omp parallel default(shared)
 		{
+			// the following loop is concerned only with ug, so we don't need the "iterators" here
 #pragma omp for
-			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
+			for(a_int iface = 0; iface < m->gnbface(); iface++)
 			{
 				physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
 			}
@@ -630,7 +632,8 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
-				physics.getConservedFromPrimitive(&ug(iface,0), &ug(iface,0));
+				const a_int ibface = iface - m->gPhyBFaceStart();
+				physics.getConservedFromPrimitive(&ug(ibface,0), &ug(ibface,0));
 			}
 		}
 	}
@@ -653,7 +656,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	}
 
 	// get right (ghost) state at boundary faces for computing fluxes
-	compute_boundary_states(uleft,uright);
+	compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
 
 	scalar *rarr = getVecAsArray<scalar>(rvec);
 	compute_fluxes(uarr, &grads[0](0,0), uleft, uright, ug, rarr);
