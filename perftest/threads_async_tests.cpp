@@ -118,6 +118,9 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVAR
 
 	omp_set_num_threads(numthreads);
 	set_blasted_sweeps(nbswps,naswps);
+	if(mpirank == 0) {
+		std::cout << "\n Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
+	}
 
 	int irpt;
 	for(irpt = 0; irpt < numrepeat; irpt++) 

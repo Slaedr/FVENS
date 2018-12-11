@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	const int baserepeats = parsePetscCmd_int("-perftest_base_repeat");
 
 	// write a message to stdout about which preconditioner is being used -
-	//  could be useful for reading the Moab log file
+	//  could be useful for reading the log file
 	std::string prec = parsePetscCmd_string("-blasted_pc_type", 10);
 	std::cout << ">>> Perftest " << testtype << ", preconditioner " << prec << std::endl;
 
