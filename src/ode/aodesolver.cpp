@@ -83,6 +83,41 @@ template <int nvars>
 TimingData SteadySolver<nvars>::getTimingData() const {
 	return tdata;
 }
+	
+template <int nvars>
+a_real SteadySolver<nvars>::linearRamp(const a_real cstart, const a_real cend, 
+                                       const int itstart, const int itend, const int itcur) const
+{
+	a_real curCFL;
+	if(itcur < itstart) {
+		curCFL = cstart;
+	}
+	else if(itcur < itend) {
+		if(itend-itstart <= 0) {
+			curCFL = cend;
+		}
+		else {
+			const a_real slopec = (cend-cstart)/(itend-itstart);
+			curCFL = cstart + slopec*(itcur-itstart);
+		}
+	}
+	else {
+		curCFL = cend;
+	}
+	return curCFL;
+}
+
+template <int nvars>
+a_real SteadySolver<nvars>::expResidualRamp(const a_real cflmin, const a_real cflmax, 
+                                            const a_real prevcfl, const a_real resratio, const a_real paramup, const a_real paramdown)
+{
+	const a_real newcfl = resratio > 1.0 ? prevcfl * std::pow(resratio, paramup)
+		: prevcfl * std::pow(resratio, paramdown);
+
+	if(newcfl < cflmin) return cflmin;
+	else if(newcfl > cflmax) return cflmax;
+	else return newcfl;
+}
 
 
 template<int nvars>
@@ -139,6 +174,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 	int step = 0;
 	a_real resi = 1.0;
+	a_real resiold = resi;
 	a_real initres = 1.0;
 
 	// struct timeval time1, time2;
@@ -147,7 +183,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	const double initialwtime = MPI_Wtime();
 	const double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
-	std::cout << " Constant CFL = " << config.cflinit << std::endl;
+	std::cout << " Starting CFL = " << config.cflinit << std::endl;
+	a_real curCFL = config.cflinit;
 
 	SteadyStepMonitor convstep;
 	if(mpirank == 0)
@@ -163,6 +200,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		// update residual
 		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
+
+		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.3, 0.25);
 
 		a_real errmass = 0;
 		const PetscScalar *dtm;
@@ -188,6 +227,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
 
+		resiold = resi;
 		resi = sqrt(errmass);
 
 		if(step == 0)
@@ -197,7 +237,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		const double curtime = MPI_Wtime();
 		convstep = {step, (float)(resi/initres), (float)resi, (float)(curtime-initialwtime),
-		            0, 0, (float)config.cflinit};
+		            0, 0, (float)curCFL};
 		if(config.lognres)
 			tdata.convhis.push_back(convstep);
 
@@ -272,41 +312,6 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 	ierr = VecDestroy(&dtmvec);
 	if(ierr)
 		std::cout << "! SteadyBackwardEulerSolver: Could not destroy dt vector";
-}
-	
-template <int nvars>
-a_real SteadyBackwardEulerSolver<nvars>::linearRamp(const a_real cstart, const a_real cend, 
-		const int itstart, const int itend, const int itcur) const
-{
-	a_real curCFL;
-	if(itcur < itstart) {
-		curCFL = cstart;
-	}
-	else if(itcur < itend) {
-		if(itend-itstart <= 0) {
-			curCFL = cend;
-		}
-		else {
-			const a_real slopec = (cend-cstart)/(itend-itstart);
-			curCFL = cstart + slopec*(itcur-itstart);
-		}
-	}
-	else {
-		curCFL = cend;
-	}
-	return curCFL;
-}
-
-template <int nvars>
-a_real SteadyBackwardEulerSolver<nvars>::expResidualRamp(const a_real cflmin, const a_real cflmax, 
-		const a_real prevcfl, const a_real resratio, const a_real paramup, const a_real paramdown)
-{
-	const a_real newcfl = resratio > 1.0 ? prevcfl * std::pow(resratio, paramup)
-	                                     : prevcfl * std::pow(resratio, paramdown);
-
-	if(newcfl < cflmin) return cflmin;
-	else if(newcfl > cflmax) return cflmax;
-	else return newcfl;
 }
 
 template <int nvars>

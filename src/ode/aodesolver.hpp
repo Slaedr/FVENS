@@ -92,6 +92,14 @@ protected:
 	const SteadySolverConfig& config;
 	Vec rvec;
 	TimingData tdata;
+
+	/// Linear CFL ramping
+	a_real linearRamp(const a_real cstart, const a_real cend, const int itstart, const int itend,
+	                  const int itcur) const;
+
+	/// A kind of exponential ramping, designed to be dependent on the residual ratio as base
+	a_real expResidualRamp(const a_real cflmin, const a_real cflmax, const a_real prevcfl,
+	                       const a_real resratio, const a_real paramup, const a_real paramdown);
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -127,6 +135,8 @@ private:
 	using SteadySolver<nvars>::config;
 	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::tdata;
+	using SteadySolver<nvars>::linearRamp;
+	using SteadySolver<nvars>::expResidualRamp;
 
 	/// Characteristic local time step for each cell
 	Vec dtmvec;
@@ -162,6 +172,8 @@ protected:
 	using SteadySolver<nvars>::config;
 	using SteadySolver<nvars>::tdata;
 	using SteadySolver<nvars>::rvec;       ///< Residual vector
+	using SteadySolver<nvars>::linearRamp;
+	using SteadySolver<nvars>::expResidualRamp;
 
 	Vec duvec;                             ///< Nonlinear update vector
 
@@ -172,14 +184,6 @@ protected:
 
 	/// For computation of the (local) under-relaxation factor for the nonlinear update
 	const NonlinearUpdate<nvars> *const update_relax;
-
-	/// Linear CFL ramping
-	a_real linearRamp(const a_real cstart, const a_real cend, const int itstart, const int itend,
-			const int itcur) const;
-
-	/// A kind of exponential ramping, designed to be dependent on the residual ratio as base
-	a_real expResidualRamp(const a_real cflmin, const a_real cflmax, const a_real prevcfl,
-			const a_real resratio, const a_real paramup, const a_real paramdown);
 
 	/// Add pseudo-time terms to diagonal blocks
 	/**
