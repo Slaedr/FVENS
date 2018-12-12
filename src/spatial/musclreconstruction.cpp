@@ -72,6 +72,7 @@ void MUSCLVanAlbada<scalar,nvars>
 	{
 		const a_int ielem = m->gintfac(ied,0);
 		const a_int jelem = m->gintfac(ied,1);
+		const a_int ibface = ied - m->gPhyBFaceStart();
 
 		for(int i = 0; i < nvars; i++)
 		{
@@ -81,14 +82,14 @@ void MUSCLVanAlbada<scalar,nvars>
 				grad[j] = grads[ielem](j,i);
 
 			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-			                                              u(ielem,i), ug(ied,i), grad);
+			                                              u(ielem,i), ug(ibface,i), grad);
 
-			scalar phi_l = (2.0*deltam * (ug(ied,i) - u(ielem,i)) + eps) 
-				/ (deltam*deltam + (ug(ied,i) - u(ielem,i))*(ug(ied,i) - u(ielem,i)) + eps);
+			scalar phi_l = (2.0*deltam * (ug(ibface,i) - u(ielem,i)) + eps) 
+				/ (deltam*deltam + (ug(ibface,i) - u(ielem,i))*(ug(ibface,i) - u(ielem,i)) + eps);
 
 			if( phi_l < 0.0) phi_l = 0.0;
 
-			ufl(ied,i) = musclReconstructLeft(u(ielem,i), ug(ied,i), deltam, phi_l);
+			ufl(ied,i) = musclReconstructLeft(u(ielem,i), ug(ibface,i), deltam, phi_l);
 		}
 	}
 

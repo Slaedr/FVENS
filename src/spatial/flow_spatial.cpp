@@ -462,7 +462,8 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 		{
 			// get viscous fluxes
 			scalar vflux[NVARS];
-			const scalar *const ucellright = (ied < m->gnbface()) ? nullptr : &u[relem*NVARS];
+			const scalar *const ucellright
+				= (ied >= m->gPhyBFaceStart() && ied < m->gPhyBFaceEnd()) ? nullptr : &u[relem*NVARS];
 			compute_viscous_flux(ied, &u[lelem*NVARS], ucellright, ug, grads, uleft, uright,
 			                     vflux);
 
