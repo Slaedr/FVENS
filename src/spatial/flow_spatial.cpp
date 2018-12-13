@@ -274,7 +274,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
 
 	const scalar *in_ucr = nullptr;
-	//const scalar *in_gradl = nullptr, *in_gradr = nullptr;
+	// const scalar *in_gradl = nullptr, *in_gradr = nullptr;
 
 	if(iface >= m->gPhyBFaceStart() && iface < m->gPhyBFaceEnd())
 	{
@@ -286,7 +286,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 			// Use the same gradients on both sides of a boundary face;
 			// this will amount to just using the one-sided gradient for the modified average
 			// gradient later.
-			// NOTE: We can't take the address of a GradArray entry, so we need copies here.
+			// NOTE: GradArrays are colmajor, so we need copies here.
 			// in_gradl = &grads[lelem](0,0);
 			// in_gradr = &grads[lelem](0,0);
 
@@ -316,9 +316,12 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 		}
 	}
 
-	// getPrimitive2StateAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
-	//                                                                  in_gradl, in_gradr,
-	//                                                                  uctl, uctr, gradl, gradr);
+	// // left and right gradients; zero for first order scheme
+	// scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
+
+	// getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
+	//                                                                   in_gradl, in_gradr,
+	//                                                                   uctl, uctr, gradl, gradr);
 
 	getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
 	                                                                  gradl, gradr,

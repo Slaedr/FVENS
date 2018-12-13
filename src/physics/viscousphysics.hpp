@@ -19,12 +19,12 @@ namespace fvens {
  * \param[in] physics The gas physics context to use
  * \param[in] ucl Cell-centred conserved variables on left side of the face
  * \param[in] ucr Cell-centred conserved variables on right side of the face
- * \param[in] gradl Gradients of primitive variables in left cell ("optional", see below)
- * \param[in] gradr Gradients of primitive variables in right cell ("optional")
+ * \param[in] gradl Gradients of primitive variables in left cell; must be row-major ndim x nvars
+ * \param[in] gradr Gradients of primitive variables in right cell; must be row-major ndim x nvars
  * \param[in|out] uctl On output, primitive 2 variables in left cell
  * \param[in|out] uctr On output, primitive 2 variables in right cell
- * \param[in|out] gradtl On output, primitive 2 gradients in left cell
- * \param[in|out] gradtr On output, primitive 2 gradients in right cell
+ * \param[in|out] gradtl On output, primitive 2 gradients in left cell (row-major)
+ * \param[in|out] gradtr On output, primitive 2 gradients in right cell (row-major)
  *
  * gradl and gradr can be nullptrs if second-order accuracy is not required, in which case
  *  gradtl and gradtr are not touched.

@@ -76,13 +76,8 @@ void MUSCLVanAlbada<scalar,nvars>
 
 		for(int i = 0; i < nvars; i++)
 		{
-			// Note that the copy below is necessary because grads[ielem] is column major
-			scalar grad[NDIM];
-			for(int j = 0; j < NDIM; j++)
-				grad[j] = grads[ielem](j,i);
-
 			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-			                                              u(ielem,i), ug(ibface,i), grad);
+			                                              u(ielem,i), ug(ibface,i), &grads[ielem](0,i));
 
 			scalar phi_l = (2.0*deltam * (ug(ibface,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (ug(ibface,i) - u(ielem,i))*(ug(ibface,i) - u(ielem,i)) + eps);
@@ -105,17 +100,10 @@ void MUSCLVanAlbada<scalar,nvars>
 
 		for(int i = 0; i < nvars; i++)
 		{
-			// Note that the copy below is necessary because grads[ielem] is column major
-			scalar gradl[NDIM], gradr[NDIM];
-			for(int j = 0; j < NDIM; j++) {
-				gradl[j] = grads[ielem](j,i);
-				gradr[j] = grads[jelem](j,i);
-			}
-
 			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-			                                              u(ielem,i), u(jelem,i), gradl);
+			                                              u(ielem,i), u(jelem,i), &grads[ielem](0,i));
 			const scalar deltap = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
-			                                              u(ielem,i), u(jelem,i), gradr);
+			                                              u(ielem,i), u(jelem,i), &grads[jelem](0,i));
 			
 			scalar phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 
 				/ (deltam*deltam + (u(jelem,i) - u(ielem,i))*(u(jelem,i) - u(ielem,i)) + eps);
