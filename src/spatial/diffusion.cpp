@@ -123,7 +123,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 		a_real gradf[NDIM][nvars];
 		getFaceGradient_modifiedAverage
-			(iface, &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, gradf);
+			(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
@@ -148,6 +148,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);    // ghost cell
 		const a_real len = m->gfacemetric(iface,2);
 
 		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
@@ -162,7 +163,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 		a_real gradf[NDIM][nvars];
 		getFaceGradient_modifiedAverage
-			(iface, &uarr[lelem*nvars], &ug(iface-m->gPhyBFaceStart(),0), gradl, gradr, gradf);
+			(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &ug(iface-m->gPhyBFaceStart(),0),
+			 gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{

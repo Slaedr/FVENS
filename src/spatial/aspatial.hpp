@@ -115,17 +115,18 @@ protected:
 	void compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg);
 
 	/// Computes a unique face gradient from cell-centred gradients using the modified average method
-	/** \param iface The \ref intfac index of the face at which the gradient is to be computed
+	/** \param ccleft Coordinates of left cell centre
+	 * \param ccright Coordinates of right cell centre
 	 * \param ucl The left cell-centred state
 	 * \param ucr The right cell-centred state
 	 * \param gradl Left cell-centred gradients (ndim x nvars flattened array)
 	 * \param gradr Right cell-centred gradients (ndim x nvars flattened array)
-	 * \param[out] grad Face gradients
+	 * \param[out] grad Face gradient
 	 */
-	void getFaceGradient_modifiedAverage(const a_int iface,
-		const scalar *const ucl, const scalar *const ucr,
-		const scalar *const gradl, const scalar *const gradr, scalar grad[NDIM][nvars])
-		const;
+	void getFaceGradient_modifiedAverage(const scalar *const ccleft, const scalar *const ccright,
+	                                     const scalar *const ucl, const scalar *const ucr,
+	                                     const scalar *const gradl, const scalar *const gradr,
+	                                     scalar grad[NDIM][nvars]) const;
 
 	/// Computes the thin-layer face gradient and its Jacobian w.r.t. the left and right states
 	/** The Jacobians are computed w.r.t. whatever variables

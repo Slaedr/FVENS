@@ -254,76 +254,38 @@ FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 {
 }
 
-/// \todo TODO: We can now take addresses of GradBlock_t's. Optimize.
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
-::compute_viscous_flux(const a_int iface,
+::compute_viscous_flux(const scalar *const normal,
+                       const scalar *const rcl, const scalar *const rcr,
                        const scalar *const ucell_l, const scalar *const ucell_r,
-                       const amat::Array2d<scalar>& ug,
-                       const GradBlock_t<scalar,NDIM,NVARS> *const grads,
-                       const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+                       const GradBlock_t<scalar,NDIM,NVARS>& gradsl,
+                       const GradBlock_t<scalar,NDIM,NVARS>& gradsr,
+                       const scalar *const ul, const scalar *const ur,
                        scalar *const __restrict vflux) const
 {
-	const a_int lelem = m->gintfac(iface,0);
-	const a_int relem = m->gintfac(iface,1);
-	const std::array<scalar,NDIM> normal = m->gnormal(iface);
-
 	// cell-centred left and right states
 	scalar uctl[NVARS], uctr[NVARS];
 	// left and right gradients; zero for first order scheme
 	scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
 
-	const scalar *in_ucr = nullptr;
 	// const scalar *in_gradl = nullptr, *in_gradr = nullptr;
 
-	if(iface >= m->gPhyBFaceStart() && iface < m->gPhyBFaceEnd())
-	{
-		// boundary face
-		if(secondOrderRequested)
-		{
-			in_ucr = &ug(iface-m->gPhyBFaceStart(),0);
-
-			// Use the same gradients on both sides of a boundary face;
-			// this will amount to just using the one-sided gradient for the modified average
-			// gradient later.
-			// NOTE: GradArrays are colmajor, so we need copies here.
-			// in_gradl = &grads[lelem](0,0);
-			// in_gradr = &grads[lelem](0,0);
-
-			for(int i = 0; i < NDIM; i++)
-				for(int j = 0; j < NVARS; j++) {
-					gradl[i*NVARS+j] = grads[lelem](i,j);
-					gradr[i*NVARS+j] = grads[lelem](i,j);
-				}
-		}
-		else
-		{
-			// if second order was not requested, ghost cell values are stored in ur, not ug
-			in_ucr = &ur(iface,0);
-		}
+	if(secondOrderRequested) {
+		// in_gradl = &grads[lelem](0,0);
+		// in_gradr = &grads[relem](0,0);
+		for(int i = 0; i < NDIM; i++)
+			for(int j = 0; j < NVARS; j++) {
+				gradl[i*NVARS+j] = gradsl(i,j);
+				gradr[i*NVARS+j] = gradsr(i,j);
+			}
 	}
-	else
-	{
-		in_ucr = ucell_r;
-		if(secondOrderRequested) {
-			// in_gradl = &grads[lelem](0,0);
-			// in_gradr = &grads[relem](0,0);
-			for(int i = 0; i < NDIM; i++)
-				for(int j = 0; j < NVARS; j++) {
-					gradl[i*NVARS+j] = grads[lelem](i,j);
-					gradr[i*NVARS+j] = grads[relem](i,j);
-				}
-		}
-	}
-
-	// // left and right gradients; zero for first order scheme
-	// scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
 
 	// getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
 	//                                                                   in_gradl, in_gradr,
 	//                                                                   uctl, uctr, gradl, gradr);
 
-	getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
+	getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, ucell_r,
 	                                                                  gradl, gradr,
 	                                                                  uctl, uctr, gradl, gradr);
 
@@ -336,10 +298,9 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	}
 
 	scalar grad[NDIM][NVARS];
-	getFaceGradient_modifiedAverage(iface, uctl, uctr, gradl, gradr, grad);
+	getFaceGradient_modifiedAverage(rcl, rcr, uctl, uctr, gradl, gradr, grad);
 
-	computeViscousFlux<scalar,NDIM,NVARS,constVisc>(physics, &normal[0], grad,
-	                                                &ul(iface,0), &ur(iface,0), vflux);
+	computeViscousFlux<scalar,NDIM,NVARS,constVisc>(physics, normal, grad, ul, ur, vflux);
 }
 
 template<typename scalar, bool secondOrder, bool constVisc>
@@ -423,8 +384,8 @@ void FlowFV<scalar,secondOrder,constVisc>
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
 ::compute_fluxes(const scalar *const u, const scalar *const gradients,
-                 const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
-                 const amat::Array2d<scalar>& ug,
+                 const scalar *const uleft, const scalar *const uright,
+                 const scalar *const ug,
                  scalar *const res) const
 {
 	const GradBlock_t<scalar,NDIM,NVARS> *const grads
@@ -451,11 +412,11 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 		n[0] = m->gfacemetric(ied,0);
 		n[1] = m->gfacemetric(ied,1);
 		scalar len = m->gfacemetric(ied,2);
-		const int lelem = m->gintfac(ied,0);
-		const int relem = m->gintfac(ied,1);
+		const a_int lelem = m->gintfac(ied,0);
+		const a_int relem = m->gintfac(ied,1);
 		scalar fluxes[NVARS];
 
-		inviflux->get_flux(&uleft(ied,0), &uright(ied,0), n, fluxes);
+		inviflux->get_flux(&uleft[ied*NVARS], &uright[ied*NVARS], n, fluxes);
 
 		// integrate over the face
 		for(int ivar = 0; ivar < NVARS; ivar++)
@@ -463,12 +424,15 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 
 		if(pconfig.viscous_sim)
 		{
-			// get viscous fluxes
-			scalar vflux[NVARS];
+			const bool isPhyBoun = (ied >= m->gPhyBFaceStart() && ied < m->gPhyBFaceEnd());
 			const scalar *const ucellright
-				= (ied >= m->gPhyBFaceStart() && ied < m->gPhyBFaceEnd()) ? nullptr : &u[relem*NVARS];
-			compute_viscous_flux(ied, &u[lelem*NVARS], ucellright, ug, grads, uleft, uright,
-			                     vflux);
+				= isPhyBoun ? &ug[(ied-m->gPhyBFaceStart())*NVARS] : &u[relem*NVARS];
+			const GradBlock_t<scalar,NDIM,NVARS>& gradright = isPhyBoun ? grads[lelem] : grads[relem];
+
+			scalar vflux[NVARS];
+			compute_viscous_flux(n, &rc(lelem,0), &rc(relem,0),
+			                     &u[lelem*NVARS], ucellright, grads[lelem], gradright,
+			                     &uleft[ied*NVARS], &uright[ied*NVARS], vflux);
 
 			for(int ivar = 0; ivar < NVARS; ivar++)
 				fluxes[ivar] += vflux[ivar]*len;
@@ -663,7 +627,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
 
 	scalar *rarr = getVecAsArray<scalar>(rvec);
-	compute_fluxes(uarr, &grads[0](0,0), uleft, uright, ug, rarr);
+
+	if(secondOrderRequested)
+		compute_fluxes(uarr, &grads[0](0,0), &uleft(0,0), &uright(0,0), &ug(0,0), rarr);
+	else
+		compute_fluxes(uarr, &grads[0](0,0), &uleft(0,0), &uright(0,0),
+		               &uright(m->gPhyBFaceStart(),0), rarr);
+
 	restoreArraytoVec(rvec, &rarr);
 
 	if(gettimesteps)

@@ -194,8 +194,8 @@ public:
 
 	/// Computes fluxes into the residual vector
 	void compute_fluxes(const scalar *const u, const scalar *const gradients,
-	                    const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
-	                    const amat::Array2d<scalar>& ug,
+	                    const scalar *const uleft, const scalar *const uright,
+	                    const scalar *const ug,
 	                    scalar *const res) const;
 
 	/// Computes the maximum allowable time step at each cell
@@ -245,12 +245,13 @@ protected:
 
 	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.
-	 * \param[in] iface Face index
+	 * \param[in] normals
+	 * \param[in] ccleft
+	 * \param[in] ccright
 	 * \param[in] ucell_l Cell-centred conserved variables on left side of the face
 	 * \param[in] ucell_r Cell-centred conserved variables on right side of the face
-	 *             Note that for boundary faces, this can be NULL because ug is used instead.
-	 * \param[in] ug Ghost cell-centred primitive variables
-	 * \param[in] grads Cell-centred gradients ("optional", see below)
+	 * \param[in] gradsLeft Cell-centred gradients ("optional", see below)
+	 * \param[in] gradsRight Cell-centred gradients ("optional", see below)
 	 * \param[in] ul Left state of faces (conserved variables)
 	 * \param[in] ur Right state of faces (conserved variables)
 	 * \param[in,out] vflux On output, contains the viscous flux across the face
@@ -258,11 +259,12 @@ protected:
 	 * Note that grads can be unallocated if only first-order fluxes are being computed,
 	 * but ul and ur are always used.
 	 */
-	void compute_viscous_flux(const a_int iface,
+	void compute_viscous_flux(const scalar *const normal,
+	                          const scalar *const ccleft, const scalar *const ccright,
 	                          const scalar *const ucell_l, const scalar *const ucell_r,
-	                          const amat::Array2d<scalar>& ug,
-	                          const GradBlock_t<scalar,NDIM,NVARS> *const grads,
-	                          const amat::Array2d<scalar>& ul, const amat::Array2d<scalar>& ur,
+	                          const GradBlock_t<scalar,NDIM,NVARS>& gradsLeft,
+	                          const GradBlock_t<scalar,NDIM,NVARS>& gradsRight,
+	                          const scalar *const ul, const scalar *const ur,
 	                          scalar *const vflux) const;
 
 	/// Compues the first-order "thin-layer" viscous flux Jacobian
