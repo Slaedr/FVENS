@@ -37,11 +37,8 @@ template<typename scalar, int nvars>
 Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
 	rc.resize(m->gnelem()+m->gnbface()+m->gnConnFace(), NDIM);
-	gr = new amat::Array2d<scalar>[m->gnaface()];
-	for(int i = 0; i <  m->gnaface(); i++) {
-		gr[i].resize(NGAUSS, NDIM);
-		gr[i].zeros();
-	}
+	gr.resize(m->gnaface(), NDIM);
+	gr.zeros();
 
 	// get cell centers (real and ghost)
 
@@ -72,40 +69,21 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 			rc(relem,idim) = rchg(iface - m->gPhyBFaceStart(),idim);
 	}
 
-	//Calculate and store coordinates of Gauss points
-	// Gauss points are uniformly distributed along the face.
-	/*for(a_int ied = 0; ied < m->gnaface(); ied++)
-	{
-		scalar x1, y1, x2, y2;
-		x1 = m->gcoords(m->gintfac(ied,2),0);
-		y1 = m->gcoords(m->gintfac(ied,2),1);
-		x2 = m->gcoords(m->gintfac(ied,3),0);
-		y2 = m->gcoords(m->gintfac(ied,3),1);
-		for(int ig = 0; ig < NGAUSS; ig++)
-		{
-			gr[ied](ig,0) = x1 + (scalar)(ig+1.0)/(scalar)(NGAUSS+1.0) * (x2-x1);
-			gr[ied](ig,1) = y1 + (scalar)(ig+1.0)/(scalar)(NGAUSS+1.0) * (y2-y1);
-		}
-	}*/
-
 	// Compute coords of face centres (NGAUSS == 1)
-	assert(NGAUSS == 1);
 	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
 		for(int iv = 0; iv < m->gnnofa(ied); iv++)
 			for(int idim = 0; idim < NDIM; idim++)
-				gr[ied](0,idim) += m->gcoords(m->gintfac(ied,2+iv),idim);
+				gr(ied,idim) += m->gcoords(m->gintfac(ied,2+iv),idim);
 
 		for(int idim = 0; idim < NDIM; idim++)
-			gr[ied](0,idim) /= m->gnnofa(ied);
+			gr(ied,idim) /= m->gnnofa(ied);
 	}
 }
 
 template<typename scalar, int nvars>
 Spatial<scalar,nvars>::~Spatial()
-{
-	delete [] gr;
-}
+{ }
 
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg)

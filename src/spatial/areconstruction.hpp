@@ -22,13 +22,12 @@ class SolutionReconstruction
 protected:
 	const UMesh2dh<scalar> *const m;            ///< Mesh context
 	const amat::Array2d<scalar>& ri;            ///< coords of cell centers of cells
-	const amat::Array2d<scalar> *const gr;      ///< coords of Gauss quadrature points of each face
-	const int ng;                               ///< Number of Gauss points
+	const amat::Array2d<scalar>& gr;            ///< coords of Gauss quadrature points of each face
 
 public:
 	SolutionReconstruction (const UMesh2dh<scalar> *const  mesh,          ///< Mesh context
 	                        const amat::Array2d<scalar>& c_centres,       ///< Cell centres
-	                        const amat::Array2d<scalar>* gauss_r);        ///< Coords of Gauss points
+	                        const amat::Array2d<scalar>& gauss_r);        ///< Coords of Gauss points
 
 	virtual void compute_face_values(const MVector<scalar>& unknowns, 
 	                                 const amat::Array2d<scalar>& unknow_ghost,
@@ -52,7 +51,7 @@ public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
 	LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
 	                              const amat::Array2d<scalar>& c_centres, 
-	                              const amat::Array2d<scalar>* gauss_r);
+	                              const amat::Array2d<scalar>& gauss_r);
 
 	void compute_face_values(const MVector<scalar>& unknowns, 
 	                         const amat::Array2d<scalar>& unknow_ghost, 
@@ -64,7 +63,6 @@ protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;
 	using SolutionReconstruction<scalar,nvars>::gr;
-	using SolutionReconstruction<scalar,nvars>::ng;
 };
 
 } // end namespace

@@ -27,7 +27,7 @@ namespace fvens {
 template <typename scalar, int nvars>
 WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh2dh<scalar> *const mesh,
                                        const amat::Array2d<scalar>& c_centres,
-                                       const amat::Array2d<scalar>* gauss_r, const a_real l)
+                                       const amat::Array2d<scalar>& gauss_r, const a_real l)
 	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, gauss_r),
 	  gamma{4.0}, lambda{l}, epsilon{1.0e-5}
 {
@@ -86,12 +86,12 @@ void WENOReconstruction<scalar,nvars>
 				if(ielem < jelem) {
 					ufl(face,ivar) = u(ielem,ivar);
 					for(int j = 0; j < NDIM; j++)
-						ufl(face,ivar) += lgrad[j]*(gr[face](0,j) - ri(ielem,j));
+						ufl(face,ivar) += lgrad[j]*(gr(face,j) - ri(ielem,j));
 				}
 				else {
 					ufr(face,ivar) = u(ielem,ivar);
 					for(int j = 0; j < NDIM; j++)
-						ufr(face,ivar) += lgrad[j]*(gr[face](0,j)-ri(ielem,j));
+						ufr(face,ivar) += lgrad[j]*(gr(face,j)-ri(ielem,j));
 				}
 			}
 		}
@@ -101,7 +101,7 @@ void WENOReconstruction<scalar,nvars>
 template <typename scalar, int nvars>
 BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
                                                      const amat::Array2d<scalar>& r_centres,
-                                                     const amat::Array2d<scalar>* gauss_r)
+                                                     const amat::Array2d<scalar>& gauss_r)
 	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r)
 {
 }
@@ -133,7 +133,7 @@ void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scal
 				const a_int face = m->gelemface(iel,j);
 				
 				const scalar uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
-						&gr[face](0,0), &ri(iel,0));
+						&gr(face,0), &ri(iel,0));
 				
 				scalar phiik;
 				const scalar diff = uface - u(iel,ivar);
@@ -155,10 +155,10 @@ void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scal
 				
 				if(iel < jel)
 					ufl(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
-						&gr[face](0,0), &ri(iel,0));
+						&gr(face,0), &ri(iel,0));
 				else
 					ufr(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
-						&gr[face](0,0), &ri(iel,0));
+						&gr(face,0), &ri(iel,0));
 			}
 
 		}
@@ -169,7 +169,7 @@ template <typename scalar, int nvars>
 VenkatakrishnanLimiter<scalar,nvars>
 ::VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh,
                          const amat::Array2d<scalar>& r_centres,
-                         const amat::Array2d<scalar>* gauss_r,
+                         const amat::Array2d<scalar>& gauss_r,
                          const a_real k_param)
 	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r), K{k_param}
 {
@@ -223,7 +223,7 @@ void VenkatakrishnanLimiter<scalar,nvars>
 				const a_int face = m->gelemface(iel,j);
 				
 				const scalar uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
-						&gr[face](0,0), &ri(iel,0));
+						&gr(face,0), &ri(iel,0));
 				
 				const scalar dm = uface - u(iel,ivar);
 
@@ -242,10 +242,10 @@ void VenkatakrishnanLimiter<scalar,nvars>
 				
 				if(iel < jel)
 					ufl(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
-						&gr[face](0,0), &ri(iel,0));
+						&gr(face,0), &ri(iel,0));
 				else
 					ufr(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
-						&gr[face](0,0), &ri(iel,0));
+						&gr(face,0), &ri(iel,0));
 			}
 
 		}

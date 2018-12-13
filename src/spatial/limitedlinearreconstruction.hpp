@@ -37,7 +37,7 @@ class WENOReconstruction : public SolutionReconstruction<scalar,nvars>
 public:
 	WENOReconstruction(const UMesh2dh<scalar> *const mesh,
 	                   const amat::Array2d<scalar>& c_centres, 
-	                   const amat::Array2d<scalar>* gauss_r,
+	                   const amat::Array2d<scalar>& gauss_r,
 	                   const a_real central_weight);
 
 	void compute_face_values(const MVector<scalar>& unknowns, 
@@ -49,7 +49,6 @@ protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;
 	using SolutionReconstruction<scalar,nvars>::gr;
-	using SolutionReconstruction<scalar,nvars>::ng;
 };
 
 /// Non-differentiable multidimensional slope limiter for linear reconstruction
@@ -62,7 +61,7 @@ class BarthJespersenLimiter : public SolutionReconstruction<scalar,nvars>
 public:
 	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
 	                      const amat::Array2d<scalar>& c_centres, 
-	                      const amat::Array2d<scalar>* gauss_r);
+	                      const amat::Array2d<scalar>& gauss_r);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 
 	                         const amat::Array2d<scalar>& unknow_ghost, 
@@ -73,7 +72,6 @@ protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;
 	using SolutionReconstruction<scalar,nvars>::gr;
-	using SolutionReconstruction<scalar,nvars>::ng;
 };
 
 /// Differentiable modification of Barth-Jespersen limiter
@@ -95,7 +93,7 @@ public:
 	 */
 	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh, 
 	                       const amat::Array2d<scalar>& c_centres, 
-	                       const amat::Array2d<scalar>* gauss_r, const a_real k_param);
+	                       const amat::Array2d<scalar>& gauss_r, const a_real k_param);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 
 	                         const amat::Array2d<scalar>& unknow_ghost, 
@@ -106,7 +104,6 @@ protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;
 	using SolutionReconstruction<scalar,nvars>::gr;
-	using SolutionReconstruction<scalar,nvars>::ng;
 };
 
 }

@@ -143,7 +143,7 @@ template const GradientScheme<a_real,1>* create_const_gradientscheme<a_real,1>(
 template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::string& type,
 		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
-		const amat::Array2d<scalar> *const gr, const a_real param)
+		const amat::Array2d<scalar>& gr, const a_real param)
 {
 	SolutionReconstruction<scalar,nvars> * reconst = nullptr;
 
@@ -182,7 +182,7 @@ SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::s
 template <typename scalar, int nvars>
 const SolutionReconstruction<scalar,nvars>* create_const_reconstruction(const std::string& type,
 		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
-		const amat::Array2d<scalar> *const gr, const a_real param)
+		const amat::Array2d<scalar>& gr, const a_real param)
 {
 	return create_mutable_reconstruction<scalar,nvars>(type, m, rc, gr, param);
 }
@@ -191,20 +191,20 @@ const SolutionReconstruction<scalar,nvars>* create_const_reconstruction(const st
 template SolutionReconstruction<a_real,NVARS>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-                              const amat::Array2d<a_real> *const gr, const a_real param);
+                              const amat::Array2d<a_real>& gr, const a_real param);
 template const SolutionReconstruction<a_real,NVARS>*
 create_const_reconstruction(const std::string& type,
                             const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-                            const amat::Array2d<a_real> *const gr, const a_real param);
+                            const amat::Array2d<a_real>& gr, const a_real param);
 
 template SolutionReconstruction<a_real,1>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-                              const amat::Array2d<a_real> *const gr, const a_real param);
+                              const amat::Array2d<a_real>& gr, const a_real param);
 template const SolutionReconstruction<a_real,1>*
 create_const_reconstruction(const std::string& type,
                             const UMesh2dh<a_real> *const m, const amat::Array2d<a_real>& rc,
-                            const amat::Array2d<a_real> *const gr, const a_real param);
+                            const amat::Array2d<a_real>& gr, const a_real param);
 
 
 template <typename scalar>

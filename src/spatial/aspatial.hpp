@@ -106,7 +106,7 @@ protected:
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)
-	amat::Array2d<scalar>* gr;
+	amat::Array2d<scalar> gr;
 
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);

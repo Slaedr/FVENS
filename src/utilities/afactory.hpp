@@ -75,7 +75,7 @@ SolutionReconstruction<scalar,nvars>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<scalar> *const m,
                               const amat::Array2d<scalar>& rc,
-                              const amat::Array2d<scalar> *const gr,
+                              const amat::Array2d<scalar>& gr,
                               const a_real param);
 
 /// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
@@ -83,7 +83,7 @@ template <typename scalar, int nvars>
 const SolutionReconstruction<scalar,nvars>*
 create_const_reconstruction(const std::string& type,
                             const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
-                            const amat::Array2d<scalar> *const gr, const a_real param);
+                            const amat::Array2d<scalar>& gr, const a_real param);
 
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.

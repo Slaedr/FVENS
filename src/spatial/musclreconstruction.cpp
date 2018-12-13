@@ -23,7 +23,7 @@ namespace fvens {
 
 template <typename scalar, int nvars>
 MUSCLReconstruction<scalar,nvars>::MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>* gauss_r)
+		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>& gauss_r)
 	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
 { }
 
@@ -57,7 +57,7 @@ MUSCLReconstruction<scalar,nvars>::musclReconstructRight(const scalar ui, const 
 
 template <typename scalar, int nvars>
 MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>* gauss_r)
+		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>& gauss_r)
 	: MUSCLReconstruction<scalar,nvars>(mesh, r_centres, gauss_r)
 { }
 
