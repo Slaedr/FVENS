@@ -78,10 +78,10 @@ void WENOReconstruction<scalar,nvars>
 			for(int j = 0; j < NDIM; j++)
 				lgrad[j] /= wsum;
 			
-			for(int j = 0; j < m->gnfael(ielem); j++)
+			for(int jfa = 0; jfa < m->gnfael(ielem); jfa++)
 			{
-				const a_int face = m->gelemface(ielem,j);
-				const a_int jelem = m->gesuel(ielem,j);
+				const a_int face = m->gelemface(ielem,jfa);
+				const a_int jelem = m->gesuel(ielem,jfa);
 				
 				if(ielem < jelem) {
 					ufl(face,ivar) = u(ielem,ivar);
