@@ -177,6 +177,12 @@ public:
 	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
 	//int gflag_bpoin(const a_int pointno) const { return flag_bpoin.get(pointno); }
 
+	/// Returns the total number of elements in the entire distributed mesh
+	a_int gnelemglobal() const { return nelemglobal; }
+
+	/// Returns the total number of vertices in the entire distributed mesh
+	a_int gnpoinglobal() const { return npoinglobal; }
+
 	/// Returns the total number of nodes in the mesh
 	a_int gnpoin() const { return npoin; }
 
@@ -212,11 +218,12 @@ public:
 
 	/// Returns the array of global element indices corresponding to external elements across
 	///  connectivity boundary faces of this subdomain
-	const a_int *getConnectivityGlobalIndices() const
-	{
-		assert(connGlobalIndices.size() > 0);
-		return &connGlobalIndices[0];
-	}
+	// const a_int *getConnectivityGlobalIndices() const
+	// {
+	// 	assert(connGlobalIndices.size() > 0);
+	// 	return &connGlobalIndices[0];
+	// }
+	std::vector<a_int> getConnectivityGlobalIndices() const;
 
 	/// Set coordinates of a certain point
 	/** 'set' counterpart of the 'get' function [gcoords](@ref gcoords).

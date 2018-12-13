@@ -26,6 +26,8 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	lm.maxnnode = gm.maxnnode;
 	lm.maxnfael = gm.maxnfael;
 	lm.nnofa = gm.nnofa;
+	lm.nelemglobal = gm.nelem;
+	lm.npoinglobal = gm.npoin;
 
 	//! 1. Copy inpoel, get local to global elem map
 	lm.inpoel.resize(lm.nelem, gm.maxnnode);

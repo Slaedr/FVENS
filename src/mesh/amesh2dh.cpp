@@ -39,7 +39,8 @@ UMesh2dh<scalar>::UMesh2dh()
 
 template <typename scalar>
 UMesh2dh<scalar>::UMesh2dh(const MeshData& md)
-	: npoin{md.npoin}, nelem{md.nelem}, nbface{md.nbface}, nnode(md.nnode), maxnnode{md.maxnnode},
+	: npoinglobal{md.npoin}, nelemglobal{md.nelem},
+	  npoin{md.npoin}, nelem{md.nelem}, nbface{md.nbface}, nnode(md.nnode), maxnnode{md.maxnnode},
 	  nfael(md.nfael), maxnfael{md.maxnfael}, nnofa{md.nnofa}, nbtag{md.nbtag}, ndtag{md.ndtag},
 	  coords(md.coords), inpoel(md.inpoel), bface(md.bface), vol_regions(md.vol_regions),
 	  nconnface{0}
@@ -734,6 +735,16 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		elemface(intelems[ibounface].first, intelems[ibounface].second) = iface;
 	}
 
+}
+
+template <typename scalar>
+std::vector<a_int> UMesh2dh<scalar>::getConnectivityGlobalIndices() const
+{
+	std::vector<a_int> cgind(nconnface);
+	for(a_int iface = 0; iface < nconnface; iface++)
+		cgind[iface] = connface(iface,3);
+
+	return cgind;
 }
 
 /** \todo: There is an issue with psup for some boundary nodes

@@ -9,16 +9,21 @@ namespace fvens {
 
 StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v)
 {
-	StatusCode ierr = VecCreateSeq(PETSC_COMM_SELF, m->gnelem()*nvars, v);
+	StatusCode ierr = VecCreateMPI(PETSC_COMM_WORLD, m->gnelem()*nvars, m->gnelemglobal()*nvars, v);
 	CHKERRQ(ierr);
+	ierr = VecSetFromOptions(*v); CHKERRQ(ierr);
 	return ierr;
 }
 
-StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int bs, Vec *const v)
+StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v)
 {
 	StatusCode ierr = 0;
-	ierr = VecCreateGhostBlock(PETSC_COMM_WORLD, bs, m->gnelem()*bs, PETSC_DECIDE, m->gnConnFace(),
-	                           m->getConnectivityGlobalIndices(), v);
+
+	const std::vector<a_int> globindices = m->getConnectivityGlobalIndices();
+
+	ierr = VecCreateGhostBlock(PETSC_COMM_WORLD, nvars, m->gnelem()*nvars,
+	                           m->gnelemglobal()*nvars, m->gnConnFace(),
+	                           globindices.data(), v);
 	CHKERRQ(ierr);
 	ierr = VecSetFromOptions(*v); CHKERRQ(ierr);
 	return ierr;

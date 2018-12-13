@@ -100,7 +100,7 @@ protected:
 
 	/// Cell centers of both real cells and ghost cells
 	/** The first nelem rows correspond to real cells,
-	 * the next nelem+nbface rows are ghost cell centres, indexed by nelem+iface for face iface.
+	 * the rest are ghost cells corresponding to connectivity and physical boundaries
 	 */
 	amat::Array2d<scalar> rc;
 
