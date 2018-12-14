@@ -36,7 +36,7 @@ class WENOReconstruction : public SolutionReconstruction<scalar,nvars>
 	const a_real epsilon;             ///< Small constant to avoid division by zero
 public:
 	WENOReconstruction(const UMesh2dh<scalar> *const mesh,
-	                   const amat::Array2d<scalar>& c_centres, 
+	                   const scalar *const c_centres, 
 	                   const amat::Array2d<scalar>& gauss_r,
 	                   const a_real central_weight);
 
@@ -60,7 +60,7 @@ class BarthJespersenLimiter : public SolutionReconstruction<scalar,nvars>
 {
 public:
 	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
-	                      const amat::Array2d<scalar>& c_centres, 
+	                      const scalar *const c_centres, 
 	                      const amat::Array2d<scalar>& gauss_r);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 
@@ -92,7 +92,7 @@ public:
 	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
 	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh, 
-	                       const amat::Array2d<scalar>& c_centres, 
+	                       const scalar *const c_centres, 
 	                       const amat::Array2d<scalar>& gauss_r, const a_real k_param);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 

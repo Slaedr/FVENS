@@ -29,7 +29,7 @@ namespace fvens {
 
 template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>::SolutionReconstruction (const UMesh2dh<scalar> *const mesh,
-                                                              const amat::Array2d<scalar>& c_centres,
+                                                              const scalar *const c_centres,
                                                               const amat::Array2d<scalar>& gauss_r)
 	: m{mesh}, ri{c_centres}, gr{gauss_r}
 { }
@@ -41,7 +41,7 @@ SolutionReconstruction<scalar,nvars>::~SolutionReconstruction()
 template <typename scalar, int nvars>
 LinearUnlimitedReconstruction<scalar,nvars>
 ::LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
-                                const amat::Array2d<scalar>& c_centres,
+                                const scalar *const c_centres,
                                 const amat::Array2d<scalar>& gauss_r)
 	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, gauss_r)
 { }
@@ -63,7 +63,7 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 			for(int i = 0; i < nvars; i++)
 			{
 				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
-				                               &gr(ied,0), &ri(ielem,0));
+				                               &gr(ied,0), ri+ielem*NDIM);
 			}
 		}
 
@@ -76,9 +76,9 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 			for(int i = 0; i < nvars; i++)
 			{
 				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
-				                               &gr(ied,0), &ri(ielem,0));
+				                               &gr(ied,0), ri+ielem*NDIM);
 				ufr(ied,i) = linearExtrapolate(u(jelem,i), grads[jelem], i, 1.0,
-				                               &gr(ied,0), &ri(jelem,0));
+				                               &gr(ied,0), ri+jelem*NDIM);
 			}
 		}
 
@@ -90,7 +90,7 @@ void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 			for(int i = 0; i < nvars; i++)
 			{
 				ufl(ied,i) = linearExtrapolate(u(ielem,i), grads[ielem], i, 1.0,
-				                               &gr(ied,0), &ri(ielem,0));
+				                               &gr(ied,0), ri+ielem*NDIM);
 			}
 		}
 	}

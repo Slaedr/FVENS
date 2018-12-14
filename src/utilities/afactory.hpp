@@ -51,14 +51,16 @@ const InviscidFlux<scalar>* create_const_inviscidflux(const std::string& type,
  */
 template <typename scalar, int nvars>
 GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& type, 
-		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc) ;
+                                                            const UMesh2dh<scalar> *const m,
+                                                            const scalar *const rc);
 
 /// Returns a newly-created immutable gradient computation context
 /** Parameters are as explained for \ref create_mutable_gradientscheme
  */
 template <typename scalar, int nvars>
 const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::string& type, 
-		const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc) ;
+                                                                const UMesh2dh<scalar> *const m,
+                                                                const scalar *const rc);
 
 /// Returns a solution reconstruction context
 /** Solution reconstruction here means computing the values of the conserved variables at faces from
@@ -74,7 +76,7 @@ template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<scalar> *const m,
-                              const amat::Array2d<scalar>& rc,
+                              const scalar *const rc,
                               const amat::Array2d<scalar>& gr,
                               const a_real param);
 
@@ -82,7 +84,8 @@ create_mutable_reconstruction(const std::string& type,
 template <typename scalar, int nvars>
 const SolutionReconstruction<scalar,nvars>*
 create_const_reconstruction(const std::string& type,
-                            const UMesh2dh<scalar> *const m, const amat::Array2d<scalar>& rc,
+                            const UMesh2dh<scalar> *const m,
+                            const scalar *const rc,
                             const amat::Array2d<scalar>& gr, const a_real param);
 
 /// Creates the appropriate flow solver class

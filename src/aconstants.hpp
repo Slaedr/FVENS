@@ -63,23 +63,9 @@ typedef int a_int;
 
 #define FVENS_MPI_INT MPI_INT
 
-// using Eigen::Matrix;
-// using Eigen::RowMajor;
-// using Eigen::ColMajor;
-// using Eigen::Dynamic;
-// using Eigen::aligned_allocator;
-
 /// Multi-vector type, used for storing mesh functions like the residual
 template <typename scalar>
 using MVector = Eigen::Matrix<scalar, Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>;
-
-/// Spatial gradients of flow variables for all cells in the mesh
-/** We could have made this row major, but Eigen complains against defining
- * row-major matrices with only one column, as required by scalar problems.
- */
-// template <typename scalar, int nvars>
-// using GradArray = std::vector<Eigen::Array<scalar,NDIM,nvars>,
-//                               Eigen::aligned_allocator<Eigen::Array<scalar,NDIM,nvars>>>;
 
 /// An array of fixed-size Eigen matrices each with the number of space dimensions as the size
 /** It is absolutely necessary to use Eigen::aligned_allocator for std::vector s of

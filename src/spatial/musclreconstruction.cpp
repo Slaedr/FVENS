@@ -23,7 +23,8 @@ namespace fvens {
 
 template <typename scalar, int nvars>
 MUSCLReconstruction<scalar,nvars>::MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>& gauss_r)
+                                                       const scalar *const r_centres, 
+                                                       const amat::Array2d<scalar>& gauss_r)
 	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
 { }
 
@@ -57,7 +58,8 @@ MUSCLReconstruction<scalar,nvars>::musclReconstructRight(const scalar ui, const 
 
 template <typename scalar, int nvars>
 MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& r_centres, const amat::Array2d<scalar>& gauss_r)
+                                             const scalar *const r_centres,
+                                             const amat::Array2d<scalar>& gauss_r)
 	: MUSCLReconstruction<scalar,nvars>(mesh, r_centres, gauss_r)
 { }
 
@@ -76,7 +78,7 @@ void MUSCLVanAlbada<scalar,nvars>
 
 		for(int i = 0; i < nvars; i++)
 		{
-			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+			const scalar deltam = computeBiasedDifference(ri+ielem*NDIM, ri+jelem*NDIM,
 			                                              u(ielem,i), ug(ibface,i), &grads[ielem](0,i));
 
 			scalar phi_l = (2.0*deltam * (ug(ibface,i) - u(ielem,i)) + eps) 
@@ -100,9 +102,9 @@ void MUSCLVanAlbada<scalar,nvars>
 
 		for(int i = 0; i < nvars; i++)
 		{
-			const scalar deltam = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+			const scalar deltam = computeBiasedDifference(ri+ielem*NDIM, ri+jelem*NDIM,
 			                                              u(ielem,i), u(jelem,i), &grads[ielem](0,i));
-			const scalar deltap = computeBiasedDifference(&ri(ielem,0), &ri(jelem,0),
+			const scalar deltap = computeBiasedDifference(ri+ielem*NDIM, ri+jelem*NDIM,
 			                                              u(ielem,i), u(jelem,i), &grads[jelem](0,i));
 			
 			scalar phi_l = (2.0*deltam * (u(jelem,i) - u(ielem,i)) + eps) 

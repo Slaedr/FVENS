@@ -18,7 +18,7 @@ class MUSCLReconstruction : public SolutionReconstruction<scalar,nvars>
 {
 public:
 	MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
-	                    const amat::Array2d<scalar>& c_centres, 
+	                    const scalar *const c_centres, 
 	                    const amat::Array2d<scalar>& gauss_r);
     
 	virtual void compute_face_values(const MVector<scalar>& unknowns, 
@@ -71,7 +71,7 @@ class MUSCLVanAlbada : public MUSCLReconstruction<scalar,nvars>
 {
 public:
 	MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
-	               const amat::Array2d<scalar>& c_centres, 
+	               const scalar *const c_centres, 
 	               const amat::Array2d<scalar>& gauss_r);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 

@@ -20,7 +20,7 @@ class GradientScheme
 {
 protected:
 	const UMesh2dh<scalar> *const m;                     ///< Mesh context
-	const amat::Array2d<scalar>& rc;                     ///< All cell-centres' coordinates
+	const scalar *const rc;                              ///< All cell-centres' coordinates
 
 public:
 	/// Sets needed data
@@ -28,7 +28,7 @@ public:
 	 * \param _rc Cell centres of all cells including ghost cells
 	 */
 	GradientScheme(const UMesh2dh<scalar> *const mesh,
-	               const amat::Array2d<scalar>& _rc);
+	               const scalar *const _rc);
 	
 	virtual ~GradientScheme();
 
@@ -46,7 +46,7 @@ class ZeroGradients : public GradientScheme<scalar,nvars>
 {
 public:
 	ZeroGradients(const UMesh2dh<scalar> *const mesh, 
-	              const amat::Array2d<scalar>& _rc);
+	              const scalar *const _rc);
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg, 
@@ -67,7 +67,7 @@ class GreenGaussGradients : public GradientScheme<scalar,nvars>
 {
 public:
 	GreenGaussGradients(const UMesh2dh<scalar> *const mesh, 
-	                    const amat::Array2d<scalar>& _rc);
+	                    const scalar *const _rc);
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg,
@@ -84,7 +84,7 @@ class WeightedLeastSquaresGradients : public GradientScheme<scalar,nvars>
 {
 public:
 	WeightedLeastSquaresGradients(const UMesh2dh<scalar> *const mesh, 
-	                              const amat::Array2d<scalar>& _rc);
+	                              const scalar *const _rc);
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg, 

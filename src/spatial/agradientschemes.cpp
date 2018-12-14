@@ -15,7 +15,7 @@ namespace fvens
 
 template<typename scalar, int nvars>
 GradientScheme<scalar,nvars>::GradientScheme(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& _rc)
+		const scalar *const _rc)
 	: m{mesh}, rc{_rc}
 { }
 
@@ -25,7 +25,7 @@ GradientScheme<scalar,nvars>::~GradientScheme()
 
 template<typename scalar, int nvars>
 ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& _rc)
+		const scalar *const _rc)
 	: GradientScheme<scalar,nvars>(mesh, _rc)
 { }
 
@@ -45,7 +45,7 @@ void ZeroGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
 
 template<typename scalar, int nvars>
 GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& _rc)
+		const scalar *const _rc)
 	: GradientScheme<scalar,nvars>(mesh, _rc)
 { }
 
@@ -57,6 +57,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 		const amat::Array2d<scalar>& ug,
 		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
 {
+	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
+
 #pragma omp parallel default(shared)
 	{
 #pragma omp for
@@ -90,8 +92,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
-				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
+				dL += (mid[idim]-rcm(ielem,idim))*(mid[idim]-rcm(ielem,idim));
+				dR += (mid[idim]-rcm(jelem,idim))*(mid[idim]-rcm(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -130,8 +132,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
-				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
+				dL += (mid[idim]-rcm(ielem,idim))*(mid[idim]-rcm(ielem,idim));
+				dR += (mid[idim]-rcm(jelem,idim))*(mid[idim]-rcm(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -183,8 +185,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
-				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
+				dL += (mid[idim]-rcm(ielem,idim))*(mid[idim]-rcm(ielem,idim));
+				dR += (mid[idim]-rcm(jelem,idim))*(mid[idim]-rcm(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -208,9 +210,11 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 template<typename scalar, int nvars>
 WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 		const UMesh2dh<scalar> *const mesh,
-		const amat::Array2d<scalar>& _rc)
+		const scalar *const _rc)
 	: GradientScheme<scalar,nvars>(mesh, _rc)
 {
+	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
+
 	V.resize(m->gnelem());
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
@@ -228,8 +232,8 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 		scalar w2 = 0, dr[NDIM];
 		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
-			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
+			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -252,8 +256,8 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 		scalar w2 = 0, dr[NDIM];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
-			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
+			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -282,8 +286,8 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 		scalar w2 = 0, dr[NDIM];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
-			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
+			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -309,6 +313,7 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		const amat::Array2d<scalar>& ug,
 		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
 {
+	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
 	FMultiVectorArray<scalar,nvars> f;
 	f.resize(m->gnelem());
 
@@ -326,8 +331,8 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		scalar w2 = 0, dr[NDIM], du[nvars];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
-			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
+			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -354,8 +359,8 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		scalar w2 = 0, dr[NDIM], du[nvars];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
-			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
+			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -389,8 +394,8 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		scalar w2 = 0, dr[NDIM], du[nvars];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rc(ielem,idim)-rc(jelem,idim))*(rc(ielem,idim)-rc(jelem,idim));
-			dr[idim] = rc(ielem,idim)-rc(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
+			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
 		}
 		w2 = 1.0/(w2);
 
