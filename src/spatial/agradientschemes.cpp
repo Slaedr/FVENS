@@ -74,14 +74,24 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 
 			const a_int ielem = m->gintfac(iface,0);
 			const a_int jelem = m->gintfac(iface,1);   // ghost cell index
-			const a_int ip1 = m->gintfac(iface,2);
-			const a_int ip2 = m->gintfac(iface,3);
+
+			scalar mid[NDIM];
+			for(int i = 0; i < NDIM; i++) mid[i] = 0;
+
+			for(FIndex inofa = 2; inofa < m->gnnofa(iface)+2; inofa++)
+			{
+				const a_int ip = m->gintfac(iface,inofa);
+				for(int idim = 0; idim < NDIM; idim++)
+					mid[idim] += m->gcoords(ip,idim);
+			}
+
+			for(int i = 0; i < NDIM; i++) mid[i] /= m->gnnofa(iface);
+
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				const scalar mid = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid-rc(ielem,idim))*(mid-rc(ielem,idim));
-				dR += (mid-rc(jelem,idim))*(mid-rc(jelem,idim));
+				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
+				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -104,14 +114,24 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 
 			const a_int ielem = m->gintfac(iface,0);
 			const a_int jelem = m->gintfac(iface,1);
-			const a_int ip1 = m->gintfac(iface,2);
-			const a_int ip2 = m->gintfac(iface,3);
+
+			scalar mid[NDIM];
+			for(int i = 0; i < NDIM; i++) mid[i] = 0;
+
+			for(FIndex inofa = 2; inofa < m->gnnofa(iface)+2; inofa++)
+			{
+				const a_int ip = m->gintfac(iface,inofa);
+				for(int idim = 0; idim < NDIM; idim++)
+					mid[idim] += m->gcoords(ip,idim);
+			}
+
+			for(int i = 0; i < NDIM; i++) mid[i] /= m->gnnofa(iface);
+
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				const scalar mid = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid-rc(ielem,idim))*(mid-rc(ielem,idim));
-				dR += (mid-rc(jelem,idim))*(mid-rc(jelem,idim));
+				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
+				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -147,14 +167,24 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 
 			const a_int ielem = m->gintfac(iface,0);
 			const a_int jelem = m->gintfac(iface,1);
-			const a_int ip1 = m->gintfac(iface,2);
-			const a_int ip2 = m->gintfac(iface,3);
+
+			scalar mid[NDIM];
+			for(int i = 0; i < NDIM; i++) mid[i] = 0;
+
+			for(FIndex inofa = 2; inofa < m->gnnofa(iface)+2; inofa++)
+			{
+				const a_int ip = m->gintfac(iface,inofa);
+				for(int idim = 0; idim < NDIM; idim++)
+					mid[idim] += m->gcoords(ip,idim);
+			}
+
+			for(int i = 0; i < NDIM; i++) mid[i] /= m->gnnofa(iface);
+
 			dL = 0; dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
-				const scalar mid = (m->gcoords(ip1,idim) + m->gcoords(ip2,idim)) * 0.5;
-				dL += (mid-rc(ielem,idim))*(mid-rc(ielem,idim));
-				dR += (mid-rc(jelem,idim))*(mid-rc(jelem,idim));
+				dL += (mid[idim]-rc(ielem,idim))*(mid[idim]-rc(ielem,idim));
+				dR += (mid[idim]-rc(jelem,idim))*(mid[idim]-rc(jelem,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
