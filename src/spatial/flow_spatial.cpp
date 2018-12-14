@@ -336,7 +336,15 @@ void FlowFV<scalar,secondOrder,constVisc>
 	 */
 	a_real dgradr[NDIM][NVARS][NVARS];
 
-	getFaceGradientAndJacobian_thinLayer(iface, upl, upr, dupl, dupr, grad, dgradl, dgradr);
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
+
+	if(iface >= m->gPhyBFaceStart() && iface < m->gPhyBFaceEnd())
+		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), upl, upr, dupl, dupr, grad,
+		                                     dgradl, dgradr);
+	else
+		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), upl, upr, dupl, dupr, grad,
+		                                     dgradl, dgradr);
 
 	const std::array<scalar,NDIM> n = m->gnormal(iface);
 	computeViscousFluxJacobian<scalar,NDIM,NVARS,constVisc>(jphy, &n[0], ul, ur, grad, dgradl, dgradr,

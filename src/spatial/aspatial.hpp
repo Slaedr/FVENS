@@ -98,11 +98,14 @@ protected:
 	/// Mesh context
 	const UMesh2dh<scalar> *const m;
 
-	/// Cell centers of both real cells and ghost cells
+	/// Cell centers of both real cells and connectivity ghost cells
 	/** The first nelem rows correspond to real cells,
-	 * the rest are ghost cells corresponding to connectivity and physical boundaries
+	 * the rest are ghost cells corresponding to connectivity boundaries
 	 */
 	amat::Array2d<scalar> rc;
+
+	/// Cell centres of ghost cells at physical boundaries
+	//amat::Array2d<scalar> rcpb;
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)
@@ -140,11 +143,12 @@ protected:
 	 * \param[out] dgradl Jacobian of left cell-centred gradients
 	 * \param[out] dgradr Jacobian of right cell-centred gradients
 	 */
-	void getFaceGradientAndJacobian_thinLayer(const a_int iface,
-		const a_real *const ucl, const a_real *const ucr,
-		const a_real *const dul, const a_real *const dur,
-		scalar grad[NDIM][nvars], scalar dgradl[NDIM][nvars][nvars], scalar dgradr[NDIM][nvars][nvars])
-		const;
+	void getFaceGradientAndJacobian_thinLayer(const scalar *const ccleft, const scalar *const ccright,
+	                                          const a_real *const ucl, const a_real *const ucr,
+	                                          const a_real *const dul, const a_real *const dur,
+	                                          scalar grad[NDIM][nvars],
+	                                          scalar dgradl[NDIM][nvars][nvars],
+	                                          scalar dgradr[NDIM][nvars][nvars]) const;
 };
 
 }	// end namespace

@@ -189,18 +189,17 @@ getFaceGradient_modifiedAverage(const scalar *const rcl, const scalar *const rcr
 }
 
 template <typename scalar, int nvars>
-void Spatial<scalar,nvars>::getFaceGradientAndJacobian_thinLayer(const a_int iface,
-		const a_real *const ucl, const a_real *const ucr,
-		const a_real *const dul, const a_real *const dur,
-		scalar grad[NDIM][nvars], scalar dgradl[NDIM][nvars][nvars], scalar dgradr[NDIM][nvars][nvars])
-	const
+void Spatial<scalar,nvars>
+::getFaceGradientAndJacobian_thinLayer(const scalar *const ccleft, const scalar *const ccright,
+                                       const a_real *const ucl, const a_real *const ucr,
+                                       const a_real *const dul, const a_real *const dur,
+                                       scalar grad[NDIM][nvars], scalar dgradl[NDIM][nvars][nvars],
+                                       scalar dgradr[NDIM][nvars][nvars]) const
 {
 	scalar dr[NDIM], dist=0;
 
-	const a_int lelem = m->gintfac(iface,0);
-	const a_int relem = m->gintfac(iface,1);
 	for(int i = 0; i < NDIM; i++) {
-		dr[i] = rc(relem,i)-rc(lelem,i);
+		dr[i] = ccright[i]-ccleft[i];
 		dist += dr[i]*dr[i];
 	}
 	dist = sqrt(dist);

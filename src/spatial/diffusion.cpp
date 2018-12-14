@@ -212,6 +212,8 @@ void DiffusionMA<nvars>
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L,
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& U) const
 {
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
 	const a_real len = m->gfacemetric(iface,2);
 
 	a_real du[nvars*nvars];
@@ -224,7 +226,7 @@ void DiffusionMA<nvars>
 	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
 
 	// Compute the face gradient Jacobian; we don't actually need the gradient, however..
-	getFaceGradientAndJacobian_thinLayer(iface, ul, ur, du, du, grad, dgradl, dgradr);
+	getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), ul, ur, du, du, grad, dgradl, dgradr);
 
 	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
 	U = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
@@ -246,6 +248,8 @@ void DiffusionMA<nvars>
                                   const a_real *const ul,
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const
 {
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
 	const a_real len = m->gfacemetric(iface,2);
 
 	a_real du[nvars*nvars];
@@ -258,7 +262,7 @@ void DiffusionMA<nvars>
 	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
 
 	// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
-	getFaceGradientAndJacobian_thinLayer(iface, ul, ul, du, du, grad, dgradl, dgradr);
+	getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), ul, ul, du, du, grad, dgradl, dgradr);
 
 	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
 	for(int ivar = 0; ivar < nvars; ivar++)
