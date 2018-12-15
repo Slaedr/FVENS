@@ -105,7 +105,7 @@ protected:
 	amat::Array2d<scalar> rc;
 
 	/// Cell centres of ghost cells at physical boundaries
-	//amat::Array2d<scalar> rcpb;
+	amat::Array2d<scalar> rcbp;
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)

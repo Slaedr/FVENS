@@ -37,6 +37,7 @@ class WENOReconstruction : public SolutionReconstruction<scalar,nvars>
 public:
 	WENOReconstruction(const UMesh2dh<scalar> *const mesh,
 	                   const scalar *const c_centres, 
+	                   const scalar *const c_centres_ghost,
 	                   const amat::Array2d<scalar>& gauss_r,
 	                   const a_real central_weight);
 
@@ -61,6 +62,7 @@ class BarthJespersenLimiter : public SolutionReconstruction<scalar,nvars>
 public:
 	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
 	                      const scalar *const c_centres, 
+	                      const scalar *const c_centres_ghost,
 	                      const amat::Array2d<scalar>& gauss_r);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 
@@ -93,6 +95,7 @@ public:
 	 */
 	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh, 
 	                       const scalar *const c_centres, 
+	                       const scalar *const c_centres_ghost,
 	                       const amat::Array2d<scalar>& gauss_r, const a_real k_param);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 

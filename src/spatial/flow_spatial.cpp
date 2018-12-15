@@ -42,9 +42,10 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 
 	inviflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux, &physics)},
 
-	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, &rc(0,0))},
-	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, &rc(0,0), gr,
-	                                               nconfig.limiter_param)},
+	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, &rc(0,0),
+	                                                    &rcbp(0,0))},
+	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, &rc(0,0), &rcbp(0,0),
+	                                               gr, nconfig.limiter_param)},
 
 	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
 

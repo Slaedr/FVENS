@@ -19,16 +19,24 @@ template<typename scalar, int nvars>
 class GradientScheme
 {
 protected:
-	const UMesh2dh<scalar> *const m;                     ///< Mesh context
-	const scalar *const rc;                              ///< All cell-centres' coordinates
+	/// Mesh context
+	const UMesh2dh<scalar> *const m;
+	/// Coords of subdomain and connectivity ghost cell-centres
+	const scalar *const rc;
+	/// Coords of physical boundary ghost cell centres
+	const scalar *const rcbp;
 
 public:
 	/// Sets needed data
 	/** \param mesh Mesh context
-	 * \param _rc Cell centres of all cells including ghost cells
+	 * \param _rc Cell centres of subdomain and connectivity ghost cells stored as a row-major
+	 *   nElem x ndim array
+	 * \param _rcbp Cell centres of physical boundary ghost cells stored as a row-major nElem x ndim
+	 *   array
 	 */
 	GradientScheme(const UMesh2dh<scalar> *const mesh,
-	               const scalar *const _rc);
+	               const scalar *const _rc,
+	               const scalar *const _rcbp);
 	
 	virtual ~GradientScheme();
 
@@ -46,7 +54,8 @@ class ZeroGradients : public GradientScheme<scalar,nvars>
 {
 public:
 	ZeroGradients(const UMesh2dh<scalar> *const mesh, 
-	              const scalar *const _rc);
+	              const scalar *const _rc,
+	              const scalar *const _rcbp);
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg, 
@@ -55,6 +64,7 @@ public:
 protected:
 	using GradientScheme<scalar,nvars>::m;
 	using GradientScheme<scalar,nvars>::rc;
+	using GradientScheme<scalar,nvars>::rcbp;
 };
 
 /**
@@ -67,7 +77,8 @@ class GreenGaussGradients : public GradientScheme<scalar,nvars>
 {
 public:
 	GreenGaussGradients(const UMesh2dh<scalar> *const mesh, 
-	                    const scalar *const _rc);
+	                    const scalar *const _rc,
+	                    const scalar *const _rcbp);
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg,
@@ -76,6 +87,7 @@ public:
 protected:
 	using GradientScheme<scalar,nvars>::m;
 	using GradientScheme<scalar,nvars>::rc;
+	using GradientScheme<scalar,nvars>::rcbp;
 };
 
 /// Class implementing linear weighted least-squares reconstruction
@@ -84,7 +96,8 @@ class WeightedLeastSquaresGradients : public GradientScheme<scalar,nvars>
 {
 public:
 	WeightedLeastSquaresGradients(const UMesh2dh<scalar> *const mesh, 
-	                              const scalar *const _rc);
+	                              const scalar *const _rc,
+	                              const scalar *const _rcbp);
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg, 
@@ -93,6 +106,7 @@ public:
 protected:
 	using GradientScheme<scalar,nvars>::m;
 	using GradientScheme<scalar,nvars>::rc;
+	using GradientScheme<scalar,nvars>::rcbp;
 
 private:
 	/// The least squares LHS matrix

@@ -109,6 +109,7 @@ protected:
 
 	using Spatial<scalar,NVARS>::m;
 	using Spatial<scalar,NVARS>::rc;
+	using Spatial<a_real,NVARS>::rcbp;
 	using Spatial<scalar,NVARS>::gr;
 	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
 
@@ -224,6 +225,7 @@ public:
 protected:
 	using Spatial<scalar,NVARS>::m;
 	using Spatial<scalar,NVARS>::rc;
+	using Spatial<a_real,NVARS>::rcbp;
 	using Spatial<scalar,NVARS>::gr;
 	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
 	using Spatial<scalar,NVARS>::getFaceGradientAndJacobian_thinLayer;

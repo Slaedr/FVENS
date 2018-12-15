@@ -19,6 +19,7 @@ class MUSCLReconstruction : public SolutionReconstruction<scalar,nvars>
 public:
 	MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
 	                    const scalar *const c_centres, 
+	                    const scalar *const c_centres_ghost,
 	                    const amat::Array2d<scalar>& gauss_r);
     
 	virtual void compute_face_values(const MVector<scalar>& unknowns, 
@@ -30,6 +31,7 @@ public:
 protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;
+	using SolutionReconstruction<scalar,nvars>::ribp;
 	using SolutionReconstruction<scalar,nvars>::gr;
 
 	const a_real eps;                       ///< Small number
@@ -72,6 +74,7 @@ class MUSCLVanAlbada : public MUSCLReconstruction<scalar,nvars>
 public:
 	MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
 	               const scalar *const c_centres, 
+	               const scalar *const c_centres_ghost,
 	               const amat::Array2d<scalar>& gauss_r);
     
 	void compute_face_values(const MVector<scalar>& unknowns, 
@@ -82,6 +85,7 @@ public:
 protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;
+	using SolutionReconstruction<scalar,nvars>::ribp;
 	using SolutionReconstruction<scalar,nvars>::gr;
 	using MUSCLReconstruction<scalar,nvars>::computeBiasedDifference;
 	using MUSCLReconstruction<scalar,nvars>::musclReconstructLeft;

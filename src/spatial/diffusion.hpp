@@ -30,6 +30,7 @@ public:
 protected:
 	using Spatial<a_real,nvars>::m;
 	using Spatial<a_real,nvars>::rc;
+	using Spatial<a_real,nvars>::rcbp;
 	using Spatial<a_real,nvars>::gr;
 	using Spatial<a_real,nvars>::getFaceGradient_modifiedAverage;
 
@@ -90,6 +91,7 @@ public:
 protected:
 	using Spatial<a_real,nvars>::m;
 	using Spatial<a_real,nvars>::rc;
+	using Spatial<a_real,nvars>::rcbp;
 	using Spatial<a_real,nvars>::gr;
 	using Spatial<a_real,nvars>::getFaceGradient_modifiedAverage;
 	using Spatial<a_real,nvars>::getFaceGradientAndJacobian_thinLayer;

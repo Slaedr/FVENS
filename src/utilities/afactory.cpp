@@ -92,22 +92,23 @@ template const InviscidFlux<a_real>* create_const_inviscidflux(
 template <typename scalar, int nvars>
 GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& type, 
                                                             const UMesh2dh<scalar> *const m,
-                                                            const scalar *const rc)
+                                                            const scalar *const rc,
+                                                            const scalar *const rcbp)
 {
 	GradientScheme<scalar,nvars> * gradcomp = nullptr;
 
 	if(type == "LEASTSQUARES")
 	{
-		gradcomp = new WeightedLeastSquaresGradients<scalar,nvars>(m, rc);
+		gradcomp = new WeightedLeastSquaresGradients<scalar,nvars>(m, rc, rcbp);
 		std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
 	}
 	else if(type == "GREENGAUSS")
 	{
-		gradcomp = new GreenGaussGradients<scalar,nvars>(m, rc);
+		gradcomp = new GreenGaussGradients<scalar,nvars>(m, rc, rcbp);
 		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used.\n";
 	}
 	else {
-		gradcomp = new ZeroGradients<scalar,nvars>(m, rc);
+		gradcomp = new ZeroGradients<scalar,nvars>(m, rc, rcbp);
 		std::cout << " GradientSchemeFactory: No gradient computation.\n";
 	}
 
@@ -117,37 +118,43 @@ GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& t
 template <typename scalar, int nvars>
 const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::string& type, 
                                                                 const UMesh2dh<scalar> *const m,
-                                                                const scalar *const rc)
+                                                                const scalar *const rc,
+                                                                const scalar *const rcbp)
 {
-	return create_mutable_gradientscheme<scalar,nvars>(type, m, rc);
+	return create_mutable_gradientscheme<scalar,nvars>(type, m, rc, rcbp);
 }
 
 // template instantiations
 template GradientScheme<a_real,NVARS>* create_mutable_gradientscheme<a_real,NVARS>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m,
-		const a_real *const rc);
+		const a_real *const rc,
+		const a_real *const rcbp);
 
 template const GradientScheme<a_real,NVARS>* create_const_gradientscheme<a_real,NVARS>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m,
-		const a_real *const rc);
+		const a_real *const rc,
+		const a_real *const rcbp);
 
 template GradientScheme<a_real,1>* create_mutable_gradientscheme<a_real,1>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m,
-		const a_real *const rc);
+		const a_real *const rc,
+		const a_real *const rcbp);
 
 template const GradientScheme<a_real,1>* create_const_gradientscheme<a_real,1>(
 		const std::string& type, 
 		const UMesh2dh<a_real> *const m,
-		const a_real *const rc);
+		const a_real *const rc,
+		const a_real *const rcbp);
 
 
 template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::string& type,
                                                                     const UMesh2dh<scalar> *const m,
                                                                     const scalar *const rc,
+                                                                    const scalar *const rcbp,
                                                                     const amat::Array2d<scalar>& gr,
                                                                     const a_real param)
 {
@@ -155,27 +162,27 @@ SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::s
 
 	if(type == "NONE")
 	{
-		reconst = new LinearUnlimitedReconstruction<scalar,nvars>(m, rc, gr);
+		reconst = new LinearUnlimitedReconstruction<scalar,nvars>(m, rc, rcbp, gr);
 		std::cout << " ReconstructionFactory: Unlimited linear reconstruction selected.\n";
 	}
 	else if(type == "WENO")
 	{
-		reconst = new WENOReconstruction<scalar,nvars>(m, rc, gr, param);
+		reconst = new WENOReconstruction<scalar,nvars>(m, rc, rcbp, gr, param);
 		std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
 	}
 	else if(type == "VANALBADA")
 	{
-		reconst = new MUSCLVanAlbada<scalar,nvars>(m, rc, gr);
+		reconst = new MUSCLVanAlbada<scalar,nvars>(m, rc, rcbp, gr);
 		std::cout << " ReconstructionFactory: Van Albada MUSCL reconstruction selected.\n";
 	}
 	else if(type == "BARTHJESPERSEN")
 	{
-		reconst = new BarthJespersenLimiter<scalar,nvars>(m, rc, gr);
+		reconst = new BarthJespersenLimiter<scalar,nvars>(m, rc, rcbp, gr);
 		std::cout << " ReconstructionFactory: Barth-Jespersen linear reconstruction selected.\n";
 	}
 	else if(type == "VENKATAKRISHNAN")
 	{
-		reconst = new VenkatakrishnanLimiter<scalar,nvars>(m, rc, gr, param);
+		reconst = new VenkatakrishnanLimiter<scalar,nvars>(m, rc, rcbp, gr, param);
 		std::cout << " ReconstructionFactory: Venkatakrishnan linear reconstruction selected.\n";
 	}
 	else {
@@ -188,29 +195,35 @@ SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::s
 template <typename scalar, int nvars>
 const SolutionReconstruction<scalar,nvars>*
 create_const_reconstruction(const std::string& type, const UMesh2dh<scalar> *const m,
-                            const scalar *const rc, const amat::Array2d<scalar>& gr,
+                            const scalar *const rc,
+                            const scalar *const rcbp,
+                            const amat::Array2d<scalar>& gr,
                             const a_real param)
 {
-	return create_mutable_reconstruction<scalar,nvars>(type, m, rc, gr, param);
+	return create_mutable_reconstruction<scalar,nvars>(type, m, rc, rcbp, gr, param);
 }
 
 // template instantiations
 template SolutionReconstruction<a_real,NVARS>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<a_real> *const m, const a_real *const rc,
+                              const a_real *const rcbp,
                               const amat::Array2d<a_real>& gr, const a_real param);
 template const SolutionReconstruction<a_real,NVARS>*
 create_const_reconstruction(const std::string& type,
                             const UMesh2dh<a_real> *const m, const a_real *const rc,
+                            const a_real *const rcbp,
                             const amat::Array2d<a_real>& gr, const a_real param);
 
 template SolutionReconstruction<a_real,1>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<a_real> *const m, const a_real *const rc,
+                              const a_real *const rcbp,
                               const amat::Array2d<a_real>& gr, const a_real param);
 template const SolutionReconstruction<a_real,1>*
 create_const_reconstruction(const std::string& type,
                             const UMesh2dh<a_real> *const m, const a_real *const rc,
+                            const a_real *const rcbp,
                             const amat::Array2d<a_real>& gr, const a_real param);
 
 

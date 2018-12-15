@@ -27,8 +27,10 @@ namespace fvens {
 template <typename scalar, int nvars>
 WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh2dh<scalar> *const mesh,
                                                      const scalar *const c_centres, 
-                                       const amat::Array2d<scalar>& gauss_r, const a_real l)
-	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, gauss_r),
+                                                     const scalar *const c_centres_ghost,
+                                                     const amat::Array2d<scalar>& gauss_r,
+                                                     const a_real l)
+	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, c_centres_ghost, gauss_r),
 	  gamma{4.0}, lambda{l}, epsilon{1.0e-5}
 {
 }
@@ -91,7 +93,7 @@ void WENOReconstruction<scalar,nvars>
 				else {
 					ufr(face,ivar) = u(ielem,ivar);
 					for(int j = 0; j < NDIM; j++)
-						ufr(face,ivar) += lgrad[j]*(gr(face,j)-ri[ielem*NDIM+j]);
+						ufr(face,ivar) += lgrad[j]*(gr(face,j) - ri[ielem*NDIM+j]);
 				}
 			}
 		}
@@ -101,8 +103,9 @@ void WENOReconstruction<scalar,nvars>
 template <typename scalar, int nvars>
 BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
                                                            const scalar *const r_centres, 
+                                                           const scalar *const r_centres_ghost,
                                                      const amat::Array2d<scalar>& gauss_r)
-	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r)
+	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, r_centres_ghost, gauss_r)
 {
 }
 
@@ -169,9 +172,10 @@ template <typename scalar, int nvars>
 VenkatakrishnanLimiter<scalar,nvars>
 ::VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh,
                          const scalar *const r_centres, 
+                         const scalar *const r_centres_ghost,
                          const amat::Array2d<scalar>& gauss_r,
                          const a_real k_param)
-	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r), K{k_param}
+	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, r_centres_ghost, gauss_r), K{k_param}
 {
 	std::cout << "  Venkatakrishnan Limiter: Constant K = " << K << std::endl;
 	// compute characteristic length, currently the maximum edge length, of all cells

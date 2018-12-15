@@ -15,8 +15,9 @@ namespace fvens
 
 template<typename scalar, int nvars>
 GradientScheme<scalar,nvars>::GradientScheme(const UMesh2dh<scalar> *const mesh,
-		const scalar *const _rc)
-	: m{mesh}, rc{_rc}
+                                             const scalar *const _rc,
+                                             const scalar *const _rcbp)
+	: m{mesh}, rc{_rc}, rcbp{_rcbp}
 { }
 
 template<typename scalar, int nvars>
@@ -25,8 +26,9 @@ GradientScheme<scalar,nvars>::~GradientScheme()
 
 template<typename scalar, int nvars>
 ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
-		const scalar *const _rc)
-	: GradientScheme<scalar,nvars>(mesh, _rc)
+                                           const scalar *const _rc,
+                                           const scalar *const _rcbp)
+	: GradientScheme<scalar,nvars>(mesh, _rc, _rcbp)
 { }
 
 template<typename scalar, int nvars>
@@ -45,8 +47,9 @@ void ZeroGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
 
 template<typename scalar, int nvars>
 GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *const mesh,
-		const scalar *const _rc)
-	: GradientScheme<scalar,nvars>(mesh, _rc)
+                                                       const scalar *const _rc,
+                                                       const scalar *const _rcbp)
+	: GradientScheme<scalar,nvars>(mesh, _rc, _rcbp)
 { }
 
 /* The state at the face is approximated as an inverse-distance-weighted average.
@@ -57,7 +60,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 		const amat::Array2d<scalar>& ug,
 		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
 {
-	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
+	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace(), NDIM);
+	Eigen::Map<const MVector<scalar>> rcbpm(rcbp, m->gnbface(), NDIM);
 
 #pragma omp parallel default(shared)
 	{
@@ -72,10 +76,8 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 #pragma omp for
 		for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 		{
-			scalar dL, dR;
-
+			const a_int ibpface = iface - m->gPhyBFaceStart();
 			const a_int ielem = m->gintfac(iface,0);
-			const a_int jelem = m->gintfac(iface,1);   // ghost cell index
 
 			scalar mid[NDIM];
 			for(int i = 0; i < NDIM; i++) mid[i] = 0;
@@ -89,11 +91,11 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 
 			for(int i = 0; i < NDIM; i++) mid[i] /= m->gnnofa(iface);
 
-			dL = 0; dR = 0;
+			scalar dL = 0, dR = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 			{
 				dL += (mid[idim]-rcm(ielem,idim))*(mid[idim]-rcm(ielem,idim));
-				dR += (mid[idim]-rcm(jelem,idim))*(mid[idim]-rcm(jelem,idim));
+				dR += (mid[idim]-rcbpm(ibpface,idim))*(mid[idim]-rcbpm(ibpface,idim));
 			}
 			dL = 1.0/sqrt(dL);
 			dR = 1.0/sqrt(dR);
@@ -210,10 +212,12 @@ void GreenGaussGradients<scalar,nvars>::compute_gradients(
 template<typename scalar, int nvars>
 WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 		const UMesh2dh<scalar> *const mesh,
-		const scalar *const _rc)
-	: GradientScheme<scalar,nvars>(mesh, _rc)
+		const scalar *const _rc,
+		const scalar *const _rcbp)
+	: GradientScheme<scalar,nvars>(mesh, _rc, _rcbp)
 {
 	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
+	Eigen::Map<const MVector<scalar>> rcbpm(rcbp, m->gnbface(), NDIM);
 
 	V.resize(m->gnelem());
 #pragma omp parallel for default(shared)
@@ -227,13 +231,14 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
+		const a_int ibpface = iface - m->gPhyBFaceStart();
 		const a_int ielem = m->gintfac(iface,0);
-		const a_int jelem = m->gintfac(iface,1);
+
 		scalar w2 = 0, dr[NDIM];
 		for(short idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
-			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcbpm(ibpface,idim))*(rcm(ielem,idim)-rcbpm(ibpface,idim));
+			dr[idim] = rcm(ielem,idim)-rcbpm(ibpface,idim);
 		}
 		w2 = 1.0/(w2);
 
@@ -314,6 +319,7 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
 {
 	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
+	Eigen::Map<const MVector<scalar>> rcbpm(rcbp, m->gnbface(), NDIM);
 	FMultiVectorArray<scalar,nvars> f;
 	f.resize(m->gnelem());
 
@@ -326,13 +332,14 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
+		const a_int ibpface = iface - m->gPhyBFaceStart();
 		const a_int ielem = m->gintfac(iface,0);
-		const a_int jelem = m->gintfac(iface,1);
+
 		scalar w2 = 0, dr[NDIM], du[nvars];
 		for(int idim = 0; idim < NDIM; idim++)
 		{
-			w2 += (rcm(ielem,idim)-rcm(jelem,idim))*(rcm(ielem,idim)-rcm(jelem,idim));
-			dr[idim] = rcm(ielem,idim)-rcm(jelem,idim);
+			w2 += (rcm(ielem,idim)-rcbpm(ibpface,idim))*(rcm(ielem,idim)-rcbpm(ibpface,idim));
+			dr[idim] = rcm(ielem,idim)-rcbpm(ibpface,idim);
 		}
 		w2 = 1.0/(w2);
 

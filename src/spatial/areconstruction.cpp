@@ -30,8 +30,9 @@ namespace fvens {
 template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>::SolutionReconstruction (const UMesh2dh<scalar> *const mesh,
                                                               const scalar *const c_centres,
+                                                              const scalar *const c_centres_ghost,
                                                               const amat::Array2d<scalar>& gauss_r)
-	: m{mesh}, ri{c_centres}, gr{gauss_r}
+	: m{mesh}, ri{c_centres}, ribp{c_centres_ghost}, gr{gauss_r}
 { }
 
 template <typename scalar, int nvars>
@@ -42,8 +43,9 @@ template <typename scalar, int nvars>
 LinearUnlimitedReconstruction<scalar,nvars>
 ::LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
                                 const scalar *const c_centres,
+                                const scalar *const c_centres_ghost,
                                 const amat::Array2d<scalar>& gauss_r)
-	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, gauss_r)
+	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, c_centres_ghost, gauss_r)
 { }
 
 template <typename scalar, int nvars>

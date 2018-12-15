@@ -57,16 +57,16 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	 * into rc(nelem:nconnface,:).
 	 */
 
-	amat::Array2d<scalar> rchg(m->gnbface(),NDIM);
+	rcbp.resize(m->gnbface(),NDIM);
 
-	compute_ghost_cell_coords_about_midpoint(rchg);
+	compute_ghost_cell_coords_about_midpoint(rcbp);
 	//compute_ghost_cell_coords_about_face(rchg);
 
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int relem = m->gintfac(iface,1);
 		for(int idim = 0; idim < NDIM; idim++)
-			rc(relem,idim) = rchg(iface - m->gPhyBFaceStart(),idim);
+			rc(relem,idim) = rcbp(iface - m->gPhyBFaceStart(),idim);
 	}
 
 	// Compute coords of face centres (NGAUSS == 1)

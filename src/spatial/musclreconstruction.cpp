@@ -24,8 +24,10 @@ namespace fvens {
 template <typename scalar, int nvars>
 MUSCLReconstruction<scalar,nvars>::MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
                                                        const scalar *const r_centres, 
+                                                       const scalar *const r_centres_ghost,
                                                        const amat::Array2d<scalar>& gauss_r)
-	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, gauss_r), eps{1e-8}, k{1.0/3.0}
+	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, r_centres_ghost, gauss_r),
+	eps{1e-8}, k{1.0/3.0}
 { }
 
 template <typename scalar, int nvars>
@@ -59,8 +61,9 @@ MUSCLReconstruction<scalar,nvars>::musclReconstructRight(const scalar ui, const 
 template <typename scalar, int nvars>
 MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
                                              const scalar *const r_centres,
+                                             const scalar *const r_centres_ghost,
                                              const amat::Array2d<scalar>& gauss_r)
-	: MUSCLReconstruction<scalar,nvars>(mesh, r_centres, gauss_r)
+	: MUSCLReconstruction<scalar,nvars>(mesh, r_centres, r_centres_ghost, gauss_r)
 { }
 
 template <typename scalar, int nvars>
@@ -73,12 +76,11 @@ void MUSCLVanAlbada<scalar,nvars>
 	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
-		const a_int jelem = m->gintfac(ied,1);
 		const a_int ibface = ied - m->gPhyBFaceStart();
 
 		for(int i = 0; i < nvars; i++)
 		{
-			const scalar deltam = computeBiasedDifference(ri+ielem*NDIM, ri+jelem*NDIM,
+			const scalar deltam = computeBiasedDifference(ri+ielem*NDIM, ribp+ibface*NDIM,
 			                                              u(ielem,i), ug(ibface,i), &grads[ielem](0,i));
 
 			scalar phi_l = (2.0*deltam * (ug(ibface,i) - u(ielem,i)) + eps) 

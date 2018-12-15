@@ -46,13 +46,15 @@ const InviscidFlux<scalar>* create_const_inviscidflux(const std::string& type,
 /// Returns a newly-created gradient computation context
 /** \param type Type of gradient scheme
  * \param m Mesh context. Currently its scalar type has to be same as that of the gradients etc
- * \param rc Array of cell centres all cells (including ghost cells); this must also currently have
- *   the same scalar type as the gradients.
+ * \param rc Array of cell centres all cells (including connectivity ghost cells);
+ *   this must also currently have the same scalar type as the gradients.
+ * \param rcbp Array of cell centres of physical boundary ghost cells
  */
 template <typename scalar, int nvars>
 GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& type, 
                                                             const UMesh2dh<scalar> *const m,
-                                                            const scalar *const rc);
+                                                            const scalar *const rc,
+                                                            const scalar *const rcbp);
 
 /// Returns a newly-created immutable gradient computation context
 /** Parameters are as explained for \ref create_mutable_gradientscheme
@@ -60,15 +62,17 @@ GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& t
 template <typename scalar, int nvars>
 const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::string& type, 
                                                                 const UMesh2dh<scalar> *const m,
-                                                                const scalar *const rc);
+                                                                const scalar *const rc,
+                                                                const scalar *const rcbp);
 
 /// Returns a solution reconstruction context
 /** Solution reconstruction here means computing the values of the conserved variables at faces from
  * the cell-centred values and cell-centred gradients.
  * \param type Type of scheme to use for reconstructing the solution
  * \param m Mesh context. Currently its scalar type has to be same as that of the gradients etc.
- * \param rc Array of cell centres all cells (including ghost cells); this must also currently have
- *   the same scalar type as the gradients.
+ * \param rc Array of cell centres all cells (including connectivity ghost cells);
+ *   this must also currently have the same scalar type as the gradients.
+ * \param rcbp Array of cell centres of physical boundary ghost cells
  * \param gr Coordinates of quadrature points at each face. They're generally the face centres.
  * \param param A parameter that controls the behaviour of some limiters.
  */
@@ -77,6 +81,7 @@ SolutionReconstruction<scalar,nvars>*
 create_mutable_reconstruction(const std::string& type,
                               const UMesh2dh<scalar> *const m,
                               const scalar *const rc,
+                              const scalar *const rcbp,
                               const amat::Array2d<scalar>& gr,
                               const a_real param);
 
@@ -86,6 +91,7 @@ const SolutionReconstruction<scalar,nvars>*
 create_const_reconstruction(const std::string& type,
                             const UMesh2dh<scalar> *const m,
                             const scalar *const rc,
+                            const scalar *const rcbp,
                             const amat::Array2d<scalar>& gr, const a_real param);
 
 /// Creates the appropriate flow solver class
