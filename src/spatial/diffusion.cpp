@@ -148,7 +148,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);    // ghost cell
+		const a_int ibpface = iface - m->gPhyBFaceStart();
 		const a_real len = m->gfacemetric(iface,2);
 
 		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
@@ -162,9 +162,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		// const a_real *const gradr = &grads[lelem](0,0);
 
 		a_real gradf[NDIM][nvars];
-		getFaceGradient_modifiedAverage
-			(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &ug(iface-m->gPhyBFaceStart(),0),
-			 gradl, gradr, gradf);
+		getFaceGradient_modifiedAverage(&rc(lelem,0), &rcbp(ibpface,0),
+		                                &uarr[lelem*nvars], &ug(ibpface,0), gradl, gradr, gradf);
 
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
@@ -249,7 +248,7 @@ void DiffusionMA<nvars>
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const
 {
 	const a_int lelem = m->gintfac(iface,0);
-	const a_int relem = m->gintfac(iface,1);
+	const a_int ibpface = iface - m->gPhyBFaceStart();
 	const a_real len = m->gfacemetric(iface,2);
 
 	a_real du[nvars*nvars];
@@ -262,7 +261,8 @@ void DiffusionMA<nvars>
 	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
 
 	// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
-	getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), ul, ul, du, du, grad, dgradl, dgradr);
+	getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rcbp(ibpface), ul, ul, du, du,
+	                                     grad, dgradl, dgradr);
 
 	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
 	for(int ivar = 0; ivar < nvars; ivar++)

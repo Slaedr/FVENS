@@ -36,7 +36,7 @@ namespace fvens {
 template<typename scalar, int nvars>
 Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
-	rc.resize(m->gnelem()+m->gnbface()+m->gnConnFace(), NDIM);
+	rc.resize(m->gnelem()+m->gnConnFace(), NDIM);
 	gr.resize(m->gnaface(), NDIM);
 	gr.zeros();
 
@@ -61,13 +61,6 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 
 	compute_ghost_cell_coords_about_midpoint(rcbp);
 	//compute_ghost_cell_coords_about_face(rchg);
-
-	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
-	{
-		const a_int relem = m->gintfac(iface,1);
-		for(int idim = 0; idim < NDIM; idim++)
-			rc(relem,idim) = rcbp(iface - m->gPhyBFaceStart(),idim);
-	}
 
 	// Compute coords of face centres (NGAUSS == 1)
 	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)

@@ -1,5 +1,5 @@
 -mesh_file-prefix
-grids/squareunsquad
+@CMAKE_CURRENT_SOURCE_DIR@/grids/squareunsquad
 --number-of-meshes-for-grid-convergence
 4
 -output_file

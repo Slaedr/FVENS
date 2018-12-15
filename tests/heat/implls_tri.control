@@ -1,5 +1,5 @@
 -mesh_file-prefix
-grids/square
+@CMAKE_CURRENT_SOURCE_DIR@/grids/square
 --number-of-meshes-for-grid-convergence
 4
 -output_file

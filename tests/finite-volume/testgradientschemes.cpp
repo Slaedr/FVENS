@@ -48,7 +48,7 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 	for(a_int i = 0; i < m->gnelem(); i++)
 		u(i,0) = linearfunc(&rc(i));
 	for(a_int i = 0; i < m->gnbface(); i++)
-		ug(i,0) = linearfunc(&rc(i+m->gnelem()));
+		ug(i,0) = linearfunc(&rcbp(i));
 
 	// get gradients
 	wls->compute_gradients(u, ug, &grads[0]);

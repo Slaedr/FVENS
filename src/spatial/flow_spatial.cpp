@@ -341,7 +341,8 @@ void FlowFV<scalar,secondOrder,constVisc>
 	const a_int relem = m->gintfac(iface,1);
 
 	if(iface >= m->gPhyBFaceStart() && iface < m->gPhyBFaceEnd())
-		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), upl, upr, dupl, dupr, grad,
+		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rcbp(iface-m->gPhyBFaceStart()),
+		                                     upl, upr, dupl, dupr, grad,
 		                                     dgradl, dgradr);
 	else
 		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), upl, upr, dupl, dupr, grad,
@@ -433,13 +434,15 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 
 		if(pconfig.viscous_sim)
 		{
+			const a_int ibpface = ied - m->gPhyBFaceStart();
 			const bool isPhyBoun = (ied >= m->gPhyBFaceStart() && ied < m->gPhyBFaceEnd());
+			const scalar *const rcr = isPhyBoun ? &rcbp(ibpface,0) : &rc(relem,0);
 			const scalar *const ucellright
 				= isPhyBoun ? &ug[(ied-m->gPhyBFaceStart())*NVARS] : &u[relem*NVARS];
 			const GradBlock_t<scalar,NDIM,NVARS>& gradright = isPhyBoun ? grads[lelem] : grads[relem];
 
 			scalar vflux[NVARS];
-			compute_viscous_flux(n, &rc(lelem,0), &rc(relem,0),
+			compute_viscous_flux(n, &rc(lelem,0), rcr,
 			                     &u[lelem*NVARS], ucellright, grads[lelem], gradright,
 			                     &uleft[ied*NVARS], &uright[ied*NVARS], vflux);
 
