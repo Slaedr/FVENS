@@ -670,18 +670,21 @@ void FlowFV<scalar,order2,constVisc>
 	assert(iface >= m->gDomFaceStart());
 	assert(iface < m->gDomFaceEnd());
 
-	a_real n[NDIM];
-	n[0] = m->gfacemetric(iface,0);
-	n[1] = m->gfacemetric(iface,1);
+	const std::array<a_real,NDIM> n = m->gnormal(iface);
 	const a_real len = m->gfacemetric(iface,2);
 
 	// NOTE: the values of L and U get REPLACED here, not added to
-	inviflux->get_jacobian(ul, ur, n, &L(0,0), &U(0,0));
+	inviflux->get_jacobian(ul, ur, &n[0], &L(0,0), &U(0,0));
 
 	if(pconfig.viscous_sim) {
+		// Vec rclocal;
+		// int ierr = VecGhostGetLocalForm(rc, &rclocal); petsc_throw(ierr, "Could not get rc local");
+		// const a_real *const rcloc = getVecAsReadOnlyArray(rclocal);
 		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
 		//		&L(0,0), &U(0,0));
 		compute_viscous_flux_jacobian(iface, ul, ur, &L(0,0), &U(0,0));
+
+		// ierr = VecGhostRestoreLocalForm(rc, &rclocal); petsc_throw(ierr, "Could not restore rc local");
 	}
 
 	L *= len; U *= len;

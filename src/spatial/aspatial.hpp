@@ -23,7 +23,7 @@
 
 #include <array>
 #include <tuple>
-#include <petscvec.h>
+#include <petscmat.h>
 
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
@@ -60,6 +60,9 @@ public:
 	 */
 	virtual StatusCode compute_residual(const Vec u, Vec residual,
 	                                    const bool gettimesteps, Vec dtm) const = 0;
+
+	/// Computes and assembles the residual Jacobian
+	StatusCode assemble_jacobian(const Vec uvec, Mat A) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** It is supposed to be a point-block in dr/du when we want to solve [M du/dt +] r(u) = 0.
@@ -110,6 +113,9 @@ protected:
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)
 	amat::Array2d<scalar> gr;
+
+	/// Computes cell-centres of subdomain cells
+	StatusCode compute_subdomain_cell_centres();
 
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);

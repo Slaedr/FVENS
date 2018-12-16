@@ -22,6 +22,7 @@
 #include <iomanip>
 #include "aspatial.hpp"
 #include "mathutils.hpp"
+#include "utilities/aerrorhandling.hpp"
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
 #endif
@@ -36,11 +37,61 @@ namespace fvens {
 template<typename scalar, int nvars>
 Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
+	StatusCode ierr = 0;
+
 	rc.resize(m->gnelem()+m->gnConnFace(), NDIM);
+	// ierr = createGhostedSystemVector(m, NDIM, &rc);
+	// petsc_throw(ierr, "Could not create vec for cell-centres!");
+
 	gr.resize(m->gnaface(), NDIM);
 	gr.zeros();
 
-	// get cell centers (real and ghost)
+	// get cell centers
+	ierr = compute_subdomain_cell_centres();
+	petsc_throw(ierr, "Could not compute subdomain cell-centres!");
+
+	/* Transfer cell centre data from neighboring subdomains for connectivity ghost cells
+	 */
+	// ierr = VecGhostUpdateBegin(rc, INSERT_VALUES, SCATTER_FORWARD);
+	// petsc_throw(ierr, "rc scatter could not begin");
+
+	rcbp.resize(m->gnbface(),NDIM);
+
+	compute_ghost_cell_coords_about_midpoint(rcbp);
+	//compute_ghost_cell_coords_about_face(rchg);
+
+	// Compute coords of face centres
+	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
+	{
+		for(int iv = 0; iv < m->gnnofa(ied); iv++)
+			for(int idim = 0; idim < NDIM; idim++)
+				gr(ied,idim) += m->gcoords(m->gintfac(ied,2+iv),idim);
+
+		for(int idim = 0; idim < NDIM; idim++)
+			gr(ied,idim) /= m->gnnofa(ied);
+	}
+
+	// ierr = VecGhostUpdateEnd(rc, INSERT_VALUES, SCATTER_FORWARD);
+	// petsc_throw(ierr, "rc scatter could not be completed!");
+}
+
+template<typename scalar, int nvars>
+Spatial<scalar,nvars>::~Spatial()
+{
+	// int ierr = VecDestroy(&rc);
+	// if(ierr) {
+	// 	std::cout << "Could not destroy vector of cell centres!\n";
+	// }
+}
+
+template<typename scalar, int nvars>
+StatusCode Spatial<scalar,nvars>::compute_subdomain_cell_centres()
+{
+	StatusCode ierr = 0;
+	// Vec localrc;
+	// ierr = VecGhostGetLocalForm(rc, &localrc); CHKERRQ(ierr);
+	// PetscScalar *const rcvals = getVecAsArray(localrc);
+	// Eigen::Map<MVector<PetscScalar>> rcm(rcvals, m->gnelem()+m->gnConnFace(), NDIM);
 
 	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
 	{
@@ -53,30 +104,9 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 		}
 	}
 
-	/** \todo Transfer cell centre data from neighboring subdomains for connectivity ghost cells
-	 * into rc(nelem:nconnface,:).
-	 */
-
-	rcbp.resize(m->gnbface(),NDIM);
-
-	compute_ghost_cell_coords_about_midpoint(rcbp);
-	//compute_ghost_cell_coords_about_face(rchg);
-
-	// Compute coords of face centres (NGAUSS == 1)
-	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
-	{
-		for(int iv = 0; iv < m->gnnofa(ied); iv++)
-			for(int idim = 0; idim < NDIM; idim++)
-				gr(ied,idim) += m->gcoords(m->gintfac(ied,2+iv),idim);
-
-		for(int idim = 0; idim < NDIM; idim++)
-			gr(ied,idim) /= m->gnnofa(ied);
-	}
+	// ierr = VecGhostRestoreLocalForm(rc, &localrc); CHKERRQ(ierr);
+	 return ierr;
 }
-
-template<typename scalar, int nvars>
-Spatial<scalar,nvars>::~Spatial()
-{ }
 
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg)
@@ -215,6 +245,74 @@ void Spatial<scalar,nvars>
 		}
 	}
 }
+
+template <typename scalar, int nvars>
+StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
+{
+	using Eigen::Matrix; using Eigen::RowMajor;
+
+	StatusCode ierr = 0;
+
+	PetscInt locnelem; const PetscScalar *uarr;
+	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
+	assert(locnelem % nvars == 0);
+	locnelem /= nvars;
+	assert(locnelem == m->gnelem());
+
+	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+
+#pragma omp parallel for default(shared)
+	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
+	{
+		const a_int lelem = m->gintfac(iface,0);
+
+		Matrix<a_real,nvars,nvars,RowMajor> left;
+		compute_local_jacobian_boundary(iface, &uarr[lelem*nvars], left);
+
+		// negative L and U contribute to diagonal blocks
+		left *= -1.0;
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
+		}
+	}
+
+#pragma omp parallel for default(shared)
+	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
+	{
+		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);
+
+		Matrix<a_real,nvars,nvars,RowMajor> L;
+		Matrix<a_real,nvars,nvars,RowMajor> U;
+		compute_local_jacobian_interior(iface, &uarr[lelem*nvars], &uarr[relem*nvars], L, U);
+
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
+		}
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
+		}
+
+		// negative L and U contribute to diagonal blocks
+		L *= -1.0; U *= -1.0;
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
+		}
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
+		}
+	}
+
+	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
+
+	return ierr;
+}
+
 
 template class Spatial<a_real,NVARS>;
 template class Spatial<a_real,1>;
