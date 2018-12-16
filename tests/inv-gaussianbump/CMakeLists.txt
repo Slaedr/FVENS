@@ -39,7 +39,7 @@ else()
   add_custom_target(gaussianbump_meshes DEPENDS ${gaussianbump_meshfiles})
   add_dependencies(e_testflow_conv gaussianbump_meshes)
 
-  add_test(NAME SpatialFlow_Euler_GaussianBump_LeastSquares_HLLC_Tri_EntropyConvergence
+  add_test(NAME Spatial_Euler_GaussianBump_LeastSquares_WENO_HLLC_Tri_EntropyConvergence
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_conv
 	${CMAKE_CURRENT_BINARY_DIR}/ls-hllc_tri.ctrl
@@ -47,7 +47,7 @@ else()
 	--number_of_meshes 4
 	--mesh_file grids/channel)
   
-  add_test(NAME SpatialFlow_Euler_GaussianBump_GreenGauss_HLLC_Tri_EntropyConvergence
+  add_test(NAME Spatial_Euler_GaussianBump_GreenGauss_HLLC_Tri_EntropyConvergence
   	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   	COMMAND ${SEQEXEC} ${SEQTASKS} ../e_testflow_conv
   	${CMAKE_CURRENT_BINARY_DIR}/gg-hllc_tri.ctrl
