@@ -555,7 +555,8 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	locnelem /= NVARS;
 	assert(locnelem == m->gnelem());
 
-	const scalar *uarr = getVecAsReadOnlyArray<scalar>(uvec);
+	const VecHandler<scalar> uvh(uvec);
+	const scalar *uarr = uvh.getVecAsReadOnlyArray();
 	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
 
 #pragma omp parallel default(shared)
@@ -656,7 +657,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	}
 
 	delete [] grads;
-	restoreReadOnlyArraytoVec<scalar>(uvec, &uarr);
+	uvh.restoreReadOnlyArrayToVec(&uarr);
 	return ierr;
 }
 

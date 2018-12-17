@@ -23,7 +23,7 @@ namespace amat {
 template <typename T>
 Array2d<T>::Array2d(const Array2d<T>& other)
 	: nrows{other.nrows}, ncols{other.ncols}, size{other.size},
-		elems{new T[nrows*ncols]}
+	  elems{new T[nrows*ncols]}, isowner{true}
 {
 	for(a_int i = 0; i < nrows*ncols; i++)
 	{
@@ -33,7 +33,7 @@ Array2d<T>::Array2d(const Array2d<T>& other)
 
 template <typename T>
 Array2d<T>::Array2d(Array2d<T>&& other)
-	: nrows{other.nrows}, ncols{other.ncols}, size{other.size}, elems{other.elems}
+	: nrows{other.nrows}, ncols{other.ncols}, size{other.size}, elems{other.elems}, isowner{true}
 {
 	other.elems = nullptr;
 	other.nrows=0;
@@ -52,6 +52,7 @@ Array2d<T>& Array2d<T>::operator=(const Array2d<T>& rhs)
 	size = nrows*ncols;
 	delete [] elems;
 	elems = new T[nrows*ncols];
+	isowner = true;
 	for(a_int i = 0; i < nrows*ncols; i++)
 	{
 		elems[i] = rhs.elems[i];
@@ -79,19 +80,7 @@ void Array2d<T>::setup(const a_int nr, const a_int nc)
 	size = nrows*ncols;
 	delete [] elems;
 	elems = new T[nrows*ncols];
-}
-
-/// Setup without deleting earlier allocation: use in case of Array2d<t>* (pointer to Array2d<t>)
-template <typename T>
-void Array2d<T>::setupraw(const a_int nr, const a_int nc)
-{
-	assert(nc>0);
-	assert(nr>0);
-
-	nrows = nr; ncols = nc;
-	size = nrows*ncols;
-	delete [] elems;
-	elems = new T[nrows*ncols];
+	isowner = true;
 }
 
 template <typename T>

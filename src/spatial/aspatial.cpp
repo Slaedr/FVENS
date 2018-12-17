@@ -46,11 +46,6 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	ierr = update_subdomain_cell_centres();
 	petsc_throw(ierr, "Could not compute subdomain cell-centres!");
 
-	/* Transfer cell centre data from neighboring subdomains for connectivity ghost cells
-	 */
-	// ierr = VecGhostUpdateBegin(rc, INSERT_VALUES, SCATTER_FORWARD);
-	// petsc_throw(ierr, "rc scatter could not begin");
-
 	rcbp.resize(m->gnbface(),NDIM);
 
 	compute_ghost_cell_coords_about_midpoint(rcbp);
@@ -94,6 +89,12 @@ StatusCode Spatial<scalar,nvars>::update_subdomain_cell_centres()
 	m->compute_cell_centres(&rc(0,0));
 
 	// ierr = VecGhostRestoreLocalForm(rc, &localrc); CHKERRQ(ierr);
+
+	/* Transfer cell centre data from neighboring subdomains for connectivity ghost cells
+	 */
+	// ierr = VecGhostUpdateBegin(rc, INSERT_VALUES, SCATTER_FORWARD);
+	// petsc_throw(ierr, "rc scatter could not begin");
+
 	return ierr;
 }
 

@@ -46,14 +46,15 @@ protected:
 	a_int ncols;           ///< Number of columns
 	a_int size;            ///< Total number of entries
 	T* elems;              ///< Raw array of entries
+	bool isowner;          ///< True if the object owns its \ref elems
 
 public:
 	/// No-arg constructor. Note: no memory allocation!
-	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}
+	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}, isowner{false}
 	{ }
 
 	/// Allocate some storage
-	Array2d(const a_int nr, const a_int nc)
+	Array2d(const a_int nr, const a_int nc) : isowner{true}
 	{
 		assert(nc>0);
 		assert(nr>0);
@@ -71,9 +72,15 @@ public:
 	 */
 	Array2d(Array2d<T>&& other);
 
+	/// Wrapper constructor - does not take ownership and does not delete storage once done
+	Array2d(const a_int nr, const a_int nc, T *const array) : nrows{nr}, ncols{nc}, size{nc*nr},
+	                                                          elems{array}, isowner{false}
+	{ }
+
 	~Array2d()
 	{
-		delete [] elems;
+		if(isowner)
+			delete [] elems;
 	}
 
 	/// Deep copy
@@ -90,9 +97,6 @@ public:
 		delete [] elems;
 		elems = new T[nrows*ncols];
 	}
-
-	/// Setup without deleting earlier allocation: use in case of Array2d<t>* (pointer to Array2d<t>)
-	void setupraw(const a_int nr, const a_int nc);
 	
 	/// Fill the array with zeros.
 	void zeros()

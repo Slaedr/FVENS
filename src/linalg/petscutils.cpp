@@ -14,6 +14,44 @@
 namespace fvens {
 
 template <>
+VecHandler<a_real>::VecHandler(Vec x) : vec{x}, data{NULL}, cdata{NULL}
+{ }
+
+template <>
+a_real *VecHandler<a_real>::getVecAsArray()
+{
+	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
+	int ierr = VecGetArray(vec, &data);
+	petsc_throw(ierr, "Could not get array from Vec!");
+	return data;
+}
+
+template <>
+void VecHandler<a_real>::restoreArrayToVec(a_real **const arr)
+{
+	int ierr = VecRestoreArray(vec, arr);
+	petsc_throw(ierr, "Could not restore array to Vec!");
+	*arr = nullptr;
+}
+
+template <>
+const a_real *VecHandler<a_real>::getVecAsReadOnlyArray() const
+{
+	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
+	int ierr = VecGetArrayRead(vec, &cdata);
+	petsc_throw(ierr, "Could not get array from Vec!");
+	return cdata;
+}
+
+template <>
+void VecHandler<a_real>::restoreReadOnlyArrayToVec(const a_real **const arr) const
+{
+	int ierr = VecRestoreArrayRead(vec, arr);
+	petsc_throw(ierr, "Could not restore const array to Vec!");
+	*arr = nullptr;
+}
+
+template <>
 a_real *getVecAsArray(Vec x)
 {
 	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
@@ -58,7 +96,7 @@ adouble *getVecAsArray(Vec x)
 {
 	static_assert(std::is_same<PetscScalar,double>::value,
 	              "PETSc scalar must be double for use with ADOL-C.");
-	double *xarr;
+	PetscScalar *xarr;
 	int ierr = VecGetArray(x, &xarr);
 	petsc_throw(ierr, "Could not get array from Vec!");
 
@@ -75,6 +113,8 @@ adouble *getVecAsArray(Vec x)
 	return adarray;
 }
 
+/** Purposefully does not delete the array which is finally given to VecRestoreArray.
+ */
 template <>
 void restoreArraytoVec(Vec x, adouble **arr)
 {
@@ -82,14 +122,14 @@ void restoreArraytoVec(Vec x, adouble **arr)
 	int ierr = VecGetLocalSize(x, &sz);
 	petsc_throw(ierr, "Could not get Vec local size!");
 
-	PetscScalar *xarr = new PetscScalar[sz];
+	PetscScalar *xarr;
+	ierr = PetscMalloc1(sz, &xarr);
 	for(PetscInt i = 0; i < sz; i++)
 		xarr[i] = (*arr)[i];
 
 	ierr = VecRestoreArray(x, &xarr);
 	petsc_throw(ierr, "Could not restore array to Vec!");
 
-	delete [] xarr;
 	delete [] *arr;
 	*arr = NULL;
 }
