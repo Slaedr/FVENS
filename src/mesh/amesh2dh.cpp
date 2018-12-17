@@ -284,15 +284,15 @@ void UMesh2dh<scalar>::compute_areas()
 
 /// Only computes the subdomain cells' cell centres excludes connectivity ghost cells.
 template <typename scalar>
-void UMesh2dh<scalar>::compute_cell_centres(std::vector<scalar>& centres) const
+void UMesh2dh<scalar>::compute_cell_centres(scalar *const centres) const
 {
 	for(a_int i = 0; i < nelem; i++)
 	{
 		for(int idim = 0; idim < NDIM; idim++) {
 			centres[i*NDIM+idim] = 0;
-			for(int j = 0; j < nnode[i]; j++)
-				centres[i*NDIM+idim] += coords(inpoel(i,j),idim);
-			centres[i*NDIM+idim] /= nnode[i];
+			for(int jnode = 0; jnode < nnode[i]; jnode++)
+				centres[i*NDIM+idim] += coords(inpoel(i,jnode),idim);
+			centres[i*NDIM+idim] /= (scalar)nnode[i];
 		}
 	}
 }

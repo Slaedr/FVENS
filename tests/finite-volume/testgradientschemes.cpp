@@ -46,7 +46,7 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 
 	// set the field as ax+by+c
 	for(a_int i = 0; i < m->gnelem(); i++)
-		u(i,0) = linearfunc(&rc(i));
+		u(i,0) = linearfunc(&rc(i,0));
 	for(a_int i = 0; i < m->gnbface(); i++)
 		ug(i,0) = linearfunc(&rcbp(i));
 

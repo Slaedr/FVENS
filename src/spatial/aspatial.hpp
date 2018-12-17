@@ -102,7 +102,11 @@ protected:
 	const UMesh2dh<scalar> *const m;
 
 	/// Cell centers of both real cells and connectivity ghost cells
-	/** The first nelem rows correspond to real cells,
+	Vec rcvec;
+
+	/// Raw array of cell centers of both real cells and connectivity ghost cells
+	/** Remains in sync with \ref rcvec
+	 * The first nelem rows correspond to real cells,
 	 * the rest are ghost cells corresponding to connectivity boundaries
 	 */
 	amat::Array2d<scalar> rc;
@@ -115,7 +119,7 @@ protected:
 	amat::Array2d<scalar> gr;
 
 	/// Computes cell-centres of subdomain cells
-	StatusCode compute_subdomain_cell_centres();
+	StatusCode update_subdomain_cell_centres();
 
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);

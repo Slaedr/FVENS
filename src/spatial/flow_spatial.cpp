@@ -341,11 +341,11 @@ void FlowFV<scalar,secondOrder,constVisc>
 	const a_int relem = m->gintfac(iface,1);
 
 	if(iface >= m->gPhyBFaceStart() && iface < m->gPhyBFaceEnd())
-		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rcbp(iface-m->gPhyBFaceStart()),
+		getFaceGradientAndJacobian_thinLayer(&rc(lelem,0), &rcbp(iface-m->gPhyBFaceStart()),
 		                                     upl, upr, dupl, dupr, grad,
 		                                     dgradl, dgradr);
 	else
-		getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), upl, upr, dupl, dupr, grad,
+		getFaceGradientAndJacobian_thinLayer(&rc(lelem,0), &rc(relem,0), upl, upr, dupl, dupr, grad,
 		                                     dgradl, dgradr);
 
 	const std::array<scalar,NDIM> n = m->gnormal(iface);
@@ -678,13 +678,13 @@ void FlowFV<scalar,order2,constVisc>
 
 	if(pconfig.viscous_sim) {
 		// Vec rclocal;
-		// int ierr = VecGhostGetLocalForm(rc, &rclocal); petsc_throw(ierr, "Could not get rc local");
+		// int ierr = VecGhostGetLocalForm(rcvec, &rclocal); petsc_throw(ierr, "Could not get rc local");
 		// const a_real *const rcloc = getVecAsReadOnlyArray(rclocal);
 		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
 		//		&L(0,0), &U(0,0));
 		compute_viscous_flux_jacobian(iface, ul, ur, &L(0,0), &U(0,0));
 
-		// ierr = VecGhostRestoreLocalForm(rc, &rclocal); petsc_throw(ierr, "Could not restore rc local");
+		// ierr = VecGhostRestoreLocalForm(rcvec, &rclocal); petsc_throw(ierr, "Could not restore rc local");
 	}
 
 	L *= len; U *= len;

@@ -39,15 +39,11 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
 	StatusCode ierr = 0;
 
-	rc.resize(m->gnelem()+m->gnConnFace(), NDIM);
-	// ierr = createGhostedSystemVector(m, NDIM, &rc);
+	// ierr = createGhostedSystemVector(m, NDIM, &rcvec);
 	// petsc_throw(ierr, "Could not create vec for cell-centres!");
 
-	gr.resize(m->gnaface(), NDIM);
-	gr.zeros();
-
-	// get cell centers
-	ierr = compute_subdomain_cell_centres();
+	rc.resize(m->gnelem()+m->gnConnFace(),NDIM);
+	ierr = update_subdomain_cell_centres();
 	petsc_throw(ierr, "Could not compute subdomain cell-centres!");
 
 	/* Transfer cell centre data from neighboring subdomains for connectivity ghost cells
@@ -61,6 +57,8 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	//compute_ghost_cell_coords_about_face(rchg);
 
 	// Compute coords of face centres
+	gr.resize(m->gnaface(), NDIM);
+	gr.zeros();
 	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
 		for(int iv = 0; iv < m->gnnofa(ied); iv++)
@@ -85,27 +83,18 @@ Spatial<scalar,nvars>::~Spatial()
 }
 
 template<typename scalar, int nvars>
-StatusCode Spatial<scalar,nvars>::compute_subdomain_cell_centres()
+StatusCode Spatial<scalar,nvars>::update_subdomain_cell_centres()
 {
 	StatusCode ierr = 0;
-	// Vec localrc;
-	// ierr = VecGhostGetLocalForm(rc, &localrc); CHKERRQ(ierr);
-	// PetscScalar *const rcvals = getVecAsArray(localrc);
-	// Eigen::Map<MVector<PetscScalar>> rcm(rcvals, m->gnelem()+m->gnConnFace(), NDIM);
+	// TODO: Use functions to get ghosted array and abstract AD types and real types
+	// Vec localrcvec;
+	// ierr = VecGhostGetLocalForm(rcvec, &localrc); CHKERRQ(ierr);
+	// scalar *const rcvals = getVecAsArray<scalar>(localrcvec);
 
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
-	{
-		for(int idim = 0; idim < NDIM; idim++)
-		{
-			rc(ielem,idim) = 0;
-			for(int inode = 0; inode < m->gnnode(ielem); inode++)
-				rc(ielem,idim) += m->gcoords(m->ginpoel(ielem, inode), idim);
-			rc(ielem,idim) = rc(ielem,idim) / (scalar)(m->gnnode(ielem));
-		}
-	}
+	m->compute_cell_centres(&rc(0,0));
 
 	// ierr = VecGhostRestoreLocalForm(rc, &localrc); CHKERRQ(ierr);
-	 return ierr;
+	return ierr;
 }
 
 template<typename scalar, int nvars>

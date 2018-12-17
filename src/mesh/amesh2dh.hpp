@@ -255,9 +255,10 @@ public:
 	void compute_areas();
 
 	/// Computes locations of cell centres
-	/** \param[out] centres Should be logically of size nelem x NDIM.
+	/** \param[in,out] centres Should be logically of size nelem x NDIM. Contains cell-centre coords
+	 *    on output.
 	 */
-	void compute_cell_centres(std::vector<scalar>& centres) const;
+	void compute_cell_centres(scalar *const centres) const;
 
 	/// Computes some connectivity structures among mesh entities
 	/** Computes data structures for
