@@ -555,8 +555,8 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	locnelem /= NVARS;
 	assert(locnelem == m->gnelem());
 
-	const VecHandler<scalar> uvh(uvec);
-	const scalar *uarr = uvh.getVecAsReadOnlyArray();
+	const ConstVecHandler<scalar> uvh(uvec);
+	const scalar *const uarr = uvh.getArray();
 	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
 
 #pragma omp parallel default(shared)
@@ -639,7 +639,8 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	// get right (ghost) state at boundary faces for computing fluxes
 	compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
 
-	scalar *rarr = getVecAsArray<scalar>(rvec);
+	MutableVecHandler<scalar> rvh(rvec);
+	scalar *const rarr = rvh.getArray();
 
 	if(secondOrderRequested)
 		compute_fluxes(uarr, &grads[0](0,0), &uleft(0,0), &uright(0,0), &ug(0,0), rarr);
@@ -647,17 +648,14 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		compute_fluxes(uarr, &grads[0](0,0), &uleft(0,0), &uright(0,0),
 		               &uright(m->gPhyBFaceStart(),0), rarr);
 
-	restoreArraytoVec(rvec, &rarr);
-
 	if(gettimesteps)
 	{
-		a_real *dtm = getVecAsArray<a_real>(timesteps);
+		MutableVecHandler<a_real> dtvh(timesteps);
+		a_real *const dtm = dtvh.getArray();
 		compute_max_timestep(uleft, uright, dtm);
-		restoreArraytoVec(timesteps, &dtm);
 	}
 
 	delete [] grads;
-	uvh.restoreReadOnlyArrayToVec(&uarr);
 	return ierr;
 }
 

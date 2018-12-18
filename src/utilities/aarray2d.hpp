@@ -96,6 +96,7 @@ public:
 		size = nrows*ncols;
 		delete [] elems;
 		elems = new T[nrows*ncols];
+		isowner = true;
 	}
 	
 	/// Fill the array with zeros.
@@ -165,11 +166,6 @@ public:
 
 	/// Reads matrix from file
 	void fread(std::ifstream& infile);
-	
-	/// Separate setup function in case no-arg constructor has to be used
-	/** \deprecated Please use resize() instead.
-	 */
-	void setup(const a_int nr, const a_int nc);
 };
 
 template <typename T>

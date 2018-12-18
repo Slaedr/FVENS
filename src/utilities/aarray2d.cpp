@@ -60,29 +60,6 @@ Array2d<T>& Array2d<T>::operator=(const Array2d<T>& rhs)
 	return *this;
 }
 
-/// Separate setup function in case no-arg constructor has to be used
-/** \deprecated Please use resize() instead.
- */
-template <typename T>
-void Array2d<T>::setup(const a_int nr, const a_int nc)
-{
-	if(nc==0)
-	{
-		std::cout << "Array2d: setup(): ! Error: Number of columns is zero!\n";
-		return;
-	}
-	if(nr==0)
-	{
-		std::cout << "Array2d(): setup(): ! Error: Number of rows is zero!\n";
-		return;
-	}
-	nrows = nr; ncols = nc;
-	size = nrows*ncols;
-	delete [] elems;
-	elems = new T[nrows*ncols];
-	isowner = true;
-}
-
 template <typename T>
 void Array2d<T>::ones()
 {

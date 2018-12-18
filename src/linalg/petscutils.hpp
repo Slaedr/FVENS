@@ -9,14 +9,6 @@
 
 namespace fvens {
 
-/// Returns a PETSc Vec as a raw array
-template <typename scalar>
-scalar *getVecAsArray(Vec x);
-
-/// Returns a PETSc Vec as a const raw array
-template <typename scalar>
-const scalar *getVecAsReadOnlyArray(Vec x);
-
 /// Restore an array back to a PETSc Vec
 template <typename scalar>
 void restoreArraytoVec(Vec x, scalar **arr);
@@ -30,19 +22,31 @@ template <typename scalar>
 scalar *getGhostedVecLocalArray(Vec x);
 
 template <typename scalar>
-class VecHandler
+class MutableVecHandler
 {
 public:
-	VecHandler(Vec x);
-	virtual scalar *getVecAsArray();
-	virtual const scalar *getVecAsReadOnlyArray() const ;
-	virtual void restoreArrayToVec(scalar **const arr) ;
-	virtual void restoreReadOnlyArrayToVec(const scalar **const arr) const;
+	MutableVecHandler(Vec x);
+	~MutableVecHandler();
+	virtual scalar *getArray();
 
 protected:
-	Vec vec;
-	mutable PetscScalar *data;
-	mutable const PetscScalar *cdata;
+	const Vec vec;
+	PetscScalar *data;
+	scalar *sdata;
+};
+
+template <typename scalar>
+class ConstVecHandler
+{
+public:
+	ConstVecHandler(Vec x);
+	~ConstVecHandler();
+	virtual const scalar *getArray() const;
+
+protected:
+	const Vec vec;
+	const PetscScalar *data;
+	const scalar *sdata;
 };
 
 // template <typename scalar>

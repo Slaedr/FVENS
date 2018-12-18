@@ -80,10 +80,12 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
-	const a_real *uarr = getVecAsReadOnlyArray<a_real>(uvec);
+	const ConstVecHandler<a_real> uvh(uvec);
+	const a_real *const uarr = uvh.getArray();
 	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), nvars);
 
-	a_real *rarr = getVecAsArray<a_real>(rvec);
+	MutableVecHandler<a_real> rvh(rvec);
+	a_real *const rarr = rvh.getArray();
 	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 
 	amat::Array2d<a_real> uleft;
@@ -178,9 +180,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		}
 	}
 
-	a_real *dtm = nullptr;
-	if(gettimesteps)
-		dtm = getVecAsArray<a_real>(timesteps);
+	MutableVecHandler<a_real> dtvh(timesteps);
+	a_real *const dtm = dtvh.getArray();
 
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)
@@ -194,12 +195,6 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		for(int ivar = 0; ivar < nvars; ivar++)
 			residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
 	}
-
-	if(gettimesteps)
-		restoreArraytoVec(timesteps, &dtm);
-
-	restoreArraytoVec<a_real>(rvec, &rarr);
-	restoreReadOnlyArraytoVec<a_real>(uvec, &uarr);
 
 	return ierr;
 }

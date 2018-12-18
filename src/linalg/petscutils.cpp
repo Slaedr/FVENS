@@ -3,6 +3,7 @@
  *   with ADOL-C.
  */
 
+#include <iostream>
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
 #endif
@@ -13,62 +14,60 @@
 
 namespace fvens {
 
-template <>
-VecHandler<a_real>::VecHandler(Vec x) : vec{x}, data{NULL}, cdata{NULL}
-{ }
-
-template <>
-a_real *VecHandler<a_real>::getVecAsArray()
+static PetscScalar *getVecAsArray(Vec x)
 {
 	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	int ierr = VecGetArray(vec, &data);
-	petsc_throw(ierr, "Could not get array from Vec!");
-	return data;
-}
-
-template <>
-void VecHandler<a_real>::restoreArrayToVec(a_real **const arr)
-{
-	int ierr = VecRestoreArray(vec, arr);
-	petsc_throw(ierr, "Could not restore array to Vec!");
-	*arr = nullptr;
-}
-
-template <>
-const a_real *VecHandler<a_real>::getVecAsReadOnlyArray() const
-{
-	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	int ierr = VecGetArrayRead(vec, &cdata);
-	petsc_throw(ierr, "Could not get array from Vec!");
-	return cdata;
-}
-
-template <>
-void VecHandler<a_real>::restoreReadOnlyArrayToVec(const a_real **const arr) const
-{
-	int ierr = VecRestoreArrayRead(vec, arr);
-	petsc_throw(ierr, "Could not restore const array to Vec!");
-	*arr = nullptr;
-}
-
-template <>
-a_real *getVecAsArray(Vec x)
-{
-	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	a_real *xarr;
+	PetscScalar *xarr;
 	int ierr = VecGetArray(x, &xarr);
 	petsc_throw(ierr, "Could not get array from Vec!");
 	return xarr;
 }
 
-template <>
-const a_real *getVecAsReadOnlyArray(Vec x)
+static const PetscScalar *getVecAsReadOnlyArray(Vec x)
 {
 	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	const a_real *xarr;
+	const PetscScalar *xarr;
 	int ierr = VecGetArrayRead(x, &xarr);
 	petsc_throw(ierr, "Could not get array from Vec!");
 	return xarr;
+}
+
+template <>
+MutableVecHandler<a_real>::MutableVecHandler(Vec x) : vec{x}, data{getVecAsArray(x)}, sdata{data}
+{ }
+
+template <>
+MutableVecHandler<a_real>::~MutableVecHandler()
+{
+	sdata = nullptr;
+	int ierr = VecRestoreArray(vec, &data);
+	if(ierr)
+		std::cout << " Could not restore PETSc Vec!" << std::endl;
+}
+
+template <>
+a_real *MutableVecHandler<a_real>::getArray()
+{
+	return sdata;
+}
+
+template <>
+ConstVecHandler<a_real>::ConstVecHandler(Vec x) : vec{x}, data{getVecAsReadOnlyArray(x)}, sdata{data}
+{ }
+
+template <>
+ConstVecHandler<a_real>::~ConstVecHandler()
+{
+	sdata = nullptr;
+	int ierr = VecRestoreArrayRead(vec, &data);
+	if(ierr)
+		std::cout << " Could not restore PETSc Vec!" << std::endl;
+}
+
+template <>
+const a_real *ConstVecHandler<a_real>::getArray() const
+{
+	return sdata;
 }
 
 template <>
@@ -85,6 +84,7 @@ void restoreReadOnlyArraytoVec(Vec x, const a_real **arr)
 	petsc_throw(ierr, "Could not restore const array to Vec!");
 }
 
+#if 0
 #ifdef USE_ADOLC
 
 /// The adouble version creates a deep copy of the local portion of the Vec
@@ -134,6 +134,7 @@ void restoreArraytoVec(Vec x, adouble **arr)
 	*arr = NULL;
 }
 
+#endif
 #endif
 
 }
