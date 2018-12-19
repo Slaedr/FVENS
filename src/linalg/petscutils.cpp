@@ -70,20 +70,6 @@ const a_real *ConstVecHandler<a_real>::getArray() const
 	return sdata;
 }
 
-template <>
-void restoreArraytoVec(Vec x, a_real **arr)
-{
-	int ierr = VecRestoreArray(x, arr);
-	petsc_throw(ierr, "Could not restore array to Vec!");
-}
-
-template <>
-void restoreReadOnlyArraytoVec(Vec x, const a_real **arr)
-{
-	int ierr = VecRestoreArrayRead(x, arr);
-	petsc_throw(ierr, "Could not restore const array to Vec!");
-}
-
 #if 0
 #ifdef USE_ADOLC
 

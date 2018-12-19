@@ -9,18 +9,7 @@
 
 namespace fvens {
 
-/// Restore an array back to a PETSc Vec
-template <typename scalar>
-void restoreArraytoVec(Vec x, scalar **arr);
-
-/// Restore a const array back to a PETSc Vec
-template <typename scalar>
-void restoreReadOnlyArraytoVec(Vec x, const scalar **arr);
-
-/// Get the local portion of a PETSc ghosted vec as an array
-template <typename scalar>
-scalar *getGhostedVecLocalArray(Vec x);
-
+/// Maintains a native array corresponding to a PETSc Vec and provides access
 template <typename scalar>
 class MutableVecHandler
 {
@@ -35,6 +24,7 @@ protected:
 	scalar *sdata;
 };
 
+/// Maintains an immutable native array corresponding to a PETSc Vec and provides access
 template <typename scalar>
 class ConstVecHandler
 {
