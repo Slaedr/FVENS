@@ -15,7 +15,7 @@ class MutableVecHandler
 {
 public:
 	MutableVecHandler(Vec x);
-	~MutableVecHandler();
+	virtual ~MutableVecHandler();
 	virtual scalar *getArray();
 
 protected:
@@ -30,7 +30,7 @@ class ConstVecHandler
 {
 public:
 	ConstVecHandler(Vec x);
-	~ConstVecHandler();
+	virtual ~ConstVecHandler();
 	virtual const scalar *getArray() const;
 
 protected:
@@ -39,22 +39,37 @@ protected:
 	const scalar *sdata;
 };
 
-// template <typename scalar>
-// class GhostedVecHandler : public VecHandler<scalar>
-// {
-// public:
-// 	GhostedVecHandler(Vec x);
-// 	scalar *getVecAsArray();
-// 	const scalar *getVecAsReadOnlyArray() const ;
-// 	void restoreArrayToVec(scalar **const arr) ;
-// 	void restoreReadOnlyArrayToVec(const scalar **const arr) const;
+/// Maintains an immutable native array corresponding to a ghosted PETSc Vec and provides access
+template <typename scalar>
+class MutableGhostedVecHandler : public MutableVecHandler<scalar>
+{
+public:
+	MutableGhostedVecHandler(Vec x);
+	~MutableGhostedVecHandler();
+	using MutableVecHandler<scalar>::getArray;
 
-// protected:
-// 	using VecHandler<scalar>::vec;
-// 	using VecHandler<scalar>::data;
-// 	using VecHandler<scalar>::cdata;
-// 	mutable Vec local;
-// };
+protected:
+	using MutableVecHandler<scalar>::vec;
+	using MutableVecHandler<scalar>::data;
+	using MutableVecHandler<scalar>::sdata;
+	Vec localvec;
+};
+
+/// Maintains an immutable native array corresponding to a ghosted PETSc Vec and provides access
+template <typename scalar>
+class ConstGhostedVecHandler : public ConstVecHandler<scalar>
+{
+public:
+	ConstGhostedVecHandler(Vec x);
+	~ConstGhostedVecHandler();
+	using ConstVecHandler<scalar>::getArray;
+
+protected:
+	using ConstVecHandler<scalar>::vec;
+	using ConstVecHandler<scalar>::data;
+	using ConstVecHandler<scalar>::sdata;
+	Vec localvec;
+};
 
 }
 

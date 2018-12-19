@@ -14,27 +14,14 @@
 
 namespace fvens {
 
-static PetscScalar *getVecAsArray(Vec x)
-{
-	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	PetscScalar *xarr;
-	int ierr = VecGetArray(x, &xarr);
-	petsc_throw(ierr, "Could not get array from Vec!");
-	return xarr;
-}
-
-static const PetscScalar *getVecAsReadOnlyArray(Vec x)
-{
-	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	const PetscScalar *xarr;
-	int ierr = VecGetArrayRead(x, &xarr);
-	petsc_throw(ierr, "Could not get array from Vec!");
-	return xarr;
-}
-
 template <>
-MutableVecHandler<a_real>::MutableVecHandler(Vec x) : vec{x}, data{getVecAsArray(x)}, sdata{data}
-{ }
+MutableVecHandler<a_real>::MutableVecHandler(Vec x) : vec{x}
+{
+	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
+	int ierr = VecGetArray(vec, &data);
+	petsc_throw(ierr, "Could not get local raw array!");
+	sdata = data;
+}
 
 template <>
 MutableVecHandler<a_real>::~MutableVecHandler()
@@ -52,8 +39,13 @@ a_real *MutableVecHandler<a_real>::getArray()
 }
 
 template <>
-ConstVecHandler<a_real>::ConstVecHandler(Vec x) : vec{x}, data{getVecAsReadOnlyArray(x)}, sdata{data}
-{ }
+ConstVecHandler<a_real>::ConstVecHandler(Vec x) : vec{x}
+{
+	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
+	int ierr = VecGetArrayRead(vec, &data);
+	petsc_throw(ierr, "Could not get local raw array!");
+	sdata = data;
+}
 
 template <>
 ConstVecHandler<a_real>::~ConstVecHandler()
@@ -68,6 +60,52 @@ template <>
 const a_real *ConstVecHandler<a_real>::getArray() const
 {
 	return sdata;
+}
+
+template <>
+MutableGhostedVecHandler<a_real>::MutableGhostedVecHandler(Vec x)
+	: MutableVecHandler(x)
+{
+	int ierr = VecGhostGetLocalForm(vec, &localvec);
+	petsc_throw(ierr, "Could not get local form!");
+	ierr = VecGetArray(localvec, &data);
+	petsc_throw(ierr, "Could not get local raw array!");
+	sdata = data;
+}
+
+template <>
+MutableGhostedVecHandler<a_real>::~MutableGhostedVecHandler()
+{
+	sdata = nullptr;
+	int ierr = VecRestoreArray(localvec, &data);
+	if(ierr)
+		std::cout << " Could not restore array to Vec!" << std::endl;
+	ierr = VecGhostRestoreLocalForm(vec, &localvec);
+	if(ierr)
+		std::cout << " Could not restore local PETSc Vec!" << std::endl;
+}
+
+template <>
+ConstGhostedVecHandler<a_real>::ConstGhostedVecHandler(Vec x)
+	: ConstVecHandler(x)
+{
+	int ierr = VecGhostGetLocalForm(vec, &localvec);
+	petsc_throw(ierr, "Could not get local form!");
+	ierr = VecGetArrayRead(localvec, &data);
+	petsc_throw(ierr, "Could not get local raw array!");
+	sdata = data;
+}
+
+template <>
+ConstGhostedVecHandler<a_real>::~ConstGhostedVecHandler()
+{
+	sdata = nullptr;
+	int ierr = VecRestoreArrayRead(localvec, &data);
+	if(ierr)
+		std::cout << " Could not restore array to Vec!" << std::endl;
+	ierr = VecGhostRestoreLocalForm(vec, &localvec);
+	if(ierr)
+		std::cout << " Could not restore local PETSc Vec!" << std::endl;
 }
 
 #if 0
