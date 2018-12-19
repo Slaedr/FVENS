@@ -46,15 +46,14 @@ protected:
 	a_int ncols;           ///< Number of columns
 	a_int size;            ///< Total number of entries
 	T* elems;              ///< Raw array of entries
-	bool isowner;          ///< True if the object owns its \ref elems
 
 public:
 	/// No-arg constructor. Note: no memory allocation!
-	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}, isowner{false}
+	Array2d() : nrows{0}, ncols{0}, size{0}, elems{nullptr}
 	{ }
 
 	/// Allocate some storage
-	Array2d(const a_int nr, const a_int nc) : isowner{true}
+	Array2d(const a_int nr, const a_int nc)
 	{
 		assert(nc>0);
 		assert(nr>0);
@@ -72,15 +71,9 @@ public:
 	 */
 	Array2d(Array2d<T>&& other);
 
-	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2d(const a_int nr, const a_int nc, T *const array) : nrows{nr}, ncols{nc}, size{nc*nr},
-	                                                          elems{array}, isowner{false}
-	{ }
-
 	~Array2d()
 	{
-		if(isowner)
-			delete [] elems;
+		delete [] elems;
 	}
 
 	/// Deep copy
@@ -96,7 +89,6 @@ public:
 		size = nrows*ncols;
 		delete [] elems;
 		elems = new T[nrows*ncols];
-		isowner = true;
 	}
 	
 	/// Fill the array with zeros.
@@ -170,6 +162,53 @@ public:
 
 template <typename T>
 bool areEqual_array2d(const Array2d<T>& a, const Array2d<T>& b);
+
+/// An immutable 2D view of a raw array
+template <typename T>
+class Array2dView
+{
+protected:
+	a_int nrows;             ///< Number of rows
+	a_int ncols;             ///< Number of columns
+	const T *const elems;    ///< Pointer to data
+public:
+	/// Wrapper constructor - does not take ownership and does not delete storage once done
+	Array2d(const a_int nr, const a_int nc, const T *const array) : nrows{nr}, ncols{nc}, elems{array}
+	{ }
+
+	/// Accessor
+	const T& operator()(const a_int x, const a_int y=0) const
+	{
+		assert(x < nrows);
+		assert(y < ncols);
+		assert(x >= 0 && y >= 0);
+		return elems[x*ncols + y];
+	}
+
+};
+
+/// A mutable 2D view of a raw array
+template <typename T>
+class Array2dMutableView
+{
+protected:
+	a_int nrows;
+	a_int ncols;
+	T *const elems;
+public:
+	/// Wrapper constructor - does not take ownership and does not delete storage once done
+	Array2d(const a_int nr, const a_int nc, T *const array) : nrows{nr}, ncols{nc}, elems{array}
+	{ }
+
+	/// Accessor
+	T& operator()(const a_int x, const a_int y=0)
+	{
+		assert(x < nrows);
+		assert(y < ncols);
+		assert(x >= 0 && y >= 0);
+		return elems[x*ncols + y];
+	}
+};
 
 
 } //end namespace amat

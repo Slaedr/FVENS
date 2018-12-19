@@ -23,7 +23,7 @@ namespace amat {
 template <typename T>
 Array2d<T>::Array2d(const Array2d<T>& other)
 	: nrows{other.nrows}, ncols{other.ncols}, size{other.size},
-	  elems{new T[nrows*ncols]}, isowner{true}
+	  elems{new T[nrows*ncols]}
 {
 	for(a_int i = 0; i < nrows*ncols; i++)
 	{
@@ -33,7 +33,7 @@ Array2d<T>::Array2d(const Array2d<T>& other)
 
 template <typename T>
 Array2d<T>::Array2d(Array2d<T>&& other)
-	: nrows{other.nrows}, ncols{other.ncols}, size{other.size}, elems{other.elems}, isowner{true}
+	: nrows{other.nrows}, ncols{other.ncols}, size{other.size}, elems{other.elems}
 {
 	other.elems = nullptr;
 	other.nrows=0;
@@ -52,7 +52,6 @@ Array2d<T>& Array2d<T>::operator=(const Array2d<T>& rhs)
 	size = nrows*ncols;
 	delete [] elems;
 	elems = new T[nrows*ncols];
-	isowner = true;
 	for(a_int i = 0; i < nrows*ncols; i++)
 	{
 		elems[i] = rhs.elems[i];

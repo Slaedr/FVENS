@@ -15,8 +15,12 @@ class MutableVecHandler
 {
 public:
 	MutableVecHandler(Vec x);
-	virtual ~MutableVecHandler();
-	virtual scalar *getArray();
+	MutableVecHandler();
+	~MutableVecHandler();
+	/// Set a Vec to handle - only works if the object is not already associated with a Vec
+	void setVec(Vec x);
+	void restore();
+	scalar *getArray();
 
 protected:
 	const Vec vec;
@@ -30,8 +34,12 @@ class ConstVecHandler
 {
 public:
 	ConstVecHandler(Vec x);
-	virtual ~ConstVecHandler();
-	virtual const scalar *getArray() const;
+	ConstVecHandler();
+	~ConstVecHandler();
+	/// Set a Vec to handle - only works if the object is not already associated with a Vec
+	void setVec(Vec x);
+	void restore();
+	const scalar *getArray() const;
 
 protected:
 	const Vec vec;
@@ -46,6 +54,8 @@ class MutableGhostedVecHandler : public MutableVecHandler<scalar>
 public:
 	MutableGhostedVecHandler(Vec x);
 	~MutableGhostedVecHandler();
+	void setVec(Vec x);
+	void restore();
 	using MutableVecHandler<scalar>::getArray;
 
 protected:
@@ -62,6 +72,8 @@ class ConstGhostedVecHandler : public ConstVecHandler<scalar>
 public:
 	ConstGhostedVecHandler(Vec x);
 	~ConstGhostedVecHandler();
+	void setVec(Vec x);
+	void restore();
 	using ConstVecHandler<scalar>::getArray;
 
 protected:

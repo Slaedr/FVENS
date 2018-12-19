@@ -104,12 +104,12 @@ protected:
 	/// Cell centers of both real cells and connectivity ghost cells
 	Vec rcvec;
 
-	/// Raw array of cell centers of both real cells and connectivity ghost cells
+	/// Raw array accessor of cell centers of both real cells and connectivity ghost cells
 	/** Remains in sync with \ref rcvec
 	 * The first nelem rows correspond to real cells,
 	 * the rest are ghost cells corresponding to connectivity boundaries
 	 */
-	amat::Array2d<scalar> rc;
+	ConstGhostedVecHandler<scalar> rch;
 
 	/// Cell centres of ghost cells at physical boundaries
 	amat::Array2d<scalar> rcbp;
@@ -118,8 +118,8 @@ protected:
 	/// naface x nguass x ndim (in that order)
 	amat::Array2d<scalar> gr;
 
-	/// Computes cell-centres of subdomain cells
-	StatusCode update_subdomain_cell_centres();
+	/// Computes cell-centres of subdomain cells into \ref rcvec
+	void update_subdomain_cell_centres();
 
 	/// computes ghost cell centers assuming symmetry about the midpoint of the boundary face
 	void compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg);

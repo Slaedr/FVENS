@@ -15,21 +15,46 @@
 namespace fvens {
 
 template <>
-MutableVecHandler<a_real>::MutableVecHandler(Vec x) : vec{x}
+MutableVecHandler<a_real>::MutableVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
+{ }
+
+template <>
+MutableVecHandler<a_real>::MutableVecHandler(Vec x) : vec{NULL}
 {
 	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	int ierr = VecGetArray(vec, &data);
-	petsc_throw(ierr, "Could not get local raw array!");
-	sdata = data;
+	setVec(x);
 }
 
 template <>
 MutableVecHandler<a_real>::~MutableVecHandler()
 {
+	restore();
+}
+
+template <>
+void MutableVecHandler<a_real>::setVec(Vec x)
+{
+	if(!vec) {
+		vec = x;
+		int ierr = VecGetArray(vec, &data);
+		petsc_throw(ierr, "Could not get local raw array!");
+		sdata = data;
+	}
+	else
+		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
+}
+
+template <>
+void MutableVecHandler<a_real>::restore()
+{
 	sdata = nullptr;
-	int ierr = VecRestoreArray(vec, &data);
-	if(ierr)
-		std::cout << " Could not restore PETSc Vec!" << std::endl;
+	if(vec) {
+		int ierr = VecRestoreArray(vec, &data);
+		if(ierr)
+			std::cout << " Could not restore PETSc Vec!" << std::endl;
+		vec = NULL;
+		localvec = NULL;
+	}
 }
 
 template <>
@@ -39,21 +64,46 @@ a_real *MutableVecHandler<a_real>::getArray()
 }
 
 template <>
-ConstVecHandler<a_real>::ConstVecHandler(Vec x) : vec{x}
+ConstVecHandler<a_real>::ConstVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
+{ }
+
+template <>
+ConstVecHandler<a_real>::ConstVecHandler(Vec x) : vec{NULL}
 {
 	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
-	int ierr = VecGetArrayRead(vec, &data);
-	petsc_throw(ierr, "Could not get local raw array!");
-	sdata = data;
+	setVec(x);
 }
 
 template <>
 ConstVecHandler<a_real>::~ConstVecHandler()
 {
+	restore();
+}
+
+template <>
+void ConstVecHandler<a_real>::setVec(Vec x)
+{
+	if(!vec) {
+		vec = x;
+		int ierr = VecGetArrayRead(vec, &data);
+		petsc_throw(ierr, "Could not get local raw array!");
+		sdata = data;
+	}
+	else
+		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
+}
+
+template <>
+void ConstVecHandler<a_real>::restore()
+{
 	sdata = nullptr;
-	int ierr = VecRestoreArrayRead(vec, &data);
-	if(ierr)
-		std::cout << " Could not restore PETSc Vec!" << std::endl;
+	if(vec) {
+		int ierr = VecRestoreArrayRead(vec, &data);
+		if(ierr)
+			std::cout << " Could not restore PETSc Vec!" << std::endl;
+		vec = NULL;
+		localvec = NULL;
+	}
 }
 
 template <>
@@ -63,49 +113,102 @@ const a_real *ConstVecHandler<a_real>::getArray() const
 }
 
 template <>
-MutableGhostedVecHandler<a_real>::MutableGhostedVecHandler(Vec x)
-	: MutableVecHandler(x)
+MutableGhostedVecHandler<a_real>::MutableGhostedVecHandler() : vec{NULL}, data{NULL},
+                                                               sdata{nullptr}, localvec{NULL}
+{ }
+
+template <>
+MutableGhostedVecHandler<a_real>::MutableGhostedVecHandler(Vec x) : vec{NULL}, data{NULL},
+                                                                    sdata{nullptr}, localvec{NULL}
 {
-	int ierr = VecGhostGetLocalForm(vec, &localvec);
-	petsc_throw(ierr, "Could not get local form!");
-	ierr = VecGetArray(localvec, &data);
-	petsc_throw(ierr, "Could not get local raw array!");
-	sdata = data;
+	setVec(x);
 }
 
 template <>
 MutableGhostedVecHandler<a_real>::~MutableGhostedVecHandler()
 {
-	sdata = nullptr;
-	int ierr = VecRestoreArray(localvec, &data);
-	if(ierr)
-		std::cout << " Could not restore array to Vec!" << std::endl;
-	ierr = VecGhostRestoreLocalForm(vec, &localvec);
-	if(ierr)
-		std::cout << " Could not restore local PETSc Vec!" << std::endl;
+	restore();
 }
 
 template <>
-ConstGhostedVecHandler<a_real>::ConstGhostedVecHandler(Vec x)
-	: ConstVecHandler(x)
+void MutableGhostedVecHandler<a_real>::setVec(Vec x)
 {
-	int ierr = VecGhostGetLocalForm(vec, &localvec);
-	petsc_throw(ierr, "Could not get local form!");
-	ierr = VecGetArrayRead(localvec, &data);
-	petsc_throw(ierr, "Could not get local raw array!");
-	sdata = data;
+	if(!vec) {
+		vec = x;
+		int ierr = VecGhostGetLocalForm(vec, &localvec);
+		petsc_throw(ierr, "Could not get local form!");
+		int ierr = VecGetArray(localvec, &data);
+		petsc_throw(ierr, "Could not get local raw array!");
+		sdata = data;
+	}
+	else
+		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
+}
+
+template <>
+void MutableGhostedVecHandler<a_real>::restore()
+{
+	sdata = nullptr;
+	if(vec) {
+		int ierr = VecRestoreArray(localvec, &data);
+		if(ierr)
+			std::cout << " Could not restore array to Vec!" << std::endl;
+		ierr = VecGhostRestoreLocalForm(vec, &localvec);
+		if(ierr)
+			std::cout << " Could not restore local PETSc Vec!" << std::endl;
+		vec = NULL;
+		localvec = NULL;
+	}
+}
+
+template <>
+ConstGhostedVecHandler<a_real>::ConstGhostedVecHandler() : vec{NULL}, data{NULL},
+                                                           sdata{nullptr}, localvec{NULL}
+{ }
+
+template <>
+ConstGhostedVecHandler<a_real>::ConstGhostedVecHandler(Vec x) : vec{NULL}, data{NULL},
+                                                                sdata{nullptr}, localvec{NULL}
+
+{
+	setVec(x);
 }
 
 template <>
 ConstGhostedVecHandler<a_real>::~ConstGhostedVecHandler()
 {
+	restore();
+}
+
+template <>
+void ConstGhostedVecHandler<a_real>::setVec(Vec x)
+{
+	if(!vec) {
+		vec = x;
+		int ierr = VecGhostGetLocalForm(vec, &localvec);
+		petsc_throw(ierr, "Could not get local form!");
+		int ierr = VecGetArrayRead(localvec, &data);
+		petsc_throw(ierr, "Could not get local raw array!");
+		sdata = data;
+	}
+	else
+		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
+}
+
+template <>
+void ConstGhostedVecHandler<a_real>::restore()
+{
 	sdata = nullptr;
-	int ierr = VecRestoreArrayRead(localvec, &data);
-	if(ierr)
-		std::cout << " Could not restore array to Vec!" << std::endl;
-	ierr = VecGhostRestoreLocalForm(vec, &localvec);
-	if(ierr)
-		std::cout << " Could not restore local PETSc Vec!" << std::endl;
+	if(vec) {
+		int ierr = VecRestoreArrayRead(localvec, &data);
+		if(ierr)
+			std::cout << " Could not restore array to Vec!" << std::endl;
+		ierr = VecGhostRestoreLocalForm(vec, &localvec);
+		if(ierr)
+			std::cout << " Could not restore local PETSc Vec!" << std::endl;
+		vec = NULL;
+		localvec = NULL;
+	}
 }
 
 #if 0

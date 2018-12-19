@@ -23,6 +23,8 @@
 #include "aspatial.hpp"
 #include "mathutils.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "linalg/alinalg.hpp"
+#include "linalg/petscutils.hpp"
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
 #endif
@@ -39,17 +41,14 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 {
 	StatusCode ierr = 0;
 
-	// ierr = createGhostedSystemVector(m, NDIM, &rcvec);
-	// petsc_throw(ierr, "Could not create vec for cell-centres!");
+	ierr = createGhostedSystemVector(m, NDIM, &rcvec);
+	petsc_throw(ierr, "Could not create vec for cell-centres!");
 
-	rc.resize(m->gnelem()+m->gnConnFace(),NDIM);
-	ierr = update_subdomain_cell_centres();
+	update_subdomain_cell_centres();
 	petsc_throw(ierr, "Could not compute subdomain cell-centres!");
 
-	rcbp.resize(m->gnbface(),NDIM);
-
-	compute_ghost_cell_coords_about_midpoint(rcbp);
-	//compute_ghost_cell_coords_about_face(rchg);
+	ierr = VecGhostUpdateBegin(rcvec, INSERT_VALUES, SCATTER_FORWARD);
+	petsc_throw(ierr, "Cell centre scatter could not begin!");
 
 	// Compute coords of face centres
 	gr.resize(m->gnaface(), NDIM);
@@ -64,43 +63,41 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 			gr(ied,idim) /= m->gnnofa(ied);
 	}
 
-	// ierr = VecGhostUpdateEnd(rc, INSERT_VALUES, SCATTER_FORWARD);
-	// petsc_throw(ierr, "rc scatter could not be completed!");
+	ierr = VecGhostUpdateEnd(rcvec, INSERT_VALUES, SCATTER_FORWARD);
+	petsc_throw(ierr, "Cell-centre scatter could not be completed!");
+
+	rch.setVec(rcvec);
+
+	rcbp.resize(m->gnbface(),NDIM);
+	compute_ghost_cell_coords_about_midpoint(rcbp);
+	//compute_ghost_cell_coords_about_face(rchg);
 }
 
 template<typename scalar, int nvars>
 Spatial<scalar,nvars>::~Spatial()
 {
-	// int ierr = VecDestroy(&rc);
-	// if(ierr) {
-	// 	std::cout << "Could not destroy vector of cell centres!\n";
-	// }
+	rch.restore();
+	int ierr = VecDestroy(&rcvec);
+	if(ierr) {
+		std::cout << "Could not destroy vector of cell centres!\n";
+	}
 }
 
 template<typename scalar, int nvars>
-StatusCode Spatial<scalar,nvars>::update_subdomain_cell_centres()
+void Spatial<scalar,nvars>::update_subdomain_cell_centres()
 {
-	StatusCode ierr = 0;
-	// TODO: Use functions to get ghosted array and abstract AD types and real types
-	// Vec localrcvec;
-	// ierr = VecGhostGetLocalForm(rcvec, &localrc); CHKERRQ(ierr);
-	// scalar *const rcvals = getVecAsArray<scalar>(localrcvec);
+	MutableGhostedVecHandler<scalar> rchm(rcvec);
+	scalar *const rc = rchm.getArray();
 
-	m->compute_cell_centres(&rc(0,0));
-
-	// ierr = VecGhostRestoreLocalForm(rc, &localrc); CHKERRQ(ierr);
-
-	/* Transfer cell centre data from neighboring subdomains for connectivity ghost cells
-	 */
-	// ierr = VecGhostUpdateBegin(rc, INSERT_VALUES, SCATTER_FORWARD);
-	// petsc_throw(ierr, "rc scatter could not begin");
-
-	return ierr;
+	m->compute_cell_centres(rc);
 }
 
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg)
 {
+	const ConstGhostedVecHandler<scalar> rch(rcvec);
+	const amat::Array2dView<scalar> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int ielem = m->gintfac(iface,0);
@@ -126,6 +123,9 @@ template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg)
 {
 	static_assert(NDIM==2);
+	const ConstGhostedVecHandler<scalar> rch(rcvec);
+	const amat::Array2dView<scalar> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+
 	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		const a_int ielem = m->gintfac(ied,0);
