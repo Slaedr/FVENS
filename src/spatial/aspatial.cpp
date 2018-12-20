@@ -95,7 +95,7 @@ template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array2d<scalar>& rchg)
 {
 	const ConstGhostedVecHandler<scalar> rch(rcvec);
-	const amat::Array2dView<scalar> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
@@ -123,7 +123,7 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<s
 {
 	static_assert(NDIM==2);
 	const ConstGhostedVecHandler<scalar> rch(rcvec);
-	const amat::Array2dView<scalar> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
 	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{

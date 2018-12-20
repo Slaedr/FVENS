@@ -125,7 +125,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
 	const ConstVecHandler<a_real> uvh(uvec);
 	const a_real *const uarr = uvh.getArray();
@@ -161,7 +161,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	{
 		MutableGhostedVecHandler<a_real> rvh(rvec);
 		a_real *const rarr = rvh.getArray();
-		Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
+		amat::Array2dMutableView<a_real> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
 
 		ConstGhostedVecHandler<a_real> grh(gradvec);
 		const GradBlock_t<a_real,NDIM,nvars> *const grads
@@ -170,40 +170,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 #pragma omp parallel for default(shared)
 		for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
 		{
-			const a_int lelem = m->gintfac(iface,0);
-			const a_int relem = m->gintfac(iface,1);
-			const a_real len = m->gfacemetric(iface,2);
-
-			a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
-			for(int ivar = 0; ivar < nvars; ivar++) {
-				for(int idim = 0; idim < NDIM; idim++) {
-					gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
-					gradr[idim*nvars+ivar] = grads[relem](idim,ivar);
-				}
-			}
-
-			a_real gradf[NDIM][nvars];
-			getFaceGradient_modifiedAverage
-				(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &uarr[relem*nvars],
-				 gradl, gradr, gradf);
-
-			for(int ivar = 0; ivar < nvars; ivar++)
-			{
-				// compute nu*(-grad u . n) * l
-				a_real flux = 0;
-				for(int idim = 0; idim < NDIM; idim++)
-					flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
-				flux *= (-diffusivity*len);
-
-				/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
-#pragma omp atomic
-				residual(lelem,ivar) -= flux;
-
-				if(relem < m->gnelem()) {
-#pragma omp atomic
-					residual(relem,ivar) += flux;
-				}
-			}
+			compute_flux_interior(iface, rc, uarr, grads, residual);
 		}
 
 #pragma omp parallel for default(shared)
@@ -269,7 +236,7 @@ void DiffusionMA<nvars>
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L,
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& U) const
 {
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int relem = m->gintfac(iface,1);
 	const a_real len = m->gfacemetric(iface,2);
@@ -306,7 +273,7 @@ void DiffusionMA<nvars>
                                   const a_real *const ul,
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const
 {
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int ibpface = iface - m->gPhyBFaceStart();
 	const a_real len = m->gfacemetric(iface,2);

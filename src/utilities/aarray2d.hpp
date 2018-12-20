@@ -173,7 +173,7 @@ protected:
 	const T *const elems;    ///< Pointer to data
 public:
 	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2dView(const a_int nr, const a_int nc, const T *const array)
+	Array2dView(const T *const array, const a_int nr, const a_int nc)
 		: nrows{nr}, ncols{nc}, elems{array}
 	{ }
 
@@ -200,7 +200,7 @@ protected:
 	T *const elems;
 public:
 	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2dMutableView(const a_int nr, const a_int nc, T *const array)
+	Array2dMutableView(T *const array, const a_int nr, const a_int nc)
 		: nrows{nr}, ncols{nc}, elems{array}
 	{ }
 

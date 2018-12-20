@@ -310,7 +310,7 @@ void FlowFV<scalar,secondOrder,constVisc>
                                 const a_real *const ul, const a_real *const ur,
                                 a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
 	a_real upr[NVARS], upl[NVARS];
 
@@ -362,7 +362,7 @@ void FlowFV<scalar,secondOrder,constVisc>
                                             a_real *const __restrict dvfi,
                                             a_real *const __restrict dvfj) const
 {
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
 	// compute non-dimensional viscosity and thermal conductivity
 	const a_real muRe = constVisc ?
@@ -402,7 +402,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
                  const scalar *const ug,
                  scalar *const res) const
 {
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 	const GradBlock_t<scalar,NDIM,NVARS> *const grads
 		= reinterpret_cast<const GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
 	Eigen::Map<MVector<scalar>> residual(res, m->gnelem(), NVARS);

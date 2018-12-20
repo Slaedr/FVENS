@@ -35,7 +35,7 @@ TestSpatial::TestSpatial(const fvens::UMesh2dh<a_real> *const mesh)
 
 int TestSpatial::test_oneExact(const std::string reconst_type) const
 {
-	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 	const GradientScheme<a_real,1> *const wls
 		= create_const_gradientscheme<a_real,1>(reconst_type, m, &rc(0,0), &rcbp(0,0));
 
