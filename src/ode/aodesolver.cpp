@@ -205,8 +205,6 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.3, 0.25);
 
-		a_real errmass = 0;
-
 		{
 			ConstVecHandler<PetscScalar> dth(dtmvec);
 			const PetscScalar *const dtm = dth.getArray();
@@ -215,28 +213,33 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			ConstGhostedVecHandler<PetscScalar> rh(rvec);
 			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), locnelem, nvars);
 
-#pragma omp parallel default(shared)
+#pragma omp parallel for default(shared)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-#pragma omp for
-				for(a_int iel = 0; iel < m->gnelem(); iel++)
-				{
-					for(int i = 0; i < nvars; i++)
-						u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
-				}
-
-#pragma omp for simd reduction(+:errmass)
-				for(a_int iel = 0; iel < m->gnelem(); iel++)
-				{
-					errmass += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
-				}
-			} // end parallel region
+				for(int i = 0; i < nvars; i++)
+					u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
+			}
 		}
 
 		ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
-		ierr = VecGhostUpdateEnd(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+		a_real locresenergy = 0;
+		{
+			ConstGhostedVecHandler<PetscScalar> rh(rvec);
+			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), locnelem, nvars);
+#pragma omp parallel for simd reduction(+:locresenergy) default(shared)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			{
+				locresenergy += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
+			}
+		}
+
+		// Reduce across and communicate to all processes: the residual norm
+		a_real glres = 0;
+		MPI_Allreduce(&locresenergy, &glres, 1, FVENS_MPI_REAL, MPI_SUM, PETSC_COMM_WORLD);
 
 		resiold = resi;
-		resi = sqrt(errmass);
+		resi = sqrt(glres);
 
 		if(step == 0)
 			initres = resi;
@@ -252,6 +255,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		if((step-1) % 50 == 0)
 			if(mpirank==0)
 				writeStepToConvergenceHistory(convstep, std::cout);
+
+		ierr = VecGhostUpdateEnd(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 		// test for nan
 		if(!std::isfinite(resi))
