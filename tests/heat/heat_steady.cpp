@@ -115,13 +115,12 @@ int main(int argc, char* argv[])
 
 		// solution vector
 		Vec u;
+		ierr = createGhostedSystemVector(&m, 1, &u); CHKERRQ(ierr);
+		ierr = VecSet(u, 0); CHKERRQ(ierr);
 
 		// Initialize Jacobian for implicit schemes
 		Mat M;
 		ierr = setupSystemMatrix<1>(&m, &M); CHKERRQ(ierr);
-		ierr = MatCreateVecs(M, &u, NULL); CHKERRQ(ierr);
-		//prob->initializeUnknowns(u);
-		ierr = VecSet(u, 0); CHKERRQ(ierr);
 
 		// initialize solver
 		KSP ksp;
@@ -198,16 +197,22 @@ int main(int argc, char* argv[])
 		a_real err = 0;
 		for(int iel = 0; iel < m.gnelem(); iel++)
 		{
-			a_real rc[2]; rc[0] = 0; rc[1] = 0;
+			a_real rc[NDIM];
+			for(int j = 0; j < NDIM; j++)
+				rc[j] = 0;
 			for(int inode = 0; inode < m.gnnode(iel); inode++) {
-				rc[0] += m.gcoords(m.ginpoel(iel,inode),0);
-				rc[1] += m.gcoords(m.ginpoel(iel,inode),1);
+				for(int j = 0; j < NDIM; j++)
+					rc[j] += m.gcoords(m.ginpoel(iel,inode),j);
 			}
-			rc[0] /= m.gnnode(iel); rc[1] /= m.gnnode(iel);
-			a_real trueval = uexact(rc);
+			for(int j = 0; j < NDIM; j++)
+				rc[j] /= m.gnnode(iel);
+
+			const a_real trueval = uexact(rc);
 			err += (uarr[iel]-trueval)*(uarr[iel]-trueval)*m.garea(iel);
 		}
 		ierr = VecRestoreArrayRead(u, &uarr); CHKERRQ(ierr);
+
+		MPI_Allreduce(&err, &err, 1, FVENS_MPI_REAL, MPI_SUM, PETSC_COMM_WORLD);
 
 		err = sqrt(err);
 		double h = 1.0/sqrt(m.gnelem());
@@ -216,11 +221,6 @@ int main(int argc, char* argv[])
 		lerrors[imesh] = log10(err);
 		if(imesh > 0)
 			slopes[imesh-1] = (lerrors[imesh]-lerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
-
-		/*Array2d<a_real> outputarr, dummy;
-		prob->postprocess_point(u, outputarr, dummy);
-		string scaname[1] = {"some-quantity"}; string vecname;
-		writeScalarsVectorToVtu_PointData(outf, m, outputarr, scaname, dummy, vecname);*/
 
 		delete prob;
 		if(usestarter != 0)
