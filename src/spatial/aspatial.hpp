@@ -27,6 +27,7 @@
 
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
+#include "linalg/petscutils.hpp"
 
 #include "mesh/amesh2dh.hpp"
 

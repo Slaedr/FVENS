@@ -24,7 +24,6 @@
 #include "mathutils.hpp"
 #include "utilities/aerrorhandling.hpp"
 #include "linalg/alinalg.hpp"
-#include "linalg/petscutils.hpp"
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
 #endif

@@ -173,7 +173,8 @@ protected:
 	const T *const elems;    ///< Pointer to data
 public:
 	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2d(const a_int nr, const a_int nc, const T *const array) : nrows{nr}, ncols{nc}, elems{array}
+	Array2dView(const a_int nr, const a_int nc, const T *const array)
+		: nrows{nr}, ncols{nc}, elems{array}
 	{ }
 
 	/// Accessor
@@ -185,6 +186,8 @@ public:
 		return elems[x*ncols + y];
 	}
 
+	a_int rows() const { return nrows; }
+	a_int cols() const { return ncols; }
 };
 
 /// A mutable 2D view of a raw array
@@ -197,7 +200,8 @@ protected:
 	T *const elems;
 public:
 	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2d(const a_int nr, const a_int nc, T *const array) : nrows{nr}, ncols{nc}, elems{array}
+	Array2dMutableView(const a_int nr, const a_int nc, T *const array)
+		: nrows{nr}, ncols{nc}, elems{array}
 	{ }
 
 	/// Accessor
@@ -208,6 +212,9 @@ public:
 		assert(x >= 0 && y >= 0);
 		return elems[x*ncols + y];
 	}
+
+	a_int rows() const { return nrows; }
+	a_int cols() const { return ncols; }
 };
 
 

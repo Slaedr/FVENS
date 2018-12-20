@@ -23,7 +23,7 @@ public:
 	scalar *getArray();
 
 protected:
-	const Vec vec;
+	Vec vec;
 	PetscScalar *data;
 	scalar *sdata;
 };
@@ -42,7 +42,7 @@ public:
 	const scalar *getArray() const;
 
 protected:
-	const Vec vec;
+	Vec vec;
 	const PetscScalar *data;
 	const scalar *sdata;
 };
@@ -52,6 +52,7 @@ template <typename scalar>
 class MutableGhostedVecHandler : public MutableVecHandler<scalar>
 {
 public:
+	MutableGhostedVecHandler();
 	MutableGhostedVecHandler(Vec x);
 	~MutableGhostedVecHandler();
 	void setVec(Vec x);
@@ -70,6 +71,7 @@ template <typename scalar>
 class ConstGhostedVecHandler : public ConstVecHandler<scalar>
 {
 public:
+	ConstGhostedVecHandler();
 	ConstGhostedVecHandler(Vec x);
 	~ConstGhostedVecHandler();
 	void setVec(Vec x);

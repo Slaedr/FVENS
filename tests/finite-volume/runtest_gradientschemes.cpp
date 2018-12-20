@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 		std::exit(-1);
 	}
 
-	MPI_Init(&argc, &argv);
+	PetscInitialize(&argc,&argv,NULL,NULL);
 
 	int ierr = 0;
 
@@ -22,16 +22,18 @@ int main(int argc, char *argv[])
 	m.compute_areas();
 	m.compute_face_data();
 
-	TestSpatial ts(&m);
+	{
+		TestSpatial ts(&m);
 
-	const std::string testtype = argv[3];
-	if(testtype == "1exact")
-		ierr = ts.test_oneExact(argv[2]);
-	else {
-		std::cout << "Invalid test!\n";
-		std::exit(-2);
+		const std::string testtype = argv[3];
+		if(testtype == "1exact")
+			ierr = ts.test_oneExact(argv[2]);
+		else {
+			std::cout << "Invalid test!\n";
+			std::exit(-2);
+		}
 	}
 
-	MPI_Finalize();
+	PetscFinalize();
 	return ierr;
 }

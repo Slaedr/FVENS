@@ -42,9 +42,9 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 
 	inviflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux, &physics)},
 
-	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, &rc(0,0),
+	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, rch.getArray(),
 	                                                    &rcbp(0,0))},
-	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, &rc(0,0), &rcbp(0,0),
+	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, rch.getArray(), &rcbp(0,0),
 	                                               gr, nconfig.limiter_param)},
 
 	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
@@ -310,6 +310,8 @@ void FlowFV<scalar,secondOrder,constVisc>
                                 const a_real *const ul, const a_real *const ur,
                                 a_real *const __restrict dvfi, a_real *const __restrict dvfj) const
 {
+	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+
 	a_real upr[NVARS], upl[NVARS];
 
 	a_real dupr[NVARS*NVARS], dupl[NVARS*NVARS];
@@ -360,6 +362,8 @@ void FlowFV<scalar,secondOrder,constVisc>
                                             a_real *const __restrict dvfi,
                                             a_real *const __restrict dvfj) const
 {
+	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+
 	// compute non-dimensional viscosity and thermal conductivity
 	const a_real muRe = constVisc ?
 			jphy.getConstantViscosityCoeff()
@@ -398,6 +402,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
                  const scalar *const ug,
                  scalar *const res) const
 {
+	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
 	const GradBlock_t<scalar,NDIM,NVARS> *const grads
 		= reinterpret_cast<const GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
 	Eigen::Map<MVector<scalar>> residual(res, m->gnelem(), NVARS);

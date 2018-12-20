@@ -46,7 +46,7 @@ public:
 
 protected:
 	using fvens::Spatial<a_real,1>::m;
-	using fvens::Spatial<a_real,1>::rc;
+	using fvens::Spatial<a_real,1>::rch;
 	using fvens::Spatial<a_real,1>::gr;
 };
 

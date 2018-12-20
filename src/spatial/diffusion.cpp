@@ -80,6 +80,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
+	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
+
 	const ConstVecHandler<a_real> uvh(uvec);
 	const a_real *const uarr = uvh.getArray();
 	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), nvars);
@@ -206,6 +208,7 @@ void DiffusionMA<nvars>
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L,
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& U) const
 {
+	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int relem = m->gintfac(iface,1);
 	const a_real len = m->gfacemetric(iface,2);
@@ -242,6 +245,7 @@ void DiffusionMA<nvars>
                                   const a_real *const ul,
                                   Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const
 {
+	const amat::Array2dView<a_real> rc(m->gnelem()+m->gnConnFace(), NDIM, rch.getArray());
 	const a_int lelem = m->gintfac(iface,0);
 	const a_int ibpface = iface - m->gPhyBFaceStart();
 	const a_real len = m->gfacemetric(iface,2);

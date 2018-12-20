@@ -14,25 +14,26 @@
 
 namespace fvens {
 
-template <>
-MutableVecHandler<a_real>::MutableVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
+template <typename scalar>
+MutableVecHandler<scalar>::MutableVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
 { }
 
-template <>
-MutableVecHandler<a_real>::MutableVecHandler(Vec x) : vec{NULL}
+template <typename scalar>
+MutableVecHandler<scalar>::MutableVecHandler(Vec x) : vec{NULL}
 {
-	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
+	static_assert(std::is_convertible<PetscScalar,scalar>::value,
+	              "a_real type does not match PETSc scalar!");
 	setVec(x);
 }
 
-template <>
-MutableVecHandler<a_real>::~MutableVecHandler()
+template <typename scalar>
+MutableVecHandler<scalar>::~MutableVecHandler()
 {
 	restore();
 }
 
-template <>
-void MutableVecHandler<a_real>::setVec(Vec x)
+template <typename scalar>
+void MutableVecHandler<scalar>::setVec(Vec x)
 {
 	if(!vec) {
 		vec = x;
@@ -44,8 +45,8 @@ void MutableVecHandler<a_real>::setVec(Vec x)
 		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
 }
 
-template <>
-void MutableVecHandler<a_real>::restore()
+template <typename scalar>
+void MutableVecHandler<scalar>::restore()
 {
 	sdata = nullptr;
 	if(vec) {
@@ -53,35 +54,36 @@ void MutableVecHandler<a_real>::restore()
 		if(ierr)
 			std::cout << " Could not restore PETSc Vec!" << std::endl;
 		vec = NULL;
-		localvec = NULL;
 	}
 }
 
-template <>
-a_real *MutableVecHandler<a_real>::getArray()
+template <typename scalar>
+scalar *MutableVecHandler<scalar>::getArray()
 {
 	return sdata;
 }
 
-template <>
-ConstVecHandler<a_real>::ConstVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
+template class MutableVecHandler<a_real>;
+
+template <typename scalar>
+ConstVecHandler<scalar>::ConstVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
 { }
 
-template <>
-ConstVecHandler<a_real>::ConstVecHandler(Vec x) : vec{NULL}
+template <typename scalar>
+ConstVecHandler<scalar>::ConstVecHandler(Vec x) : vec{NULL}
 {
 	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
 	setVec(x);
 }
 
-template <>
-ConstVecHandler<a_real>::~ConstVecHandler()
+template <typename scalar>
+ConstVecHandler<scalar>::~ConstVecHandler()
 {
 	restore();
 }
 
-template <>
-void ConstVecHandler<a_real>::setVec(Vec x)
+template <typename scalar>
+void ConstVecHandler<scalar>::setVec(Vec x)
 {
 	if(!vec) {
 		vec = x;
@@ -93,8 +95,8 @@ void ConstVecHandler<a_real>::setVec(Vec x)
 		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
 }
 
-template <>
-void ConstVecHandler<a_real>::restore()
+template <typename scalar>
+void ConstVecHandler<scalar>::restore()
 {
 	sdata = nullptr;
 	if(vec) {
@@ -102,42 +104,43 @@ void ConstVecHandler<a_real>::restore()
 		if(ierr)
 			std::cout << " Could not restore PETSc Vec!" << std::endl;
 		vec = NULL;
-		localvec = NULL;
 	}
 }
 
-template <>
-const a_real *ConstVecHandler<a_real>::getArray() const
+template <typename scalar>
+const scalar *ConstVecHandler<scalar>::getArray() const
 {
 	return sdata;
 }
 
-template <>
-MutableGhostedVecHandler<a_real>::MutableGhostedVecHandler() : vec{NULL}, data{NULL},
-                                                               sdata{nullptr}, localvec{NULL}
+template class ConstVecHandler<a_real>;
+
+template <typename scalar>
+MutableGhostedVecHandler<scalar>::MutableGhostedVecHandler()
+	: MutableVecHandler<scalar>(), localvec{NULL}
 { }
 
-template <>
-MutableGhostedVecHandler<a_real>::MutableGhostedVecHandler(Vec x) : vec{NULL}, data{NULL},
-                                                                    sdata{nullptr}, localvec{NULL}
+template <typename scalar>
+MutableGhostedVecHandler<scalar>::MutableGhostedVecHandler(Vec x)
+	: MutableVecHandler<scalar>(), localvec{NULL}
 {
 	setVec(x);
 }
 
-template <>
-MutableGhostedVecHandler<a_real>::~MutableGhostedVecHandler()
+template <typename scalar>
+MutableGhostedVecHandler<scalar>::~MutableGhostedVecHandler()
 {
 	restore();
 }
 
-template <>
-void MutableGhostedVecHandler<a_real>::setVec(Vec x)
+template <typename scalar>
+void MutableGhostedVecHandler<scalar>::setVec(Vec x)
 {
 	if(!vec) {
 		vec = x;
 		int ierr = VecGhostGetLocalForm(vec, &localvec);
 		petsc_throw(ierr, "Could not get local form!");
-		int ierr = VecGetArray(localvec, &data);
+		ierr = VecGetArray(localvec, &data);
 		petsc_throw(ierr, "Could not get local raw array!");
 		sdata = data;
 	}
@@ -145,8 +148,8 @@ void MutableGhostedVecHandler<a_real>::setVec(Vec x)
 		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
 }
 
-template <>
-void MutableGhostedVecHandler<a_real>::restore()
+template <typename scalar>
+void MutableGhostedVecHandler<scalar>::restore()
 {
 	sdata = nullptr;
 	if(vec) {
@@ -161,33 +164,33 @@ void MutableGhostedVecHandler<a_real>::restore()
 	}
 }
 
-template <>
-ConstGhostedVecHandler<a_real>::ConstGhostedVecHandler() : vec{NULL}, data{NULL},
-                                                           sdata{nullptr}, localvec{NULL}
+template class MutableGhostedVecHandler<a_real>;
+
+template <typename scalar>
+ConstGhostedVecHandler<scalar>::ConstGhostedVecHandler() : ConstVecHandler<scalar>(), localvec{NULL}
 { }
 
-template <>
-ConstGhostedVecHandler<a_real>::ConstGhostedVecHandler(Vec x) : vec{NULL}, data{NULL},
-                                                                sdata{nullptr}, localvec{NULL}
+template <typename scalar>
+ConstGhostedVecHandler<scalar>::ConstGhostedVecHandler(Vec x) : ConstVecHandler<scalar>(),localvec{NULL}
 
 {
 	setVec(x);
 }
 
-template <>
-ConstGhostedVecHandler<a_real>::~ConstGhostedVecHandler()
+template <typename scalar>
+ConstGhostedVecHandler<scalar>::~ConstGhostedVecHandler()
 {
 	restore();
 }
 
-template <>
-void ConstGhostedVecHandler<a_real>::setVec(Vec x)
+template <typename scalar>
+void ConstGhostedVecHandler<scalar>::setVec(Vec x)
 {
 	if(!vec) {
 		vec = x;
 		int ierr = VecGhostGetLocalForm(vec, &localvec);
 		petsc_throw(ierr, "Could not get local form!");
-		int ierr = VecGetArrayRead(localvec, &data);
+		ierr = VecGetArrayRead(localvec, &data);
 		petsc_throw(ierr, "Could not get local raw array!");
 		sdata = data;
 	}
@@ -195,8 +198,8 @@ void ConstGhostedVecHandler<a_real>::setVec(Vec x)
 		throw std::runtime_error("MutableVecHandler already has a Vec attached!");
 }
 
-template <>
-void ConstGhostedVecHandler<a_real>::restore()
+template <typename scalar>
+void ConstGhostedVecHandler<scalar>::restore()
 {
 	sdata = nullptr;
 	if(vec) {
@@ -210,6 +213,8 @@ void ConstGhostedVecHandler<a_real>::restore()
 		localvec = NULL;
 	}
 }
+
+template class ConstGhostedVecHandler<a_real>;
 
 #if 0
 #ifdef USE_ADOLC
