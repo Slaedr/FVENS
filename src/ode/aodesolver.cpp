@@ -38,6 +38,7 @@
 #include "linalg/petsc_assembly.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/mpiutils.hpp"
 
 namespace fvens {
 
@@ -151,8 +152,7 @@ template<int nvars>
 StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 {
 	StatusCode ierr = 0;
-	int mpirank;
-	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	const UMesh2dh<a_real> *const m = space->mesh();
 
@@ -161,16 +161,11 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		return ierr;
 	}
 
-	PetscInt locnelem; PetscScalar *uarr; PetscScalar *rarr;
+	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
-
-	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> u(uarr, locnelem, nvars);
-	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, nvars);
 
 	int step = 0;
 	a_real resi = 1.0;
@@ -189,43 +184,50 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	SteadyStepMonitor convstep;
 	if(mpirank == 0)
 		writeConvergenceHistoryHeader(std::cout);
-		
+
 
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
+		{
+			MutableVecHandler<PetscScalar> rh(rvec);
+			PetscScalar *const rarr = rh.getArray();
+
 #pragma omp parallel for simd default(shared)
-		for(a_int i = 0; i < m->gnelem()*nvars; i++) {
-			rarr[i] = 0;
+			for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+				rarr[i] = 0;
+			}
 		}
 
-		// update residual
 		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.3, 0.25);
 
 		a_real errmass = 0;
-		const PetscScalar *dtm;
-		ierr = VecGetArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+
+		{
+			ConstVecHandler<PetscScalar> dth(dtmvec);
+			const PetscScalar *const dtm = dth.getArray();
+			MutableVecHandler<PetscScalar> uh(uvec);
+			Eigen::Map<MVector<a_real>> u(uh.getArray(), locnelem, nvars);
+			ConstVecHandler<PetscScalar> rh(rvec);
+			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), locnelem, nvars);
 
 #pragma omp parallel default(shared)
-		{
-#pragma omp for
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-				for(int i = 0; i < nvars; i++)
+#pragma omp for
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
 				{
-					u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
+					for(int i = 0; i < nvars; i++)
+						u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
 				}
-			}
 
 #pragma omp for simd reduction(+:errmass)
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
-			{
-				errmass += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
-			}
-		} // end parallel region
-
-		ierr = VecRestoreArrayRead(dtmvec, &dtm); CHKERRQ(ierr);
+				for(a_int iel = 0; iel < m->gnelem(); iel++)
+				{
+					errmass += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
+				}
+			} // end parallel region
+		}
 
 		resiold = resi;
 		resi = sqrt(errmass);
@@ -274,9 +276,6 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	tdata.num_threads = omp_get_max_threads();
 #endif
 	
-	ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
-	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
 	return ierr;
 }
 

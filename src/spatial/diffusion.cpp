@@ -155,8 +155,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 		gradcomp->compute_gradients(u, ug, grads);
 	}
+
 	ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
-	ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 	{
 		MutableGhostedVecHandler<a_real> rvh(rvec);
@@ -166,12 +166,6 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		ConstGhostedVecHandler<a_real> grh(gradvec);
 		const GradBlock_t<a_real,NDIM,nvars> *const grads
 			= reinterpret_cast<const GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
-
-#pragma omp parallel for default(shared)
-		for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
-		{
-			compute_flux_interior(iface, rc, uarr, grads, residual);
-		}
 
 #pragma omp parallel for default(shared)
 		for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
@@ -204,6 +198,24 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 #pragma omp atomic
 				residual(lelem,ivar) -= flux;
 			}
+		}
+	}
+
+	ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+	{
+		MutableGhostedVecHandler<a_real> rvh(rvec);
+		a_real *const rarr = rvh.getArray();
+		amat::Array2dMutableView<a_real> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
+
+		ConstGhostedVecHandler<a_real> grh(gradvec);
+		const GradBlock_t<a_real,NDIM,nvars> *const grads
+			= reinterpret_cast<const GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
+
+#pragma omp parallel for default(shared)
+		for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
+		{
+			compute_flux_interior(iface, rc, uarr, grads, residual);
 		}
 	}
 
