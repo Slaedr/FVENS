@@ -189,7 +189,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 		{
-			MutableVecHandler<PetscScalar> rh(rvec);
+			MutableGhostedVecHandler<PetscScalar> rh(rvec);
 			PetscScalar *const rarr = rh.getArray();
 
 #pragma omp parallel for simd default(shared)
@@ -200,6 +200,9 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
+		ierr = VecGhostUpdateBegin(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+		ierr = VecGhostUpdateEnd(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.3, 0.25);
 
 		a_real errmass = 0;
@@ -207,9 +210,9 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		{
 			ConstVecHandler<PetscScalar> dth(dtmvec);
 			const PetscScalar *const dtm = dth.getArray();
-			MutableVecHandler<PetscScalar> uh(uvec);
+			MutableGhostedVecHandler<PetscScalar> uh(uvec);
 			Eigen::Map<MVector<a_real>> u(uh.getArray(), locnelem, nvars);
-			ConstVecHandler<PetscScalar> rh(rvec);
+			ConstGhostedVecHandler<PetscScalar> rh(rvec);
 			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), locnelem, nvars);
 
 #pragma omp parallel default(shared)
@@ -228,6 +231,9 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 				}
 			} // end parallel region
 		}
+
+		ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		ierr = VecGhostUpdateEnd(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 		resiold = resi;
 		resi = sqrt(errmass);

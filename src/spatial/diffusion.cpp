@@ -219,23 +219,25 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		}
 	}
 
-	MutableVecHandler<a_real> dtvh(timesteps);
-	a_real *const dtm = dtvh.getArray();
-	MutableVecHandler<a_real> rvh(rvec);
-	a_real *const rarr = rvh.getArray();
-	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
+	{
+		MutableVecHandler<a_real> dtvh(timesteps);
+		a_real *const dtm = dtvh.getArray();
+		MutableVecHandler<a_real> rvh(rvec);
+		a_real *const rarr = rvh.getArray();
+		Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 
 #pragma omp parallel for default(shared)
-	for(int iel = 0; iel < m->gnelem(); iel++)
-	{
-		if(gettimesteps)
-			dtm[iel] = h[iel]*h[iel]/diffusivity;
+		for(int iel = 0; iel < m->gnelem(); iel++)
+		{
+			if(gettimesteps)
+				dtm[iel] = h[iel]*h[iel]/diffusivity;
 
-		// subtract source term
-		a_real sourceterm[nvars];
-		source(&rc(iel,0), 0, &uarr[iel*nvars], sourceterm);
-		for(int ivar = 0; ivar < nvars; ivar++)
-			residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
+			// subtract source term
+			a_real sourceterm[nvars];
+			source(&rc(iel,0), 0, &uarr[iel*nvars], sourceterm);
+			for(int ivar = 0; ivar < nvars; ivar++)
+				residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
+		}
 	}
 
 	return ierr;

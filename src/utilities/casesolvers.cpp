@@ -52,20 +52,19 @@ const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
 int initializeSystemVector(const FlowParserOptions& opts, const UMesh2dh<a_real>& m, Vec *const u)
 {
 	//int ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u); CHKERRQ(ierr);
-	int ierr = createSystemVector(&m, NVARS, u); CHKERRQ(ierr);
+	int ierr = createGhostedSystemVector(&m, NVARS, u); CHKERRQ(ierr);
 
 	const IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	const std::array<a_real,NVARS> uinf = phy.compute_freestream_state(opts.alpha);
 
-	PetscScalar * uloc;
-	ierr = VecGetArray(*u, &uloc); CHKERRQ(ierr);
+	MutableGhostedVecHandler<PetscScalar> uh(*u);
+	PetscScalar *const uloc = uh.getArray();
 	
 	//initial values are equal to free-stream values
 	for(a_int i = 0; i < m.gnelem(); i++)
 		for(int j = 0; j < NVARS; j++)
 			uloc[i*NVARS+j] = uinf[j];
 
-	ierr = VecRestoreArray(*u, &uloc); CHKERRQ(ierr);
 	return ierr;
 }
 
