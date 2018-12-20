@@ -23,8 +23,9 @@ Diffusion<nvars>::Diffusion(const UMesh2dh<a_real> *const mesh,
 		h[iel] = 0;
 		// max face length
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
-			a_int face = m->gelemface(iel,ifael);
-			if(h[iel] < m->gfacemetric(face,2)) h[iel] = m->gfacemetric(face,2);
+			const a_int face = m->gelemface(iel,ifael);
+			if(h[iel] < m->gfacemetric(face,NDIM))
+				h[iel] = m->gfacemetric(face,NDIM);
 		}
 	}
 }
