@@ -216,7 +216,7 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 		const scalar *const _rcbp)
 	: GradientScheme<scalar,nvars>(mesh, _rc, _rcbp)
 {
-	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
+	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace(), NDIM);
 	Eigen::Map<const MVector<scalar>> rcbpm(rcbp, m->gnbface(), NDIM);
 
 	V.resize(m->gnelem());
@@ -298,6 +298,7 @@ WeightedLeastSquaresGradients<scalar,nvars>::WeightedLeastSquaresGradients(
 
 		for(int i = 0; i<NDIM; i++)
 			for(int j = 0; j < NDIM; j++) {
+#pragma omp atomic update
 				V[ielem](i,j) += w2*dr[i]*dr[j];
 			}
 	}
@@ -412,6 +413,7 @@ void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			for(int jdim = 0; jdim < NDIM; jdim++) {
+#pragma omp atomic update
 				f[ielem](jdim,ivar) += w2*dr[jdim]*du[ivar];
 			}
 		}

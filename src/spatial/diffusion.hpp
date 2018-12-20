@@ -106,6 +106,12 @@ protected:
 	using Diffusion<nvars>::compute_boundary_states;
 	
 	const GradientScheme<a_real,nvars> *const gradcomp;
+
+	void compute_flux_interior(const a_int iface,
+	                           const amat::Array2dView<a_real>& rc,
+	                           const a_real *const uarr,
+	                           const GradBlock_t<a_real,NDIM,nvars> *const grads,
+	                           amat::Array2dMutableView<a_real>& residual) const;
 };
 
 template<int nvars>

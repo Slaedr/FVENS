@@ -9,3 +9,7 @@ add_test(NAME LeastSquaresGradients_OneExact WORKING_DIRECTORY ${CMAKE_CURRENT_B
 add_test(NAME LeastSquaresGradients_OneExact_2 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} runtest_gradientschemes
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/2dcylinderhybrid.msh LEASTSQUARES 1exact)
+
+add_test(NAME LeastSquaresGradients_OneExact_Unsquad WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${SEQEXEC} ${SEQTASKS} runtest_gradientschemes
+  ${CMAKE_CURRENT_SOURCE_DIR}/../heat/grids/squareunsquad0.msh LEASTSQUARES 1exact)

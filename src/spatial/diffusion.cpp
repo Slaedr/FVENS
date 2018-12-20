@@ -2,6 +2,7 @@
 #include "diffusion.hpp"
 #include "utilities/afactory.hpp"
 #include "linalg/petscutils.hpp"
+#include "linalg/alinalg.hpp"
 
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
@@ -70,6 +71,49 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<int nvars>
+inline void DiffusionMA<nvars>::compute_flux_interior(const a_int iface,
+                                                      const amat::Array2dView<a_real>& rc,
+                                                      const a_real *const uarr,
+                                                      const GradBlock_t<a_real,NDIM,nvars> *const grads,
+                                                      amat::Array2dMutableView<a_real>& residual) const
+{
+	const a_int lelem = m->gintfac(iface,0);
+	const a_int relem = m->gintfac(iface,1);
+	const a_real len = m->gfacemetric(iface,2);
+
+	a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+	for(int ivar = 0; ivar < nvars; ivar++) {
+		for(int idim = 0; idim < NDIM; idim++) {
+			gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
+			gradr[idim*nvars+ivar] = grads[relem](idim,ivar);
+		}
+	}
+
+	a_real gradf[NDIM][nvars];
+	getFaceGradient_modifiedAverage
+		(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &uarr[relem*nvars],
+		 gradl, gradr, gradf);
+
+	for(int ivar = 0; ivar < nvars; ivar++)
+	{
+		// compute nu*(-grad u . n) * l
+		a_real flux = 0;
+		for(int idim = 0; idim < NDIM; idim++)
+			flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
+		flux *= (-diffusivity*len);
+
+		/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
+#pragma omp atomic
+		residual(lelem,ivar) -= flux;
+
+		if(relem < m->gnelem()) {
+#pragma omp atomic
+			residual(relem,ivar) += flux;
+		}
+	}
+}
+
+template<int nvars>
 StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
                                                 const bool gettimesteps, Vec timesteps) const
 {
@@ -87,10 +131,6 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	const a_real *const uarr = uvh.getArray();
 	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), nvars);
 
-	MutableVecHandler<a_real> rvh(rvec);
-	a_real *const rarr = rvh.getArray();
-	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
-
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
 	uleft.resize(m->gnbface(),nvars);	// Modified
@@ -103,88 +143,108 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
 
-	std::vector<GradBlock_t<a_real,NDIM,nvars>> grads;
-	grads.resize(m->gnelem());
-
 	compute_boundary_states(&uleft(0,0), &ug(0,0));
-	gradcomp->compute_gradients(u, ug, &grads[0]);
 
-#pragma omp parallel for default(shared)
-	for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
+	Vec gradvec;
+	ierr = createGhostedSystemVector(m, NDIM*nvars, &gradvec); CHKERRQ(ierr);
 	{
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
-		const a_real len = m->gfacemetric(iface,2);
+		MutableGhostedVecHandler<a_real> grh(gradvec);
 
-		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
-		for(int ivar = 0; ivar < nvars; ivar++) {
-			for(int idim = 0; idim < NDIM; idim++) {
-				gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
-				gradr[idim*nvars+ivar] = grads[relem](idim,ivar);
-			}
-		}
-		// const a_real *const gradl = &grads[lelem](0,0);
-		// const a_real *const gradr = &grads[relem](0,0);
+		GradBlock_t<a_real,NDIM,nvars> *const grads
+			= reinterpret_cast<GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
 
-		a_real gradf[NDIM][nvars];
-		getFaceGradient_modifiedAverage
-			(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &uarr[relem*nvars], gradl, gradr, gradf);
-
-		for(int ivar = 0; ivar < nvars; ivar++)
-		{
-			// compute nu*(-grad u . n) * l
-			a_real flux = 0;
-			for(int idim = 0; idim < NDIM; idim++)
-				flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
-			flux *= (-diffusivity*len);
-
-			/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
-#pragma omp atomic
-			residual(lelem,ivar) -= flux;
-
-			if(relem < m->gnelem()) {
-#pragma omp atomic
-				residual(relem,ivar) += flux;
-			}
-		}
+		gradcomp->compute_gradients(u, ug, grads);
 	}
+	ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+	ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+	{
+		MutableGhostedVecHandler<a_real> rvh(rvec);
+		a_real *const rarr = rvh.getArray();
+		Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
+
+		ConstGhostedVecHandler<a_real> grh(gradvec);
+		const GradBlock_t<a_real,NDIM,nvars> *const grads
+			= reinterpret_cast<const GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
 
 #pragma omp parallel for default(shared)
-	for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
-	{
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int ibpface = iface - m->gPhyBFaceStart();
-		const a_real len = m->gfacemetric(iface,2);
+		for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
+		{
+			const a_int lelem = m->gintfac(iface,0);
+			const a_int relem = m->gintfac(iface,1);
+			const a_real len = m->gfacemetric(iface,2);
 
-		a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
-		for(int ivar = 0; ivar < nvars; ivar++) {
-			for(int idim = 0; idim < NDIM; idim++) {
-				gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
-				gradr[idim*nvars+ivar] = grads[lelem](idim,ivar);
+			a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+			for(int ivar = 0; ivar < nvars; ivar++) {
+				for(int idim = 0; idim < NDIM; idim++) {
+					gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
+					gradr[idim*nvars+ivar] = grads[relem](idim,ivar);
+				}
+			}
+
+			a_real gradf[NDIM][nvars];
+			getFaceGradient_modifiedAverage
+				(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &uarr[relem*nvars],
+				 gradl, gradr, gradf);
+
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				// compute nu*(-grad u . n) * l
+				a_real flux = 0;
+				for(int idim = 0; idim < NDIM; idim++)
+					flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
+				flux *= (-diffusivity*len);
+
+				/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
+#pragma omp atomic
+				residual(lelem,ivar) -= flux;
+
+				if(relem < m->gnelem()) {
+#pragma omp atomic
+					residual(relem,ivar) += flux;
+				}
 			}
 		}
-		// const a_real *const gradl = &grads[lelem](0,0);
-		// const a_real *const gradr = &grads[lelem](0,0);
 
-		a_real gradf[NDIM][nvars];
-		getFaceGradient_modifiedAverage(&rc(lelem,0), &rcbp(ibpface,0),
-		                                &uarr[lelem*nvars], &ug(ibpface,0), gradl, gradr, gradf);
-
-		for(int ivar = 0; ivar < nvars; ivar++)
+#pragma omp parallel for default(shared)
+		for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 		{
-			// compute nu*(-grad u . n) * l
-			a_real flux = 0;
-			for(int idim = 0; idim < NDIM; idim++)
-				flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
-			flux *= (-diffusivity*len);
+			const a_int lelem = m->gintfac(iface,0);
+			const a_int ibpface = iface - m->gPhyBFaceStart();
+			const a_real len = m->gfacemetric(iface,2);
 
-			/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
-			residual(lelem,ivar) -= flux;
+			a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+			for(int ivar = 0; ivar < nvars; ivar++) {
+				for(int idim = 0; idim < NDIM; idim++) {
+					gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
+					gradr[idim*nvars+ivar] = grads[lelem](idim,ivar);
+				}
+			}
+
+			a_real gradf[NDIM][nvars];
+			getFaceGradient_modifiedAverage(&rc(lelem,0), &rcbp(ibpface,0),
+			                                &uarr[lelem*nvars], &ug(ibpface,0), gradl, gradr, gradf);
+
+			for(int ivar = 0; ivar < nvars; ivar++)
+			{
+				// compute nu*(-grad u . n) * l
+				a_real flux = 0;
+				for(int idim = 0; idim < NDIM; idim++)
+					flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
+				flux *= (-diffusivity*len);
+
+				/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
+#pragma omp atomic
+				residual(lelem,ivar) -= flux;
+			}
 		}
 	}
 
 	MutableVecHandler<a_real> dtvh(timesteps);
 	a_real *const dtm = dtvh.getArray();
+	MutableVecHandler<a_real> rvh(rvec);
+	a_real *const rarr = rvh.getArray();
+	Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
 
 #pragma omp parallel for default(shared)
 	for(int iel = 0; iel < m->gnelem(); iel++)

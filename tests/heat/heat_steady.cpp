@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 			std::abort();
 		}
 
-		std::cout << "\n***\n";
+		std::cout << "***\n";
 
 		// solution vector
 		Vec u;
@@ -230,6 +230,7 @@ int main(int argc, char* argv[])
 		ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
 		ierr = VecDestroy(&u); CHKERRQ(ierr);
 		ierr = MatDestroy(&M); CHKERRQ(ierr);
+		std::cout << "***\n";
 	}
 
 	std::cout << ">> Spatial orders = \n" ;
