@@ -735,6 +735,12 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		elemface(intelems[ibounface].first, intelems[ibounface].second) = iface;
 	}
 
+#ifdef DEBUG
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	std::cout << " Rank " << mpirank << ":\n\t elems = " << nelem << ", faces = " << naface
+	          << ",\n\t interior faces = " << ninface << ", phy boun faces = " << nbface
+	          << ", conn faces = " << nconnface << ",\n\t vertices = " << npoin << std::endl;
+#endif
 }
 
 template <typename scalar>

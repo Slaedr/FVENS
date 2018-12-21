@@ -25,5 +25,5 @@ add_test(NAME SpatialDiffusion_LeastSquares_Tri_SolnConvergence
 
 add_test(NAME SpatialDiffusion_Explicit_LeastSquares_Quad_SolnConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND ${MPIEXEC} -n 1 ${CMAKE_CURRENT_BINARY_DIR}/exec_testdiffusion
+  COMMAND ${MPIEXEC} -n 2 ${CMAKE_CURRENT_BINARY_DIR}/exec_testdiffusion
   ${CMAKE_CURRENT_BINARY_DIR}/explls_quad.control )
