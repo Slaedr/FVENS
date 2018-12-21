@@ -6,10 +6,12 @@
 #include <iostream>
 #include <cstring>
 #include "ameshutils.hpp"
+#include "meshpartitioning.hpp"
 #include "linalg/alinalg.hpp"
 #include "linalg/petsc_assembly.hpp"
 #include "spatial/diffusion.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/mpiutils.hpp"
 
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
@@ -93,11 +95,29 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 
 UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 {
-	// Set up mesh
-	UMesh2dh<a_real> m(readMesh(mesh_path));
-	int ierr = preprocessMesh(m); 
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
+
+	// Read mesh
+	if(mpirank == 0)
+		std::cout << "Global mesh:\n";
+	UMesh2dh<a_real> gm(readMesh(mesh_path));
+	gm.compute_topological();
+
+	// Partition
+	if(mpirank == 0)
+		std::cout << "Distributing the mesh\n";
+	TrivialReplicatedGlobalMeshPartitioner p(gm);
+	p.compute_partition();
+	UMesh2dh<a_real> lm = p.restrictMeshToPartitions();
+	int ierr = preprocessMesh<a_real>(lm); 
 	fvens_throw(ierr, "Mesh could not be preprocessed!");
-	return m;
+
+#ifdef DEBUG
+	std::cout << " Rank " << mpirank << ":\n\t elems = " << lm.gnelem() << ", faces = " << lm.gnaface()
+	          << ",\n\t interior faces = " << lm.gninface() << ", phy boun faces = " << lm.gnbface()
+	          << ", conn faces = " << lm.gnConnFace() << ",\n\t vertices = " << lm.gnpoin() << std::endl;
+#endif
+	return lm;
 }
 
 /* Returns a list of cell indices corresponding to the start of each level.

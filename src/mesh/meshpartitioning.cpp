@@ -28,6 +28,10 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	lm.nnofa = gm.nnofa;
 	lm.nelemglobal = gm.nelem;
 	lm.npoinglobal = gm.npoin;
+#ifdef DEBUG
+	std::cout << "ReplicatedGlobalMeshPartitioner: Rank " << rank << ": Nelem = " << lm.nelem
+	          << std::endl;
+#endif
 
 	//! 1. Copy inpoel, get local to global elem map
 	lm.inpoel.resize(lm.nelem, gm.maxnnode);

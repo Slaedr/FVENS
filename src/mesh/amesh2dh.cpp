@@ -301,16 +301,12 @@ template <typename scalar>
 void UMesh2dh<scalar>::compute_topological()
 {
 #ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Calculating and storing topological info...\n";
+	std::cout << " UMesh2dh: compute_topological(): Calculating and storing topological info.\n";
 #endif
 
 	compute_elementsSurroundingPoints();
 	compute_elementsSurroundingElements();
 	compute_faceConnectivity();
-
-#ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Done." << std::endl;
-#endif
 }
 
 /** Assumption: order of nodes of boundary faces is such that normal points outside,
@@ -400,7 +396,6 @@ void UMesh2dh<scalar>::compute_periodic_map(const int bcm, const int axis)
 template <typename scalar>
 void UMesh2dh<scalar>::compute_elementsSurroundingPoints()
 {
-	//std::cout << "UMesh2d: compute_topological(): Elements surrounding points\n";
 	esup_p.resize(npoin+1,1);
 	esup_p.zeros();
 
@@ -445,10 +440,6 @@ void UMesh2dh<scalar>::compute_elementsSurroundingPoints()
 template <typename scalar>
 void UMesh2dh<scalar>::compute_elementsSurroundingElements()
 {
-#ifdef DEBUG
-	std::cout << "UMesh2dh: compute_topological(): Elements surrounding elements...\n";
-#endif
-	//amat::Array2d<int> lpoin(npoin,1);
 	esuel.resize(nelem, maxnfael);
 	for(int ii = 0; ii < nelem; ii++)
 		for(int jj = 0; jj < maxnfael; jj++)
@@ -708,7 +699,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		}
 	}
 
-	assert(faceindex == ninface);
+	assert(faceindex-nconnface == ninface);
 
 	domFaceStart = 0;
 	domFaceEnd = nconnface + ninface;
@@ -734,13 +725,6 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		esuel(intelems[ibounface].first, intelems[ibounface].second) = nelem+nconnface+ibounface;
 		elemface(intelems[ibounface].first, intelems[ibounface].second) = iface;
 	}
-
-#ifdef DEBUG
-	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
-	std::cout << " Rank " << mpirank << ":\n\t elems = " << nelem << ", faces = " << naface
-	          << ",\n\t interior faces = " << ninface << ", phy boun faces = " << nbface
-	          << ", conn faces = " << nconnface << ",\n\t vertices = " << npoin << std::endl;
-#endif
 }
 
 template <typename scalar>
