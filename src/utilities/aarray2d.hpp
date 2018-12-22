@@ -82,8 +82,8 @@ public:
 	/// Sets a new size for the array, deletes the contents and allocates new memory
 	void resize(const a_int nr, const a_int nc)
 	{
-		assert(nc>0);
-		assert(nr>0);
+		assert(nc>=0);
+		assert(nr>=0);
 		
 		nrows = nr; ncols = nc;
 		size = nrows*ncols;

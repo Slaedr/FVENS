@@ -79,9 +79,6 @@ public:
 	void compute_local_jacobian_boundary(const a_int iface,
 	                                     const a_real *const ul,
 	                                     Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const;
-
-	/*void add_source(const MVector<scalar>& u, 
-			MVector<scalar>& __restrict residual, amat::Array2d<a_real>& __restrict dtm) const;*/
 	
 	void getGradients(const MVector<a_real>& u,
 	                  GradBlock_t<a_real,NDIM,nvars> *const grads) const;
@@ -93,6 +90,7 @@ protected:
 	using Spatial<a_real,nvars>::rcvec;
 	using Spatial<a_real,nvars>::rch;
 	using Spatial<a_real,nvars>::rcbp;
+	using Spatial<a_real,nvars>::rcbptr;
 	using Spatial<a_real,nvars>::gr;
 	using Spatial<a_real,nvars>::getFaceGradient_modifiedAverage;
 	using Spatial<a_real,nvars>::getFaceGradientAndJacobian_thinLayer;

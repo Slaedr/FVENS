@@ -11,7 +11,12 @@ namespace fvens {
 
 ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
 	: gm{globalmesh}
-{ }
+{
+	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
+	if(gm.gnelem() < mpisize)
+		throw std::runtime_error("Not enough cells in this mesh for " +
+		                         std::to_string(mpisize) + " processes!");
+}
 
 UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 {
@@ -254,6 +259,8 @@ extractPointCoords(UMesh2dh<a_real>& lm, std::vector<a_int>& locpoints) const
 void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>& pointGlob2Loc,
                                                     UMesh2dh<a_real>& lm) const
 {
+	const int irank = get_mpi_rank(MPI_COMM_WORLD);
+
 	lm.nbface = 0;
 	std::vector<std::array<a_int,6>> tbfaces;         // assuming max 4 points and 2 tags per face
 	assert(gm.nnofa <= 4);
@@ -262,21 +269,38 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 	{
 		bool reqd = true;
 		std::array<a_int,6> locbfpoints;
-		for(int j = 0; j < gm.nnofa; j++)
+		// for(int j = 0; j < gm.nnofa; j++)
+		// {
+		// 	try {
+		// 		locbfpoints[j] = pointGlob2Loc.at(gm.bface(iface,j));
+		// 	} catch (const std::out_of_range& oor) {
+		// 		reqd = false;
+		// 		break;
+		// 	}
+		// }
+		const a_int globelem = gm.gintfac(iface+gm.gPhyBFaceStart(),0);
+		if(elemdist[globelem] == irank)
 		{
-			try {
+			for(int j = 0; j < gm.nnofa; j++)
 				locbfpoints[j] = pointGlob2Loc.at(gm.bface(iface,j));
-			} catch (const std::out_of_range& oor) {
-				reqd = false;
-				break;
-			}
 		}
+		else
+			reqd = false;
+
 		if(reqd) {
 			for(int j = 0; j < gm.nbtag; j++)
 				locbfpoints[gm.nnofa+j] = gm.bface(iface,gm.nnofa+j);
 			tbfaces.push_back(locbfpoints);
 			lm.nbface++;
 		}
+
+#ifdef DEBUG
+		// Do the global intfac and element partition agree that this face is in this partition?
+		if(reqd) {
+			const a_int globelem = gm.gintfac(iface+gm.gPhyBFaceStart(),0);
+			assert(elemdist[globelem] == irank);
+		}
+#endif
 	}
 
 	lm.bface.resize(lm.nbface, lm.nnofa+lm.nbtag);

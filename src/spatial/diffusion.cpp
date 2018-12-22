@@ -61,7 +61,7 @@ DiffusionMA<nvars>
               std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf,
               const std::string grad_scheme)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
-	  gradcomp {create_const_gradientscheme<a_real,nvars>(grad_scheme, m, rch.getArray(), &rcbp(0,0))}
+	gradcomp {create_const_gradientscheme<a_real,nvars>(grad_scheme, m, rch.getArray(), rcbptr)}
 { }
 
 template<int nvars>
@@ -129,7 +129,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 	const ConstVecHandler<a_real> uvh(uvec);
 	const a_real *const uarr = uvh.getArray();
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), nvars);
+	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem()+m->gnConnFace(), nvars);
 
 	amat::Array2d<a_real> uleft;
 	amat::Array2d<a_real> ug;
@@ -143,7 +143,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
 
-	compute_boundary_states(&uleft(0,0), &ug(0,0));
+	if(m->gnbface() > 0)
+		compute_boundary_states(&uleft(0,0), &ug(0,0));
 
 	Vec gradvec;
 	ierr = createGhostedSystemVector(m, NDIM*nvars, &gradvec); CHKERRQ(ierr);

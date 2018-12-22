@@ -529,9 +529,10 @@ EIndex UMesh2dh<scalar>::getFaceEIndex(const bool phyboundary, const a_int iface
 	{
 		bool facefound = true;
 
-		// iterate over each node of the element's face to see if
-		//  all nodes of the intfac face are matched
-		// below, gnnofa needs to be replaced by the number of nodes in the inofa-th face of the element
+		// Iterate over each node of the element's face to see if
+		//  all nodes of the face iface are matched.
+		// Below, gnnofa needs to be replaced by the number of nodes
+		//  in the inofa-th face of the element.
 		for(FIndex inofa = 0; inofa < gnnofa(iface); inofa++)
 		{
 			const a_int node = ginpoel(lelem,getNodeEIndex(lelem,ifael,inofa));
@@ -552,7 +553,8 @@ EIndex UMesh2dh<scalar>::getFaceEIndex(const bool phyboundary, const a_int iface
 					}
 				}
 			}
-			// if this node of lelem does not any node of iface,
+
+			// If this node of lelem does not any node of iface,
 			//  move on to the next face of the lelem.
 			if(!nodefound) {
 				facefound = false;
@@ -573,6 +575,7 @@ EIndex UMesh2dh<scalar>::getFaceEIndex(const bool phyboundary, const a_int iface
 template <typename scalar>
 std::vector<std::pair<a_int,EIndex>> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
 {
+	static_assert(NDIM==2);
 	std::vector<std::pair<a_int,EIndex>> interiorelem(nbface);
 
 	for(a_int iface = 0; iface < nbface; iface++)

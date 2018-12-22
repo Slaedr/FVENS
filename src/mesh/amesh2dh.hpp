@@ -306,7 +306,7 @@ public:
 		return (iface + inode) % nnode[ielem];
 	}
 
-	/// Returns the EIndex of an intfac face in a certain element
+	/// Returns the EIndex of a face in a certain element
 	/** Returns negative if the face is not present in that element.
 	 * \warning If iface is a physical boundary face, this function will always work. But if iface is
 	 *  an interior face defined according to \ref intfac, obviously intfac must be available.

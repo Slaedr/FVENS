@@ -70,6 +70,11 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	rcbp.resize(m->gnbface(),NDIM);
 	compute_ghost_cell_coords_about_midpoint(rcbp);
 	//compute_ghost_cell_coords_about_face(rchg);
+
+	if(m->gnbface() > 0)
+		rcbptr = &rcbp(0,0);
+	else
+		rcbptr = nullptr;
 }
 
 template<typename scalar, int nvars>

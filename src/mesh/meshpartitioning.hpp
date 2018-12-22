@@ -64,9 +64,9 @@ protected:
 	///  faces, if any
 	/** \param[in] isPhyBounPoint For each local point, whether or not it lies on a physical boundary
 	 */
-	std::vector<std::vector<EIndex>> getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
-	                                                             const std::vector<bool>& isPhyBounPoint)
-		const;
+	std::vector<std::vector<EIndex>>
+	getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
+	                            const std::vector<bool>& isPhyBounPoint) const;
 
 	/// The global mesh to partition
 	const UMesh2dh<a_real>& gm;

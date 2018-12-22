@@ -8,6 +8,7 @@
 #include "utilities/controlparser.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/casesolvers.hpp"
+#include "utilities/mpiutils.hpp"
 #include "mesh/ameshutils.hpp"
 
 #undef NDEBUG
@@ -22,6 +23,8 @@ int main(int argc, char* argv[])
 		Arguments needed: FVENS control file and PETSc options file with -options_file,\n";
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
+
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	if(argc < 2)
 	{
@@ -72,7 +75,9 @@ int main(int argc, char* argv[])
 		std::cout << "Need at least 2 grids for grid convergence test!\n";
 		std::abort();
 	}
-	std::cout << "Diffusion coeff = " << diffcoeff << ", boundary value = " << bvalue << std::endl;
+
+	if(mpirank == 0)
+		std::cout << "Diffusion coeff = " << diffcoeff << ", boundary value = " << bvalue << std::endl;
 	
 	// rhs and exact soln
 	
@@ -95,7 +100,8 @@ int main(int argc, char* argv[])
 
 		// set up problem
 		
-		std::cout << "Setting up spatial scheme.\n";
+		if(mpirank == 0)
+			std::cout << "Setting up spatial scheme.\n";
 		
 		Diffusion<1>* prob = nullptr;
 		Diffusion<1>* startprob = nullptr;
@@ -109,7 +115,8 @@ int main(int argc, char* argv[])
 			std::abort();
 		}
 
-		std::cout << "***\n";
+		if(mpirank == 0)
+			std::cout << "***\n";
 
 		// solution vector
 		Vec u;
@@ -118,13 +125,18 @@ int main(int argc, char* argv[])
 
 		// Initialize Jacobian for implicit schemes
 		Mat M;
-		ierr = setupSystemMatrix<1>(&m, &M); CHKERRQ(ierr);
+		if(timesteptype == "IMPLICIT") {
+			ierr = setupSystemMatrix<1>(&m, &M);
+			CHKERRQ(ierr);
+		}
 
 		// initialize solver
 		KSP ksp;
-		ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
-		ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
-		ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+		if(timesteptype == "IMPLICIT") {
+			ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
+			ierr = KSPSetOperators(ksp, M, M); CHKERRQ(ierr);
+			ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+		}
 
 		const SteadySolverConfig tconf {
 			lognres, logfile,
@@ -154,7 +166,8 @@ int main(int argc, char* argv[])
 
 			if(usestarter != 0)
 			{
-				std::cout << "Starting initialization solve..\n";
+				if(mpirank == 0)
+					std::cout << "Starting initialization solve..\n";
 				starttime = new SteadyBackwardEulerSolver<1>(startprob, startconf, ksp, nlu);
 
 				// solve the starter problem to get the initial solution
@@ -166,7 +179,8 @@ int main(int argc, char* argv[])
 			/* Solve the main problem using either the initial solution
 			 * set by initializeUnknowns or the one computed by the starter problem.
 			 */
-			std::cout << "Starting main solve..\n";
+			if(mpirank == 0)
+				std::cout << "Starting main solve..\n";
 			ierr = time->solve(u); CHKERRQ(ierr);
 		}
 		else {
@@ -213,8 +227,10 @@ int main(int argc, char* argv[])
 		MPI_Allreduce(&err, &err, 1, FVENS_MPI_REAL, MPI_SUM, PETSC_COMM_WORLD);
 
 		err = sqrt(err);
-		double h = 1.0/sqrt(m.gnelem());
-		cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << endl;
+		const double h = 1.0/sqrt(m.gnelemglobal());
+
+		if(mpirank == 0)
+			cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << endl;
 		lh[imesh] = log10(h);
 		lerrors[imesh] = log10(err);
 		if(imesh > 0)
@@ -225,25 +241,33 @@ int main(int argc, char* argv[])
 			delete startprob;
 		delete time;
 
-		ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+		if(timesteptype == "IMPLICIT") {
+			ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+			ierr = MatDestroy(&M); CHKERRQ(ierr);
+		}
 		ierr = VecDestroy(&u); CHKERRQ(ierr);
-		ierr = MatDestroy(&M); CHKERRQ(ierr);
-		std::cout << "***\n";
+		if(mpirank == 0)
+			std::cout << "***\n";
 	}
 
-	std::cout << ">> Spatial orders = \n" ;
-	for(int i = 0; i < nmesh-1; i++)
-		std::cout << "   " << slopes[i] << std::endl;
+	if(mpirank == 0) {
+		std::cout << ">> Spatial orders = \n" ;
+		for(int i = 0; i < nmesh-1; i++)
+			std::cout << "   " << slopes[i] << std::endl;
+	}
 		
 	if(reconst == "LEASTSQUARES") 
 	{
-		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.9)
-			std::cout << "Passed!\n";
+		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.9) {
+			if(mpirank == 0)
+				std::cout << "Passed!\n";
+		}
 		else
 			throw "Order not correct!";
 	}
 	
-	cout << "\n--------------- End --------------------- \n\n";
+	if(mpirank == 0)
+		cout << "\n--------------- End --------------------- \n\n";
 	ierr = PetscFinalize(); CHKERRQ(ierr);
 	return ierr;
 }

@@ -102,6 +102,9 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 		std::cout << "Global mesh:\n";
 	UMesh2dh<a_real> gm(readMesh(mesh_path));
 	gm.compute_topological();
+	if(mpirank == 0)
+		std::cout << "**" << std::endl;
+	MPI_Barrier(PETSC_COMM_WORLD);
 
 	// Partition
 	if(mpirank == 0)
@@ -109,6 +112,21 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 	TrivialReplicatedGlobalMeshPartitioner p(gm);
 	p.compute_partition();
 	UMesh2dh<a_real> lm = p.restrictMeshToPartitions();
+
+#ifdef DEBUG
+	std::cout << " Rank " << mpirank << ":\n\t elems = " << lm.gnelem()
+	          << ", phy boun faces = " << lm.gnbface()
+	          << ", conn faces = " << lm.gnConnFace() << ",\n\t vertices = " << lm.gnpoin() << std::endl;
+
+	const int mpisize = get_mpi_size(PETSC_COMM_WORLD);
+	if(mpisize == 1) {
+		std::cout << "Checking trivial 1-part partition." << std::endl;
+		const std::array<bool,8> chk = compareMeshes(gm, lm);
+		for(int i = 0; i < 8; i++)
+			assert(chk[i]);
+	}
+#endif
+
 	int ierr = preprocessMesh<a_real>(lm); 
 	fvens_throw(ierr, "Mesh could not be preprocessed!");
 

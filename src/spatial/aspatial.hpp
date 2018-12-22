@@ -115,6 +115,11 @@ protected:
 	/// Cell centres of ghost cells at physical boundaries
 	amat::Array2d<scalar> rcbp;
 
+	/// Pointer to cell-centre of first physical boundary face
+	/** Required to deal with the case where a subdomain has no physical boundary faces.
+	 */
+	const scalar *rcbptr;
+
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)
 	amat::Array2d<scalar> gr;
