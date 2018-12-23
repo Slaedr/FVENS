@@ -259,6 +259,7 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
+		const a_int lelemg = m->gglobalElemIndex(lelem);
 
 		Matrix<a_real,nvars,nvars,RowMajor> left;
 		compute_local_jacobian_boundary(iface, &uarr[lelem*nvars], left);
@@ -267,15 +268,17 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 		left *= -1.0;
 #pragma omp critical
 		{
-			ierr = MatSetValuesBlocked(A, 1,&lelem, 1,&lelem, left.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1,&lelemg, 1,&lelemg, left.data(), ADD_VALUES);
 		}
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
+	for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
+		const a_int lelemg = m->gglobalElemIndex(lelem);
+		const a_int relemg = m->gglobalElemIndex(relem);
 
 		Matrix<a_real,nvars,nvars,RowMajor> L;
 		Matrix<a_real,nvars,nvars,RowMajor> U;
@@ -283,22 +286,47 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 
 #pragma omp critical
 		{
-			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &lelem, L.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &relemg, 1, &lelemg, L.data(), ADD_VALUES);
 		}
 #pragma omp critical
 		{
-			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &relem, U.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &lelemg, 1, &relemg, U.data(), ADD_VALUES);
 		}
 
 		// negative L and U contribute to diagonal blocks
 		L *= -1.0; U *= -1.0;
 #pragma omp critical
 		{
-			ierr = MatSetValuesBlocked(A, 1, &lelem, 1, &lelem, L.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &lelemg, 1, &lelemg, L.data(), ADD_VALUES);
 		}
 #pragma omp critical
 		{
-			ierr = MatSetValuesBlocked(A, 1, &relem, 1, &relem, U.data(), ADD_VALUES);
+			ierr = MatSetValuesBlocked(A, 1, &relemg, 1, &relemg, U.data(), ADD_VALUES);
+		}
+	}
+
+#pragma omp parallel for default(shared)
+	for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
+	{
+		const a_int lelem = m->gintfac(iface,0);
+		const a_int relem = m->gintfac(iface,1);
+		const a_int lelemg = m->gglobalElemIndex(lelem);
+		const a_int relemg = m->gglobalElemIndex(relem);
+
+		Matrix<a_real,nvars,nvars,RowMajor> L;
+		Matrix<a_real,nvars,nvars,RowMajor> U;
+		compute_local_jacobian_interior(iface, &uarr[lelem*nvars], &uarr[relem*nvars], L, U);
+
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1, &lelemg, 1, &relemg, U.data(), ADD_VALUES);
+		}
+
+		// negative L and U contribute to diagonal blocks
+		L *= -1.0;
+#pragma omp critical
+		{
+			ierr = MatSetValuesBlocked(A, 1, &lelemg, 1, &lelemg, L.data(), ADD_VALUES);
 		}
 	}
 
