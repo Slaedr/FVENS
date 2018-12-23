@@ -127,26 +127,11 @@ SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<a_real,n
                                                           const SteadySolverConfig& conf)
 
 	: SteadySolver<nvars>(spatial, conf)
-{
-	const UMesh2dh<a_real> *const m = space->mesh();
-
-	StatusCode ierr = VecDuplicate(uvec, &rvec);
-	petsc_throw(ierr, "Could not duplicate vec");
-
-	ierr = createSystemVector(m, 1, &dtmvec);
-	petsc_throw(ierr, "Could not create mesh vector");
-}
+{ }
 
 template<int nvars>
 SteadyForwardEulerSolver<nvars>::~SteadyForwardEulerSolver()
-{
-	int ierr = VecDestroy(&rvec);
-	if(ierr)
-		std::cout << "! SteadyForwardEulerSolver: Could not destroy residual vector!\n";
-	ierr = VecDestroy(&dtmvec);
-	if(ierr)
-		std::cout << "! SteadyForwardEulerSolver: Could not destroy dt vector!\n";
-}
+{ }
 
 template<int nvars>
 StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
@@ -160,6 +145,10 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		std::cout << " SteadyForwardEulerSolver: solve(): No iterations to be done.\n";
 		return ierr;
 	}
+
+	Vec rvec, dtmvec;
+	ierr = VecDuplicate(uvec, &rvec); CHKERRQ(ierr);
+	ierr = createSystemVector(m, 1, &dtmvec); CHKERRQ(ierr);
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -286,6 +275,9 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 #ifdef _OPENMP
 	tdata.num_threads = omp_get_max_threads();
 #endif
+
+	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
+	ierr = VecDestroy(&dtmvec); CHKERRQ(ierr);
 	
 	return ierr;
 }
@@ -300,29 +292,11 @@ SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
 
 	: SteadySolver<nvars>(spatial, conf), solver{ksp}, update_relax{nlr}
 {
-	const UMesh2dh<a_real> *const m = space->mesh();
-	Mat M;
-	int ierr;
-	ierr = KSPGetOperators(solver, NULL, &M);
-	ierr = MatCreateVecs(M, &duvec, &rvec);
-	petsc_throw(ierr, "SteadyBackwardEulerSolver: Could not create residual or update vector!");
-	ierr = createSystemVector(m, 1, &dtmvec);
-	petsc_throw(ierr, "Could not create mesh vector");
 }
 
 template <int nvars>
 SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
-{
-	int ierr = VecDestroy(&rvec);
-	if(ierr)
-		std::cout << "! SteadyBackwardEulerSolver: Could not destroy residual vector!\n";
-	ierr = VecDestroy(&duvec);
-	if(ierr)
-		std::cout << "! SteadyBackwardEulerSolver: Could not destroy update vector!\n";
-	ierr = VecDestroy(&dtmvec);
-	if(ierr)
-		std::cout << "! SteadyBackwardEulerSolver: Could not destroy dt vector";
-}
+{ }
 
 template <int nvars>
 StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl, Vec dtmvec, Mat M)
@@ -400,6 +374,14 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
+	Vec rvec, duvec, dtmvec;
+	ierr = VecDuplicate(uvec, &rvec);
+	petsc_throw(ierr, "Could not duplicate vec");
+	ierr = VecDuplicate(uvec, &duvec);
+	petsc_throw(ierr, "Could not create du vec");
+	ierr = createSystemVector(m, 1, &dtmvec);
+	petsc_throw(ierr, "Could not create mesh vector");
+
 	// get the system and preconditioning matrices
 	Mat M, A;
 	ierr = KSPGetOperators(solver, &A, &M); CHKERRQ(ierr);
@@ -442,19 +424,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 		{
-			PetscScalar *rarr = NULL;
-			ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-			Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
+			MutableGhostedVecHandler<PetscScalar> rh(rvec);
+			PetscScalar *const rarr = rh.getArray();
 
-#pragma omp parallel for default(shared)
-			for(a_int iel = 0; iel < m->gnelem(); iel++) {
-#pragma omp simd
-				for(int i = 0; i < nvars; i++) {
-					residual(iel,i) = 0;
-				}
+#pragma omp parallel for simd default(shared)
+			for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+					rarr[i] = 0;
 			}
-
-			ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
 		}
 
 		std::vector<int>::const_iterator it = std::find(amgrecompute.begin(), amgrecompute.end(), step+1);
@@ -618,6 +594,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		}
 		throw Numerical_error("Steady backward Euler blew up!");
 	}
+
+	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
+	ierr = VecDestroy(&duvec); CHKERRQ(ierr);
+	ierr = VecDestroy(&dtmvec); CHKERRQ(ierr);
 	return ierr;
 }
 

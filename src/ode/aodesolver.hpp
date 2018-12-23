@@ -90,7 +90,6 @@ public:
 protected:
 	const Spatial<a_real,nvars> *const space;
 	const SteadySolverConfig& config;
-	Vec rvec;
 	TimingData tdata;
 
 	/// Linear CFL ramping
@@ -133,13 +132,9 @@ public:
 private:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
-	using SteadySolver<nvars>::rvec;
 	using SteadySolver<nvars>::tdata;
 	using SteadySolver<nvars>::linearRamp;
 	using SteadySolver<nvars>::expResidualRamp;
-
-	/// Characteristic local time step for each cell
-	Vec dtmvec;
 };
 
 /// Implicit pseudo-time iteration to steady state
@@ -171,14 +166,8 @@ protected:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
 	using SteadySolver<nvars>::tdata;
-	using SteadySolver<nvars>::rvec;       ///< Residual vector
 	using SteadySolver<nvars>::linearRamp;
 	using SteadySolver<nvars>::expResidualRamp;
-
-	Vec duvec;                             ///< Nonlinear update vector
-
-	/// Characteristic local time step for each cell
-	Vec dtmvec;
 
 	KSP solver;                            ///< The solver context
 
