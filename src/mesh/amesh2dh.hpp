@@ -381,6 +381,8 @@ private:
 	amat::Array2d<a_int> connface;
 
 	/// Stores global element indices of each element in this subdomain
+	/** Computed by the partitioner.
+	 */
 	std::vector<a_int> globalElemIndex;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes

@@ -59,24 +59,6 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	for(a_int ip = 0; ip < lm.npoin; ip++)
 		assert(pointGlob2Loc.at(pointLoc2Glob[ip]) == ip);
 #endif
-	// const int nranks = get_mpi_size(MPI_COMM_WORLD);
-	// for(int irnk = 0; irnk < nranks; irnk++) {
-	// 	MPI_Barrier(MPI_COMM_WORLD);
-	// 	if(rank == irnk) {
-	// 		std::cout << "Rank " << rank << ": point global to local:\n";
-	// 		for(a_int i = 0; i < gm.npoin; i++)
-	// 		{
-	// 			try {
-	// 				const a_int locpoin = pointGlob2Loc.at(i);
-	// 				std::cout << i << " -> " << locpoin << std::endl;
-	// 			} catch (std::exception& e) { }
-	// 		}
-	// 		std::cout << "Rank " << rank << ": point local to global:\n";
-	// 		for(a_int i = 0; i < lm.npoin; i++)
-	// 			std::cout << i << " -> " << pointLoc2Glob[i] << std::endl;
-	// 	}
-	// 	MPI_Barrier(MPI_COMM_WORLD);
-	// }
 
 	//! 3. Convert inpoel entries from global indices to local
 	for(a_int iel = 0; iel < lm.nelem; iel++)
@@ -105,27 +87,6 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	lm.nconnface = 0;
 	for(a_int i = 0; i < lm.nelem; i++)
 		lm.nconnface += static_cast<a_int>(connElemLocalFace[i].size());
-
-	// for(int irnk = 0; irnk < nranks; irnk++) {
-	// 	MPI_Barrier(MPI_COMM_WORLD);
-	// 	if(rank == irnk)
-	// 	{
-	// 		for(a_int i = 0; i < lm.nelem; i++)
-	// 		{
-	// 			std::cout << "Esuel: ";
-	// 			for(EIndex j = 0; j < lm.nfael[i]; j++)
-	// 				std::cout << " " << lm.esuel(i,j);
-	// 			std::cout << std::endl;
-	// 			for(size_t j = 0; j < connElemLocalFace[i].size(); j++)
-	// 				std::cout << "\t" << connElemLocalFace[i][j];
-	// 			std::cout << std::endl;
-	// 		}
-	// 		std::cout << "Array printed" << std::endl;
-	// 	}
-	// 	MPI_Barrier(MPI_COMM_WORLD);
-	// }
-	// std::cout << "Rank " << rank << ": num conn faces = " << lm.nconnface << std::endl;
-
 
 	if(lm.nconnface > 0)
 		lm.connface.resize(lm.nconnface,4);
