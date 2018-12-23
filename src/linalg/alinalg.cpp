@@ -33,7 +33,8 @@ template <int nvars>
 static StatusCode setJacobianSizes(const UMesh2dh<a_real> *const m, Mat A) 
 {
 	StatusCode ierr = 0;
-	ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m->gnelem()*nvars, m->gnelem()*nvars);
+	ierr = MatSetSizes(A, m->gnelem()*nvars, m->gnelem()*nvars,
+	                   m->gnelemglobal()*nvars, m->gnelemglobal()*nvars);
 	CHKERRQ(ierr);
 	ierr = MatSetBlockSize(A, nvars); CHKERRQ(ierr);
 	return ierr;
@@ -47,25 +48,41 @@ StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A)
 	StatusCode ierr = 0;
 
 	// set block preallocation
-	std::vector<PetscInt> dnnz(m->gnelem());
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		dnnz[iel] = m->gnfael(iel)+1;
+		std::vector<PetscInt> dnnz(m->gnelem());
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			dnnz[iel] = m->gnfael(iel)+1;
+		}
+
+		std::vector<PetscInt> onnz(m->gnelem(),0);
+		for(a_int iface = 0; iface < m->gnConnFace(); iface++)
+			onnz[m->gconnface(iface,0)] = 1;
+
+		ierr = MatSeqBAIJSetPreallocation(A, nvars, 0, &dnnz[0]); CHKERRQ(ierr);
+		ierr = MatMPIBAIJSetPreallocation(A, nvars, 0, &dnnz[0], 0, &onnz[0]); CHKERRQ(ierr);
 	}
-	ierr = MatSeqBAIJSetPreallocation(A, nvars, 0, &dnnz[0]); CHKERRQ(ierr);
-	ierr = MatMPIBAIJSetPreallocation(A, nvars, 0, &dnnz[0], 1, NULL); CHKERRQ(ierr);
 
 	// set scalar (non-block) preallocation
-	dnnz.resize(m->gnelem()*nvars);
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		for(int i = 0; i < nvars; i++) {
-			dnnz[iel*nvars+i] = (m->gnfael(iel)+1)*nvars;
+		std::vector<PetscInt> dnnz(m->gnelem()*nvars);
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int i = 0; i < nvars; i++) {
+				dnnz[iel*nvars+i] = (m->gnfael(iel)+1)*nvars;
+			}
 		}
-	}
 
-	ierr = MatSeqAIJSetPreallocation(A, 0, &dnnz[0]); CHKERRQ(ierr);
-	ierr = MatMPIAIJSetPreallocation(A, 0, &dnnz[0], nvars, NULL); CHKERRQ(ierr);
+		std::vector<PetscInt> onnz(m->gnelem()*nvars,0);
+		for(a_int iface = 0; iface < m->gnConnFace(); iface++)
+		{
+			for(int i = 0; i < nvars; i++)
+				onnz[m->gconnface(iface,0)*nvars+i] = nvars;
+		}
+
+		ierr = MatSeqAIJSetPreallocation(A, 0, &dnnz[0]); CHKERRQ(ierr);
+		ierr = MatMPIAIJSetPreallocation(A, 0, &dnnz[0], 0, &onnz[0]); CHKERRQ(ierr);
+	}
 
 	return ierr;
 }
