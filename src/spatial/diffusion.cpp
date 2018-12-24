@@ -220,6 +220,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		}
 	}
 
+	ierr = VecDestroy(&gradvec); CHKERRQ(ierr);
+
 	{
 		MutableVecHandler<a_real> dtvh(timesteps);
 		a_real *const dtm = dtvh.getArray();

@@ -236,6 +236,7 @@ int main(int argc, char* argv[])
 		if(imesh > 0)
 			slopes[imesh-1] = (lerrors[imesh]-lerrors[imesh-1])/(lh[imesh]-lh[imesh-1]);
 
+		delete nlu;
 		delete prob;
 		if(usestarter != 0)
 			delete startprob;

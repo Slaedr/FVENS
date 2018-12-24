@@ -19,9 +19,9 @@ IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf,
 	: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
 {
 #ifdef DEBUG
-	std::cout << " IdealGasPhysics: Physical parameters:\n";
-	std::cout << "  Adiabatic index = " <<g << ", M_infty = " <<Minf << ", T_infty = " << Tinf
-		<< "\n   Re_infty = " << Reinf << ", Pr = " << Pr << std::endl;
+	// std::cout << " IdealGasPhysics: Physical parameters:\n";
+	// std::cout << "  Adiabatic index = " <<g << ", M_infty = " <<Minf << ", T_infty = " << Tinf
+	// 	<< "\n   Re_infty = " << Reinf << ", Pr = " << Pr << std::endl;
 #endif
 }
 
