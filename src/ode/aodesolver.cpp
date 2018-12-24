@@ -364,15 +364,16 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real
 template <int nvars>
 StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 {
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
+
 	if(config.maxiter <= 0) {
-		std::cout << " SteadyBackwardEulerSolver: solve(): No iterations to be done.\n";
+		if(mpirank == 0)
+			std::cout << " SteadyBackwardEulerSolver: solve(): No iterations to be done.\n";
 		return 0;
 	}
 	
 	const UMesh2dh<a_real> *const m = space->mesh();
 	StatusCode ierr = 0;
-	int mpirank;
-	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
 	Vec rvec, duvec, dtmvec;
 	ierr = VecDuplicate(uvec, &rvec); CHKERRQ(ierr);
@@ -388,7 +389,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		MatrixFreeSpatialJacobian<nvars>* mfA = nullptr;
 		ierr = MatShellGetContext(A, (void**)&mfA); CHKERRQ(ierr);
 		// uvec, rvec and dtm keep getting updated, but pointers to them can be set just once
-		std::cout << " Setting matfree state" << std::endl;
+		if(mpirank == 0)
+			std::cout << " Setting matfree state" << std::endl;
 		mfA->set_state(uvec,rvec, dtmvec);
 	}
 

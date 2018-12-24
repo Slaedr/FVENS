@@ -7,5 +7,6 @@
 -ksp_type cg
 -ksp_rtol 1e-2
 -ksp_max_it 30
--pc_type sor
--pc_sor_symmetric
+-pc_type bjacobi
+-sub_pc_type sor
+-sub_pc_sor_symmetric

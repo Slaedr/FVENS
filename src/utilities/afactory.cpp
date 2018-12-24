@@ -23,6 +23,7 @@
 
 #include "spatial/limitedlinearreconstruction.hpp"
 #include "spatial/musclreconstruction.hpp"
+#include "mpiutils.hpp"
 
 namespace fvens {
 
@@ -31,44 +32,53 @@ InviscidFlux<scalar>* create_mutable_inviscidflux(
 		const std::string& type, 
 		const IdealGasPhysics<scalar> *const p) 
 {
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 	InviscidFlux<scalar> *inviflux = nullptr;
 
 	if(type == "VANLEER") {
 		inviflux = new VanLeerFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using Van Leer fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using Van Leer fluxes." << std::endl;
 	}
 	else if(type == "ROE")
 	{
 		inviflux = new RoeFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using Roe fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using Roe fluxes." << std::endl;
 	}
 	else if(type == "HLL")
 	{
 		inviflux = new HLLFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using HLL fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using HLL fluxes." << std::endl;
 	}
 	else if(type == "HLLC")
 	{
 		inviflux = new HLLCFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using HLLC fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using HLLC fluxes." << std::endl;
 	}
 	else if(type == "LLF")
 	{
 		inviflux = new LocalLaxFriedrichsFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using LLF fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using LLF fluxes." << std::endl;
 	}
 	else if(type == "AUSM")
 	{
 		inviflux = new AUSMFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using AUSM fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using AUSM fluxes." << std::endl;
 	}
 	else if(type == "AUSMPLUS")
 	{
 		inviflux = new AUSMPlusFlux<scalar>(p);
-		std::cout << " InviscidFluxFactory: Using AUSM+ fluxes." << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: Using AUSM+ fluxes." << std::endl;
 	}
 	else
-		std::cout << " InviscidFluxFactory: ! Flux scheme not available!" << std::endl;
+		if(mpirank == 0)
+			std::cout << " InviscidFluxFactory: ! Flux scheme not available!" << std::endl;
 
 	return inviflux;
 }
@@ -95,21 +105,25 @@ GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& t
                                                             const scalar *const rc,
                                                             const scalar *const rcbp)
 {
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 	GradientScheme<scalar,nvars> * gradcomp = nullptr;
 
 	if(type == "LEASTSQUARES")
 	{
 		gradcomp = new WeightedLeastSquaresGradients<scalar,nvars>(m, rc, rcbp);
-		std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
+		if(mpirank == 0)
+			std::cout << " GradientSchemeFactory: Weighted least-squares gradients will be used.\n";
 	}
 	else if(type == "GREENGAUSS")
 	{
 		gradcomp = new GreenGaussGradients<scalar,nvars>(m, rc, rcbp);
-		std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used.\n";
+		if(mpirank == 0)
+			std::cout << " GradientSchemeFactory: Green-Gauss gradients will be used.\n";
 	}
 	else {
 		gradcomp = new ZeroGradients<scalar,nvars>(m, rc, rcbp);
-		std::cout << " GradientSchemeFactory: No gradient computation.\n";
+		if(mpirank == 0)
+			std::cout << " GradientSchemeFactory: No gradient computation.\n";
 	}
 
 	return gradcomp;
@@ -158,35 +172,42 @@ SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::s
                                                                     const amat::Array2d<scalar>& gr,
                                                                     const a_real param)
 {
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 	SolutionReconstruction<scalar,nvars> * reconst = nullptr;
 
 	if(type == "NONE")
 	{
 		reconst = new LinearUnlimitedReconstruction<scalar,nvars>(m, rc, rcbp, gr);
-		std::cout << " ReconstructionFactory: Unlimited linear reconstruction selected.\n";
+		if(mpirank == 0)
+			std::cout << " ReconstructionFactory: Unlimited linear reconstruction selected.\n";
 	}
 	else if(type == "WENO")
 	{
 		reconst = new WENOReconstruction<scalar,nvars>(m, rc, rcbp, gr, param);
-		std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
+		if(mpirank == 0)
+			std::cout << " ReconstructionFactory: WENO reconstruction selected.\n";
 	}
 	else if(type == "VANALBADA")
 	{
 		reconst = new MUSCLVanAlbada<scalar,nvars>(m, rc, rcbp, gr);
-		std::cout << " ReconstructionFactory: Van Albada MUSCL reconstruction selected.\n";
+		if(mpirank == 0)
+			std::cout << " ReconstructionFactory: Van Albada MUSCL reconstruction selected.\n";
 	}
 	else if(type == "BARTHJESPERSEN")
 	{
 		reconst = new BarthJespersenLimiter<scalar,nvars>(m, rc, rcbp, gr);
-		std::cout << " ReconstructionFactory: Barth-Jespersen linear reconstruction selected.\n";
+		if(mpirank == 0)
+			std::cout << " ReconstructionFactory: Barth-Jespersen linear reconstruction selected.\n";
 	}
 	else if(type == "VENKATAKRISHNAN")
 	{
 		reconst = new VenkatakrishnanLimiter<scalar,nvars>(m, rc, rcbp, gr, param);
-		std::cout << " ReconstructionFactory: Venkatakrishnan linear reconstruction selected.\n";
+		if(mpirank == 0)
+			std::cout << " ReconstructionFactory: Venkatakrishnan linear reconstruction selected.\n";
 	}
 	else {
-		std::cout << " !ReconstructionFactory: Invalid reconstruction!!\n";
+		if(mpirank == 0)
+			std::cout << " !ReconstructionFactory: Invalid reconstruction!!\n";
 	}
 
 	return reconst;

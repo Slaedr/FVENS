@@ -6,6 +6,7 @@
 
 #include "aoptionparser.hpp"
 #include "aerrorhandling.hpp"
+#include "mpiutils.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <boost/program_options/cmdline.hpp>
@@ -122,6 +123,7 @@ std::vector<int> parsePetscCmd_intArray(const std::string optionname, const int 
 std::vector<int> parseOptionalPetscCmd_intArray(const std::string optionname, const int maxlen)
 {
 	StatusCode ierr = 0;
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 	PetscBool set = PETSC_FALSE;
 	std::vector<int> arr(maxlen);
 	int len = maxlen;
@@ -131,7 +133,8 @@ std::vector<int> parseOptionalPetscCmd_intArray(const std::string optionname, co
 
 	petsc_throw(ierr, std::string("Could not get array ") + std::string(optionname));
 	if(!set) {
-		std::cout << "Array " << optionname << " not set.\n";
+		if(mpirank == 0)
+			std::cout << "Array " << optionname << " not set.\n";
 		arr.resize(0);
 	}
 	return arr;
