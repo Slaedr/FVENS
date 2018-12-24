@@ -67,6 +67,7 @@ StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, 
 template <typename scalar>
 StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 {
+	int ierr = 0;
 	char ordstr[PETSCOPTION_STR_LEN];
 	PetscBool flag = PETSC_FALSE;
 	CHKERRQ(PetscOptionsGetString(NULL, NULL, "-mesh_reorder", ordstr, PETSCOPTION_STR_LEN, &flag));
@@ -83,14 +84,14 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 			{ sourceterm[0] = 0; },
 		"NONE");
 
-		CHKERRQ(reorderMesh(ordstr, sd, m));
+		ierr = reorderMesh(ordstr, sd, m); CHKERRQ(ierr);
 	}
 
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();
 
-	return 0;
+	return ierr;
 }
 
 UMesh2dh<a_real> constructMesh(const std::string mesh_path)
@@ -134,6 +135,11 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 	std::cout << " Rank " << mpirank << ":\n\t elems = " << lm.gnelem() << ", faces = " << lm.gnaface()
 	          << ",\n\t interior faces = " << lm.gninface() << ", phy boun faces = " << lm.gnbface()
 	          << ", conn faces = " << lm.gnConnFace() << ",\n\t vertices = " << lm.gnpoin() << std::endl;
+	assert(lm.gnelemglobal() == gm.gnelem());
+	for(a_int iel = 0; iel < lm.gnelem(); iel++) {
+		assert(lm.gglobalElemIndex(iel) >= 0);
+		assert(lm.gglobalElemIndex(iel) < lm.gnelemglobal());
+	}
 #endif
 	return lm;
 }

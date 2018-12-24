@@ -23,6 +23,7 @@
 #include "aspatial.hpp"
 #include "mathutils.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/mpiutils.hpp"
 #include "linalg/alinalg.hpp"
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
@@ -247,19 +248,26 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 
 	StatusCode ierr = 0;
 
-	PetscInt locnelem; const PetscScalar *uarr;
+	// Get comm to know if this is a serial or parallel assembly
+	MPI_Comm mycomm;
+	ierr = PetscObjectGetComm((PetscObject)A, &mycomm); CHKERRQ(ierr);
+	const int mpisize = get_mpi_size(mycomm);
+	const bool isdistributed = (mpisize > 1);
+
+	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
 	assert(locnelem % nvars == 0);
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
-	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
+	ConstGhostedVecHandler<PetscScalar> uvh(uvec);
+	const PetscScalar *const uarr = uvh.getArray();
 
 #pragma omp parallel for default(shared)
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
-		const a_int lelemg = m->gglobalElemIndex(lelem);
+		const a_int lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
 
 		Matrix<a_real,nvars,nvars,RowMajor> left;
 		compute_local_jacobian_boundary(iface, &uarr[lelem*nvars], left);
@@ -273,12 +281,12 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
+	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
-		const a_int lelemg = m->gglobalElemIndex(lelem);
-		const a_int relemg = m->gglobalElemIndex(relem);
+		const a_int lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
+		const a_int relemg = isdistributed ? m->gglobalElemIndex(relem) : relem;
 
 		Matrix<a_real,nvars,nvars,RowMajor> L;
 		Matrix<a_real,nvars,nvars,RowMajor> U;
@@ -310,8 +318,8 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 	{
 		const a_int lelem = m->gintfac(iface,0);
 		const a_int relem = m->gintfac(iface,1);
-		const a_int lelemg = m->gglobalElemIndex(lelem);
-		const a_int relemg = m->gglobalElemIndex(relem);
+		const a_int lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
+		const a_int relemg = isdistributed ? m->gconnface(iface-m->gConnBFaceStart(), 3) : -1;
 
 		Matrix<a_real,nvars,nvars,RowMajor> L;
 		Matrix<a_real,nvars,nvars,RowMajor> U;
@@ -329,8 +337,6 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 			ierr = MatSetValuesBlocked(A, 1, &lelemg, 1, &lelemg, L.data(), ADD_VALUES);
 		}
 	}
-
-	ierr = VecRestoreArrayRead(uvec, &uarr); CHKERRQ(ierr);
 
 	return ierr;
 }

@@ -43,8 +43,6 @@ static StatusCode setJacobianSizes(const UMesh2dh<a_real> *const m, Mat A)
 template <int nvars>
 StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A) 
 {
-	// The implementation must be changed for the multi-process case
-	
 	StatusCode ierr = 0;
 
 	// set block preallocation
@@ -104,7 +102,15 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
 
 	ierr = MatSetUp(*A); CHKERRQ(ierr);
 
-	ierr = MatSetOption(*A, MAT_USE_HASH_TABLE, PETSC_TRUE); CHKERRQ(ierr);
+	MatType mtype;
+	ierr = MatGetType(*A, &mtype); CHKERRQ(ierr);
+	if(!strcmp(mtype, MATMPIBAIJ) || !strcmp(mtype,MATSEQBAIJ) || !strcmp(mtype,MATSEQAIJ)
+	   || !strcmp(mtype,MATMPIBAIJMKL) || !strcmp(mtype,MATSEQBAIJMKL) || !strcmp(mtype,MATSEQAIJMKL)) {
+		// This is only available for MATMPIBAIJ, it seems, but we know it also works for seq aij
+		//  and seq baij. Hopefully it also works for MKL Mats.
+		//  But it complains in case of mpi aij.
+		ierr = MatSetOption(*A, MAT_USE_HASH_TABLE, PETSC_TRUE); CHKERRQ(ierr);
+	}
 
 	return ierr;
 }
