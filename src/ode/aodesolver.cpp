@@ -304,8 +304,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl,
 	StatusCode ierr = 0;
 	const UMesh2dh<a_real> *const m = space->mesh();
 
-	PetscScalar *dtm;
-	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+	MutableVecHandler<PetscScalar> dth(dtmvec);
+	PetscScalar *const dtm = dth.getArray();
 
 	// Add pseudo-time terms to diagonal blocks
 	// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
@@ -315,17 +315,17 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl,
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
+		const a_int ielg = m->gglobalElemIndex(iel);
 
 		const Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor> db
 			= dtm[iel] * Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Identity();
 	
 #pragma omp critical
 		{
-			MatSetValuesBlocked(M, 1, &iel, 1, &iel, db.data(), ADD_VALUES);
+			MatSetValuesBlocked(M, 1, &ielg, 1, &ielg, db.data(), ADD_VALUES);
 		}
 	}
 
-	ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
 	return ierr;
 }
 
@@ -335,8 +335,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real
 	StatusCode ierr = 0;
 	const UMesh2dh<a_real> *const m = space->mesh();
 
-	PetscScalar *dtm;
-	ierr = VecGetArray(dtmvec, &dtm); CHKERRQ(ierr);
+	MutableVecHandler<PetscScalar> dth(dtmvec);
+	PetscScalar *const dtm = dth.getArray();
 
 	// Add pseudo-time terms to diagonal blocks
 	// NOTE: After the following loop, dtm will contain Vol/(CFL*dt).
@@ -346,10 +346,11 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
 		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
+		const a_int ielg = m->gglobalElemIndex(iel);
 
 		for(int i = 0; i < nvars; i++)
 		{
-			const a_int index = iel*nvars+i;
+			const a_int index = ielg*nvars+i;
 #pragma omp critical
 			{
 				MatSetValues(M, 1, &index, 1, &index, &dtm[iel], ADD_VALUES);
@@ -357,7 +358,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real
 		}
 	}
 
-	ierr = VecRestoreArray(dtmvec, &dtm); CHKERRQ(ierr);
 	return ierr;
 }
 
@@ -375,12 +375,9 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
 
 	Vec rvec, duvec, dtmvec;
-	ierr = VecDuplicate(uvec, &rvec);
-	petsc_throw(ierr, "Could not duplicate vec");
-	ierr = VecDuplicate(uvec, &duvec);
-	petsc_throw(ierr, "Could not create du vec");
-	ierr = createSystemVector(m, 1, &dtmvec);
-	petsc_throw(ierr, "Could not create mesh vector");
+	ierr = VecDuplicate(uvec, &rvec); CHKERRQ(ierr);
+	ierr = createSystemVector(m, nvars, &duvec); CHKERRQ(ierr);
+	ierr = createSystemVector(m, 1, &dtmvec); CHKERRQ(ierr);
 
 	// get the system and preconditioning matrices
 	Mat M, A;
@@ -409,9 +406,6 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 	if(config.lognres)
 		tdata.convhis.reserve(100);
 	
-	/*struct timeval time1, time2;
-	gettimeofday(&time1, NULL);
-	const double initialwtime = (double)time1.tv_sec + (double)time1.tv_usec * 1.0e-6;*/
 	const double initialwtime = MPI_Wtime();
 	double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	
@@ -456,18 +450,22 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		// update residual and local time steps
 		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
+		ierr = VecGhostUpdateBegin(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+
 		ierr = MatZeroEntries(M); CHKERRQ(ierr);
 		ierr = space->assemble_jacobian(uvec, M); CHKERRQ(ierr);
-		
+
 		// curCFL = linearRamp(config.cflinit, config.cflfin,
 		//                     /*config.rampstart*/30, /*config.rampend*/100, step);
 		// (void)resiold;
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.25, 0.3);
 
 		// Add pseudo-time terms to diagonal blocks
-		// NOTE: After the following function call, dtm will contain Vol/(CFL*dt).
-		//   This is required in case of matrix-free solvers.
+		// NOTE: After the following function call, dtm will contain Vol/(CFL*dt),
+		//   since this is required in case of matrix-free solvers.
 		ierr = addPseudoTimeTerm(curCFL, dtmvec, M); CHKERRQ(ierr);
+
+		ierr = VecGhostUpdateEnd(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
 
 		ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 		ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
@@ -493,35 +491,40 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		tdata.total_lin_iters += linstepsneeded;
 
 		// Update solution and compute residual norm
-		a_real resnorm2 = 0;
 		{
-			PetscScalar *duarr, *uarr, *rarr;
-			ierr = VecGetArray(duvec, &duarr); CHKERRQ(ierr);
-			ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-			ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-			Eigen::Map<MVector<a_real>> du(duarr, m->gnelem(), nvars);
-			Eigen::Map<MVector<a_real>> u(uarr, m->gnelem(), nvars);
-			Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
+			MutableGhostedVecHandler<PetscScalar> uh(uvec);
+			Eigen::Map<MVector<a_real>> u(uh.getArray(), m->gnelem(), nvars);
+			ConstGhostedVecHandler<PetscScalar> rh(rvec);
+			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), m->gnelem(), nvars);
 
-#pragma omp parallel default(shared)
+			ConstVecHandler<PetscScalar> duh(duvec);
+			const PetscScalar *const duarr = duh.getArray();
+			Eigen::Map<const MVector<a_real>> du(duarr, m->gnelem(), nvars);
+
+
+#pragma omp parallel for
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
 			{
-#pragma omp for
-				for(a_int iel = 0; iel < m->gnelem(); iel++)
-				{
-					const a_real omega = update_relax->getLocalRelaxationFactor(&du(iel,0), &u(iel,0));
-					u.row(iel) += omega*du.row(iel);
-				}
-#pragma omp for simd reduction(+:resnorm2)
-				for(a_int iel = 0; iel < m->gnelem(); iel++)
-				{
-					resnorm2 += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
-				}
+				const a_real omega = update_relax->getLocalRelaxationFactor(duarr+iel*nvars, &u(iel,0));
+				u.row(iel) += omega*du.row(iel);
 			}
-			ierr = VecRestoreArray(rvec, &rarr); CHKERRQ(ierr);
-			ierr = VecRestoreArray(duvec, &duarr); CHKERRQ(ierr);
-			ierr = VecRestoreArray(uvec, &uarr); CHKERRQ(ierr);
 		}
 
+		ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+		a_real resnorm2 = 0;
+		{
+			ConstGhostedVecHandler<PetscScalar> rh(rvec);
+			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), m->gnelem(), nvars);
+
+#pragma omp parallel for simd reduction(+:resnorm2)
+			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			{
+				resnorm2 += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
+			}
+		}
+
+		MPI_Allreduce(&resnorm2, &resnorm2, 1, FVENS_MPI_REAL, MPI_SUM, PETSC_COMM_WORLD);
 		resiold = resi;
 		resi = sqrt(resnorm2);
 
@@ -550,6 +553,8 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 				writeStepToConvergenceHistory(convline, std::cout);
 			}
 		}
+
+		ierr = VecGhostUpdateEnd(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 	}
 
 	const double finalwtime = MPI_Wtime();
