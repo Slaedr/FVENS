@@ -11,6 +11,12 @@
 
 namespace fvens {
 
+template <>
+void mpi_all_reduce(a_real *const arr, const a_int count, MPI_Op op, MPI_Comm comm)
+{
+	MPI_Allreduce(arr, arr, count, FVENS_MPI_REAL, op, comm);
+}
+
 void wait_for_debugger()
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);

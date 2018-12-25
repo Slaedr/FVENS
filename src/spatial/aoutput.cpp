@@ -8,6 +8,7 @@
 #include <cmath>
 #include "aoutput.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/mpiutils.hpp"
 #include "physics/aphysics_defs.hpp"
 
 namespace fvens {
@@ -27,29 +28,36 @@ FlowOutput::FlowOutput(const FlowFV_base<a_real> *const fv,
 a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 {
 	StatusCode ierr = 0;
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr);
+	petsc_throw(ierr, "Could not get vec array!");
 
 	std::array<a_real,NVARS> uinf = phy->compute_freestream_state(angleOfAttack);
 
 	const a_real sinf = phy->getEntropyFromConserved(&uinf[0]);
 
-	amat::Array2d<a_real> s_err(m->gnelem(),1);
+	//amat::Array2d<a_real> s_err(m->gnelem(),1);
 	a_real error = 0;
+#pragma omp parallel for default(shared) reduction(+:error)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		s_err(iel) = (phy->getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
-		error += s_err(iel)*s_err(iel)*m->garea(iel);
+		const a_real s_err = (phy->getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
+		error += s_err*s_err*m->garea(iel);
 	}
+
+	MPI_Allgather(&error, 1, FVENS_MPI_REAL, &error, 1, FVENS_MPI_REAL, MPI_COMM_WORLD);
 	error = sqrt(error);
 
 	const a_real h = 1.0/sqrt(m->gnelem());
- 
-	std::cout << "FlowOutput: log mesh size and log entropy:   " << log10(h) << "  " 
-	          << std::setprecision(10) << log10(error) << std::endl;
+
+	if(mpirank == 0)
+		std::cout << "FlowOutput: log mesh size and log entropy:   " << log10(h) << "  " 
+		          << std::setprecision(10) << log10(error) << std::endl;
 
 	ierr = VecRestoreArrayRead(uvec, &uarr);
-	(void)ierr;
+	petsc_throw(ierr, "Could not restore vec!");
 	return error;
 }
 
@@ -174,6 +182,8 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
                                    const std::vector<int> wbcm, std::vector<int> obcm,
                                    const std::string basename                         ) const
 {
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+
 	// Get conserved variables' gradients
 	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
 	grad.resize(m->gnelem());
@@ -222,8 +232,9 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 
 		fout.close();
 
-		std::cout << "FlowOutput: CL = " << Cl << "   CDp = " << Cdp << "    CDf = " << Cdf
-			<< std::endl;
+		if(mpirank == 0)
+			std::cout << "FlowOutput: CL = " << Cl << "   CDp = " << Cdp << "    CDf = " << Cdf
+			          << std::endl;
 	}
 
 	// Iterate over `other' boundary markers and compute normalized velocities

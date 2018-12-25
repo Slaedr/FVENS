@@ -21,9 +21,10 @@
 #include <iomanip>
 #include "physics/aphysics_defs.hpp"
 #include "physics/viscousphysics.hpp"
-#include "utilities/afactory.hpp"
 #include "abctypemap.hpp"
+#include "utilities/afactory.hpp"
 #include "utilities/adolcutils.hpp"
+#include "utilities/mpiutils.hpp"
 #include "linalg/petscutils.hpp"
 #include "flow_spatial.hpp"
 
@@ -152,7 +153,6 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 			for(int j = 0; j < NDIM; j++)
 				n[j] = m->gfacemetric(iface,j);
 			const scalar len = m->gfacemetric(iface,2);
-			totallen += len;
 
 			// coords of face center
 			a_int ijp[NDIM];
@@ -223,6 +223,7 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 			// face tangent dot free-stream direction
 			const scalar tdotf = n[1]*av[0]-n[0]*av[1];
 
+			totallen += len;
 			Cdp += output(facecoun,NDIM)*ndotf*len;
 			Cdf += output(facecoun,NDIM+1)*tdotf*len;
 			Cl += output(facecoun,NDIM)*ndotnf*len;
@@ -230,6 +231,10 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 			facecoun++;
 		}
 	}
+
+	scalar funcs[] = {Cl, Cdp, Cdf, totallen};
+	mpi_all_reduce<scalar>(funcs, 4, MPI_SUM, MPI_COMM_WORLD);
+	Cl = funcs[0]; Cdp = funcs[1]; Cdf = funcs[2]; totallen = funcs[3];
 
 	// Normalize drag and lift by reference area
 	Cdp /= totallen; Cdf /= totallen; Cl /= totallen;
