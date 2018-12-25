@@ -152,13 +152,6 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	Vec aux;
 	ierr = VecDuplicate(x, &aux); CHKERRQ(ierr);
 
-	const a_real *xr, *dtmr, *ur, *resr;
-	a_real *yr, *auxr;
-	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);
-	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
-	ierr = VecGetArrayRead(x, &xr); CHKERRQ(ierr);
-	ierr = VecGetArrayRead(u, &ur); CHKERRQ(ierr);
-
 	PetscScalar xnorm = 0;
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
 
@@ -170,22 +163,25 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	const a_real pertmag = eps/xnorm;
 
 	// aux <- u + eps/xnorm * x ;    y <- 0
-#pragma omp parallel for simd default(shared)
-	for(a_int i = 0; i < m->gnelem()*nvars; i++) {
-		yr[i] = 0;
-		auxr[i] = ur[i] + pertmag * xr[i];
-	}
+	{
+		ConstVecHandler<PetscScalar> uh(u);
+		const PetscScalar *const ur = uh.getArray();
+		ConstVecHandler<PetscScalar> xh(x);
+		const PetscScalar *const xr = xh.getArray();
+		MutableVecHandler<PetscScalar> auxh(aux);
+		PetscScalar *const auxr = auxh.getArray(); 
+		MutableVecHandler<PetscScalar> yh(y);
+		PetscScalar *const yr = yh.getArray(); 
 
-	ierr = VecRestoreArray(aux, &auxr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
+#pragma omp parallel for simd default(shared)
+		for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+			yr[i] = 0;
+			auxr[i] = ur[i] + pertmag * xr[i];
+		}
+	}
 
 	// y <- -r(u + eps/xnorm * x)
 	ierr = spatial->compute_residual(aux, y, false, dummy); CHKERRQ(ierr);
-
-	ierr = VecGetArray(y, &yr); CHKERRQ(ierr);
-	ierr = VecGetArray(aux, &auxr); CHKERRQ(ierr);
-	ierr = VecGetArrayRead(res, &resr); CHKERRQ(ierr);
-	ierr = VecGetArrayRead(mdt, &dtmr); CHKERRQ(ierr);
 
 	// y <- vol/dt x + (-(-r(u + eps/xnorm * x)) + (-r(u))) / eps |x|
 	//    = vol/dt x + (r(u + eps/xnorm * x) - r(u)) / eps |x|
@@ -193,21 +189,26 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	 * We do NOT divide by epsilon, because we want the product of the Jacobian and x, which is
 	 * the directional derivative (in the direction of x) multiplied by the norm of x.
 	 */
-#pragma omp parallel for simd default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
-		for(int i = 0; i < nvars; i++) {
-			// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
-			yr[iel*nvars+i] = dtmr[iel]*xr[iel*nvars+i] + (-yr[iel*nvars+i] + resr[iel*nvars+i])/pertmag;
+		ConstVecHandler<PetscScalar> xh(x);
+		const PetscScalar *const xr = xh.getArray();
+		ConstVecHandler<PetscScalar> resh(res);
+		const PetscScalar *const resr = resh.getArray();
+		ConstVecHandler<PetscScalar> mdth(mdt);
+		const PetscScalar *const dtmr = mdth.getArray();
+		MutableVecHandler<PetscScalar> yh(y);
+		PetscScalar *const yr = yh.getArray(); 
+
+#pragma omp parallel for simd default(shared)
+		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		{
+			for(int i = 0; i < nvars; i++) {
+				// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
+				yr[iel*nvars+i] = dtmr[iel]*xr[iel*nvars+i] + (-yr[iel*nvars+i] + resr[iel*nvars+i])/pertmag;
+			}
 		}
 	}
 	
-	ierr = VecRestoreArray(y, &yr); CHKERRQ(ierr);
-	ierr = VecRestoreArray(aux, &auxr); CHKERRQ(ierr);
-	ierr = VecRestoreArrayRead(x, &xr); CHKERRQ(ierr);
-	ierr = VecRestoreArrayRead(mdt, &dtmr); CHKERRQ(ierr);
-	ierr = VecRestoreArrayRead(u, &ur); CHKERRQ(ierr);
-	ierr = VecRestoreArrayRead(res, &resr); CHKERRQ(ierr);
 	ierr = VecDestroy(&aux); CHKERRQ(ierr);
 	return ierr;
 }
