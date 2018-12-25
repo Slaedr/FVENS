@@ -151,10 +151,11 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	{
 		MutableGhostedVecHandler<a_real> grh(gradvec);
 
-		GradBlock_t<a_real,NDIM,nvars> *const grads
-			= reinterpret_cast<GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
+		// GradBlock_t<a_real,NDIM,nvars> *const grads
+		// 	= reinterpret_cast<GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
+		a_real *const gradarray = grh.getArray();
 
-		gradcomp->compute_gradients(u, ug, grads);
+		gradcomp->compute_gradients(u, ug, gradarray);
 	}
 
 	ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
@@ -329,7 +330,7 @@ void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	gradcomp->compute_gradients(u, ug, &grads[0]);
+	gradcomp->compute_gradients(u, ug, &grads[0](0,0));
 }
 
 template<int nvars>

@@ -109,7 +109,7 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface-m->gPhyBFaceStart(),0));
 	}
 
-	gradcomp->compute_gradients(u, ug, grads);
+	gradcomp->compute_gradients(u, ug, &grads[0](0,0));
 }
 
 template <typename scalar>
@@ -607,7 +607,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		}
 
 		// reconstruct
-		gradcomp->compute_gradients(up, ug, grads);
+		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
 		lim->compute_face_values(up, ug, grads, uleft, uright);
 
 		// Convert face values back to conserved variables - gradients stay primitive.

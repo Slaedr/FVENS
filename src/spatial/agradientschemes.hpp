@@ -42,9 +42,9 @@ public:
 
 	/// Computes gradients corresponding to a state vector
 	virtual void compute_gradients(
-			const MVector<scalar>& unk,                 ///< [in] Solution multi-vector
-			const amat::Array2d<scalar>& unkg,          ///< [in] Ghost cell states 
-			GradBlock_t<scalar,NDIM,nvars> *const grads ///< [in,out] Gradients output (pre-allocated)
+			const MVector<scalar>& unk,              ///< [in] Solution multi-vector
+			const amat::Array2d<scalar>& unkg,       ///< [in] Ghost cell states 
+			scalar *const grads                      ///< [in,out] Gradients output (pre-allocated)
 	                               ) const = 0;
 };
 
@@ -59,7 +59,7 @@ public:
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg, 
-	                       GradBlock_t<scalar,NDIM,nvars> *const grads ) const;
+	                       scalar *const grads ) const;
 
 protected:
 	using GradientScheme<scalar,nvars>::m;
@@ -82,7 +82,7 @@ public:
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg,
-	                       GradBlock_t<scalar,NDIM,nvars> *const grads ) const;
+	                       scalar *const grads ) const;
 
 protected:
 	using GradientScheme<scalar,nvars>::m;
@@ -101,7 +101,7 @@ public:
 
 	void compute_gradients(const MVector<scalar>& unk, 
 	                       const amat::Array2d<scalar>& unkg, 
-	                       GradBlock_t<scalar,NDIM,nvars> *const grads ) const;
+	                       scalar *const grads ) const;
 
 protected:
 	using GradientScheme<scalar,nvars>::m;

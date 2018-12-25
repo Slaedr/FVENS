@@ -34,8 +34,10 @@ ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
 template<typename scalar, int nvars>
 void ZeroGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
                                                     const amat::Array2d<scalar>& ug,
-                                                    GradBlock_t<scalar,NDIM,nvars> *const grad) const
+                                                    scalar *const gradarray) const
 {
+	GradBlock_t<scalar,NDIM,nvars> *const grad
+		= reinterpret_cast<GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -58,10 +60,12 @@ template<typename scalar, int nvars>
 void GreenGaussGradients<scalar,nvars>::compute_gradients(
 		const MVector<scalar>& u,
 		const amat::Array2d<scalar>& ug,
-		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
+		scalar *const gradarray) const
 {
 	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace(), NDIM);
 	Eigen::Map<const MVector<scalar>> rcbpm(rcbp, m->gnbface(), NDIM);
+	GradBlock_t<scalar,NDIM,nvars> *const grad
+		= reinterpret_cast<GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
 
 #pragma omp parallel default(shared)
 	{
@@ -314,13 +318,14 @@ template <typename scalar, int nvars>
 using FMultiVectorArray = std::vector<Eigen::Matrix<scalar,NDIM,nvars,Eigen::DontAlign>>;
 
 template<typename scalar, int nvars>
-void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(
-		const MVector<scalar>& u,
-		const amat::Array2d<scalar>& ug,
-		GradBlock_t<scalar,NDIM,nvars> *const grad ) const
+void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
+                                                                    const amat::Array2d<scalar>& ug,
+                                                                    scalar *const gradarray) const
 {
 	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);
 	Eigen::Map<const MVector<scalar>> rcbpm(rcbp, m->gnbface(), NDIM);
+	GradBlock_t<scalar,NDIM,nvars> *const grad
+		= reinterpret_cast<GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
 	FMultiVectorArray<scalar,nvars> f;
 	f.resize(m->gnelem());
 
