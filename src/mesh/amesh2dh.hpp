@@ -59,7 +59,7 @@ public:
 	/// Access to the connectivity boundary face information in case of multiprocess runs
 	/** \param[in] icface Connectivity face index in arbirtray order
 	 * \param[in] infoindex To query information about the face:
-	 *  - 0: Subdomain index of the element this face belongs to
+	 *  - 0: Index of the element (in this subdomain) that this face belongs to
 	 *  - 1: The EIndex of the face in the element it belongs to
 	 *  - 2: The subdomain rank of the other adjacent element which is external (to this subdomain)
 	 *  - 3: The global element index of the external neighboring element
@@ -103,10 +103,8 @@ public:
 	a_int gglobalElemIndex(const a_int iel) const { return globalElemIndex[iel]; }
 
 	/// Returns an entry from the face data structure \ref intfac
-	/** \param face Index of the face about which data is needed
-	 *   (NOT the same as the index in \ref bface, this is the index in \ref intfac)
-	 *   Note that boundary faces, connectivity faces or interior faces can be accessed using
-	 *   \ref FaceIterators.
+	/** \param face Index of the face about which data is needed.
+	 *  Boundary faces, connectivity faces or interior faces are to be accessed using \ref FaceIterators.
 	 * \param i An integer which specifies what information is returned:
 	 *  - 0: Left cell index
 	 *  - 1: Right cell index (or for a boundary face, \ref nelem + face index)
@@ -115,7 +113,9 @@ public:
 	 */
 	a_int gintfac(const a_int face, const int i) const { return intfac.get(face,i); }
 
-	/// \defgroup FaceIterators Iterators over faces indexed according to \ref intfac
+	/** \defgroup FaceIterators Iterators over faces
+	 * Use these 'iterators' for accessing faces indexed according to \ref gintfac.
+	 */ 
 	/// @{
 
 	/// Start of physical boundary faces
