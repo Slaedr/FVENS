@@ -608,7 +608,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 
 		// reconstruct
 		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
-		lim->compute_face_values(up, ug, grads, uleft, uright);
+		lim->compute_face_values(up, ug, &grads[0](0,0), uleft, uright);
 
 		// Convert face values back to conserved variables - gradients stay primitive.
 #pragma omp parallel default(shared)

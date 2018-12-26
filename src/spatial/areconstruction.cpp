@@ -52,9 +52,12 @@ template <typename scalar, int nvars>
 void LinearUnlimitedReconstruction<scalar,nvars>::compute_face_values(
 		const MVector<scalar>& u,
 		const amat::Array2d<scalar>& ug,
-		const GradBlock_t<scalar,NDIM,nvars> *const grads,
+		const scalar *const gradarray,
 		amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
+	const GradBlock_t<scalar,NDIM,nvars> *const grads
+		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
+
 #pragma omp parallel default(shared)
 	{
 #pragma omp for nowait

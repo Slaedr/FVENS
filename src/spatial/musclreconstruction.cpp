@@ -69,9 +69,12 @@ MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
 template <typename scalar, int nvars>
 void MUSCLVanAlbada<scalar,nvars>
 ::compute_face_values(const MVector<scalar>& u, const amat::Array2d<scalar>& ug,
-                      const GradBlock_t<scalar,NDIM,nvars> *const grads,
+                      const scalar *const gradarray,
                       amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
+	const GradBlock_t<scalar,NDIM,nvars> *const grads
+		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
+
 #pragma omp parallel for default(shared)
 	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{

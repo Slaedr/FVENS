@@ -38,9 +38,12 @@ WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh2dh<scalar> *con
 template <typename scalar, int nvars>
 void WENOReconstruction<scalar,nvars>
 ::compute_face_values(const MVector<scalar>& u, const amat::Array2d<scalar>& ug,
-                      const GradBlock_t<scalar,NDIM,nvars> *const grads,
+                      const scalar *const gradarray,
                       amat::Array2d<scalar>& ufl, amat::Array2d<scalar>& ufr) const
 {
+	const GradBlock_t<scalar,NDIM,nvars> *const grads
+		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
+
 	// first compute limited derivatives at each cell
 
 #pragma omp parallel for default(shared)
@@ -111,11 +114,14 @@ BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh2dh<scalar
 
 template <typename scalar, int nvars>
 void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scalar>& u, 
-                                                        const amat::Array2d<scalar>& ug, 
-                                                        const GradBlock_t<scalar,NDIM,nvars> *const grads,
-                                                        amat::Array2d<scalar>& ufl,
-                                                        amat::Array2d<scalar>& ufr) const
+                                                              const amat::Array2d<scalar>& ug, 
+                                                              const scalar *const gradarray,
+                                                              amat::Array2d<scalar>& ufl,
+                                                              amat::Array2d<scalar>& ufr) const
 {
+	const GradBlock_t<scalar,NDIM,nvars> *const grads
+		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
+
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -201,10 +207,13 @@ template <typename scalar, int nvars>
 void VenkatakrishnanLimiter<scalar,nvars>
 ::compute_face_values(const MVector<scalar>& u,
                       const amat::Array2d<scalar>& ug, 
-                      const GradBlock_t<scalar,NDIM,nvars> *const grads,
+                      const scalar *const gradarray,
                       amat::Array2d<scalar>& ufl,
                       amat::Array2d<scalar>& ufr) const
 {
+	const GradBlock_t<scalar,NDIM,nvars> *const grads
+		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
+
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
