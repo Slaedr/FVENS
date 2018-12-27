@@ -30,6 +30,9 @@ namespace fvens {
 /** Essentially a pair of "left" and "right" vectors defined on the trace of the mesh.
  * By trace of a function over the domain, we mean its restriction to the set of all faces of the mesh.
  * The faces are ordered in [the same way](@ref FaceIterators) as in the mesh object.
+ * 
+ * \warning Even though this class is templated on the scalar type, it is only for future use.
+ *   Currently, only the fvens::a_real type works.
  */
 template <typename scalar, int nvars>
 class L2TraceVector
@@ -49,8 +52,10 @@ public:
 	/// Immutable access to the "right" vector over all faces in the local subdomain
 	const scalar *getLocalArrayRight() const;
 
-	/// Update the "right" vector from the appropriate neighbouring subdomains
-	void updateSharedFaces();
+	/// Begin update the "right" vector from the appropriate neighbouring subdomains
+	void updateSharedFacesBegin();
+	/// Finish update the "right" vector from the appropriate neighbouring subdomains
+	void updateSharedFacesEnd();
 
 protected:
 	/// The mesh over whose trace the vectors are defined
@@ -62,12 +67,23 @@ protected:
 
 	/// MPI ranks of neighbouring subdomains of this subdomain
 	std::vector<int> nbdranks;
-	/// List of connectivity face indices for each of the neighbouring subdomains
+	/// List of connectivity face indices associated with each of the neighbouring subdomains
+	/** For each neighbouring subdomain, gives the connface index associated with each face.
+	 */
 	std::vector<std::vector<a_int>> sharedfaces;
+
+	/// Connectivity face indices associated with shared faces as seen by the neighbouring subdomain
+	/** This gives the connface index (of this subdomain) associated with each face of
+	 *  the *other* subdomain shared with this one. So the size is same as \ref sharedfaces.
+	 *  This is necessary because the other subdomain has a different ordering
+	 *  of the shared connectivity faces.
+	 */
+	std::vector<std::vector<a_int>> sharedfacesother;
+
 	/// Indices into the received buffer corresponding to the connectivity faces of this subdomain
 	/** For each connectivity face in this subdomain, we store, in order,
 	 *  - Index into nbdranks of the neighbouring subdomain which shares this face
-	 *  - Index (modulo nvars) into the buffer that will be received from that subdomain.
+	 *  NO: - Index (modulo nvars) into the buffer that will be received from that subdomain.
 	 */
 	amat::Array2d<a_int> sharedfacemap;
 

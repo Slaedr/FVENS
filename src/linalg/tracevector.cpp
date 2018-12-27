@@ -29,12 +29,12 @@ L2TraceVector<scalar,nvars>::L2TraceVector(const UMesh2dh<scalar>& mesh) : m{mes
 }
 
 template <typename scalar, int nvars>
-L2TraceVector<scalar,nvars>::update_comm_pattern()
+void L2TraceVector<scalar,nvars>::update_comm_pattern()
 {
 	left.resize(m.gnaface());
 	right.resize(m.gnaface());
 
-	sharedfacemap.resize(m.gnConnFace(),2);
+	sharedfacemap.resize(m.gnConnFace(),1);
 
 	std::set<int> nbds;
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
@@ -55,6 +55,11 @@ L2TraceVector<scalar,nvars>::update_comm_pattern()
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
 	{
 		sharedfaces[sharedfacemap(icface,0)].push_back(icface);
+	}
+
+	sharedfacesother.resize(nbdranks.size());
+	for(size_t irank = 0; irank < nbdranks.size(); irank++) {
+		sharedfacesother[irank].assign(sharedfaces[irank].size(), -1);
 	}
 
 	std::vector<std::vector<a_int>> nbdElemIndex(nbdranks.size());
@@ -103,14 +108,19 @@ L2TraceVector<scalar,nvars>::update_comm_pattern()
 		const int rankindex = sharedfacemap(icface,0);
 		const a_int elem = m.gconnface(icface,3);
 
-		for(a_int isface = 0; isface < nbdElemIndex[rankindex]; icface++)
+		for(a_int isface = 0; isface < static_cast<a_int>(sharedfaces[rankindex].size()); icface++)
 		{
 			if(nbdElemIndex[rankindex][isface] == elem) {
-				sharedfacemap(icface,1) = isface;
+				//sharedfacemap(icface,1) = isface;
+				sharedfacesother[nbdranks[rankindex]][isface] = icface;
 				break;
 			}
 		}
 	}
+
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+		for(size_t isface = 0; isface < sharedfacesother.size(); isface++)
+			assert(sharedfacesother[irank][isface] != -1);
 }
 
 template <typename scalar, int nvars>
@@ -137,9 +147,60 @@ const scalar *L2TraceVector<scalar,nvars>::getLocalArrayRight() const
 	return &right[0];
 }
 
+/** A more general implementation would use MPI_BYTE and manually serialize the array of scalars.
+ * But the easier way would be to define templated MPI communication functions and use those below.
+ */
 template <typename scalar, int nvars>
-void L2TraceVector<scalar,nvars>::updateSharedFaces()
+void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 {
+	std::vector<MPI_Request> sreq(nbdranks.size());
+	std::vector<std::vector<scalar>> buffers(nbdranks.size());
+
+	const a_int fstart = m.gConnBFaceStart();
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+	{
+		buffers[irank].resize(sharedfaces[irank].size()*nvars);
+		for(size_t iface = 0; iface < sharedfaces[irank].size(); iface++)
+		{
+			for(int ivar = 0; ivar < nvars; ivar++)
+				buffers[irank][iface*nvars+ivar]
+					= left [(sharedfaces[irank][iface]-fstart)*nvars + ivar];
+		}
+
+		MPI_Isend(&buffers[irank][0], sharedfaces.size()*nvars, FVENS_MPI_REAL, nbdranks[irank], irank,
+		          MPI_COMM_WORLD, &sreq[irank]);
+	}
+
+	std::vector<MPI_Status> status(nbdranks.size());
+	MPI_Waitall(nbdranks.size(), &sreq[0], &status[0]);
+}
+
+template <typename scalar, int nvars>
+void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
+{
+	std::vector<MPI_Request> rreq(nbdranks.size());
+	std::vector<std::vector<scalar>> buffers(nbdranks.size());
+
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+	{
+		buffers[irank].resize(sharedfaces[irank].size()*nvars);
+		MPI_Irecv(&buffers[irank][0], sharedfaces.size()*nvars, FVENS_MPI_REAL, nbdranks[irank], irank,
+		          MPI_COMM_WORLD, &rreq[irank]);
+	}
+
+	const a_int fstart = m.gConnBFaceStart();
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+	{
+		MPI_Wait(&rreq[irank], MPI_STATUS_IGNORE);
+
+		for(size_t isface = 0; isface < sharedfaces[irank].size(); isface++)
+		{
+			for(int ivar = 0; ivar < nvars; ivar++)
+				right[(fstart+sharedfacesother[irank][isface])*nvars+ivar]
+					= buffers[irank][isface*nvars+ivar];
+		}
+	}
+
 }
 
 template class L2TraceVector<a_real,1>;

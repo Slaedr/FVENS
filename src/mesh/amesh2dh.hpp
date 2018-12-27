@@ -7,6 +7,7 @@
 #define AMESH2DH_H
 
 #include <vector>
+#include <petscsys.h>
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
 #include "meshreaders.hpp"

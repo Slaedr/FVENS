@@ -4,7 +4,6 @@
  */
 
 #ifndef ACONSTANTS_H
-
 #define ACONSTANTS_H 1
 
 // for floating point exceptions
@@ -38,8 +37,6 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
-#include <petscsys.h>
-
 namespace fvens
 {
 #define DOUBLE_PRECISION 1
@@ -51,16 +48,21 @@ using std::fabs;
 #endif
 
 /// The floating-point type to use for all float computations
+/** If this is changed, the appropriate PETSc library will be required. \sa FVENS_MPI_REAL
+ */
 typedef double a_real;
 
+/// MPI data type corresponding to fvens::a_real. Make sure to change this whenever a_real is changed.
 #define FVENS_MPI_REAL MPI_DOUBLE
 
 /// Integer type to use for indexing etc
 /** Using signed types for this might be better than using unsigned types,
  * eg., to iterate backwards over an entire array (down to index 0).
+ * \sa FVENS_MPI_INT
  */
 typedef int a_int;
 
+/// MPI data type corresponding to fvens::a_int. Make sure to keep this in sync with a_int.
 #define FVENS_MPI_INT MPI_INT
 
 /// Multi-vector type, used for storing mesh functions like the residual
