@@ -29,6 +29,12 @@ public:
 	/// Computes the localized mesh on this rank given a partition of the cells of the global mesh
 	UMesh2dh<a_real> restrictMeshToPartitions() const;
 
+	/// Check whether the global face numbering stored in the local mesh argument gives consistent
+	///  left elements in the actual global mesh
+	/** \param[in] lmesh A restricted mesh with face structure computed
+	 */
+	bool checkConnFaces(const UMesh2dh<a_real>& lmesh) const;
+
 protected:
 	/// Extracts the local element-node connectivity info from the global mesh into the argument mesh
 	/** Important: The local inpoel still contains global node indices at the end of this.

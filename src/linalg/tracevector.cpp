@@ -44,11 +44,26 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	nbdranks.resize(nbds.size());
 	std::copy(nbds.begin(), nbds.end(), nbdranks.begin());
 
+#ifdef DEBUG
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	std::cout << "Rank " << mpirank << ": nbd = " << nbdranks.size() << std::endl;
+	std::cout << "Rank " << mpirank << ":    nbds = ";
+	for(size_t i= 0; i < nbdranks.size(); i++) {
+		std::cout << nbdranks[i] << " ";
+	}
+	std::cout << std::endl;
+#endif
+
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
 	{
+		bool matched = false;
 		for(int i = 0; i < static_cast<int>(nbdranks.size()); i++)
-			if(m.gconnface(icface,2) == nbdranks[i])
+			if(m.gconnface(icface,2) == nbdranks[i]) {
 				sharedfacemap(icface,0) = i;
+				matched = true;
+				break;
+			}
+		assert(matched);
 	}
 
 	sharedfaces.resize(nbdranks.size());
@@ -56,6 +71,16 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	{
 		sharedfaces[sharedfacemap(icface,0)].push_back(icface);
 	}
+
+#ifdef DEBUG
+	// check face counts
+	{
+		a_int totface = 0;
+		for(size_t irank = 0; irank < nbdranks.size(); irank++)
+			totface += sharedfaces[irank].size();
+		assert(totface == m.gnConnFace());
+	}
+#endif
 
 	sharedfacesother.resize(nbdranks.size());
 	for(size_t irank = 0; irank < nbdranks.size(); irank++) {
@@ -77,7 +102,7 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		{
 			myElemIndex[irank].resize(sharedfaces[irank].size());
 			for(size_t iface = 0; iface < sharedfaces[irank].size(); iface++)
-				myElemIndex[irank][iface] = m.gconnface(sharedfaces[irank][iface],0);
+				myElemIndex[irank][iface] = m.gconnface(sharedfaces[irank][iface],4);
 
 			const int dest = nbdranks[irank];
 			const int tag = irank;
@@ -88,8 +113,9 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		for(size_t irank = 0; irank < nbdranks.size(); irank++)
 		{
 			const int source = nbdranks[irank];
-			const int tag = irank;
-			MPI_Irecv(&nbdElemIndex[irank][0], nbdElemIndex[irank].size(), FVENS_MPI_INT, source, tag,
+			//const int tag = irank;
+			MPI_Irecv(&nbdElemIndex[irank][0], nbdElemIndex[irank].size(), FVENS_MPI_INT,
+			          source, MPI_ANY_TAG,
 			          MPI_COMM_WORLD, &rrequests[irank]);
 		}
 
@@ -102,24 +128,33 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 		MPI_Wait(&rrequests[irank], MPI_STATUS_IGNORE);
 
+	std::cout << "Setup: received" << std::endl;
+
 	// set the mapping between connectivity faces and receive buffers
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
 	{
 		const int rankindex = sharedfacemap(icface,0);
-		const a_int elem = m.gconnface(icface,3);
+		assert(nbdranks[rankindex] == m.gconnface(icface,2));
 
-		for(a_int isface = 0; isface < static_cast<a_int>(sharedfaces[rankindex].size()); icface++)
+		bool matched = false;
+
+		for(a_int isface = 0; isface < static_cast<a_int>(sharedfaces[rankindex].size()); isface++)
 		{
-			if(nbdElemIndex[rankindex][isface] == elem) {
-				//sharedfacemap(icface,1) = isface;
-				sharedfacesother[nbdranks[rankindex]][isface] = icface;
+			if(nbdElemIndex[rankindex][isface] == m.gconnface(icface,4))
+			{
+				sharedfacesother[rankindex][isface] = icface;
+				matched = true;
 				break;
 			}
 		}
+
+		assert(matched);
 	}
 
+	std::cout << "Built communication pattern." << std::endl;
+
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
-		for(size_t isface = 0; isface < sharedfacesother.size(); isface++)
+		for(size_t isface = 0; isface < sharedfacesother[irank].size(); isface++)
 			assert(sharedfacesother[irank][isface] != -1);
 }
 
@@ -164,7 +199,7 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 		{
 			for(int ivar = 0; ivar < nvars; ivar++)
 				buffers[irank][iface*nvars+ivar]
-					= left [(sharedfaces[irank][iface]-fstart)*nvars + ivar];
+					= left [(sharedfaces[irank][iface]+fstart)*nvars + ivar];
 		}
 
 		MPI_Isend(&buffers[irank][0], sharedfaces.size()*nvars, FVENS_MPI_REAL, nbdranks[irank], irank,

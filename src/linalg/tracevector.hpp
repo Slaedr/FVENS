@@ -26,7 +26,7 @@
 
 namespace fvens {
 
-/// A vector belonging to the trace space of a discontinuous function defined on a mesh
+/// A distributed vector belonging to the trace space of a discontinuous function defined on a mesh
 /** Essentially a pair of "left" and "right" vectors defined on the trace of the mesh.
  * By trace of a function over the domain, we mean its restriction to the set of all faces of the mesh.
  * The faces are ordered in [the same way](@ref FaceIterators) as in the mesh object.
@@ -39,7 +39,8 @@ class L2TraceVector
 {
 public:
 	/// Sets the mesh and sets up communication pattern
-	/** \param mesh The mesh over which the vector is defined. Must have its face structure available.
+	/** \param mesh The distributed mesh over which the vector is defined.
+	 * The mesh must have its face structure available.
 	 */
 	L2TraceVector(const UMesh2dh<scalar>& mesh);
 

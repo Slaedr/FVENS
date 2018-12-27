@@ -79,7 +79,8 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	assert(isPhyBounPoint.size() == static_cast<size_t>(lm.npoin));
 
 	/*! 6. Use local esuel, the global esuel and local-to-global elem map 
-	 *     to build the connectivity face structure.
+	 *     to build the connectivity face structure. Use the fact that ordering of faces within
+	 *     elements is not changed during restriction to assign global face indices.
 	 */
 	const std::vector<std::vector<EIndex>> connElemLocalFace
 		= getConnectivityFaceEIndices(lm, isPhyBounPoint);
@@ -89,7 +90,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 		lm.nconnface += static_cast<a_int>(connElemLocalFace[i].size());
 
 	if(lm.nconnface > 0)
-		lm.connface.resize(lm.nconnface,4);
+		lm.connface.resize(lm.nconnface,5);
 	a_int icofa = 0;
 	for(a_int iel = 0; iel < lm.nelem; iel++)
 	{
@@ -100,6 +101,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			lm.connface(icofa,1) = localConnFace;
 			lm.connface(icofa,2) = -1;
 			lm.connface(icofa,3) = -1;
+			lm.connface(icofa,4) = gm.gelemface(elemdist[iel],localConnFace);
 
 			std::vector<a_int> locfacepoints(lm.nnofa,-1);  // points of the connectivity face
 			for(FIndex linofa = 0; linofa < lm.nnofa; linofa++)
@@ -323,6 +325,22 @@ getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
 	}
 	std::cout << "Rank " << rank << ": computed connElemLocalFace" << std::endl;
 	return connElemLocalFace;
+}
+
+bool ReplicatedGlobalMeshPartitioner::checkConnFaces(const UMesh2dh<a_real>& lm) const
+{
+	bool match = true;
+	for(a_int iface = lm.gConnBFaceStart(); iface < lm.gConnBFaceEnd(); iface++)
+	{
+		const a_int leftelem = elemdist[lm.gintfac(iface,0)];
+		const a_int globface = lm.gconnface(iface-lm.gConnBFaceStart(),4);
+		assert(globface < gm.gnaface());
+		if(leftelem != gm.gintfac(globface,0)) {
+			match = false;
+			break;
+		}
+	}
+	return match;
 }
 
 TrivialReplicatedGlobalMeshPartitioner::

@@ -140,6 +140,9 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 		assert(lm.gglobalElemIndex(iel) >= 0);
 		assert(lm.gglobalElemIndex(iel) < lm.gnelemglobal());
 	}
+
+	// check global face numbering of connectivity faces
+	assert(p.checkConnFaces(lm));
 #endif
 	return lm;
 }

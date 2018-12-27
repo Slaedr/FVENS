@@ -64,6 +64,7 @@ public:
 	 *  - 1: The EIndex of the face in the element it belongs to
 	 *  - 2: The subdomain rank of the other adjacent element which is external (to this subdomain)
 	 *  - 3: The global element index of the external neighboring element
+	 *  - 4: The global face index of the connectivity face, as determined from the global mesh.
 	 */
 	a_int gconnface(const a_int icface, const int infoindex) const
 	{ return connface(icface, infoindex); }
