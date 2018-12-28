@@ -31,8 +31,8 @@ L2TraceVector<scalar,nvars>::L2TraceVector(const UMesh2dh<scalar>& mesh) : m{mes
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::update_comm_pattern()
 {
-	left.resize(m.gnaface());
-	right.resize(m.gnaface());
+	left.resize(m.gnaface()*nvars);
+	right.resize(m.gnaface()*nvars);
 
 	sharedfacemap.resize(m.gnConnFace(),1);
 
@@ -80,6 +80,15 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 			totface += sharedfaces[irank].size();
 		assert(totface == m.gnConnFace());
 	}
+
+	// check sharedfaces against connface
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+		for(size_t isface = 0; isface < sharedfaces[irank].size(); isface++)
+			assert(nbdranks[irank] == m.gconnface(sharedfaces[irank][isface],2));
+
+	// check sharedfacemap
+	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
+		assert(nbdranks[sharedfacemap(icface,0)] == m.gconnface(icface,2));
 #endif
 
 	sharedfacesother.resize(nbdranks.size());
@@ -87,26 +96,26 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		sharedfacesother[irank].assign(sharedfaces[irank].size(), -1);
 	}
 
-	std::vector<std::vector<a_int>> nbdElemIndex(nbdranks.size());
+	std::vector<std::vector<a_int>> nbdGFaceIndex(nbdranks.size());
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
-		nbdElemIndex[irank].resize(sharedfaces[irank].size());
+		nbdGFaceIndex[irank].resize(sharedfaces[irank].size());
 
 	std::vector<MPI_Request> rrequests(nbdranks.size());
 
 	// Send and receive element indices corresponding to shared faces
 	{
 		std::vector<MPI_Request> srequests(nbdranks.size());
-		std::vector<std::vector<a_int>> myElemIndex(nbdranks.size());
+		std::vector<std::vector<a_int>> myGFaceIndex(nbdranks.size());
 
 		for(size_t irank = 0; irank < nbdranks.size(); irank++)
 		{
-			myElemIndex[irank].resize(sharedfaces[irank].size());
+			myGFaceIndex[irank].resize(sharedfaces[irank].size());
 			for(size_t iface = 0; iface < sharedfaces[irank].size(); iface++)
-				myElemIndex[irank][iface] = m.gconnface(sharedfaces[irank][iface],4);
+				myGFaceIndex[irank][iface] = m.gconnface(sharedfaces[irank][iface],4);
 
 			const int dest = nbdranks[irank];
 			const int tag = irank;
-			MPI_Isend(&myElemIndex[irank][0], myElemIndex[irank].size(), FVENS_MPI_INT, dest, tag,
+			MPI_Isend(&myGFaceIndex[irank][0], myGFaceIndex[irank].size(), FVENS_MPI_INT, dest, tag,
 			          MPI_COMM_WORLD, &srequests[irank]);
 		}
 
@@ -114,7 +123,7 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		{
 			const int source = nbdranks[irank];
 			//const int tag = irank;
-			MPI_Irecv(&nbdElemIndex[irank][0], nbdElemIndex[irank].size(), FVENS_MPI_INT,
+			MPI_Irecv(&nbdGFaceIndex[irank][0], nbdGFaceIndex[irank].size(), FVENS_MPI_INT,
 			          source, MPI_ANY_TAG,
 			          MPI_COMM_WORLD, &rrequests[irank]);
 		}
@@ -140,7 +149,7 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 
 		for(a_int isface = 0; isface < static_cast<a_int>(sharedfaces[rankindex].size()); isface++)
 		{
-			if(nbdElemIndex[rankindex][isface] == m.gconnface(icface,4))
+			if(nbdGFaceIndex[rankindex][isface] == m.gconnface(icface,4))
 			{
 				sharedfacesother[rankindex][isface] = icface;
 				matched = true;
@@ -156,6 +165,8 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 		for(size_t isface = 0; isface < sharedfacesother[irank].size(); isface++)
 			assert(sharedfacesother[irank][isface] != -1);
+
+	std::cout << "All shared faces matched." << std::endl;
 }
 
 template <typename scalar, int nvars>

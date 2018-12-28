@@ -101,7 +101,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			lm.connface(icofa,1) = localConnFace;
 			lm.connface(icofa,2) = -1;
 			lm.connface(icofa,3) = -1;
-			lm.connface(icofa,4) = gm.gelemface(elemdist[iel],localConnFace);
+			lm.connface(icofa,4) = gm.gelemface(lm.globalElemIndex[iel],localConnFace);
 
 			std::vector<a_int> locfacepoints(lm.nnofa,-1);  // points of the connectivity face
 			for(FIndex linofa = 0; linofa < lm.nnofa; linofa++)
@@ -332,7 +332,7 @@ bool ReplicatedGlobalMeshPartitioner::checkConnFaces(const UMesh2dh<a_real>& lm)
 	bool match = true;
 	for(a_int iface = lm.gConnBFaceStart(); iface < lm.gConnBFaceEnd(); iface++)
 	{
-		const a_int leftelem = elemdist[lm.gintfac(iface,0)];
+		const a_int leftelem = lm.gglobalElemIndex(lm.gintfac(iface,0));
 		const a_int globface = lm.gconnface(iface-lm.gConnBFaceStart(),4);
 		assert(globface < gm.gnaface());
 		if(leftelem != gm.gintfac(globface,0)) {
