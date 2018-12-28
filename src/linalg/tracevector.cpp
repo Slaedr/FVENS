@@ -31,6 +31,8 @@ L2TraceVector<scalar,nvars>::L2TraceVector(const UMesh2dh<scalar>& mesh) : m{mes
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::update_comm_pattern()
 {
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+
 	left.resize(m.gnaface()*nvars);
 	right.resize(m.gnaface()*nvars);
 
@@ -44,15 +46,14 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	nbdranks.resize(nbds.size());
 	std::copy(nbds.begin(), nbds.end(), nbdranks.begin());
 
-#ifdef DEBUG
-	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
-	std::cout << "Rank " << mpirank << ": nbd = " << nbdranks.size() << std::endl;
-	std::cout << "Rank " << mpirank << ":    nbds = ";
-	for(size_t i= 0; i < nbdranks.size(); i++) {
-		std::cout << nbdranks[i] << " ";
-	}
-	std::cout << std::endl;
-#endif
+// #ifdef DEBUG
+// 	std::cout << "Rank " << mpirank << ": nbd = " << nbdranks.size() << std::endl;
+// 	std::cout << "Rank " << mpirank << ":    nbds = ";
+// 	for(size_t i= 0; i < nbdranks.size(); i++) {
+// 		std::cout << nbdranks[i] << " ";
+// 	}
+// 	std::cout << std::endl;
+// #endif
 
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
 	{
@@ -137,8 +138,6 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 		MPI_Wait(&rrequests[irank], MPI_STATUS_IGNORE);
 
-	std::cout << "Setup: received" << std::endl;
-
 	// set the mapping between connectivity faces and receive buffers
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
 	{
@@ -160,13 +159,12 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		assert(matched);
 	}
 
-	std::cout << "Built communication pattern." << std::endl;
-
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 		for(size_t isface = 0; isface < sharedfacesother[irank].size(); isface++)
 			assert(sharedfacesother[irank][isface] != -1);
 
-	std::cout << "All shared faces matched." << std::endl;
+	if(mpirank == 0)
+		std::cout << "Trace communication pattern computed." << std::endl;
 }
 
 template <typename scalar, int nvars>
@@ -202,35 +200,71 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 	std::vector<MPI_Request> sreq(nbdranks.size());
 	std::vector<std::vector<scalar>> buffers(nbdranks.size());
 
+// #ifdef DEBUG
+// 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+// 	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
+// 	for(int irank = 0; irank < mpisize; irank++)
+// 	{
+// 		MPI_Barrier(MPI_COMM_WORLD);
+// 		if(irank == mpirank) {
+// 			std::cout << "Rank " << irank << " beginning send" << std::endl;
+// 			std::cout << " Num conn faces = " << m.gnConnFace() << std::endl;
+// 			for(size_t jrank = 0; jrank < nbdranks.size(); jrank++)
+// 			{
+// 				std::cout << "  Nbd rank " << nbdranks[jrank] << std::endl;
+// 				for(size_t iface = 0; iface < sharedfaces[jrank].size(); iface++) {
+// 					std::cout << "  Conn face " << sharedfaces[jrank][iface] << ": ";
+// 					for(int i = 0; i < nvars; i++)
+// 						std::cout << " " << left[sharedfaces[jrank][iface]*nvars+i];
+// 					std::cout << std::endl;
+// 				}
+// 			}
+// 		}
+// 		MPI_Barrier(MPI_COMM_WORLD);
+// 	}
+// #endif
+
 	const a_int fstart = m.gConnBFaceStart();
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 	{
 		buffers[irank].resize(sharedfaces[irank].size()*nvars);
+
+		//std::cout << "Buffer for nbd rank " << nbdranks[irank] << std::endl;
 		for(size_t iface = 0; iface < sharedfaces[irank].size(); iface++)
 		{
-			for(int ivar = 0; ivar < nvars; ivar++)
+			for(int ivar = 0; ivar < nvars; ivar++) {
 				buffers[irank][iface*nvars+ivar]
 					= left [(sharedfaces[irank][iface]+fstart)*nvars + ivar];
+				//std::cout << " " << buffers[irank][iface*nvars+ivar];
+			}
+			//std::cout << std::endl;
 		}
 
-		MPI_Isend(&buffers[irank][0], sharedfaces.size()*nvars, FVENS_MPI_REAL, nbdranks[irank], irank,
+		MPI_Isend(&buffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
+		          nbdranks[irank], irank,
 		          MPI_COMM_WORLD, &sreq[irank]);
 	}
 
+	std::cout << "all sends initiated" << std::endl;
+
 	std::vector<MPI_Status> status(nbdranks.size());
 	MPI_Waitall(nbdranks.size(), &sreq[0], &status[0]);
+	std::cout << "all sends completed" << std::endl;
 }
 
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 {
+	std::cout << "Receiving.." << std::endl;
+
 	std::vector<MPI_Request> rreq(nbdranks.size());
 	std::vector<std::vector<scalar>> buffers(nbdranks.size());
 
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 	{
 		buffers[irank].resize(sharedfaces[irank].size()*nvars);
-		MPI_Irecv(&buffers[irank][0], sharedfaces.size()*nvars, FVENS_MPI_REAL, nbdranks[irank], irank,
+		MPI_Irecv(&buffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
+		          nbdranks[irank], MPI_ANY_TAG,
 		          MPI_COMM_WORLD, &rreq[irank]);
 	}
 
@@ -239,14 +273,41 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 	{
 		MPI_Wait(&rreq[irank], MPI_STATUS_IGNORE);
 
+		//std::cout << "Buffer for nbd rank " << nbdranks[irank] << std::endl;
 		for(size_t isface = 0; isface < sharedfaces[irank].size(); isface++)
 		{
-			for(int ivar = 0; ivar < nvars; ivar++)
+			for(int ivar = 0; ivar < nvars; ivar++) {
+				//std::cout << " " << buffers[irank][isface*nvars+ivar];
 				right[(fstart+sharedfacesother[irank][isface])*nvars+ivar]
 					= buffers[irank][isface*nvars+ivar];
+			}
+			//std::cout << std::endl;
 		}
 	}
 
+// #ifdef DEBUG
+// 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+// 	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
+// 	std::cout << "Rank " << mpirank << " completed receives." << std::endl;
+// 	for(int irank = 0; irank < mpisize; irank++)
+// 	{
+// 		MPI_Barrier(MPI_COMM_WORLD);
+// 		if(irank == mpirank) {
+// 			std::cout << "Rank " << irank << " ending receive" << std::endl;
+// 			for(size_t jrank = 0; jrank < nbdranks.size(); jrank++)
+// 			{
+// 				std::cout << "  Nbd rank " << nbdranks[jrank] << std::endl;
+// 				for(size_t iface = 0; iface < sharedfaces[jrank].size(); iface++) {
+// 					std::cout << "  Conn face " << sharedfacesother[jrank][iface] << ": ";
+// 					for(int i = 0; i < nvars; i++)
+// 						std::cout << " " << right[sharedfacesother[jrank][iface]*nvars+i];
+// 					std::cout << std::endl;
+// 				}
+// 			}
+// 		}
+// 		MPI_Barrier(MPI_COMM_WORLD);
+// 	}
+// #endif
 }
 
 template class L2TraceVector<a_real,1>;
