@@ -38,9 +38,9 @@ int test(const std::string meshpath)
 	a_real *const left = tvec.getLocalArrayLeft();
 	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 	{
-		const a_int icface = iface - m.gConnBFaceStart();
+		//const a_int icface = iface - m.gConnBFaceStart();
 		for(int j = 0; j < NVARS; j++)
-			left[iface*NVARS+j] = mpirank*1000+m.gconnface(icface,4)*10+j;
+			left[iface*NVARS+j] = mpirank*1000/*+m.gconnface(icface,4)*10*/+j;
 	}
 
 	tvec.updateSharedFacesBegin();
@@ -59,21 +59,27 @@ int test(const std::string meshpath)
 // 			std::cout << "Rank " << irank << " checking" << std::endl;
 // 			for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 // 			{
-// 				std::cout << "  ";
-// 				for(int j = 0; j < NVARS; j++)
-// 					std::cout << " " << right[iface*NVARS+j];
-// 				std::cout << std::endl;
+// 				const a_int icface = iface - m.gConnBFaceStart();
+// 				const int nbdrank = m.gconnface(icface,2);
+// 				for(int j = 0; j < NVARS; j++) {
+// 					if(right[iface*NVARS+j] != nbdrank*1000/*+m.gconnface(icface,4)*10*/+j)
+// 						std::cout << iface << ": " << right[iface*NVARS+j] << " " << nbdrank*1000+j
+// 						          << std::endl;
+// 				}
 // 			}
 // 		}
 // 		MPI_Barrier(MPI_COMM_WORLD);
 // 	}
 // #endif
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
 	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 	{
 		const a_int icface = iface - m.gConnBFaceStart();
 		const int nbdrank = m.gconnface(icface,2);
 		for(int j = 0; j < NVARS; j++) {
-			assert(right[iface*NVARS+j] == nbdrank*1000+m.gconnface(icface,4)*10+j);
+			assert(right[iface*NVARS+j] == nbdrank*1000/*+m.gconnface(icface,4)*10*/+j);
 		}
 	}
 

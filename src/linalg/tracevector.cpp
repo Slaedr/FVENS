@@ -31,7 +31,7 @@ L2TraceVector<scalar,nvars>::L2TraceVector(const UMesh2dh<scalar>& mesh) : m{mes
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::update_comm_pattern()
 {
-	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	//const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 
 	left.resize(m.gnaface()*nvars);
 	right.resize(m.gnaface()*nvars);
@@ -163,8 +163,11 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		for(size_t isface = 0; isface < sharedfacesother[irank].size(); isface++)
 			assert(sharedfacesother[irank][isface] != -1);
 
-	if(mpirank == 0)
-		std::cout << "Trace communication pattern computed." << std::endl;
+	// buffers for comms
+	sendbuffers.resize(nbdranks.size());
+	recvbuffers.resize(nbdranks.size());
+
+	std::cout << "Trace communication pattern computed." << std::endl;
 }
 
 template <typename scalar, int nvars>
@@ -198,7 +201,6 @@ template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 {
 	std::vector<MPI_Request> sreq(nbdranks.size());
-	std::vector<std::vector<scalar>> buffers(nbdranks.size());
 
 // #ifdef DEBUG
 // 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
@@ -224,32 +226,36 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 // 	}
 // #endif
 
+	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+
 	const a_int fstart = m.gConnBFaceStart();
+	std::cout << "Rank = " << mpirank << ": buffering..." << std::endl;
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 	{
-		buffers[irank].resize(sharedfaces[irank].size()*nvars);
+		sendbuffers[irank].resize(sharedfaces[irank].size()*nvars);
 
-		//std::cout << "Buffer for nbd rank " << nbdranks[irank] << std::endl;
+		std::cout << "Buffer for nbd rank " << nbdranks[irank] << std::endl;
 		for(size_t iface = 0; iface < sharedfaces[irank].size(); iface++)
 		{
 			for(int ivar = 0; ivar < nvars; ivar++) {
-				buffers[irank][iface*nvars+ivar]
+				sendbuffers[irank][iface*nvars+ivar]
 					= left [(sharedfaces[irank][iface]+fstart)*nvars + ivar];
 				//std::cout << " " << buffers[irank][iface*nvars+ivar];
 			}
 			//std::cout << std::endl;
 		}
+		std::cout << "Rank = " << mpirank << ": buffer ready." << std::endl;
 
-		MPI_Isend(&buffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
+		MPI_Isend(&sendbuffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
 		          nbdranks[irank], irank,
 		          MPI_COMM_WORLD, &sreq[irank]);
 	}
 
-	std::cout << "all sends initiated" << std::endl;
+	std::cout << "Rank = " << mpirank << ": all sends initiated" << std::endl;
 
-	std::vector<MPI_Status> status(nbdranks.size());
-	MPI_Waitall(nbdranks.size(), &sreq[0], &status[0]);
-	std::cout << "all sends completed" << std::endl;
+	// std::vector<MPI_Status> status(nbdranks.size());
+	// MPI_Waitall(nbdranks.size(), &sreq[0], &status[0]);
+	std::cout << "Rank = " << mpirank << ": all sends completed" << std::endl;
 }
 
 template <typename scalar, int nvars>
@@ -258,12 +264,11 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 	std::cout << "Receiving.." << std::endl;
 
 	std::vector<MPI_Request> rreq(nbdranks.size());
-	std::vector<std::vector<scalar>> buffers(nbdranks.size());
 
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 	{
-		buffers[irank].resize(sharedfaces[irank].size()*nvars);
-		MPI_Irecv(&buffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
+		recvbuffers[irank].resize(sharedfaces[irank].size()*nvars);
+		MPI_Irecv(&recvbuffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
 		          nbdranks[irank], MPI_ANY_TAG,
 		          MPI_COMM_WORLD, &rreq[irank]);
 	}
@@ -279,10 +284,17 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 			for(int ivar = 0; ivar < nvars; ivar++) {
 				//std::cout << " " << buffers[irank][isface*nvars+ivar];
 				right[(fstart+sharedfacesother[irank][isface])*nvars+ivar]
-					= buffers[irank][isface*nvars+ivar];
+					= recvbuffers[irank][isface*nvars+ivar];
 			}
 			//std::cout << std::endl;
 		}
+	}
+
+	for(size_t irank = 0; irank < nbdranks.size(); irank++) {
+		sendbuffers[irank].resize(0);
+		sendbuffers[irank].shrink_to_fit();
+		recvbuffers[irank].resize(0);
+		recvbuffers[irank].shrink_to_fit();
 	}
 
 // #ifdef DEBUG

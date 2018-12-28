@@ -88,6 +88,11 @@ protected:
 	 */
 	amat::Array2d<a_int> sharedfacemap;
 
+	/// Temporary storage to buffer the message
+	std::vector<std::vector<scalar>> sendbuffers;
+	/// Temporary storage to buffer the message
+	std::vector<std::vector<scalar>> recvbuffers;
+
 	/// Updates communication pattern and also updates the size of the vector
 	/** Computes data needed for message passing. Should be called if the mesh topology changes.
 	 * As currently implemented, this will cause all data to be lost, including vector entries.
