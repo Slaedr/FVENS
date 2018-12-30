@@ -25,8 +25,8 @@ public:
 	virtual void compute_face_values(const MVector<scalar>& unknowns, 
 	                                 const amat::Array2d<scalar>& unknow_ghost, 
 	                                 const scalar *const grads,
-	                                 amat::Array2d<scalar>& uface_left,
-	                                 amat::Array2d<scalar>& uface_right) const = 0;
+	                                 amat::Array2dMutableView<scalar> uface_left,
+	                                 amat::Array2dMutableView<scalar> uface_right) const = 0;
 
 protected:
 	using SolutionReconstruction<scalar,nvars>::m;
@@ -80,8 +80,8 @@ public:
 	void compute_face_values(const MVector<scalar>& unknowns, 
 	                         const amat::Array2d<scalar>& unknow_ghost, 
 	                         const scalar *const grads,
-	                         amat::Array2d<scalar>& uface_left,
-	                         amat::Array2d<scalar>& uface_right) const;
+	                         amat::Array2dMutableView<scalar> uface_left,
+	                         amat::Array2dMutableView<scalar> uface_right) const;
 protected:
 	using SolutionReconstruction<scalar,nvars>::m;
 	using SolutionReconstruction<scalar,nvars>::ri;

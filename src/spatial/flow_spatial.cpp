@@ -477,7 +477,8 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 // compute max allowable time steps
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 void FlowFV<scalar,secondOrderRequested,constVisc>
-::compute_max_timestep(const amat::Array2d<scalar>& uleft, const amat::Array2d<scalar>& uright,
+::compute_max_timestep(const amat::Array2dView<scalar> uleft,
+                       const amat::Array2dView<scalar> uright,
                        a_real *const timesteps) const
 {
 	amat::Array2d<a_real> integ(m->gnelem(),1);
@@ -608,7 +609,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 
 		// reconstruct
 		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
-		lim->compute_face_values(up, ug, &grads[0](0,0), uleft, uright);
+		lim->compute_face_values(up, ug, &grads[0](0,0),
+		                         amat::Array2dMutableView<scalar>(&uleft(0,0),m->gnaface(),NVARS),
+		                         amat::Array2dMutableView<scalar>(&uright(0,0),m->gnaface(),NVARS));
 
 		// Convert face values back to conserved variables - gradients stay primitive.
 #pragma omp parallel default(shared)
@@ -662,7 +665,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	{
 		MutableVecHandler<a_real> dtvh(timesteps);
 		a_real *const dtm = dtvh.getArray();
-		compute_max_timestep(uleft, uright, dtm);
+		compute_max_timestep(amat::Array2dView<scalar>(&uleft(0,0),m->gnaface(),NVARS),
+		                     amat::Array2dView<scalar>(&uright(0,0),m->gnaface(),NVARS),
+		                     dtm);
 	}
 
 	delete [] grads;

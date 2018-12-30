@@ -204,8 +204,8 @@ public:
 	/** This is the volume of the cell divided by the integral over the cell boundary of
 	 * the spectral radius of the analytical flux Jacobian.
 	 */
-	void compute_max_timestep(const amat::Array2d<scalar>& uleft,
-	                          const amat::Array2d<scalar>& uright,
+	void compute_max_timestep(const amat::Array2dView<scalar> uleft,
+	                          const amat::Array2dView<scalar> uright,
 	                          a_real *const timesteps) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
