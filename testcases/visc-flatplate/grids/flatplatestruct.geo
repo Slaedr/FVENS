@@ -51,9 +51,9 @@ Plane Surface(2) = {2}; Transfinite Surface {2}; Recombine Surface {2};
 //plate
 Physical Line(2) = {2};
 // Inlet bottom portion
-Physical Line(3) = {1};
+Physical Line(3) = {-1};
 // Farfield
-Physical Line(4) = {6,5,4};
+Physical Line(4) = {-6,5,-4};
 // outlet
 Physical Line(5) = {3};
 

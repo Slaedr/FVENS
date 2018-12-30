@@ -74,6 +74,8 @@ pseudotime
 		tolerance                1e-1
 		max_timesteps            50
 	}
+	
+	nonlinear_update_scheme           robust_flow
 }
 
 Jacobian_inviscid_flux         consistent
