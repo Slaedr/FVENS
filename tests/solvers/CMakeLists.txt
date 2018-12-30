@@ -19,12 +19,12 @@ target_link_libraries(testmatfree fvens_base ${PETSC_LIB})
 add_executable(testtracecomm testtracevector.cpp)
 target_link_libraries(testtracecomm fvens_base)
 
-add_test(NAME MPI_TraceVector_Comm_Rank
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${MPIEXEC} -n 2 testtracecomm
-  ${CMAKE_SOURCE_DIR}/tests/heat/grids/squareunsquad3.msh
-  #${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad1.msh
-  )
+# add_test(NAME MPI_TraceVector_Comm_Rank
+#   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#   COMMAND ${MPIEXEC} -n 3 testtracecomm
+#   ${CMAKE_SOURCE_DIR}/tests/heat/grids/squareunsquad2.msh
+#   #${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad1.msh
+#   )
 
 add_test(NAME Flow_Euler_Cylinder_HLLC_MatFreeVsMat
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

@@ -55,7 +55,9 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 	wls->compute_gradients(u, ug, &grads[0](0,0));
 
 	LinearUnlimitedReconstruction<a_real,1> lur(m, &rc(0,0), &rcbp(0,0), gr);
-	lur.compute_face_values(u, ug, &grads[0](0,0), uleft, uright);
+	lur.compute_face_values(u, ug, &grads[0](0,0),
+	                        amat::Array2dMutableView<a_real>(&uleft(0,0),m->gnaface(),1),
+	                        amat::Array2dMutableView<a_real>(&uright(0,0),m->gnaface(),1));
 
 	constexpr a_real a_epsilon = std::numeric_limits<a_real>::epsilon();
 	a_real errnorm = 0;

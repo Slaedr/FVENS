@@ -43,7 +43,10 @@ int test(const std::string meshpath)
 			left[iface*NVARS+j] = mpirank*1000/*+m.gconnface(icface,4)*10*/+j;
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
+
 	tvec.updateSharedFacesBegin();
+	std::cout << "Rank " << mpirank << ": ^v" << std::endl;
 	tvec.updateSharedFacesEnd();
 
 	// check whether data came from the correct ranks, at least

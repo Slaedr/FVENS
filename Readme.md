@@ -17,6 +17,7 @@ Features
 
 Limitations
 -----------
+- Distributed (MPI) parallelism is not supported yet.
 - Limited automated testing as of now
 - Two spatial dimensions at present
 - Not many types of boundary conditions are currently implemented - only the simplest or most common ones

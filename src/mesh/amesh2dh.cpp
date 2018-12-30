@@ -650,33 +650,33 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 	elemface.resize(nelem,maxnfael);
 	btags.resize(nbface,nbtag);
 
-	// Connectivity faces go first so that connectivity ghost cells can be placed right after
-	//  subdomain cells in grid vectors.
+	// first, phyical boundary faces
 
-	connBFaceStart = 0;
-	connBFaceEnd = nconnface;
-	for(a_int iface = 0; iface < nconnface; iface++)
+	phyBFaceStart = 0;
+	phyBFaceEnd = nbface;
+	const std::vector<std::pair<a_int,EIndex>> intelems = compute_phyBFaceNeighboringElements();
+
+	for(a_int iface = 0; iface < nbface; iface++)
 	{
-		const a_int inelem = connface(iface,0);
-		intfac(iface,0) = inelem;
-		esuel(inelem,connface(iface,1)) = nelem+iface;
-		elemface(inelem,connface(iface,1)) = iface;
-		intfac(iface,1) = nelem+iface;
-
-		// Note that the face always 'points outside' the subdomain, because it always 
-		//  'points outside' the cell.
+		intfac(iface,0) = intelems[iface].first;
+		intfac(iface,1) = nelem + nconnface + iface;
 		for(FIndex inode = 0; inode < nnofa; inode++)
-			intfac(iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(iface,1), inode));
+			intfac(iface,2+inode) = bface(iface,inode);
+		for(int j = nnofa; j < nnofa+nbtag; j++)
+			btags(iface,j-nnofa) = bface(iface,j);
+ 
+		esuel(intelems[iface].first, intelems[iface].second) = nelem+nconnface+iface;
+		elemface(intelems[iface].first, intelems[iface].second) = iface;
 	}
 
 	// Next, subdomain interior faces
 
-	subDomFaceStart = nconnface;
-	subDomFaceEnd = nconnface + ninface;
+	subDomFaceStart = nbface;
+	subDomFaceEnd = nbface + ninface;
 
 	static_assert(NDIM == 2);   // only remove after generalizing the loop below to 3D
 
-	a_int faceindex = nconnface;
+	a_int faceindex = nbface;
 	//a_int faceindex = nbface;
 
 	for(a_int ie = 0; ie < nelem; ie++)
@@ -702,32 +702,33 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 		}
 	}
 
-	assert(faceindex-nconnface == ninface);
+	assert(faceindex-nbface == ninface);
 
-	domFaceStart = 0;
-	domFaceEnd = nconnface + ninface;
+	// Connectivity faces
 
-	// finally, phyical boundary faces
+	connBFaceStart = nbface+ninface;
+	assert(connBFaceStart == faceindex);
+	connBFaceEnd = nbface+ninface+nconnface;
+	assert(connBFaceEnd == naface);
 
-	phyBFaceStart = nconnface+ninface;
-	phyBFaceEnd = nconnface+ninface+nbface;
-	assert(phyBFaceEnd == naface);
-	const std::vector<std::pair<a_int,EIndex>> intelems = compute_phyBFaceNeighboringElements();
-
-	for(a_int iface = nconnface+ninface; iface < naface; iface++)
+	for(a_int iface = connBFaceStart; iface < connBFaceEnd; iface++)
 	{
-		const a_int ibounface = iface - nconnface - ninface;
+		const a_int icface = iface - connBFaceStart;
+		const a_int inelem = connface(icface,0);
+		intfac(iface,0) = inelem;
+		esuel(inelem,connface(icface,1)) = nelem+icface;
+		elemface(inelem,connface(icface,1)) = iface;
+		intfac(iface,1) = nelem+icface;
 
-		intfac(iface,0) = intelems[ibounface].first;
-		intfac(iface,1) = nelem + nconnface + ibounface;
+		// Note that the face always 'points outside' the subdomain, because it always 
+		//  'points outside' the cell.
 		for(FIndex inode = 0; inode < nnofa; inode++)
-			intfac(iface,2+inode) = bface(ibounface,inode);
-		for(int j = nnofa; j < nnofa+nbtag; j++)
-			btags(ibounface,j-nnofa) = bface(ibounface,j);
- 
-		esuel(intelems[ibounface].first, intelems[ibounface].second) = nelem+nconnface+ibounface;
-		elemface(intelems[ibounface].first, intelems[ibounface].second) = iface;
+			intfac(iface,2+inode) = inpoel(inelem,getNodeEIndex(inelem, connface(icface,1), inode));
 	}
+
+	domFaceStart = nbface;
+	domFaceEnd = nbface + nconnface + ninface;
+	assert(domFaceEnd == naface);
 }
 
 template <typename scalar>

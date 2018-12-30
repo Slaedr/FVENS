@@ -53,7 +53,7 @@ public:
 	/// Immutable access to the "right" vector over all faces in the local subdomain
 	const scalar *getLocalArrayRight() const;
 
-	/// Begin update the "right" vector from the appropriate neighbouring subdomains
+	/// Begin update of the "right" vector from the appropriate neighbouring subdomains' "left" vectors
 	void updateSharedFacesBegin();
 	/// Finish update the "right" vector from the appropriate neighbouring subdomains
 	void updateSharedFacesEnd();
@@ -75,7 +75,7 @@ protected:
 
 	/// Connectivity face indices associated with shared faces as seen by the neighbouring subdomain
 	/** This gives the connface index (of this subdomain) associated with each face of
-	 *  the *other* subdomain shared with this one. So the size is same as \ref sharedfaces.
+	 *  the *other* subdomain neighbouring this one. So the size is same as \ref sharedfaces.
 	 *  This is necessary because the other subdomain has a different ordering
 	 *  of the shared connectivity faces.
 	 */
@@ -92,6 +92,8 @@ protected:
 	std::vector<std::vector<scalar>> sendbuffers;
 	/// Temporary storage to buffer the message
 	std::vector<std::vector<scalar>> recvbuffers;
+	/// MPI requests corresponding to the sends
+	std::vector<MPI_Request> srequests;
 
 	/// Updates communication pattern and also updates the size of the vector
 	/** Computes data needed for message passing. Should be called if the mesh topology changes.
