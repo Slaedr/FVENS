@@ -37,7 +37,7 @@ WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh2dh<scalar> *con
 
 template <typename scalar, int nvars>
 void WENOReconstruction<scalar,nvars>
-::compute_face_values(const MVector<scalar>& u, const amat::Array2d<scalar>& ug,
+::compute_face_values(const MVector<scalar>& u, const amat::Array2dView<scalar> ug,
                       const scalar *const gradarray,
                       amat::Array2dMutableView<scalar> ufl,
                       amat::Array2dMutableView<scalar> ufr) const
@@ -115,7 +115,7 @@ BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh2dh<scalar
 
 template <typename scalar, int nvars>
 void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scalar>& u, 
-                                                              const amat::Array2d<scalar>& ug, 
+                                                              const amat::Array2dView<scalar> ug, 
                                                               const scalar *const gradarray,
                                                               amat::Array2dMutableView<scalar> ufl,
                                                               amat::Array2dMutableView<scalar> ufr) const
@@ -207,7 +207,7 @@ VenkatakrishnanLimiter<scalar,nvars>
 template <typename scalar, int nvars>
 void VenkatakrishnanLimiter<scalar,nvars>
 ::compute_face_values(const MVector<scalar>& u,
-                      const amat::Array2d<scalar>& ug, 
+                      const amat::Array2dView<scalar> ug, 
                       const scalar *const gradarray,
                       amat::Array2dMutableView<scalar> ufl,
                       amat::Array2dMutableView<scalar> ufr) const

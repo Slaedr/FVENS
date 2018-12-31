@@ -168,7 +168,7 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 	recvbuffers.resize(nbdranks.size());
 	srequests.resize(nbdranks.size());
 
-	std::cout << "Trace communication pattern computed." << std::endl;
+	//std::cout << "Trace communication pattern computed." << std::endl;
 }
 
 template <typename scalar, int nvars>

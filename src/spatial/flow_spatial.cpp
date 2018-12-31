@@ -26,6 +26,7 @@
 #include "utilities/adolcutils.hpp"
 #include "utilities/mpiutils.hpp"
 #include "linalg/petscutils.hpp"
+#include "linalg/tracevector.hpp"
 #include "flow_spatial.hpp"
 
 namespace fvens {
@@ -109,7 +110,8 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface-m->gPhyBFaceStart(),0));
 	}
 
-	gradcomp->compute_gradients(u, ug, &grads[0](0,0));
+	const scalar *const ugp = m->gnbface() > 0 ? &ug(0,0) : nullptr;
+	gradcomp->compute_gradients(u, amat::Array2dView<scalar>(ugp,m->gnbface(),NVARS), &grads[0](0,0));
 }
 
 template <typename scalar>
@@ -431,7 +433,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 		scalar n[NDIM];
 		n[0] = m->gfacemetric(ied,0);
 		n[1] = m->gfacemetric(ied,1);
-		scalar len = m->gfacemetric(ied,2);
+		const scalar len = m->gfacemetric(ied,2);
 		const a_int lelem = m->gintfac(ied,0);
 		const a_int relem = m->gintfac(ied,1);
 		scalar fluxes[NVARS];
@@ -448,7 +450,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 			const bool isPhyBoun = (ied >= m->gPhyBFaceStart() && ied < m->gPhyBFaceEnd());
 			const scalar *const rcr = isPhyBoun ? &rcbp(ibpface,0) : &rc(relem,0);
 			const scalar *const ucellright
-				= isPhyBoun ? &ug[(ied-m->gPhyBFaceStart())*NVARS] : &u[relem*NVARS];
+				= isPhyBoun ? &ug[ibpface*NVARS] : &u[relem*NVARS];
 			const GradBlock_t<scalar,NDIM,NVARS>& gradright = isPhyBoun ? grads[lelem] : grads[relem];
 
 			scalar vflux[NVARS];
@@ -554,11 +556,12 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
                                                                 Vec timesteps) const
 {
 	StatusCode ierr = 0;
-	amat::Array2d<scalar> ug, uleft, uright;
-	ug.resize(m->gnbface(),NVARS);
-	uleft.resize(m->gnaface(), NVARS);
-	uright.resize(m->gnaface(), NVARS);
+	// amat::Array2d<scalar> ug, uleft, uright;
+	// ug.resize(m->gnbface(),NVARS);
+	// uleft.resize(m->gnaface(), NVARS);
+	// uright.resize(m->gnaface(), NVARS);
 	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
+	L2TraceVector<scalar,NVARS> uface(*m);
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -570,10 +573,10 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	const scalar *const uarr = uvh.getArray();
 	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
 
-#pragma omp parallel default(shared)
 	{
+		amat::Array2dMutableView<scalar> uleft(uface.getLocalArrayLeft(), m->gnaface(),NVARS);
 		// first, set cell-centered values of boundary cells as left-side values of boundary faces
-#pragma omp for
+#pragma omp parallel for default(shared)
 		for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		{
 			const a_int ielem = m->gintfac(ied,0);
@@ -582,24 +585,36 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		}
 	}
 
+	// cell-centred ghost cell values corresponding to physical boundaries
+	scalar *ubcell = nullptr;
+	if(m->gnbface() > 0)
+		ubcell = new scalar[m->gnbface()*NVARS];
+
 	if(secondOrderRequested)
 	{
+		amat::Array2dMutableView<scalar> uleft(uface.getLocalArrayLeft(), m->gnaface(),NVARS);
+		amat::Array2dMutableView<scalar> uright(uface.getLocalArrayRight(), m->gnaface(),NVARS);
+
 		// for storing cell-centred gradients at interior cells and ghost cells
 		grads = new GradBlock_t<scalar,NDIM,NVARS>[m->gnelem()];
 
 		// get cell average values at ghost cells using BCs for reconstruction
-		compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &ug(0,0));
+		compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
 
 		MVector<scalar> up(m->gnelem(), NVARS);
 
 		// convert cell-centered state vectors to primitive variables
 #pragma omp parallel default(shared)
 		{
-			// the following loop is concerned only with ug, so we don't need the "iterators" here
 #pragma omp for
-			for(a_int iface = 0; iface < m->gnbface(); iface++)
+			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 			{
-				physics.getPrimitiveFromConserved(&ug(iface,0), &ug(iface,0));
+				// Save ghost cell-centred physical boundary (conserved) values for later
+				for(int j = 0; j < NVARS; j++)
+					ubcell[(iface-m->gPhyBFaceStart())*NVARS+j] = uright(iface,j);
+
+				// convert boundary values to primitive
+				physics.getPrimitiveFromConserved(&uright(iface,0), &uright(iface,0));
 			}
 
 #pragma omp for
@@ -607,11 +622,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 				physics.getPrimitiveFromConserved(&uarr[iel*NVARS], &up(iel,0));
 		}
 
+		const amat::Array2dView<scalar> ug(&uright(m->gPhyBFaceStart(),0),m->gnbface(),NVARS);
+
 		// reconstruct
 		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
-		lim->compute_face_values(up, ug, &grads[0](0,0),
-		                         amat::Array2dMutableView<scalar>(&uleft(0,0),m->gnaface(),NVARS),
-		                         amat::Array2dMutableView<scalar>(&uright(0,0),m->gnaface(),NVARS));
+		lim->compute_face_values(up, ug, &grads[0](0,0), uleft, uright);
+		                         // amat::Array2dMutableView<scalar>(&uleft(0,0),m->gnaface(),NVARS),
+		                         // amat::Array2dMutableView<scalar>(&uright(0,0),m->gnaface(),NVARS));
 
 		// Convert face values back to conserved variables - gradients stay primitive.
 #pragma omp parallel default(shared)
@@ -625,17 +642,30 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 #pragma omp for
 			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 			{
-				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
-				const a_int ibface = iface - m->gPhyBFaceStart();
-				physics.getConservedFromPrimitive(&ug(ibface,0), &ug(ibface,0));
+				//physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+				//const a_int ibface = iface - m->gPhyBFaceStart();
+				//physics.getConservedFromPrimitive(&ug(ibface,0), &ug(ibface,0));
+				physics.getConservedFromPrimitive(uface.getLocalArrayLeft()+iface*NVARS,
+				                                  uface.getLocalArrayLeft()+iface*NVARS);
+				// physics.getConservedFromPrimitive(uface.getLocalArrayRight()+iface*NVARS,
+				//                                   uface.getLocalArrayRight()+iface*NVARS);
 			}
 		}
+
+// #pragma omp parallel for default(shared)
+// 		for(a_int iface = 0; iface < m->gnaface(); iface++)
+// 		{
+// 			physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+// 			physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
+// 		}
 	}
 	else
 	{
 		// if order is 1, set the face data same as cell-centred data for all faces
 
 		// set both left and right states for all interior and connectivity faces
+		amat::Array2dMutableView<scalar> uleft(uface.getLocalArrayLeft(), m->gnaface(),NVARS);
+		amat::Array2dMutableView<scalar> uright(uface.getLocalArrayRight(), m->gnaface(),NVARS);
 #pragma omp parallel for default(shared)
 		for(a_int ied = m->gDomFaceStart(); ied < m->gDomFaceEnd(); ied++)
 		{
@@ -650,27 +680,30 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	}
 
 	// get right (ghost) state at boundary faces for computing fluxes
-	compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
+	compute_boundary_states(uface.getLocalArrayLeft()+m->gPhyBFaceStart()*NVARS,
+	                        uface.getLocalArrayRight()+m->gPhyBFaceStart()*NVARS);
 
 	MutableVecHandler<scalar> rvh(rvec);
 	scalar *const rarr = rvh.getArray();
+	// Depending on whether we want a 2nd order solution, we use the correct array for phy. boun.
+	//  ghost cells
+	const scalar *const ug_pb = secondOrderRequested ?
+		ubcell : uface.getLocalArrayRight()+m->gPhyBFaceStart()*NVARS;
 
-	if(secondOrderRequested)
-		compute_fluxes(uarr, &grads[0](0,0), &uleft(0,0), &uright(0,0), &ug(0,0), rarr);
-	else
-		compute_fluxes(uarr, &grads[0](0,0), &uleft(0,0), &uright(0,0),
-		               &uright(m->gPhyBFaceStart(),0), rarr);
+	compute_fluxes(uarr, &grads[0](0,0), uface.getLocalArrayLeft(), uface.getLocalArrayRight(),
+	               ug_pb, rarr);
 
 	if(gettimesteps)
 	{
 		MutableVecHandler<a_real> dtvh(timesteps);
 		a_real *const dtm = dtvh.getArray();
-		compute_max_timestep(amat::Array2dView<scalar>(&uleft(0,0),m->gnaface(),NVARS),
-		                     amat::Array2dView<scalar>(&uright(0,0),m->gnaface(),NVARS),
+		compute_max_timestep(amat::Array2dView<scalar>(uface.getLocalArrayLeft(),m->gnaface(),NVARS),
+		                     amat::Array2dView<scalar>(uface.getLocalArrayRight(),m->gnaface(),NVARS),
 		                     dtm);
 	}
 
 	delete [] grads;
+	delete [] ubcell;
 	return ierr;
 }
 
@@ -747,14 +780,14 @@ template class FlowFV<a_real,false,true>;
 template class FlowFV<a_real,true,false>;
 template class FlowFV<a_real,false,false>;
 
-#ifdef USE_ADOLC
+//#ifdef USE_ADOLC
 //template class FlowFV_base<adouble>;
 
 //template class FlowFV<adouble,true,true>;
 //template class FlowFV<adouble,false,true>;
 //template class FlowFV<adouble,true,false>;
 //template class FlowFV<adouble,false,false>;
-#endif
+//#endif
 
 }
 

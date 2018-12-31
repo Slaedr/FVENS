@@ -51,7 +51,7 @@ LinearUnlimitedReconstruction<scalar,nvars>
 template <typename scalar, int nvars>
 void LinearUnlimitedReconstruction<scalar,nvars>
 ::compute_face_values(const MVector<scalar>& u,
-                      const amat::Array2d<scalar>& ug,
+                      const amat::Array2dView<scalar> ug,
                       const scalar *const gradarray,
                       amat::Array2dMutableView<scalar> ufl,
                       amat::Array2dMutableView<scalar> ufr) const

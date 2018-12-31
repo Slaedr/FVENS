@@ -5,6 +5,7 @@
  */
 
 #include "agradientschemes.hpp"
+#include <iostream>
 #include <Eigen/LU>
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
@@ -33,7 +34,7 @@ ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
 
 template<typename scalar, int nvars>
 void ZeroGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
-                                                    const amat::Array2d<scalar>& ug,
+                                                    const amat::Array2dView<scalar> ug,
                                                     scalar *const gradarray) const
 {
 	GradBlock_t<scalar,NDIM,nvars> *const grad
@@ -59,7 +60,7 @@ GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *c
 template<typename scalar, int nvars>
 void GreenGaussGradients<scalar,nvars>::compute_gradients(
 		const MVector<scalar>& u,
-		const amat::Array2d<scalar>& ug,
+		const amat::Array2dView<scalar> ug,
 		scalar *const gradarray) const
 {
 	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace(), NDIM);
@@ -319,7 +320,7 @@ using FMultiVectorArray = std::vector<Eigen::Matrix<scalar,NDIM,nvars,Eigen::Don
 
 template<typename scalar, int nvars>
 void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
-                                                                    const amat::Array2d<scalar>& ug,
+                                                                    const amat::Array2dView<scalar> ug,
                                                                     scalar *const gradarray) const
 {
 	Eigen::Map<const MVector<scalar>> rcm(rc, m->gnelem()+m->gnConnFace()+m->gnbface(), NDIM);

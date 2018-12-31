@@ -35,7 +35,7 @@ public:
 	                        const amat::Array2d<scalar>& gauss_r);        ///< Coords of Gauss points
 
 	virtual void compute_face_values(const MVector<scalar>& unknowns, 
-	                                 const amat::Array2d<scalar>& unknow_ghost,
+	                                 const amat::Array2dView<scalar> unknow_ghost,
 	                                 const scalar *const grads,
 	                                 amat::Array2dMutableView<scalar> uface_left,
 	                                 amat::Array2dMutableView<scalar> uface_right) const = 0;
@@ -60,7 +60,7 @@ public:
 	                              const amat::Array2d<scalar>& gauss_r);
 
 	void compute_face_values(const MVector<scalar>& unknowns, 
-	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const amat::Array2dView<scalar> unknow_ghost, 
 	                         const scalar *const grads,
 	                         amat::Array2dMutableView<scalar> uface_left,
 	                         amat::Array2dMutableView<scalar> uface_right) const;

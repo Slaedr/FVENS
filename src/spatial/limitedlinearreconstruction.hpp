@@ -36,13 +36,13 @@ class WENOReconstruction : public SolutionReconstruction<scalar,nvars>
 	const a_real epsilon;             ///< Small constant to avoid division by zero
 public:
 	WENOReconstruction(const UMesh2dh<scalar> *const mesh,
-	                   const scalar *const c_centres, 
+	                   const scalar *const c_centres,
 	                   const scalar *const c_centres_ghost,
 	                   const amat::Array2d<scalar>& gauss_r,
 	                   const a_real central_weight);
 
 	void compute_face_values(const MVector<scalar>& unknowns, 
-	                         const amat::Array2d<scalar>& unknow_ghost, 
+	                         const amat::Array2dView<scalar> unknow_ghost, 
 	                         const scalar *const grads,
 	                         amat::Array2dMutableView<scalar> uface_left,
 	                         amat::Array2dMutableView<scalar> uface_right) const;
@@ -60,13 +60,13 @@ template <typename scalar, int nvars>
 class BarthJespersenLimiter : public SolutionReconstruction<scalar,nvars>
 {
 public:
-	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
-	                      const scalar *const c_centres, 
+	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh,
+	                      const scalar *const c_centres,
 	                      const scalar *const c_centres_ghost,
 	                      const amat::Array2d<scalar>& gauss_r);
-    
-	void compute_face_values(const MVector<scalar>& unknowns, 
-	                         const amat::Array2d<scalar>& unknow_ghost, 
+ 
+	void compute_face_values(const MVector<scalar>& unknowns,
+	                         const amat::Array2dView<scalar> unknow_ghost,
 	                         const scalar *const grads,
 	                         amat::Array2dMutableView<scalar> uface_left,
 	                         amat::Array2dMutableView<scalar> uface_right) const;
@@ -93,13 +93,13 @@ public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
 	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
-	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh, 
-	                       const scalar *const c_centres, 
+	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh,
+	                       const scalar *const c_centres,
 	                       const scalar *const c_centres_ghost,
 	                       const amat::Array2d<scalar>& gauss_r, const a_real k_param);
-    
-	void compute_face_values(const MVector<scalar>& unknowns, 
-	                         const amat::Array2d<scalar>& unknow_ghost, 
+ 
+	void compute_face_values(const MVector<scalar>& unknowns,
+	                         const amat::Array2dView<scalar> unknow_ghost,
 	                         const scalar *const grads,
 	                         amat::Array2dMutableView<scalar> uface_left,
 	                         amat::Array2dMutableView<scalar> uface_right) const;

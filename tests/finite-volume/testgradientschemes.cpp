@@ -52,10 +52,10 @@ int TestSpatial::test_oneExact(const std::string reconst_type) const
 		ug(i,0) = linearfunc(&rcbp(i));
 
 	// get gradients
-	wls->compute_gradients(u, ug, &grads[0](0,0));
+	wls->compute_gradients(u, amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),1), &grads[0](0,0));
 
 	LinearUnlimitedReconstruction<a_real,1> lur(m, &rc(0,0), &rcbp(0,0), gr);
-	lur.compute_face_values(u, ug, &grads[0](0,0),
+	lur.compute_face_values(u, amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),1), &grads[0](0,0),
 	                        amat::Array2dMutableView<a_real>(&uleft(0,0),m->gnaface(),1),
 	                        amat::Array2dMutableView<a_real>(&uright(0,0),m->gnaface(),1));
 
