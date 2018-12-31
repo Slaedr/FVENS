@@ -47,7 +47,8 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 		error += s_err*s_err*m->garea(iel);
 	}
 
-	MPI_Allgather(&error, 1, FVENS_MPI_REAL, &error, 1, FVENS_MPI_REAL, MPI_COMM_WORLD);
+	//MPI_Allgather(&error, 1, FVENS_MPI_REAL, &error, 1, FVENS_MPI_REAL, MPI_COMM_WORLD);
+	mpi_all_reduce<a_real>(&error, 1, MPI_SUM, PETSC_COMM_WORLD);
 	error = sqrt(error);
 
 	const a_real h = 1.0/sqrt(m->gnelem());
