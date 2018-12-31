@@ -152,9 +152,6 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	ierr = createGhostedSystemVector(m, NDIM*nvars, &gradvec); CHKERRQ(ierr);
 	{
 		MutableGhostedVecHandler<a_real> grh(gradvec);
-
-		// GradBlock_t<a_real,NDIM,nvars> *const grads
-		// 	= reinterpret_cast<GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
 		a_real *const gradarray = grh.getArray();
 
 		gradcomp->compute_gradients(u, amat::Array2dView<a_real>(ugptr,m->gnbface(),nvars), gradarray);

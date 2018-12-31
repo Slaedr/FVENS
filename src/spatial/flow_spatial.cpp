@@ -115,10 +115,12 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 }
 
 template <typename scalar>
-static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa) {
+static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa)
+{
 	std::array<scalar,NDIM> dir;
 	for(int i = 0; i < NDIM; i++) dir[i] = 0;
 
+	static_assert(NDIM == 2, "Flow direction not implemented for 3D yet");
 	dir[0] = cos(aoa);
 	dir[1] = sin(aoa);
 
@@ -143,6 +145,7 @@ FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
 
 	// unit vector normal to the free-stream flow direction
 	// TODO: Generalize to 3D
+	static_assert(NDIM == 2, "surface data not implemented for 3D yet");
 	scalar flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
 
 	// iterate over faces having this boundary marker
@@ -556,10 +559,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
                                                                 Vec timesteps) const
 {
 	StatusCode ierr = 0;
-	// amat::Array2d<scalar> ug, uleft, uright;
-	// ug.resize(m->gnbface(),NVARS);
-	// uleft.resize(m->gnaface(), NVARS);
-	// uright.resize(m->gnaface(), NVARS);
 	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
 	L2TraceVector<scalar,NVARS> uface(*m);
 
@@ -627,8 +626,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		// reconstruct
 		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
 		lim->compute_face_values(up, ug, &grads[0](0,0), uleft, uright);
-		                         // amat::Array2dMutableView<scalar>(&uleft(0,0),m->gnaface(),NVARS),
-		                         // amat::Array2dMutableView<scalar>(&uright(0,0),m->gnaface(),NVARS));
 
 		// Convert face values back to conserved variables - gradients stay primitive.
 #pragma omp parallel default(shared)
@@ -642,22 +639,10 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 #pragma omp for
 			for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 			{
-				//physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
-				//const a_int ibface = iface - m->gPhyBFaceStart();
-				//physics.getConservedFromPrimitive(&ug(ibface,0), &ug(ibface,0));
 				physics.getConservedFromPrimitive(uface.getLocalArrayLeft()+iface*NVARS,
 				                                  uface.getLocalArrayLeft()+iface*NVARS);
-				// physics.getConservedFromPrimitive(uface.getLocalArrayRight()+iface*NVARS,
-				//                                   uface.getLocalArrayRight()+iface*NVARS);
 			}
 		}
-
-// #pragma omp parallel for default(shared)
-// 		for(a_int iface = 0; iface < m->gnaface(); iface++)
-// 		{
-// 			physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
-// 			physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
-// 		}
 	}
 	else
 	{
