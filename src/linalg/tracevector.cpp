@@ -267,7 +267,7 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 	{
 		recvbuffers[irank].resize(sharedfaces[irank].size()*nvars);
 		MPI_Irecv(&recvbuffers[irank][0], sharedfaces[irank].size()*nvars, FVENS_MPI_REAL,
-		          nbdranks[irank], irank,
+		          nbdranks[irank], MPI_ANY_TAG,
 		          MPI_COMM_WORLD, &rreq[irank]);
 	}
 
