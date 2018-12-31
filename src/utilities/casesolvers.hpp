@@ -80,6 +80,8 @@ public:
 	/** Whether VTU volume output and surface variable output is required to files is given by
 	 * arguments here. Whether volume variable output (non-VTU) is required is taken from the
 	 * options database \ref FlowParserOptions::vol_output_reqd .
+	 * \note Currently, output to files only works for single-process runs. However, the return values
+	 *  are computed in any case.
 	 * 
 	 * \param[in] surface_file_needed True if the solution on relevant surfaces should be written
 	 *   out to files, else set to false

@@ -89,6 +89,8 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 {
 	int ierr = 0;
 	std::cout << "\nSetting up flow case with output\n";
+	const int mpisize = get_mpi_size(PETSC_COMM_WORLD);
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	const FlowFV_base<a_real> *const prob = createFlowSpatial(opts, m);
 
@@ -117,27 +119,34 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 
 	const a_real entropy = out.compute_entropy_cell(u);
 
-	if(surface_file_needed) {
-		try {
-			out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
-		} 
-		catch(std::exception& e) {
-			std::cout << e.what() << std::endl;
+	// Currently, ouput to files only works in single-process runs
+	if(mpisize == 1) {
+		if(surface_file_needed) {
+			try {
+				out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
+			} 
+			catch(std::exception& e) {
+				std::cout << e.what() << std::endl;
+			}
 		}
-	}
 	
-	if(vtu_output_needed) {
-		amat::Array2d<a_real> scalars;
-		amat::Array2d<a_real> velocities;
-		out.postprocess_point(u, scalars, velocities);
+		if(vtu_output_needed) {
+			amat::Array2d<a_real> scalars;
+			amat::Array2d<a_real> velocities;
+			out.postprocess_point(u, scalars, velocities);
 
-		std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
-		writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
-		                                  m, scalars, scalarnames, velocities, "velocity");
+			std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
+			writeScalarsVectorToVtu_PointData(opts.vtu_output_file,
+			                                  m, scalars, scalarnames, velocities, "velocity");
+		}
+
+		if(opts.vol_output_reqd == "YES")
+			out.exportVolumeData(umat, opts.volnameprefix);
 	}
-
-	if(opts.vol_output_reqd == "YES")
-		out.exportVolumeData(umat, opts.volnameprefix);
+	else {
+		if(mpirank == 0)
+			std::cout << "FlowCase: Files will not be written in multi-process runs.\n";
+	}
 	
 	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
 	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
@@ -198,17 +207,20 @@ SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 	
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
 	const FlowPhysicsConfig pconf {extract_spatial_physics_config(opts)};
 	const FlowNumericsConfig nconfstart {firstorder_spatial_numerics_config(opts)};
 
-	std::cout << "\nSetting up spatial scheme for the initial guess.\n";
+	if(mpirank == 0)
+		std::cout << "\nSetting up spatial scheme for the initial guess.\n";
 	const Spatial<a_real,NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(m, pconf, nconfstart);
 
-	std::cout << "***\n";
+	if(mpirank == 0)
+		std::cout << "***\n";
 
 	LinearProblemLHS isol = setupImplicitSolver(startprob, mf_flg);
 
@@ -229,7 +241,8 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 		if(opts.usestarter != 0) {
 			starttime = new SteadyBackwardEulerSolver<NVARS>(startprob, starttconf, isol.ksp,
 			                                                 nlupdate);
-			std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
+			if(mpirank == 0)
+				std::cout << "Set up backward Euler temporal scheme for initialization solve.\n";
 		}
 
 	}
@@ -237,7 +250,8 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	{
 		if(opts.usestarter != 0) {
 			starttime = new SteadyForwardEulerSolver<NVARS>(startprob, u, starttconf);
-			std::cout << "Set up explicit forward Euler temporal scheme for startup solve.\n";
+			if(mpirank == 0)
+				std::cout << "Set up explicit forward Euler temporal scheme for startup solve.\n";
 		}
 	}
 
@@ -249,7 +263,8 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	}
 #endif
 
-	std::cout << "***\n";
+	if(mpirank == 0)
+		std::cout << "***\n";
 
 	// computation
 
@@ -283,7 +298,8 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
-	
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
+
 	LinearProblemLHS isol = setupImplicitSolver(prob, mf_flg);
 
 	// set up time discrization
@@ -309,12 +325,14 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	{
 		nlupdate = create_const_nonlinearUpdateScheme<NDIM+2>(opts);
 		time = new SteadyBackwardEulerSolver<NVARS>(prob, maintconf, isol.ksp, nlupdate);
-		std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
+		if(mpirank == 0)
+			std::cout << "\nSet up backward Euler temporal scheme for main solve.\n";
 	}
 	else
 	{
 		time = new SteadyForwardEulerSolver<NVARS>(prob, u, maintconf);
-		std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
+		if(mpirank == 0)
+			std::cout << "\nSet up explicit forward Euler temporal scheme for main solve.\n";
 	}
 
 	// Solve the main problem

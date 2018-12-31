@@ -5,7 +5,6 @@
  */
 
 #include "agradientschemes.hpp"
-#include <iostream>
 #include <Eigen/LU>
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
