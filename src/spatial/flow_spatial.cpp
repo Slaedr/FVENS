@@ -252,7 +252,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
                                                       const FlowPhysicsConfig& pconf,
                                                       const FlowNumericsConfig& nconf)
 	: FlowFV_base<scalar>(mesh, pconf, nconf),
-	jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
+	  uface(*m),
+	  gradvec{NULL},
+	  jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
 {
 	if(secondOrderRequested)
 		std::cout << "FlowFV: Second order solution requested.\n";
@@ -263,6 +265,10 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
 template<typename scalar, bool secondOrderRequested, bool constVisc>
 FlowFV<scalar,secondOrderRequested,constVisc>::~FlowFV()
 {
+	int ierr = VecDestroy(&gradvec);
+	if(ierr) {
+		std::cout << "Gradient vector could not be destroyed!" << std::endl;
+	}
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
@@ -565,7 +571,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 {
 	StatusCode ierr = 0;
 	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
-	L2TraceVector<scalar,NVARS> uface(*m);
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -628,8 +633,13 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 
 		const amat::Array2dView<scalar> ug(&uright(m->gPhyBFaceStart(),0),m->gnbface(),NVARS);
 
-		// reconstruct
 		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
+
+		if(nconfig.reconstruction == "WENO")
+		{
+		}
+
+		// reconstruct
 		lim->compute_face_values(up, ug, &grads[0](0,0), uleft, uright);
 
 		// Convert face values back to conserved variables - gradients stay primitive.

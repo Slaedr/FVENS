@@ -25,6 +25,7 @@
 #include "agradientschemes.hpp"
 #include "areconstruction.hpp"
 #include "abc.hpp"
+#include "linalg/tracevector.hpp"
 
 namespace fvens {
 
@@ -190,6 +191,9 @@ public:
 	 * [M du/dt +] r(u) = 0.
 	 * Invokes flux calculation and adds the fluxes to the residual vector,
 	 * and also computes local time steps.
+	 *
+	 * \warning Not thread-safe. Must be called by only one thread at a time. [However, threading has
+	 * been used inside the function to accelerate computatinos.]
 	 */
 	StatusCode compute_residual(const Vec u, Vec residual,
 	                            const bool gettimesteps, Vec timesteps) const;
@@ -239,6 +243,20 @@ protected:
 	using FlowFV_base<scalar>::lim;
 	using FlowFV_base<scalar>::bcs;
 	using FlowFV_base<scalar>::compute_boundary_states;
+
+	/// Reconstructed states at all faces
+	/** Ideally, this would be local inside compute_residual. However, its setup is non-trivial and
+	 * only depends on the mesh, so we do it only once in the constructor and re-use it for all
+	 * residual computations.
+	 * \note If memory for implicit solves is an issue, this can be moved inside \ref compute_residual
+	 *  in order to free up space during the implicit solve.
+	 */
+	mutable L2TraceVector<scalar,NVARS> uface;
+
+	/// Gradients at cell centres
+	/** This could be local to compute_residual, but same reason as for \ref uface applies here as well.
+	 */
+	Vec gradvec;
 
 	/// Gas physics to use for computing analytical Jacobian
 	/** This should usually be same as \ref physics used for the flux computation. This has been
