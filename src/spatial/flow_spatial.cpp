@@ -25,6 +25,7 @@
 #include "utilities/afactory.hpp"
 #include "utilities/adolcutils.hpp"
 #include "utilities/mpiutils.hpp"
+#include "linalg/alinalg.hpp"
 #include "linalg/petscutils.hpp"
 #include "linalg/tracevector.hpp"
 #include "flow_spatial.hpp"
@@ -256,8 +257,12 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
 	  gradvec{NULL},
 	  jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
 {
-	if(secondOrderRequested)
+	if(secondOrderRequested) {
 		std::cout << "FlowFV: Second order solution requested.\n";
+		// for storing cell-centred gradients at interior cells and ghost cells
+		int ierr = createGhostedSystemVector(m, NVARS*NDIM, &gradvec);
+		fvens_throw(ierr, "Could not create storage for gradients!");
+	}
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
 }
@@ -570,7 +575,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
                                                                 Vec timesteps) const
 {
 	StatusCode ierr = 0;
-	GradBlock_t<scalar,NDIM,NVARS>* grads = nullptr;
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -604,9 +608,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		amat::Array2dMutableView<scalar> uleft(uface.getLocalArrayLeft(), m->gnaface(),NVARS);
 		amat::Array2dMutableView<scalar> uright(uface.getLocalArrayRight(), m->gnaface(),NVARS);
 
-		// for storing cell-centred gradients at interior cells and ghost cells
-		grads = new GradBlock_t<scalar,NDIM,NVARS>[m->gnelem()];
-
 		// get cell average values at ghost cells using BCs for reconstruction
 		compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
 
@@ -633,14 +634,31 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 
 		const amat::Array2dView<scalar> ug(&uright(m->gPhyBFaceStart(),0),m->gnbface(),NVARS);
 
-		gradcomp->compute_gradients(up, ug, &grads[0](0,0));
+		{
+			MutableGhostedVecHandler<scalar> gradh(gradvec);
+			gradcomp->compute_gradients(up, ug, gradh.getArray());
+		}
 
+		// In case of WENO reconstruction, we need gradients at conn ghost cells immediately
 		if(nconfig.reconstruction == "WENO")
 		{
+			ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD);
+			CHKERRQ(ierr);
+			ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD);
+			CHKERRQ(ierr);
 		}
 
 		// reconstruct
-		lim->compute_face_values(up, ug, &grads[0](0,0), uleft, uright);
+		{
+			const ConstGhostedVecHandler<scalar> gradh(gradvec);
+			lim->compute_face_values(up, ug, gradh.getArray(), uleft, uright);
+		}
+
+		if(nconfig.reconstruction != "WENO")
+		{
+			ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD);
+			CHKERRQ(ierr);
+		}
 
 		// Convert face values back to conserved variables - gradients stay primitive.
 #pragma omp parallel default(shared)
@@ -683,6 +701,16 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	compute_boundary_states(uface.getLocalArrayLeft()+m->gPhyBFaceStart()*NVARS,
 	                        uface.getLocalArrayRight()+m->gPhyBFaceStart()*NVARS);
 
+	if(nconfig.reconstruction != "WENO" && secondOrderRequested)
+	{
+		ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+	}
+
+	ConstGhostedVecHandler<scalar> gradh;
+	if(secondOrderRequested)
+		gradh.setVec(gradvec);
+	const scalar *const gradarray = secondOrderRequested ? gradh.getArray() : nullptr;
+
 	MutableVecHandler<scalar> rvh(rvec);
 	scalar *const rarr = rvh.getArray();
 	// Depending on whether we want a 2nd order solution, we use the correct array for phy. boun.
@@ -690,7 +718,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	const scalar *const ug_pb = secondOrderRequested ?
 		ubcell : uface.getLocalArrayRight()+m->gPhyBFaceStart()*NVARS;
 
-	compute_fluxes(uarr, &grads[0](0,0), uface.getLocalArrayLeft(), uface.getLocalArrayRight(),
+	compute_fluxes(uarr, gradarray, uface.getLocalArrayLeft(), uface.getLocalArrayRight(),
 	               ug_pb, rarr);
 
 	if(gettimesteps)
@@ -702,7 +730,6 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		                     dtm);
 	}
 
-	delete [] grads;
 	delete [] ubcell;
 	return ierr;
 }

@@ -256,7 +256,7 @@ protected:
 	/// Gradients at cell centres
 	/** This could be local to compute_residual, but same reason as for \ref uface applies here as well.
 	 */
-	Vec gradvec;
+	mutable Vec gradvec;
 
 	/// Gas physics to use for computing analytical Jacobian
 	/** This should usually be same as \ref physics used for the flux computation. This has been
