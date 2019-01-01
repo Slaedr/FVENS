@@ -661,10 +661,18 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		}
 
 		// Convert face values back to conserved variables - gradients stay primitive.
+#pragma omp parallel for default(shared)
+		for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
+		{
+			physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
+		}
+
+		uface.updateSharedFacesBegin();
+
 #pragma omp parallel default(shared)
 		{
 #pragma omp for
-			for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
+			for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 			{
 				physics.getConservedFromPrimitive(&uleft(iface,0), &uleft(iface,0));
 				physics.getConservedFromPrimitive(&uright(iface,0), &uright(iface,0));
@@ -701,9 +709,14 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	compute_boundary_states(uface.getLocalArrayLeft()+m->gPhyBFaceStart()*NVARS,
 	                        uface.getLocalArrayRight()+m->gPhyBFaceStart()*NVARS);
 
-	if(nconfig.reconstruction != "WENO" && secondOrderRequested)
+	if(secondOrderRequested)
 	{
-		ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		uface.updateSharedFacesEnd();
+
+		if(nconfig.reconstruction != "WENO")
+		{
+			ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		}
 	}
 
 	ConstGhostedVecHandler<scalar> gradh;
