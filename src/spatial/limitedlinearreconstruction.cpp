@@ -187,6 +187,7 @@ VenkatakrishnanLimiter<scalar,nvars>
 	std::cout << "  Venkatakrishnan Limiter: Constant K = " << K << std::endl;
 	// compute characteristic length, currently the maximum edge length, of all cells
 	clength.resize(m->gnelem());
+	static_assert(NDIM == 2, "Works only in 2D for now");
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m->gnelem(); iel++)
 	{
@@ -194,7 +195,7 @@ VenkatakrishnanLimiter<scalar,nvars>
 		{
 			scalar llen = 0;
 			const int inode = ifa, jnode = (ifa+1) % m->gnnode(iel);
-			for(int idim = 0; idim < 2; idim++)
+			for(int idim = 0; idim < NDIM; idim++)
 				llen += std::pow(m->gcoords(m->ginpoel(iel,inode),idim) 
 						- m->gcoords(m->ginpoel(iel,jnode),idim), 2);
 

@@ -415,6 +415,11 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 	const GradBlock_t<scalar,NDIM,NVARS> *const grads
 		= reinterpret_cast<const GradBlock_t<scalar,NDIM,NVARS>*>(gradients);
+
+	/* Note that we don't need access to residuals of connectivity ghost cells. Each subdomain is
+	 * responsible only for residuals in its own cells while fluxes across connectivity faces are
+	 * computed twice - once by each subdomain.
+	 */
 	Eigen::Map<MVector<scalar>> residual(res, m->gnelem(), NVARS);
 
 	// Compute fluxes.
