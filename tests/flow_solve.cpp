@@ -12,6 +12,7 @@
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
+#include "utilities/mpiutils.hpp"
 
 using namespace fvens;
 namespace po = boost::program_options;
@@ -23,6 +24,8 @@ int main(int argc, char *argv[])
 		Arguments needed: FVENS control file and PETSc options file with -options_file.\n";
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
+
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	po::options_description desc
 		(std::string("FVENS options: The first argument is the input control file name.\n")
@@ -49,8 +52,10 @@ int main(int argc, char *argv[])
 
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
 
-	std::cout << '\n';
+	if(mpirank == 0)
+		std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);
-	std::cout << "\n--------------- End --------------------- \n\n";
+	if(mpirank == 0)
+		std::cout << "\n--------------- End --------------------- \n\n";
 	return ierr;
 }

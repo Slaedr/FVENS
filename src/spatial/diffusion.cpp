@@ -127,7 +127,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
-	const ConstVecHandler<a_real> uvh(uvec);
+	const ConstGhostedVecHandler<a_real> uvh(uvec);
 	const a_real *const uarr = uvh.getArray();
 	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem()+m->gnConnFace(), nvars);
 
@@ -156,7 +156,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 		gradcomp->compute_gradients(u, amat::Array2dView<a_real>(ugptr,m->gnbface(),nvars), gradarray);
 	}
-	std::cout << "Computed gradients." << std::endl;
+	//std::cout << "Computed gradients." << std::endl;
 
 	ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 

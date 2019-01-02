@@ -115,13 +115,8 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 	UMesh2dh<a_real> lm = p.restrictMeshToPartitions();
 
 #ifdef DEBUG
-	std::cout << " Rank " << mpirank << ":\n\t elems = " << lm.gnelem()
-	          << ", phy boun faces = " << lm.gnbface()
-	          << ", conn faces = " << lm.gnConnFace() << ",\n\t vertices = " << lm.gnpoin() << std::endl;
-
 	const int mpisize = get_mpi_size(PETSC_COMM_WORLD);
 	if(mpisize == 1) {
-		std::cout << "Checking trivial 1-part partition." << std::endl;
 		const std::array<bool,8> chk = compareMeshes(gm, lm);
 		for(int i = 0; i < 8; i++)
 			assert(chk[i]);

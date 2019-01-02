@@ -31,7 +31,8 @@ L2TraceVector<scalar,nvars>::L2TraceVector(const UMesh2dh<scalar>& mesh) : m{mes
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::update_comm_pattern()
 {
-	//const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	// const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	// std::cout << "RAnk " << mpirank << ": Started updated comm pattern.." << std::endl;
 
 	left.resize(m.gnaface()*nvars);
 	right.resize(m.gnaface()*nvars);
@@ -227,15 +228,15 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 // 	}
 // #endif
 
-	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	//const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 
 	const a_int fstart = m.gConnBFaceStart();
-	std::cout << "Rank = " << mpirank << ": buffering..." << std::endl;
+	//std::cout << "Rank = " << mpirank << ": buffering..." << std::endl;
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
 	{
 		sendbuffers[irank].resize(sharedfaces[irank].size()*nvars);
 
-		std::cout << "Rank " << mpirank << ": Buffer for nbd rank " << nbdranks[irank] << std::endl;
+		//std::cout << "Rank " << mpirank << ": Buffer for nbd rank " << nbdranks[irank] << std::endl;
 		for(size_t iface = 0; iface < sharedfaces[irank].size(); iface++)
 		{
 			for(int ivar = 0; ivar < nvars; ivar++) {
@@ -252,14 +253,14 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 		          MPI_COMM_WORLD, &srequests[irank]);
 	}
 
-	std::cout << "Rank = " << mpirank << ": all sends initiated" << std::endl;
+	//std::cout << "Rank = " << mpirank << ": all sends initiated" << std::endl;
 }
 
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 {
-	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
-	std::cout << "Rank " << mpirank << ": receiving.." << std::endl;
+	//const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
+	//std::cout << "Rank " << mpirank << ": receiving.." << std::endl;
 
 	std::vector<MPI_Request> rreq(nbdranks.size());
 
@@ -271,12 +272,12 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 		          MPI_COMM_WORLD, &rreq[irank]);
 	}
 
-	std::cout << "Rank " << mpirank << ": receives posted." << std::endl;
+	//std::cout << "Rank " << mpirank << ": receives posted." << std::endl;
 
 	MPI_Waitall(nbdranks.size(), &srequests[0], MPI_STATUS_IGNORE);
 	// for(size_t irank = 0; irank < nbdranks.size(); irank++)
 	// 	MPI_Wait(&srequests[irank], MPI_STATUS_IGNORE);
-	std::cout << "Rank = " << mpirank << ": all sends completed." << std::endl;
+	//std::cout << "Rank = " << mpirank << ": all sends completed." << std::endl;
 
 	const a_int fstart = m.gConnBFaceStart();
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)

@@ -46,8 +46,8 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
 	inviflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux, &physics)},
 
 	gradcomp {create_const_gradientscheme<scalar,NVARS>(nconfig.gradientscheme, m, rch.getArray(),
-	                                                    &rcbp(0,0))},
-	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, rch.getArray(), &rcbp(0,0),
+	                                                    rcbptr)},
+	lim {create_const_reconstruction<scalar,NVARS>(nconfig.reconstruction, m, rch.getArray(), rcbptr,
 	                                               gr, nconfig.limiter_param)},
 
 	bcs {create_const_flowBCs<scalar>(pconf.bcconf, physics,uinf)}
@@ -257,6 +257,10 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh2dh<scalar> *co
 	  gradvec{NULL},
 	  jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
 {
+#ifdef DEBUG
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
+	std::cout << "RAnk " << mpirank << ": Starting constructing flow spatial.." << std::endl;
+#endif
 	if(secondOrderRequested) {
 		std::cout << "FlowFV: Second order solution requested.\n";
 		// for storing cell-centred gradients at interior cells and ghost cells
@@ -575,6 +579,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
                                                                 Vec timesteps) const
 {
 	StatusCode ierr = 0;
+	//const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -582,9 +587,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 	locnelem /= NVARS;
 	assert(locnelem == m->gnelem());
 
-	const ConstVecHandler<scalar> uvh(uvec);
+	const ConstGhostedVecHandler<scalar> uvh(uvec);
 	const scalar *const uarr = uvh.getArray();
-	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<scalar>> u(uarr, m->gnelem()+m->gnConnFace(), NVARS);
 
 	{
 		amat::Array2dMutableView<scalar> uleft(uface.getLocalArrayLeft(), m->gnaface(),NVARS);
@@ -611,7 +616,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		// get cell average values at ghost cells using BCs for reconstruction
 		compute_boundary_states(&uleft(m->gPhyBFaceStart(),0), &uright(m->gPhyBFaceStart(),0));
 
-		MVector<scalar> up(m->gnelem(), NVARS);
+		MVector<scalar> up(m->gnelem()+m->gnConnFace(), NVARS);
 
 		// convert cell-centered state vectors to primitive variables
 #pragma omp parallel default(shared)
@@ -628,7 +633,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 			}
 
 #pragma omp for
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(a_int iel = 0; iel < m->gnelem()+m->gnConnFace(); iel++)
 				physics.getPrimitiveFromConserved(&uarr[iel*NVARS], &up(iel,0));
 		}
 

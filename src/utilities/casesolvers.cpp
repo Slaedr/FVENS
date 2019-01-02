@@ -61,7 +61,7 @@ int initializeSystemVector(const FlowParserOptions& opts, const UMesh2dh<a_real>
 	PetscScalar *const uloc = uh.getArray();
 	
 	//initial values are equal to free-stream values
-	for(a_int i = 0; i < m.gnelem(); i++)
+	for(a_int i = 0; i < m.gnelem()+m.gnConnFace(); i++)
 		for(int j = 0; j < NVARS; j++)
 			uloc[i*NVARS+j] = uinf[j];
 
@@ -347,7 +347,8 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	}
 
 	petsc_throw(ierr, "Nonlinear solver failed!");
-	std::cout << "***\n";
+	if(mpirank == 0)
+		std::cout << "***\n";
 
 	TimingData tdata = time->getTimingData();
 #ifdef USE_BLASTED

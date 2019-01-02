@@ -9,6 +9,7 @@
 #ifdef USE_ADOLC
 #include <adolc/adolc.h>
 #endif
+#include "utilities/mpiutils.hpp"
 
 namespace fvens
 {
@@ -18,7 +19,8 @@ GradientScheme<scalar,nvars>::GradientScheme(const UMesh2dh<scalar> *const mesh,
                                              const scalar *const _rc,
                                              const scalar *const _rcbp)
 	: m{mesh}, rc{_rc}, rcbp{_rcbp}
-{ }
+{
+}
 
 template<typename scalar, int nvars>
 GradientScheme<scalar,nvars>::~GradientScheme()
