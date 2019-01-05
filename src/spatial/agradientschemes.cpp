@@ -34,7 +34,7 @@ ZeroGradients<scalar,nvars>::ZeroGradients(const UMesh2dh<scalar> *const mesh,
 { }
 
 template<typename scalar, int nvars>
-void ZeroGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
+void ZeroGradients<scalar,nvars>::compute_gradients(const amat::Array2dView<scalar> u,
                                                     const amat::Array2dView<scalar> ug,
                                                     scalar *const gradarray) const
 {
@@ -60,7 +60,7 @@ GreenGaussGradients<scalar,nvars>::GreenGaussGradients(const UMesh2dh<scalar> *c
  */
 template<typename scalar, int nvars>
 void GreenGaussGradients<scalar,nvars>::compute_gradients(
-		const MVector<scalar>& u,
+		const amat::Array2dView<scalar> u,
 		const amat::Array2dView<scalar> ug,
 		scalar *const gradarray) const
 {
@@ -320,7 +320,7 @@ template <typename scalar, int nvars>
 using FMultiVectorArray = std::vector<Eigen::Matrix<scalar,NDIM,nvars,Eigen::DontAlign>>;
 
 template<typename scalar, int nvars>
-void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(const MVector<scalar>& u,
+void WeightedLeastSquaresGradients<scalar,nvars>::compute_gradients(const amat::Array2dView<scalar> u,
                                                                     const amat::Array2dView<scalar> ug,
                                                                     scalar *const gradarray) const
 {

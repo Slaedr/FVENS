@@ -112,7 +112,8 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 	}
 
 	const scalar *const ugp = m->gnbface() > 0 ? &ug(0,0) : nullptr;
-	gradcomp->compute_gradients(u, amat::Array2dView<scalar>(ugp,m->gnbface(),NVARS), &grads[0](0,0));
+	gradcomp->compute_gradients(amat::Array2dView<scalar>(&u(0,0),m->gnelem()+m->gnConnFace(),NVARS),
+	                            amat::Array2dView<scalar>(ugp,m->gnbface(),NVARS), &grads[0](0,0));
 }
 
 template <typename scalar>
@@ -640,8 +641,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::compute_residual(const Vec uvec,
 		const amat::Array2dView<scalar> ug(&uright(m->gPhyBFaceStart(),0),m->gnbface(),NVARS);
 
 		{
+			amat::Array2dView<scalar> upa(&up(0,0), m->gnelem()+m->gnConnFace(),NVARS);
 			MutableGhostedVecHandler<scalar> gradh(gradvec);
-			gradcomp->compute_gradients(up, ug, gradh.getArray());
+			gradcomp->compute_gradients(upa, ug, gradh.getArray());
 		}
 
 		// In case of WENO reconstruction, we need gradients at conn ghost cells immediately

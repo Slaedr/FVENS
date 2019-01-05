@@ -42,7 +42,7 @@ public:
 
 	/// Computes gradients corresponding to a state vector
 	virtual void compute_gradients(
-			const MVector<scalar>& unk,              ///< [in] Solution multi-vector
+			const amat::Array2dView<scalar> unk,     ///< [in] Solution multi-vector
 			const amat::Array2dView<scalar> unkg,    ///< [in] Ghost cell states 
 			scalar *const grads                      ///< [in,out] Gradients output (pre-allocated)
 	                               ) const = 0;
@@ -57,7 +57,7 @@ public:
 	              const scalar *const _rc,
 	              const scalar *const _rcbp);
 
-	void compute_gradients(const MVector<scalar>& unk, 
+	void compute_gradients(const amat::Array2dView<scalar> unk, 
 	                       const amat::Array2dView<scalar> unkg, 
 	                       scalar *const grads ) const;
 
@@ -80,7 +80,7 @@ public:
 	                    const scalar *const _rc,
 	                    const scalar *const _rcbp);
 
-	void compute_gradients(const MVector<scalar>& unk, 
+	void compute_gradients(const amat::Array2dView<scalar> unk, 
 	                       const amat::Array2dView<scalar> unkg,
 	                       scalar *const grads ) const;
 
@@ -99,7 +99,7 @@ public:
 	                              const scalar *const _rc,
 	                              const scalar *const _rcbp);
 
-	void compute_gradients(const MVector<scalar>& unk, 
+	void compute_gradients(const amat::Array2dView<scalar> unk, 
 	                       const amat::Array2dView<scalar> unkg, 
 	                       scalar *const grads ) const;
 

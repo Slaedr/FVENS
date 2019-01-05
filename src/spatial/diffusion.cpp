@@ -153,8 +153,10 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	{
 		MutableGhostedVecHandler<a_real> grh(gradvec);
 		a_real *const gradarray = grh.getArray();
+		const amat::Array2dView<a_real> ua(uarr, m->gnelem()+m->gnConnFace(), nvars);
 
-		gradcomp->compute_gradients(u, amat::Array2dView<a_real>(ugptr,m->gnbface(),nvars), gradarray);
+		gradcomp->compute_gradients(ua, amat::Array2dView<a_real>(ugptr,m->gnbface(),nvars),
+		                            gradarray);
 	}
 	//std::cout << "Computed gradients." << std::endl;
 
@@ -330,7 +332,8 @@ void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	gradcomp->compute_gradients(u, amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),nvars), &grads[0](0,0));
+	gradcomp->compute_gradients(amat::Array2dView<a_real>(&u(0,0),m->gnelem()+m->gnConnFace(),nvars),
+	                            amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),nvars), &grads[0](0,0));
 }
 
 template<int nvars>
