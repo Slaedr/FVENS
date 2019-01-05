@@ -322,18 +322,20 @@ void DiffusionMA<nvars>
 }
 
 template <int nvars>
-void DiffusionMA<nvars>::getGradients(const MVector<a_real>& u,
+void DiffusionMA<nvars>::getGradients(const Vec uvec,
                                       GradBlock_t<a_real,NDIM,nvars> *const grads) const
 {
 	amat::Array2d<a_real> ug(m->gnbface(),nvars);
+	ConstGhostedVecHandler<a_real> uh(uvec);
+	const amat::Array2dView<a_real> u(uh.getArray(), m->gnelem()+m->gnConnFace(), nvars);
 	for(a_int iface = 0; iface < m->gnbface(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface+m->gPhyBFaceStart(),0);
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	gradcomp->compute_gradients(amat::Array2dView<a_real>(&u(0,0),m->gnelem()+m->gnConnFace(),nvars),
-	                            amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),nvars), &grads[0](0,0));
+	gradcomp->compute_gradients(u, amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),nvars),
+	                            &grads[0](0,0));
 }
 
 template<int nvars>

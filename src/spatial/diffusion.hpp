@@ -22,7 +22,7 @@ public:
 			void(const a_real *const, const a_real, const a_real *const, a_real *const)
 			> source);
 
-	virtual void getGradients(const MVector<a_real>& u,
+	virtual void getGradients(const Vec u,
 	                          GradBlock_t<a_real,NDIM,nvars> *const grads) const = 0;
 	
 	virtual ~Diffusion();
@@ -80,7 +80,7 @@ public:
 	                                     const a_real *const ul,
 	                                     Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const;
 	
-	void getGradients(const MVector<a_real>& u,
+	void getGradients(const Vec u,
 	                  GradBlock_t<a_real,NDIM,nvars> *const grads) const;
 
 	~DiffusionMA();

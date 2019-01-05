@@ -37,7 +37,7 @@ public:
 	                                     Matrix<a_real,1,1,RowMajor>& L) const
 	{ }
 
-	virtual void getGradients(const fvens::MVector<a_real>& u,
+	virtual void getGradients(const Vec u,
 	                          fvens::GradBlock_t<a_real,NDIM,1> *const grads) const
 	{ }
 

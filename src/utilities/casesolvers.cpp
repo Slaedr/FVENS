@@ -123,7 +123,7 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 	if(mpisize == 1) {
 		if(surface_file_needed) {
 			try {
-				out.exportSurfaceData(umat, opts.lwalls, opts.lothers, opts.surfnameprefix);
+				out.exportSurfaceData(u, opts.lwalls, opts.lothers, opts.surfnameprefix);
 			} 
 			catch(std::exception& e) {
 				std::cout << e.what() << std::endl;
@@ -151,10 +151,12 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
 	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
 	grad.resize(m.gnelem());
-	prob->getGradients(umat, &grad[0]);
+	prob->getGradients(u, &grad[0]);
 
+	ConstVecHandler<a_real> uh(u);
+	const amat::Array2dView<a_real> ua(uh.getArray(), m.gnelem(), NVARS);
 	const std::tuple<a_real,a_real,a_real> fnls 
-		{ prob->computeSurfaceData(umat, &grad[0], opts.lwalls[0], output)};
+		{ prob->computeSurfaceData(ua, &grad[0], opts.lwalls[0], output)};
 
 	delete prob;
 

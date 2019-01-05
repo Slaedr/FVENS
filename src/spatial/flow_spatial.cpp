@@ -101,10 +101,13 @@ void FlowFV_base<scalar>::compute_boundary_state(const int ied,
 }
 
 template <typename scalar>
-void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
+void FlowFV_base<scalar>::getGradients(const Vec uvec,
                                        GradBlock_t<scalar,NDIM,NVARS> *const grads) const
 {
 	amat::Array2d<scalar> ug(m->gnbface(),NVARS);
+	ConstGhostedVecHandler<scalar> uh(uvec);
+	const amat::Array2dView<scalar> u(uh.getArray(), m->gnelem()+m->gnConnFace(), NVARS);
+
 	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		const a_int lelem = m->gintfac(iface,0);
@@ -112,8 +115,8 @@ void FlowFV_base<scalar>::getGradients(const MVector<scalar>& u,
 	}
 
 	const scalar *const ugp = m->gnbface() > 0 ? &ug(0,0) : nullptr;
-	gradcomp->compute_gradients(amat::Array2dView<scalar>(&u(0,0),m->gnelem()+m->gnConnFace(),NVARS),
-	                            amat::Array2dView<scalar>(ugp,m->gnbface(),NVARS), &grads[0](0,0));
+	gradcomp->compute_gradients(u, amat::Array2dView<scalar>(ugp,m->gnbface(),NVARS),
+	                            &grads[0](0,0));
 }
 
 template <typename scalar>
@@ -131,7 +134,7 @@ static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa)
 
 template <typename scalar>
 std::tuple<scalar,scalar,scalar>
-FlowFV_base<scalar>::computeSurfaceData (const MVector<scalar>& u,
+FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
                                          const GradBlock_t<scalar,NDIM,NVARS> *const grad,
                                          const int iwbcm,
                                          MVector<scalar>& output) const

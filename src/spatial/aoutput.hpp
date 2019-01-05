@@ -25,12 +25,12 @@ public:
 	virtual void exportVolumeData(const MVector<a_real>& u, const std::string volfile) const = 0;
 
 	/// Exports data on surfaces
-	/** \param[in] u The multi-vector containing field variables.
+	/** \param[in] u The field variables.
 	 * \param[in] wbcm A list of `wall' boundary face markers for which output is needed.
 	 * \param[in] obcm A list of `other' boundary face markers at which some other output is needed.
 	 * \param[in] basename The base name for the files that will be written.
 	 */
-	virtual void exportSurfaceData(const MVector<a_real>& u, const std::vector<int> wbcm,
+	virtual void exportSurfaceData(const Vec u, const std::vector<int> wbcm,
 			const std::vector<int> obcm, const std::string basename) const = 0;
 
 protected:
@@ -79,7 +79,7 @@ public:
 	 * We also compute lift and drag for wall boundaries.
 	 * \sa Output::exportSurfaceData
 	 */
-	void exportSurfaceData(const MVector<a_real>& u, const std::vector<int> wbcm,
+	void exportSurfaceData(const Vec u, const std::vector<int> wbcm,
 			const std::vector<int> obcm, const std::string basename) const;
 
 protected:

@@ -178,7 +178,7 @@ void FlowOutput::exportVolumeData(const MVector<a_real>& u, std::string volfile)
 /** \todo Generalize for MPI runs.
  * \todo Use values at the face to compute drag, lift etc. rather than cell-centred data.
  */
-void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
+void FlowOutput::exportSurfaceData(const Vec u,
                                    const std::vector<int> wbcm, std::vector<int> obcm,
                                    const std::string basename                         ) const
 {
@@ -189,6 +189,9 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 	grad.resize(m->gnelem());
 
 	space->getGradients(u, &grad[0]);
+
+	ConstVecHandler<a_real> uh(u);
+	const amat::Array2dView<a_real> ua(uh.getArray(), m->gnelem(), NVARS);
 
 	// get number of faces in wall boundary and other boundary
 	
@@ -216,7 +219,7 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 		fout << "#  x \t y \t Cp  \t Cf \n";
 
 		// iterate over faces having this boundary marker
-		std::tie(Cl, Cdp, Cdf) = space->computeSurfaceData(u, &grad[0], wbcm[im], output);
+		std::tie(Cl, Cdp, Cdf) = space->computeSurfaceData(ua, &grad[0], wbcm[im], output);
 
 		// write out the output
 
@@ -244,7 +247,7 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 		std::string fname = basename+"-surf_o"+std::to_string(obcm[im])+".out";
 		std::ofstream fout;
 		open_file_toWrite(fname, fout);
-		
+
 		MVector<a_real> output(nobfaces[im], 2+NDIM);
 		a_int facecoun = 0;
 
@@ -275,8 +278,8 @@ void FlowOutput::exportSurfaceData(const MVector<a_real>& u,
 					output(facecoun,j) = coord[j];
 				}
 
-				output(facecoun,NDIM) =  u(lelem,1)/u(lelem,0);
-				output(facecoun,NDIM+1)= u(lelem,2)/u(lelem,0);
+				output(facecoun,NDIM) =  ua(lelem,1)/ua(lelem,0);
+				output(facecoun,NDIM+1)= ua(lelem,2)/ua(lelem,0);
 
 				facecoun++;
 			}

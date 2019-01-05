@@ -98,13 +98,13 @@ public:
 	 * \todo Generalize to 3D
 	 */
 	std::tuple<scalar,scalar,scalar>
-	computeSurfaceData(const MVector<scalar>& u,
+	computeSurfaceData(const amat::Array2dView<scalar> u,
 	                   const GradBlock_t<scalar,NDIM,NVARS> *const grad,
 	                   const int iwbcm,
 	                   MVector<scalar>& output) const;
 
 	/// Computes gradients of converved variables
-	void getGradients(const MVector<scalar>& u, GradBlock_t<scalar,NDIM,NVARS> *const grads) const;
+	void getGradients(const Vec u, GradBlock_t<scalar,NDIM,NVARS> *const grads) const;
 
 protected:
 

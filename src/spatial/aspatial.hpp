@@ -89,8 +89,7 @@ public:
 
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const MVector<a_real>& u,
-	                          GradBlock_t<a_real,NDIM,nvars> *const grads) const = 0;
+	virtual void getGradients(const Vec u, GradBlock_t<a_real,NDIM,nvars> *const grads) const = 0;
 
 	/// Exposes access to the mesh context
 	const UMesh2dh<scalar>* mesh() const
