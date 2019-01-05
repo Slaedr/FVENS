@@ -182,7 +182,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			PetscScalar *const rarr = rh.getArray();
 
 #pragma omp parallel for simd default(shared)
-			for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+			for(a_int i = 0; i < (m->gnelem()+m->gnConnFace())*nvars; i++) {
 				rarr[i] = 0;
 			}
 		}
@@ -424,7 +424,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			PetscScalar *const rarr = rh.getArray();
 
 #pragma omp parallel for simd default(shared)
-			for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+			for(a_int i = 0; i < (m->gnelem()+m->gnConnFace())*nvars; i++) {
 					rarr[i] = 0;
 			}
 		}
