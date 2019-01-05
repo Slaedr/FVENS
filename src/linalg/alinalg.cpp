@@ -131,12 +131,13 @@ MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real
 }
 
 template<int nvars>
-void MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state,
+int MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state,
 		const Vec dtms) 
 {
 	u = u_state;
 	res = r_state;
 	mdt = dtms;
+	return 0;
 }
 
 template<int nvars>
@@ -152,8 +153,9 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	const UMesh2dh<a_real> *const m = spatial->mesh();
 	//ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 
-	Vec aux;
-	ierr = VecDuplicate(x, &aux); CHKERRQ(ierr);
+	Vec aux, yg;
+	ierr = VecDuplicate(u, &aux); CHKERRQ(ierr);
+	ierr = VecDuplicate(res, &yg); CHKERRQ(ierr);
 
 	PetscScalar xnorm = 0;
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
@@ -173,18 +175,29 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		const PetscScalar *const xr = xh.getArray();
 		MutableVecHandler<PetscScalar> auxh(aux);
 		PetscScalar *const auxr = auxh.getArray(); 
-		MutableVecHandler<PetscScalar> yh(y);
-		PetscScalar *const yr = yh.getArray(); 
+		MutableVecHandler<PetscScalar> ygh(yg);
+		PetscScalar *const ygr = ygh.getArray(); 
 
 #pragma omp parallel for simd default(shared)
 		for(a_int i = 0; i < m->gnelem()*nvars; i++) {
-			yr[i] = 0;
+			ygr[i] = 0;
 			auxr[i] = ur[i] + pertmag * xr[i];
+		}
+
+#pragma omp parallel for simd default(shared)
+		for(a_int i = m->gnelem(); i < m->gnelem()+m->gnConnFace(); i++) {
+			ygr[i] = 0;
 		}
 	}
 
+	ierr = VecGhostUpdateBegin(aux, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+	ierr = VecGhostUpdateEnd(aux, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
 	// y <- -r(u + eps/xnorm * x)
-	ierr = spatial->compute_residual(aux, y, false, dummy); CHKERRQ(ierr);
+	ierr = spatial->compute_residual(aux, yg, false, dummy); CHKERRQ(ierr);
+
+	ierr = VecGhostUpdateBegin(yg, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+	ierr = VecGhostUpdateEnd(yg, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
 
 	// y <- vol/dt x + (-(-r(u + eps/xnorm * x)) + (-r(u))) / eps |x|
 	//    = vol/dt x + (r(u + eps/xnorm * x) - r(u)) / eps |x|
@@ -199,6 +212,8 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		const PetscScalar *const resr = resh.getArray();
 		ConstVecHandler<PetscScalar> mdth(mdt);
 		const PetscScalar *const dtmr = mdth.getArray();
+		ConstVecHandler<PetscScalar> ygh(yg);
+		const PetscScalar *const ygr = ygh.getArray();
 		MutableVecHandler<PetscScalar> yh(y);
 		PetscScalar *const yr = yh.getArray(); 
 
@@ -207,12 +222,14 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		{
 			for(int i = 0; i < nvars; i++) {
 				// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
-				yr[iel*nvars+i] = dtmr[iel]*xr[iel*nvars+i] + (-yr[iel*nvars+i] + resr[iel*nvars+i])/pertmag;
+				yr[iel*nvars+i] = dtmr[iel]*xr[iel*nvars+i]
+					+ (-ygr[iel*nvars+i] + resr[iel*nvars+i])/pertmag;
 			}
 		}
 	}
 	
 	ierr = VecDestroy(&aux); CHKERRQ(ierr);
+	ierr = VecDestroy(&yg); CHKERRQ(ierr);
 	return ierr;
 }
 

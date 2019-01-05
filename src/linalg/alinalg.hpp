@@ -68,7 +68,7 @@ public:
 	/** Note that the residual vector supplied is assumed to be the negative of what is needed,
 	 * exactly what Spatial::compute_residual gives.
 	 */
-	void set_state(const Vec u_state, const Vec r_state, const Vec mdts);
+	int set_state(const Vec u_state, const Vec r_state, const Vec mdts);
 
 	/// Compute a Jacobian-vector product
 	StatusCode apply(const Vec x, Vec y) const;
