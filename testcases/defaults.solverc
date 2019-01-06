@@ -12,7 +12,8 @@
 -ksp_rtol 1e-1
 -ksp_max_it 30
 
--pc_type ilu
+-pc_type bjacobi
+-sub_pc_type ilu
 
 # Additional options (unused by default) for experimenting with the BLASTed preconditioner library
 
