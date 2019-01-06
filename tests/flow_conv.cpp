@@ -7,6 +7,7 @@
 #include "utilities/aoptionparser.hpp"
 #include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
+#include "utilities/mpiutils.hpp"
 
 using namespace fvens;
 namespace po = boost::program_options;
@@ -19,8 +20,7 @@ int main(int argc, char *argv[])
 		and -number_of_meshes";
 
 	ierr = PetscInitialize(&argc,&argv,NULL,help); CHKERRQ(ierr);
-	int mpirank;
-	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	po::options_description desc
 		(std::string("FVENS Conv options: The first argument is the input control file name.\n")
@@ -88,8 +88,8 @@ int main(int argc, char *argv[])
 			passed = 1;
 	}
 
-	std::cout << '\n';
 	ierr = PetscFinalize(); CHKERRQ(ierr);
-	std::cout << "\n--------------- End --------------------- \n\n";
+	if(mpirank == 0)
+		std::cout << "\n--------------- End --------------------- \n";
 	return !passed;
 }

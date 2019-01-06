@@ -1,0 +1,16 @@
+-number_of_meshes 4
+
+#-ksp_converged_reason
+-options_left
+#-log_view
+
+-mat_type aij
+
+-ksp_type fgmres
+-ksp_rtol 1e-1
+-ksp_max_it 30
+
+-pc_type bjacobi
+
+-sub_pc_type ilu
+

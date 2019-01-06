@@ -28,6 +28,14 @@ add_test(NAME SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Tri_EntropyConvergence
   --number_of_meshes 4
   --mesh_file ${CMAKE_SOURCE_DIR}/testcases/2dcylinder/grids/2dcylinder)
 
+add_test(NAME MPI_SpatialFlow_Euler_Cylinder_GreenGauss_HLLC_Quad_EntropyConvergence
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${MPIEXEC} -n 3 ../e_testflow_conv
+  ${CMAKE_CURRENT_BINARY_DIR}/inv-cyl-gg-hllc_tri.ctrl
+  -options_file ${CMAKE_CURRENT_SOURCE_DIR}/simple_inv_cyl.solverc 
+  --number_of_meshes 4
+  --mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad)
+
 add_test(NAME SpatialFlow_Euler_Cylinder_LeastSquares_HLLC_Quad_EntropyConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../e_testflow_conv
