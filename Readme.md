@@ -9,6 +9,7 @@ Features
 --------
 - Modular, using C++ inheritence
 - Almost everything implemented here is parallelized with OpenMP
+- Limited support for distributed (MPI) parallelism
 - Supports 2D hybrid grids containing both triangles and quadrangles
 - Several different inviscid numerical flux options available
 - Two different gradient computation schemes
@@ -17,7 +18,6 @@ Features
 
 Limitations
 -----------
-- Distributed (MPI) parallelism is not supported yet.
 - Limited automated testing as of now
 - Two spatial dimensions at present
 - Not many types of boundary conditions are currently implemented - only the simplest or most common ones
@@ -87,6 +87,10 @@ PETSc options for FVENS
 * `-matrix_free_jacobian` (no argument): If mentioned, matrix-free finite-difference Jacobian will be used, but the first-order approximate Jacobian will still be stored for the preconditioner.
 * `-matrix_free_difference_step` (float argument): The finite difference step length to use in case the matrix-free solver is requested; if not mentioned, this defaults to 1e-7.
 * `-fvens_log_file_prefix` (string argument): Prefix (path + base file name) of the file into which to write timing logs, and if requested, nonlinear residual histories (using different suffixes). Note that this option, if specified, overrides the corresponding option in the control file.
+
+Known issues
+------------
+Please see the [issues](https://github.com/Slaedr/FVENS/issues) page.
 
 Contributors
 ------------
