@@ -317,13 +317,6 @@ public:
 	 */
 	EIndex getFaceEIndex(const bool phyboundary, const a_int iface, const a_int elem) const;
 
-	/// The initial mesh partitioner needs direct access to the mesh
-	friend UMesh2dh<a_real> partitionMeshTrivial(const MeshData& global_mesh);
-
-	/// Populates this process's share of mesh arrays from the global arrays
-	friend void splitMeshArrays(const MeshData& gm, const std::vector<int>& glbElemDist,
-	                            UMesh2dh<a_real>& lm);
-
 	friend class ReplicatedGlobalMeshPartitioner;
 
 private:

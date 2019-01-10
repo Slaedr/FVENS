@@ -3,7 +3,6 @@
 #include <vector>
 #include <cstring>
 #include <limits>
-#include "petsc_assembly.hpp"
 
 namespace fvens {
 
@@ -369,7 +368,7 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const star
 	ierr = KSPGetOperators(ksp, &A, &M); CHKERRQ(ierr);
 
 	// first assemble the matrix once because PETSc requires it
-	ierr = assemble_jacobian(startprob, u, M); CHKERRQ(ierr);
+	ierr = startprob->assemble_jacobian(u, M); CHKERRQ(ierr);
 	ierr = MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 
@@ -379,9 +378,9 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const star
 }
 
 template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,NVARS> *const startprob, 
-		Blasted_data_list& bctx);
+                                  Blasted_data_list& bctx);
 template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,1> *const startprob, 
-		Blasted_data_list& bctx);
+                                  Blasted_data_list& bctx);
 #endif
 
 

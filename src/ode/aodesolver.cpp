@@ -35,7 +35,6 @@
 #include "aodesolver.hpp"
 #include "spatial/aoutput.hpp"
 #include "linalg/alinalg.hpp"
-#include "linalg/petsc_assembly.hpp"
 #include "utilities/aoptionparser.hpp"
 #include "utilities/aerrorhandling.hpp"
 #include "utilities/mpiutils.hpp"
