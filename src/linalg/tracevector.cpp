@@ -58,14 +58,20 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 
 	for(a_int icface = 0; icface < m.gnConnFace(); icface++)
 	{
+#ifdef DEBUG
 		bool matched = false;
+#endif
 		for(int i = 0; i < static_cast<int>(nbdranks.size()); i++)
 			if(m.gconnface(icface,2) == nbdranks[i]) {
 				sharedfacemap(icface,0) = i;
+#ifdef DEBUG
 				matched = true;
+#endif
 				break;
 			}
+#ifdef DEBUG
 		assert(matched);
+#endif
 	}
 
 	sharedfaces.resize(nbdranks.size());
@@ -145,19 +151,24 @@ void L2TraceVector<scalar,nvars>::update_comm_pattern()
 		const int rankindex = sharedfacemap(icface,0);
 		assert(nbdranks[rankindex] == m.gconnface(icface,2));
 
+#ifdef DEBUG
 		bool matched = false;
-
+#endif
 		for(a_int isface = 0; isface < static_cast<a_int>(sharedfaces[rankindex].size()); isface++)
 		{
 			if(nbdGFaceIndex[rankindex][isface] == m.gconnface(icface,4))
 			{
 				sharedfacesother[rankindex][isface] = icface;
+#ifdef DEBUG
 				matched = true;
+#endif
 				break;
 			}
 		}
 
+#ifdef DEBUG
 		assert(matched);
+#endif
 	}
 
 	for(size_t irank = 0; irank < nbdranks.size(); irank++)
