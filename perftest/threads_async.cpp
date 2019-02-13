@@ -36,7 +36,7 @@ namespace po = boost::program_options;
 using namespace std::literals::string_literals;
 
 #define ARR_LEN 10
-#define PATH_LEN 100
+#define PATH_LEN 200
 
 int main(int argc, char *argv[])
 {
