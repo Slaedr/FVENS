@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
+from matplotlib.ticker import MaxNLocator
 
 def setAxisParams(ax, baseLineWidth):
     """ Sets line style and grid lines for a given pyplot axis."""
@@ -25,25 +26,36 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, opt
     maxspeedup = 1.0
 
     phasestring = ""
+    ylabelstr = ""
     plotcol = 0
     if phase == "factor":
         plotcol = 3
         phasestring = "factorization"
+        ylabelstr = "Speedup x " + str(basethreads)
     elif phase == "apply":
         plotcol = 4
         phasestring = "application"
+        ylabelstr = "Speedup x " + str(basethreads)
     elif phase == "all":
         plotcol = 5
+        ylabelstr = "Speedup x " + str(basethreads)
+    elif phase == "liniters":
+        plotcol = 8
+        ylabelstr = "Total linear solver iterations"
 
     for i in range(len(filelist)):
         filename = filelist[i]
         data = np.genfromtxt(filename)
 
-        fulldata = np.zeros((data.shape[0]+1,data.shape[1]))
-        fulldata[0,0] = basethreads
-        fulldata[0,3:6] = 1.0
-        fulldata[1:,:] = data[:,:]
-
+        if phase == "liniters":
+            fulldata = np.zeros((data.shape[0],data.shape[1]))
+            fulldata[:,:] = data[:,:]
+        else:
+            fulldata = np.zeros((data.shape[0]+1,data.shape[1]))
+            fulldata[0,0] = basethreads
+            fulldata[0,3:6] = 1.0
+            fulldata[1:,:] = data[:,:]
+        
         if maxspeedup < fulldata[-1,plotcol]*basethreads:
             maxspeedup = fulldata[-1,plotcol]*basethreads
 
@@ -54,18 +66,21 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, opt
                 label=labellist[i]+labelstr)
 
     # Note that we now just use data from the last file to be processed in the list of files
-    plt.plot(fulldata[:,0]/ht, fulldata[:,0]/ht, lw=opts['linewidth']+0.1, ls=':', label="Ideal")
+    if phase != "liniters":
+        plt.plot(fulldata[:,0]/ht, fulldata[:,0]/ht, lw=opts['linewidth']+0.1, ls=':', label="Ideal")
     if maxspeedup < fulldata[-1,0]/ht:
         maxspeedup = fulldata[-1,0]/ht
     plt.xlabel("Number of cores", fontsize="medium")
-    plt.ylabel("Speedup x " + str(basethreads), fontsize="medium")
+    plt.ylabel(ylabelstr, fontsize="medium")
 
     ax = plt.axes()
-    ymin = basethreads
-    ymax = maxspeedup+0.5
-    #ax.set_ymargin(0.05)
-    ax.set_yticks(np.arange(ymin,ymax,round((ymax-ymin)/10)))
+    if phase != "liniters":
+        ymin = basethreads
+        ymax = maxspeedup+0.5
+        #ax.set_ymargin(0.05)
+        ax.set_yticks(np.arange(ymin,ymax,round((ymax-ymin)/10)))
     setAxisParams(ax,opts['linewidth'])
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.grid(True)
     plt.legend(loc="best", fontsize="medium")
 
