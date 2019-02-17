@@ -18,50 +18,20 @@
 
 namespace fvens {
 
+/// Reorders the mesh cells in a given ordering using PETSc
+/** Symmetric premutations only.
+ * \warning It is the caller's responsibility to recompute things that are affected by the reordering,
+ * such as \ref UMesh2dh::compute_topological.
+ *
+ * \param ordering The ordering to use - "rcm" is recommended. See the relevant
+ * [page](www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html)
+ * in the PETSc manual for the full list.
+ * \param sd Spatial discretization to be used to generate a Jacobian matrix
+ * \param m The mesh context
+ */
 template <typename scalar>
-StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, UMesh2dh<scalar>& m)
-{
-	// The implementation must be changed for the multi-process case
-	StatusCode ierr = 0;
-
-	// If the ordering requested is not 'natural', reorder the mesh
-	if(std::strcmp(ordering,"natural")) {
-		Mat A;
-		CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
-		CHKERRQ(MatSetType(A, MATSEQAIJ));
-		CHKERRQ(MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m.gnelem(), m.gnelem()));
-		CHKERRQ(setJacobianPreallocation<1>(&m, A));
-
-		Vec u;
-		CHKERRQ(VecCreateSeq(PETSC_COMM_SELF, m.gnelem(), &u));
-		CHKERRQ(VecSet(u,1.0));
-
-		ierr = sd.assemble_jacobian(u, A); CHKERRQ(ierr);
-		CHKERRQ(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
-		CHKERRQ(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
-
-		IS rperm, cperm;
-		const PetscInt *rinds, *cinds;
-		CHKERRQ(MatGetOrdering(A, ordering, &rperm, &cperm));
-		CHKERRQ(ISGetIndices(rperm, &rinds));
-		CHKERRQ(ISGetIndices(cperm, &cinds));
-		// check for symmetric permutation
-		for(a_int i = 0; i < m.gnelem(); i++)
-			assert(rinds[i] == cinds[i]);
-
-		m.reorder_cells(rinds);
-
-		CHKERRQ(ISRestoreIndices(rperm, &rinds));
-		ierr = ISDestroy(&rperm); CHKERRQ(ierr);
-		ierr = ISDestroy(&cperm); CHKERRQ(ierr);
-		CHKERRQ(MatDestroy(&A));
-		CHKERRQ(VecDestroy(&u));
-	}
-	else {
-		std::cout << " reorderMesh: Natural ordering requested; doing nothing." << std::endl;
-	}
-	return ierr;
-}
+static StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>& sd,
+                                   UMesh2dh<scalar>& m);
 
 template <typename scalar>
 StatusCode preprocessMesh(UMesh2dh<scalar>& m)
@@ -83,7 +53,7 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 			{ sourceterm[0] = 0; },
 		"NONE");
 
-		ierr = reorderMesh(ordstr, sd, m); CHKERRQ(ierr);
+		ierr = reorderMeshPetsc(ordstr, sd, m); CHKERRQ(ierr);
 	}
 
 	m.compute_topological();
@@ -231,10 +201,55 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 	return isequal;
 }
 
+template <typename scalar>
+StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>& sd, UMesh2dh<scalar>& m)
+{
+	// The implementation must be changed for the multi-process case
+	StatusCode ierr = 0;
+
+	// If the ordering requested is not 'natural', reorder the mesh
+	if(std::strcmp(ordering,"natural")) {
+		Mat A;
+		CHKERRQ(MatCreate(PETSC_COMM_SELF, &A));
+		CHKERRQ(MatSetType(A, MATSEQAIJ));
+		CHKERRQ(MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m.gnelem(), m.gnelem()));
+		CHKERRQ(setJacobianPreallocation<1>(&m, A));
+
+		Vec u;
+		CHKERRQ(VecCreateSeq(PETSC_COMM_SELF, m.gnelem(), &u));
+		CHKERRQ(VecSet(u,1.0));
+
+		ierr = sd.assemble_jacobian(u, A); CHKERRQ(ierr);
+		CHKERRQ(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
+		CHKERRQ(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
+
+		IS rperm, cperm;
+		const PetscInt *rinds, *cinds;
+		CHKERRQ(MatGetOrdering(A, ordering, &rperm, &cperm));
+		CHKERRQ(ISGetIndices(rperm, &rinds));
+		CHKERRQ(ISGetIndices(cperm, &cinds));
+		// check for symmetric permutation
+		for(a_int i = 0; i < m.gnelem(); i++)
+			assert(rinds[i] == cinds[i]);
+
+		m.reorder_cells(rinds);
+
+		CHKERRQ(ISRestoreIndices(rperm, &rinds));
+		ierr = ISDestroy(&rperm); CHKERRQ(ierr);
+		ierr = ISDestroy(&cperm); CHKERRQ(ierr);
+		CHKERRQ(MatDestroy(&A));
+		CHKERRQ(VecDestroy(&u));
+	}
+	else {
+		std::cout << " reorderMesh: Natural ordering requested; doing nothing." << std::endl;
+	}
+	return ierr;
+}
+
 template StatusCode preprocessMesh(UMesh2dh<a_real>& m);
 
-template StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd,
-                                UMesh2dh<a_real>& m);
+// template StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>& sd,
+//                                      UMesh2dh<a_real>& m);
 
 template std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m);
 

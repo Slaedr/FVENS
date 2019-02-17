@@ -23,20 +23,6 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path);
 template <typename scalar>
 StatusCode preprocessMesh(UMesh2dh<scalar>& m);
 
-/// Reorders the mesh cells in a given ordering using PETSc
-/** Symmetric premutations only.
- * \warning It is the caller's responsibility to recompute things that are affected by the reordering,
- * such as \ref UMesh2dh::compute_topological.
- *
- * \param ordering The ordering to use - "rcm" is recommended. See the relevant
- * [page](www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatOrderingType.html)
- * in the PETSc manual for the full list.
- * \param sd Spatial discretization to be used to generate a Jacobian matrix
- * \param m The mesh context
- */
-template <typename scalar>
-StatusCode reorderMesh(const char *const ordering, const Spatial<a_real,1>& sd, UMesh2dh<scalar>& m);
-
 /// Divides mesh cells into levels within each of which no cell is coupled to another
 /** Returns a list of cell indices corresponding to the start of each level.
  * The length of the list is one more than the number of levels.
