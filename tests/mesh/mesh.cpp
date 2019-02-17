@@ -38,7 +38,7 @@ int test_topology_internalconsistency_esup(const UMesh2dh<scalar>& m)
 template<typename scalar>
 int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
 {
-	static_assert(NDIM==2);
+	static_assert(NDIM==2, "Only 2D meshes are currently supported!");
 
 	for(a_int iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
 	{

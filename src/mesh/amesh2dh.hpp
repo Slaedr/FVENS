@@ -304,7 +304,7 @@ public:
 	 * The current implementation works only in 2D.
 	 */
 	constexpr EIndex getNodeEIndex(const a_int ielem, const EIndex iface, const FIndex inode) const {
-		static_assert(NDIM==2);
+		static_assert(NDIM==2, "Only 2D meshes are currently supported!");
 		return (iface + inode) % nnode[ielem];
 	}
 

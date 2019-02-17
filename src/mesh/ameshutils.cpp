@@ -220,7 +220,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 				break;
 			}
 	}
-	static_assert(NDIM==2);  // change the hard-coded "2" below before removing this line
+	static_assert(NDIM==2, "Only 2D is currently supported!");  // change the hard-coded "2" below before removing this line
 	for(a_int i = 0; i < m1.gnbface(); i++)
 		for(int j = 0; j < 2 +m1.gnbtag(); j++)
 			if(m1.gbface(i,j) != m2.gbface(i,j)) {

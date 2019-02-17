@@ -316,7 +316,7 @@ void UMesh2dh<scalar>::compute_topological()
 template <typename scalar>
 void UMesh2dh<scalar>::compute_face_data()
 {
-	static_assert(NDIM==2);
+	static_assert(NDIM==2, "Only 2D is currently supported!");
 	//Now compute normals and lengths (only linear meshes!)
 	facemetric.resize(naface, 3);
 	for(a_int i = 0; i < naface; i++)
@@ -518,7 +518,7 @@ template <typename scalar>
 EIndex UMesh2dh<scalar>::getFaceEIndex(const bool phyboundary, const a_int iface,
                                        const a_int lelem) const
 {
-	static_assert(NDIM==2);
+	static_assert(NDIM==2, "Only 2D is currently supported!");
 
 	EIndex face = -1;
 
@@ -575,7 +575,7 @@ EIndex UMesh2dh<scalar>::getFaceEIndex(const bool phyboundary, const a_int iface
 template <typename scalar>
 std::vector<std::pair<a_int,EIndex>> UMesh2dh<scalar>::compute_phyBFaceNeighboringElements() const
 {
-	static_assert(NDIM==2);
+	static_assert(NDIM==2, "Only 2D is currently supported!");
 	std::vector<std::pair<a_int,EIndex>> interiorelem(nbface);
 
 	for(a_int iface = 0; iface < nbface; iface++)
@@ -674,7 +674,7 @@ void UMesh2dh<scalar>::compute_faceConnectivity()
 	subDomFaceStart = nbface;
 	subDomFaceEnd = nbface + ninface;
 
-	static_assert(NDIM == 2);   // only remove after generalizing the loop below to 3D
+	static_assert(NDIM == 2, "Only 2D is currently supported!");   // only remove after generalizing the loop below to 3D
 
 	a_int faceindex = nbface;
 	//a_int faceindex = nbface;

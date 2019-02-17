@@ -213,8 +213,8 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	
 	const UMesh2dh<a_real> *const m = prob->mesh();
 
-	const FlowPhysicsConfig pconf {extract_spatial_physics_config(opts)};
-	const FlowNumericsConfig nconfstart {firstorder_spatial_numerics_config(opts)};
+	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
+	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
 
 	if(mpirank == 0)
 		std::cout << "\nSetting up spatial scheme for the initial guess.\n";

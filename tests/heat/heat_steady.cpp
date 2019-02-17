@@ -269,6 +269,6 @@ int main(int argc, char* argv[])
 	
 	if(mpirank == 0)
 		cout << "\n--------------- End --------------------- \n\n";
-	ierr = PetscFinalize(); CHKERRQ(ierr);
+	ierr = PetscFinalize();
 	return ierr;
 }

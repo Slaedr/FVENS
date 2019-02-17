@@ -27,14 +27,14 @@ add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT
   levelscheduleInternal ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/2dcylinderhybrid.msh)
 
 add_test(NAME MeshPartition_Sanity WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${MPIEXEC} -n 1 exec_disttestmesh
+  COMMAND ${MPIEXEC} -n 1 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid.msh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid.msh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid-distb.dat
   )
 
 add_test(NAME MeshPartition_SubdomainRestriction WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${MPIEXEC} -n 3 exec_disttestmesh
+  COMMAND ${MPIEXEC} -n 3 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid.msh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid_part1.msh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid_part2.msh

@@ -127,7 +127,7 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg)
 {
-	static_assert(NDIM==2);
+	static_assert(NDIM==2, "Only 2D supported currently!");
 	const ConstGhostedVecHandler<scalar> rch(rcvec);
 	const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 

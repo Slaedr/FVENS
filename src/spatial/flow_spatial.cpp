@@ -38,8 +38,8 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh2dh<scalar> *const mesh,
                                  const FlowNumericsConfig& nconf)
 	:
 	Spatial<scalar,NVARS>(mesh),
-	pconfig{pconf},
-	nconfig{nconf},
+	pconfig(pconf),
+	nconfig(nconf),
 	physics(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
 	uinf(physics.compute_freestream_state(pconfig.aoa)),
 
