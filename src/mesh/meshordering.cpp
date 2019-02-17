@@ -17,15 +17,28 @@
  *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <utility>
 #include "meshordering.hpp"
 
 namespace fvens {
 
+template <typename scalar> static
+std::pair<amat::Array2d<scalar>,amat::Array2d<a_int>> computeWeights(const UMesh2dh<scalar>& m);
+
 template <typename scalar>
-void lineReorder(UMesh2dh<scalar>& m)
+void lineReorder(UMesh2dh<scalar>& m, const double threshold)
 {
 }
 
-template void lineReorder(UMesh2dh<a_real>& m);
+template <typename scalar>
+std::pair<amat::Array2d<scalar>,amat::Array2d<a_int>> computeWeights(const UMesh2dh<scalar>& m)
+{
+	amat::Array2d<scalar> weights(m.gnelem(),2);
+	amat::Array2d<a_int> faceNbrIdx(m.gnelem(),2);
+
+	return std::make_pair(weights,faceNbrIdx);
+}
+
+template void lineReorder(UMesh2dh<a_real>& m, const double threshold);
 
 }

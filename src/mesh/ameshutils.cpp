@@ -51,7 +51,7 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 		std::cout << "preprocessMesh: Reording cells in " << ordstr << " ordering.\n";
 
 		if(!strcmp(ordstr,"line")) {
-			lineReorder(m);
+			lineReorder(m,10.0);
 		}
 		else if(!strcmp(ordstr,"minneigh")) {
 		}
