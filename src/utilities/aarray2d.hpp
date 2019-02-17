@@ -67,7 +67,7 @@ public:
 	Array2d(const Array2d<T>& other);
 
 	/// Move constructor
-	/** Performs a shallow copy and then nulls the other array, which finally becomes a 0x0 array.
+	/** Performs a shallow copy and then nulls the other array to a 0x0 array.
 	 */
 	Array2d(Array2d<T>&& other);
 
