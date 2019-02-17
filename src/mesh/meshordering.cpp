@@ -21,5 +21,11 @@
 
 namespace fvens {
 
+template <typename scalar>
+void lineReorder(UMesh2dh<scalar>& m)
+{
+}
+
+template void lineReorder(UMesh2dh<a_real>& m);
 
 }

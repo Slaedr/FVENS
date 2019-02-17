@@ -7,6 +7,7 @@
 #include <cstring>
 #include "ameshutils.hpp"
 #include "meshpartitioning.hpp"
+#include "meshordering.hpp"
 #include "linalg/alinalg.hpp"
 #include "spatial/diffusion.hpp"
 #include "utilities/aerrorhandling.hpp"
@@ -48,12 +49,22 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 		m.compute_face_data();
 
 		std::cout << "preprocessMesh: Reording cells in " << ordstr << " ordering.\n";
-		DiffusionMA<1> sd(&m, 1.0, 0.0,
-			[](const a_real *const r, const a_real t, const a_real *const u, a_real *const sourceterm)
-			{ sourceterm[0] = 0; },
-		"NONE");
 
-		ierr = reorderMeshPetsc(ordstr, sd, m); CHKERRQ(ierr);
+		if(!strcmp(ordstr,"line")) {
+			lineReorder(m);
+		}
+		else if(!strcmp(ordstr,"minneigh")) {
+		}
+		else {
+			DiffusionMA<1> sd(&m, 1.0, 0.0,
+			                  [](const a_real *const r, const a_real t,
+			                     const a_real *const u,
+			                     a_real *const sourceterm)
+			                  { sourceterm[0] = 0; },
+			                  "NONE");
+
+			ierr = reorderMeshPetsc(ordstr, sd, m); CHKERRQ(ierr);
+		}
 	}
 
 	m.compute_topological();

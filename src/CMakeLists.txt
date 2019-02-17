@@ -13,20 +13,30 @@ if(CXX_COMPILER_INTEL)
 endif()
 
 # This stand-alone library is independent of mesh and finite volume
-add_library(ens_gasdynamics spatial/anumericalflux.cpp spatial/abc.cpp 
+add_library(ens_gasdynamics
+  spatial/anumericalflux.cpp spatial/abc.cpp
   physics/viscousphysics.cpp physics/aphysics.cpp
   )
 set_property(TARGET ens_gasdynamics PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-add_library(fvens_base utilities/afactory.cpp utilities/casesolvers.cpp
+add_library(fvens_base
+
+  utilities/afactory.cpp utilities/casesolvers.cpp
+
   ode/nonlinearrelaxation.cpp ode/aodesolver.cpp
+
   linalg/alinalg.cpp linalg/petscutils.cpp linalg/tracevector.cpp
+
   spatial/flow_spatial.cpp spatial/aspatial.cpp spatial/agradientschemes.cpp
   spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
   spatial/aoutput.cpp spatial/diffusion.cpp
+
   mesh/ameshutils.cpp mesh/amesh2dh.cpp mesh/meshpartitioning.cpp mesh/meshreaders.cpp
+  mesh/meshordering.cpp
+
   utilities/aarray2d.cpp utilities/mpiutils.cpp
   )
+
 target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB} ${ADOLC_LIB})
 if(WITH_BLASTED)
   target_link_libraries(fvens_base ${BLASTED_LIB})
