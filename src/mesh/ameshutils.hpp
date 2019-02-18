@@ -43,6 +43,7 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m);
  */
 std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_real>& m2);
 
+/// Computes cell-centre coordinates for one cell. Assumes an array of structures.
 template <typename scalar> inline
 void kernel_computeCellCentreAoS(const UMesh2dh<scalar>& m, const a_int cellidx,
                                  scalar *const ccentres)
