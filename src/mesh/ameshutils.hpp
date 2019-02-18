@@ -43,5 +43,20 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m);
  */
 std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_real>& m2);
 
+template <typename scalar> inline
+void kernel_computeCellCentreAoS(const UMesh2dh<scalar>& m, const a_int cellidx,
+                                 scalar *const ccentres)
+{
+	for(int i = 0; i < NDIM; i++)
+		ccentres[i] = 0;
+
+	for(EIndex j = 0; j < m.gnnode(cellidx); j++)
+		for(int k = 0; k < NDIM; k++)
+			ccentres[k] += m.gcoords(m.ginpoel(cellidx,j),k);
+
+	for(int i = 0; i < NDIM; i++)
+		ccentres[i] /= m.gnnode(cellidx);
+}
+
 }
 #endif

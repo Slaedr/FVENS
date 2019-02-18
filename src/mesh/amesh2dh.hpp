@@ -218,6 +218,9 @@ public:
 	/// Returns the number of domain tags available for elements
 	int gndtag() const { return ndtag; }
 
+	/// Returns the maximum number of faces in a cell over all cells (not just this subdomain)
+	a_int gmaxnfael() const { return maxnfael; }
+
 	/// Returns the array of global element indices corresponding to external elements across
 	///  connectivity boundary faces of this subdomain
 	// const a_int *getConnectivityGlobalIndices() const
