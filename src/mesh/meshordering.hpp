@@ -7,6 +7,7 @@
 #ifndef FVENS_MESH_ORDERING_H
 #define FVENS_MESH_ORDERING_H
 
+#include <petscmat.h>
 #include "amesh2dh.hpp"
 
 namespace fvens {
@@ -32,6 +33,9 @@ struct LineConfig {
 /// Finds lines in the mesh
 template <typename scalar>
 LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold);
+
+/// Creates a graph in which vertices represent lines and points (which are not in lines) in the mesh
+void createLinePointGraph(const UMesh2dh<a_real>& m, const LineConfig& lc, Mat *const G);
 
 }
 

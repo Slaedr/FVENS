@@ -186,6 +186,21 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 	return lc;
 }
 
+void createLinePointGraph(const UMesh2dh<a_real>& m, const LineConfig& lc, Mat *const G)
+{
+	std::vector<a_int> pointList;
+	for(size_t i = 0; i < lc.celline.size(); i++)
+		if(lc.celline[i] == -1)
+			pointList.push_back(i);
+
+	// std::vector<std::vector<a_int>> linesNbLines(lc.lines.size());
+	// std::vector<std::vector<a_int>> linesNBPoints(lc.lines.size());
+
+	// for(a_int iel = 0; iel < m.gnelem(); iel++)
+	// {
+	// }
+}
+
 template void lineReorder(UMesh2dh<a_real>& m, const a_real threshold);
 
 }
