@@ -6,6 +6,9 @@ target_link_libraries(exec_testmesh fvens_base)
 add_executable(exec_disttestmesh distributedmesh.cpp)
 target_link_libraries(exec_disttestmesh fvens_base)
 
+add_executable(exec_testlineordering testlineordering.cpp)
+target_link_libraries(exec_testlineordering fvens_base)
+
 # Tests
 
 add_test(NAME Mesh_Topology_ElemSurrElem
@@ -25,6 +28,13 @@ add_test(NAME MeshUtils_LevelSchedule WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_D
 add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
   levelscheduleInternal ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/2dcylinderhybrid.msh)
+
+add_test(NAME MeshOrderings_Line_smallmesh
+  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testlineordering
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-checkdata.txt
+  10.0
+  )
 
 add_test(NAME MeshPartition_Sanity WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${MPIEXEC} -n 1 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh

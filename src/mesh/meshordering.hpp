@@ -21,6 +21,18 @@ namespace fvens {
 template <typename scalar>
 void lineReorder(UMesh2dh<scalar>& m, const a_real threshold);
 
+
+struct LineConfig {
+	/// Indices of cells that make up lines
+	std::vector<std::vector<a_int>> lines;
+	/// For each cell, stores the line number it belongs to, if applicable, otherwise stores -1
+	std::vector<int> celline;
+};
+
+/// Finds lines in the mesh
+template <typename scalar>
+LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold);
+
 }
 
 #endif

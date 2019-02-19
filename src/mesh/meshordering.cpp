@@ -27,19 +27,6 @@ namespace fvens {
 
 using amat::Array2d;
 
-struct LineConfig {
-	std::vector<std::vector<a_int>> lines;         ///< Cell indices of lines
-	std::vector<bool> inaline;                     ///< Stores for each cell whether it's in any line
-};
-
-/// Returns the edge weights about each cell, ordered by decreasing weight
-template <typename scalar> static
-std::pair<Array2d<a_real>,Array2d<EIndex>> computeWeights(const UMesh2dh<scalar>& m);
-
-/// Finds lines in the mesh
-template <typename scalar> static
-LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold);
-
 template <typename scalar>
 void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
 {
@@ -57,7 +44,7 @@ void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
 	}
 
 	for(a_int iel = 0; iel < m.gnelem(); iel++)
-		if(!lc.inaline[iel])
+		if(lc.celline[iel] == -1)
 		{
 			ordering[k] = iel;
 			k++;
@@ -66,11 +53,27 @@ void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
 	m.reorder_cells(&ordering[0]);
 }
 
-template <typename scalar>
-std::pair<Array2d<a_real>,Array2d<EIndex>> computeWeights(const UMesh2dh<scalar>& m)
+struct LocalAnisotropies
 {
-	Array2d<a_real> aniso(m.gnelem(), m.gmaxnfael());
-	Array2d<EIndex> faceIdx(m.gnelem(), m.gmaxnfael());
+	/// Measure of local anisotropy for each cell for each neighbor, ordered decreasing
+	Array2d<a_real> aniso;
+	/// Local face index ordered according to \ref aniso
+	Array2d<EIndex> faceIdx;
+	/// Number of real neighbors for each cell
+	std::vector<int> nRealNbrs;
+};
+
+/// Returns the edge weights about each cell, ordered by decreasing weight
+template <typename scalar>
+LocalAnisotropies computeWeights(const UMesh2dh<scalar>& m)
+{
+	LocalAnisotropies la;
+	la.aniso.resize(m.gnelem(), m.gmaxnfael());
+	la.faceIdx.resize(m.gnelem(), m.gmaxnfael());
+	for(a_int i = 0; i < m.gnelem(); i++)
+		for(int j = 0; j < m.gmaxnfael(); j++)
+			la.faceIdx(i,j) = -1;
+	la.nRealNbrs.resize(m.gnelem());
 
 	Array2d<scalar> ccentres(m.gnelem(),NDIM);
 #pragma omp parallel for default(shared)
@@ -82,88 +85,116 @@ std::pair<Array2d<a_real>,Array2d<EIndex>> computeWeights(const UMesh2dh<scalar>
 #pragma omp parallel for default(shared)
 	for(a_int iel = 0; iel < m.gnelem(); iel++)
 	{
-		std::vector<std::pair<a_real,EIndex>> elaniso(m.gnfael(iel));
+		std::vector<std::pair<a_real,EIndex>> elaniso;
+		elaniso.reserve(m.gnfael(iel));
 		a_real minw = 1e20;
+
 		for(EIndex j = 0; j < m.gnfael(iel); j++)
 		{
-			const a_int jel = m.gelemface(iel,j);
+			const a_int jel = m.gesuel(iel,j);
+			// Skip ghost neighbors across boundary faces
+			if(jel >= m.gnelem())
+				continue;
+
+			std::pair<a_real,EIndex> nbrwt;
+
 			a_real dist = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 				dist += std::pow(getvalue(ccentres(iel,idim)-ccentres(jel,idim)),2);
+			nbrwt.first = 1.0/std::sqrt(dist);
 
-			elaniso[j].first = 1.0/std::sqrt(dist);
-			if(elaniso[j].first < minw)
-				minw = elaniso[j].first;
+			if(nbrwt.first < minw)
+				minw = nbrwt.first;
 
-			elaniso[j].second = j;
+			nbrwt.second = j;
+			elaniso.push_back(nbrwt);
 		}
 
-		for(EIndex j = 0; j < m.gnfael(iel); j++)
+		for(size_t j = 0; j < elaniso.size(); j++)
 			elaniso[j].first /= minw;
 
 		// sort by *decreasing* weight
-		std::sort(elaniso.begin(), elaniso.begin()+m.gnfael(iel),
+		std::sort(elaniso.begin(), elaniso.end(),
 		          [](std::pair<a_real,EIndex> a, std::pair<a_real,EIndex> b) {
 			          return a.first > b.first;
 		          });
 
-		for(EIndex j = 0; j < m.gnfael(iel); j++) {
-			aniso(iel,j) = elaniso[j].first;
-			faceIdx(iel,j) = elaniso[j].second;
+		la.nRealNbrs[iel] = static_cast<int>(elaniso.size());
+		for(EIndex j = 0; j < la.nRealNbrs[iel]; j++) {
+			la.aniso(iel,j) = elaniso[j].first;
+			la.faceIdx(iel,j) = elaniso[j].second;
 		}
 	}
 
-	return std::make_pair(aniso,faceIdx);
+	return la;
 }
 
 template <typename scalar>
 LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 {
 	LineConfig lc;
-	const std::pair<Array2d<a_real>,Array2d<EIndex>> weights = computeWeights(m);
+	const LocalAnisotropies la = computeWeights(m);
 
-	lc.inaline.assign(m.gnelem(), false);
+	lc.celline.assign(m.gnelem(), -1);
 
 	// Try to build a line starting at each boundary cell
 	for(a_int iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
 	{
 		std::vector<a_int> linelems;
 		const a_int belem = m.gintfac(iface,0);
-		if(lc.inaline[belem]) {
-			printf("  lineReorder: A boundary cell is already part of a line!\n");
+		if(lc.celline[belem] >= 0) {
+			printf("  lineReorder: A boundary cell is already part of a line.\n");
 			fflush(stdout);
-			break;
+			continue;
 		}
 
 		bool endoftheline = false;
 		a_int curelem = belem;
+		printf("  Beginning line at face %d, cell %d\n", iface, curelem+m.gnbface()+1);
 
 		while(!endoftheline)
 		{
-			if(weights.first(curelem,0) > threshold) {
+			if(la.aniso(curelem,0) > threshold) {
 				linelems.push_back(curelem);
-				lc.inaline[curelem] = true;
+				lc.celline[curelem] = static_cast<int>(lc.lines.size());
+				printf(" Cell %d (weight=%f): ", curelem+m.gnbface()+1, la.aniso(curelem,0));
+				printf(" added. ");
 			}
 			else
 				break;
 
 			endoftheline = true;
 
-			for(EIndex j = 0; j < m.gnfael(curelem); j++) {
-				const a_int nbrelem = m.gelemface(curelem, weights.second(curelem,j));
+			for(EIndex j = 0; j < la.nRealNbrs[curelem]; j++)
+			{
+				// only iterate over real neighbors, not ghosts
+				// if(m.gesuel(curelem,la.faceIdx(curelem,j)) >= m.gnelem())
+				// 	continue;
 
-				if(!lc.inaline[nbrelem] && weights.first(curelem,j) > threshold) {
+				// printf("  Elem=%d, loc=%d, nbridx=%d ", curelem, j, la.faceIdx(curelem,j));
+				// fflush(stdout);
+
+				const a_int nbrelem = m.gesuel(curelem, la.faceIdx(curelem,j));
+				// if(nbrelem >= m.gnelem())
+				// 	continue;
+
+				if(lc.celline[nbrelem]==-1 && la.aniso(curelem,j) > threshold) {
 					curelem = nbrelem;
 					endoftheline = false;
 					break;
 				}
 			}
 		}
+		printf("\n");
 
 		if(linelems.size() > 1)
 			lc.lines.push_back(linelems);
+		else if(linelems.size() == 1) {
+			lc.celline[linelems[0]] = -1;
+		}
 	}
 
+	fflush(stdout);
 	return lc;
 }
 
