@@ -29,7 +29,7 @@ add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT
   COMMAND ${SEQEXEC} ${SEQTASKS} exec_testmesh
   levelscheduleInternal ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/2dcylinderhybrid.msh)
 
-add_test(NAME MeshOrderings_Line_smallmesh
+add_test(NAME MeshUtils_findLines_smallmesh
   COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testlineordering
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-checkdata.txt

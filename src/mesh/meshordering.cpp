@@ -150,15 +150,12 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 
 		bool endoftheline = false;
 		a_int curelem = belem;
-		printf("  Beginning line at face %d, cell %d\n", iface, curelem+m.gnbface()+1);
 
 		while(!endoftheline)
 		{
 			if(la.aniso(curelem,0) > threshold) {
 				linelems.push_back(curelem);
 				lc.celline[curelem] = static_cast<int>(lc.lines.size());
-				printf(" Cell %d (weight=%f): ", curelem+m.gnbface()+1, la.aniso(curelem,0));
-				printf(" added. ");
 			}
 			else
 				break;
@@ -167,16 +164,7 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 
 			for(EIndex j = 0; j < la.nRealNbrs[curelem]; j++)
 			{
-				// only iterate over real neighbors, not ghosts
-				// if(m.gesuel(curelem,la.faceIdx(curelem,j)) >= m.gnelem())
-				// 	continue;
-
-				// printf("  Elem=%d, loc=%d, nbridx=%d ", curelem, j, la.faceIdx(curelem,j));
-				// fflush(stdout);
-
 				const a_int nbrelem = m.gesuel(curelem, la.faceIdx(curelem,j));
-				// if(nbrelem >= m.gnelem())
-				// 	continue;
 
 				if(lc.celline[nbrelem]==-1 && la.aniso(curelem,j) > threshold) {
 					curelem = nbrelem;
@@ -185,7 +173,6 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 				}
 			}
 		}
-		printf("\n");
 
 		if(linelems.size() > 1)
 			lc.lines.push_back(linelems);
@@ -194,7 +181,8 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 		}
 	}
 
-	fflush(stdout);
+	printf(" lineReorder: Found %ld lines.\n", lc.lines.size());
+
 	return lc;
 }
 
