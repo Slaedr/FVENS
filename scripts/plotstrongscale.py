@@ -20,8 +20,9 @@ def setAxisParams(ax, baseLineWidth):
     ax.grid(which='major', axis='y', lw=0.5*baseLineWidth, linestyle='-', color='0.75')
     ax.grid(which='minor', axis='y', lw=0.5*baseLineWidth, linestyle=':', color='0.75')
 
-def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, opts, imageformatstring):
+def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, titlestr, opts, imageformatstring):
     plt.close()
+    fig = plt.figure()
     markdivisor = 20
     maxspeedup = 1.0
 
@@ -42,6 +43,9 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, opt
     elif phase == "liniters":
         plotcol = 8
         ylabelstr = "Total linear solver iterations"
+    else:
+        print("Invalid phase!")
+        return
 
     for i in range(len(filelist)):
         filename = filelist[i]
@@ -83,6 +87,8 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, opt
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.grid(True)
     plt.legend(loc="best", fontsize="medium")
+    if titlestr != "":
+        fig.suptitle(titlestr, fontsize="medium")
 
     plt.savefig(filename.split('/')[-1].split('.')[0] + "-" + phasestring + "-speedup"+"." \
             + imageformatstring, dpi=150)
@@ -110,9 +116,10 @@ if __name__ == "__main__":
     parser.add_argument("--phase", help = "Phase of preconditioner to consider (factor, apply, all)")
     parser.add_argument("--labels", nargs='+', help = "Legend strings")
     parser.add_argument("--labelstr", default="", help = "Common suffix for legend strings")
+    parser.add_argument("--title", default="", help = "Title string for the plot")
     parser.add_argument("--format", default="png", help = "Output format")
     args = parser.parse_args(sys.argv)
 
     plotstrongscaling(args.files[1:], args.basethreads, args.ht, args.phase, args.labels, args.labelstr,
-            opts, args.format)
+            args.title, opts, args.format)
 
