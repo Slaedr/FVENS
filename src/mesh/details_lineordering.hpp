@@ -58,6 +58,11 @@ void createLinePointGraph(const UMesh2dh<a_real>& m, const GraphVertices& gv, Ma
 /// Uses PETSc to get the ordering
 std::vector<PetscInt> getPetscOrdering(Mat G, const char *const ordering);
 
+/// Computes the cell ordering from the graph of lines and points
+template <typename scalar>
+std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real threshold,
+                                         const char *const ordering);
+
 }
 
 #endif

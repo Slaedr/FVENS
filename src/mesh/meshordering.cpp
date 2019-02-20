@@ -59,6 +59,16 @@ void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
 template <typename scalar>
 void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *const ordering)
 {
+	const std::vector<a_int> cellordering = getHybridLineOrdering(m, threshold, ordering);
+
+	// Reorder the mesh
+	m.reorder_cells(&cellordering[0]);
+}
+
+template <typename scalar>
+std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real threshold,
+                                         const char *const ordering)
+{
 	const LineConfig lc = findLines(m, threshold);
 	const GraphVertices gv = createLinePointGraphVertices(m, lc);
 
@@ -67,6 +77,9 @@ void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *
 
 	// use PETSc to reorder the graph
 	const std::vector<PetscInt> grordering = getPetscOrdering(G, ordering);
+
+	int ierr = MatDestroy(&G);
+	petsc_throw(ierr, "Could not destroy graph matrix!");
 
 	assert(grordering.size() == gv.gverts.size());
 
@@ -97,9 +110,7 @@ void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *
 	}
 
 	assert(iord == m.gnelem());
-
-	// Reorder the mesh
-	m.reorder_cells(&cellordering[0]);
+	return cellordering;
 }
 
 struct LocalAnisotropies
@@ -266,6 +277,7 @@ GraphVertices createLinePointGraphVertices(const UMesh2dh<scalar>& m, const Line
 		gv.gverts[nlines+ipoin].idx = ipoin;
 	}
 
+	gv.lc = &lc;
 	return gv;
 }
 
@@ -278,6 +290,9 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 	// Set up Petsc mat
 	int ierr = MatCreateSeqAIJ(PETSC_COMM_SELF, nlines+npoints, nlines+npoints, 4, NULL, G);
 	petsc_throw(ierr, "Could not create line-block graph matrix!");
+
+	ierr = MatSetOption(*G, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+	petsc_throw(ierr, "Could not set Mat option");
 	
 	// find connections between lines and other lines or points
 	for(a_int iline = 0; iline < nlines; iline++)

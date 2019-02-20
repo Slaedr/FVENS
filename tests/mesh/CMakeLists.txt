@@ -9,6 +9,9 @@ target_link_libraries(exec_disttestmesh fvens_base)
 add_executable(exec_testlineordering testlineordering.cpp)
 target_link_libraries(exec_testlineordering fvens_base)
 
+add_executable(exec_testhybridlineordering testhybridlineordering.cpp)
+target_link_libraries(exec_testhybridlineordering fvens_base)
+
 # Tests
 
 add_test(NAME Mesh_Topology_ElemSurrElem
@@ -33,6 +36,14 @@ add_test(NAME MeshUtils_findLines_smallmesh
   COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testlineordering
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-checkdata.txt
+  10.0
+  )
+
+add_test(NAME MeshUtils_hybridLineOrdering_natural_smallmesh
+  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testhybridlineordering
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-checkdata.txt
+  natural
   10.0
   )
 
