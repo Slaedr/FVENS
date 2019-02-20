@@ -19,8 +19,11 @@
 
 #include <vector>
 #include <utility>
+#include <set>
 #include "utilities/adolcutils.hpp"
+#include "utilities/aerrorhandling.hpp"
 #include "meshordering.hpp"
+#include "details_lineordering.hpp"
 #include "ameshutils.hpp"
 
 namespace fvens {
@@ -51,6 +54,30 @@ void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
 		}
 
 	m.reorder_cells(&ordering[0]);
+}
+
+template <typename scalar>
+void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *const ordering)
+{
+	const LineConfig lc = findLines(m, threshold);
+	const GraphVertices gv = createLinePointGraphVertices(m, lc);
+
+	Mat G;
+	createLinePointGraph(m, gv, &G);
+
+	// use PETSc to reorder the graph
+	const std::vector<PetscInt> grordering = getPetscOrdering(G, ordering);
+
+	std::vector<GraphVertex> rogv(gv.gverts.size());
+	// this way of ordering matches UMesh2dh::reorder_cells
+	for(size_t i = 0; i < rogv.size(); i++)
+		rogv[i] = gv.gverts[grordering[i]];
+
+	std::vector<a_int> cellordering(m.gnelem());
+
+	// TODO: populate cellordering
+
+	m.reorder_cells(&cellordering[0]);
 }
 
 struct LocalAnisotropies
@@ -186,21 +213,158 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 	return lc;
 }
 
-void createLinePointGraph(const UMesh2dh<a_real>& m, const LineConfig& lc, Mat *const G)
+template <typename scalar>
+GraphVertices createLinePointGraphVertices(const UMesh2dh<scalar>& m, const LineConfig& lc)
 {
-	std::vector<a_int> pointList;
+	assert(lc.celline.size() == static_cast<size_t>(m.gnelem()));
+
+	GraphVertices gv;
+
+	const a_int nlines = static_cast<a_int>(lc.lines.size());
+
+	gv.cellsToPtsMap.assign(m.gnelem(), -1);
+	gv.pointList.reserve(m.gnelem());
 	for(size_t i = 0; i < lc.celline.size(); i++)
-		if(lc.celline[i] == -1)
-			pointList.push_back(i);
+		if(lc.celline[i] == -1) {
+			gv.pointList.push_back(i);
+			gv.cellsToPtsMap[i] = static_cast<a_int>(gv.pointList.size()-1);
+		}
+	gv.pointList.shrink_to_fit();
 
-	// std::vector<std::vector<a_int>> linesNbLines(lc.lines.size());
-	// std::vector<std::vector<a_int>> linesNBPoints(lc.lines.size());
+	const a_int npoints = static_cast<a_int>(gv.pointList.size());
 
-	// for(a_int iel = 0; iel < m.gnelem(); iel++)
-	// {
-	// }
+	gv.gverts.resize(nlines+npoints);
+
+	for(a_int iline = 0; iline < nlines; iline++) {
+		gv.gverts[iline].isline = true;
+		gv.gverts[iline].idx = iline;
+	}
+	for(a_int ipoin = 0; ipoin < npoints; ipoin++) {
+		gv.gverts[nlines+ipoin].isline = false;
+		gv.gverts[nlines+ipoin].idx = ipoin;
+	}
+
+	return gv;
+}
+
+template <typename scalar>
+void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Mat *const G)
+{
+	const a_int nlines = static_cast<a_int>(gv.lc->lines.size());
+	const a_int npoints = static_cast<a_int>(gv.pointList.size());
+
+	// Set up Petsc mat
+	int ierr = MatCreateSeqAIJ(PETSC_COMM_SELF, nlines+npoints, nlines+npoints, 4, NULL, G);
+	petsc_throw(ierr, "Could not create line-block graph matrix!");
+	
+	// find connections between lines and other lines or points
+	for(a_int iline = 0; iline < nlines; iline++)
+	{
+		std::set<a_int> linenbrs, pointnbrs;
+
+		for(int icell = 0; icell < static_cast<int>(gv.lc->lines[iline].size()); icell++)
+		{
+			const a_int cell = gv.lc->lines[iline][icell];
+			for(EIndex j = 0; j < m.gnfael(cell); j++)
+			{
+				const a_int cellnbr = m.gesuel(cell,j);
+				if(cellnbr >= m.gnelem())
+					continue;
+
+				if(gv.lc->celline[cellnbr] >= 0) {
+					linenbrs.insert(gv.lc->celline[cellnbr]);
+				}
+				else {
+					assert(gv.cellsToPtsMap[cellnbr] >= 0);
+					pointnbrs.insert(gv.cellsToPtsMap[cellnbr]);
+				}
+			}
+		}
+
+		// add to graph
+		for( a_int nbr : linenbrs ) {
+			const a_real val = 1.0;
+#pragma omp critical
+			{
+				ierr = MatSetValues(*G, 1, &iline, 1, &nbr, &val, INSERT_VALUES);
+			}
+		}
+		for(a_int nbr : pointnbrs) {
+			const a_real val = 1.0;
+#pragma omp critical
+			{
+				ierr = MatSetValues(*G, 1, &iline, 1, &nbr, &val, INSERT_VALUES);
+			}
+		}
+	}
+
+	petsc_throw(ierr, "Error in setting values of line-point graph!");
+
+	// find connections between each point and neighbouring lines or points and add them to the graph
+	for(a_int ipoin = 0; ipoin < npoints; ipoin++)
+	{
+		const a_int cell = gv.pointList[ipoin];
+
+		for(EIndex j = 0; j < m.gnfael(cell); j++)
+		{
+			const a_int cellnbr = m.gesuel(cell,j);
+			if(cellnbr >= m.gnelem())
+				continue;
+
+			const a_real val = 1.0;
+			if(gv.lc->celline[cellnbr] >= 0)
+			{
+#pragma omp critical
+				{
+					ierr = MatSetValues(*G, 1, &ipoin, 1, &gv.lc->celline[cellnbr], &val, INSERT_VALUES);
+				}
+			}
+			else
+			{
+				assert(gv.cellsToPtsMap[cellnbr] >= 0);
+#pragma omp critical
+				{
+					ierr = MatSetValues(*G, 1, &ipoin, 1, &gv.cellsToPtsMap[cellnbr], &val, INSERT_VALUES);
+				}
+			}
+		}
+	}
+
+	ierr = MatAssemblyBegin(*G, MAT_FINAL_ASSEMBLY);
+	ierr = MatAssemblyEnd(*G, MAT_FINAL_ASSEMBLY);
+
+	petsc_throw(ierr, "Assembly of line-point graph failed!");
+}
+
+std::vector<PetscInt> getPetscOrdering(Mat G, const char *const ordering)
+{
+	PetscInt rows, cols;
+	int ierr = MatGetSize(G, &rows, &cols); petsc_throw(ierr, "Could not get mat size!");
+	assert(rows == cols);
+
+	IS rperm, cperm;
+	const PetscInt *rinds, *cinds;
+	ierr = MatGetOrdering(G, ordering, &rperm, &cperm); petsc_throw(ierr, "Could not get ordering!");
+	ierr = ISGetIndices(rperm, &rinds);
+	ierr = ISGetIndices(cperm, &cinds);
+
+	// check for symmetric permutation
+	for(a_int i = 0; i < rows; i++)
+		assert(rinds[i] == cinds[i]);
+
+	std::vector<PetscInt> ord(rows);
+	for(PetscInt i = 0; i < rows; i++)
+		ord[i] = rinds[i];
+
+	ierr = ISRestoreIndices(rperm, &rinds);
+	ierr = ISDestroy(&rperm);
+	ierr = ISDestroy(&cperm);
+	petsc_throw(ierr, "Could not destroy IS");
+
+	return ord;
 }
 
 template void lineReorder(UMesh2dh<a_real>& m, const a_real threshold);
+template void hybridLineReorder(UMesh2dh<a_real>& m, const a_real threshold, const char *const ordering);
 
 }

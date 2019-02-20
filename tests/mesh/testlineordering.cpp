@@ -5,18 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include "mesh/meshordering.hpp"
+#include "mesh/details_lineordering.hpp"
 #include "mesh/ameshutils.hpp"
-
-// namespace fvens {
-// struct LineConfig {
-// 	/// Indices of cells that make up lines
-// 	std::vector<std::vector<a_int>> lines;
-// 	/// For each cell, stores the line number it belongs to, if applicable, otherwise stores -1
-// 	std::vector<int> celline;
-// };
-
-// LineConfig findLines(const UMesh2dh<a_real>& m, const a_real threshold);
-// }
 
 using namespace fvens;
 
