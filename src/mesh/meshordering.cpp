@@ -68,15 +68,37 @@ void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *
 	// use PETSc to reorder the graph
 	const std::vector<PetscInt> grordering = getPetscOrdering(G, ordering);
 
+	assert(grordering.size() == gv.gverts.size());
+
 	std::vector<GraphVertex> rogv(gv.gverts.size());
-	// this way of ordering matches UMesh2dh::reorder_cells
+
+	// Reorder the graph of lines and points. This way of ordering matches UMesh2dh::reorder_cells.
 	for(size_t i = 0; i < rogv.size(); i++)
 		rogv[i] = gv.gverts[grordering[i]];
 
 	std::vector<a_int> cellordering(m.gnelem());
 
-	// TODO: populate cellordering
+	// Build ordering of all cells
+	a_int iord=0;
+	for(a_int i = 0; i < static_cast<a_int>(rogv.size()); i++)
+	{
+		if(rogv[i].isline) {
+			const int linesize = static_cast<int>(lc.lines[rogv[i].idx].size());
+			for(int icell = 0; icell < linesize; icell++)
+			{
+				cellordering[iord] = lc.lines[rogv[i].idx][icell];
+				iord++;
+			}
+		}
+		else {
+			cellordering[iord] = gv.pointList[i];
+			iord++;
+		}
+	}
 
+	assert(iord == m.gnelem());
+
+	// Reorder the mesh
 	m.reorder_cells(&cellordering[0]);
 }
 
@@ -341,6 +363,16 @@ std::vector<PetscInt> getPetscOrdering(Mat G, const char *const ordering)
 	PetscInt rows, cols;
 	int ierr = MatGetSize(G, &rows, &cols); petsc_throw(ierr, "Could not get mat size!");
 	assert(rows == cols);
+
+	if(!strcmp(ordering,"natural")) {
+		printf(" No further reordering of the graph to be done.\n");
+		std::vector<PetscInt> ord(rows);
+		for(PetscInt i = 0; i < rows; i++)
+			ord[i] = i;
+		return ord;
+	}
+
+	printf(" Further reordering the graph in %s ordering.\n", ordering);
 
 	IS rperm, cperm;
 	const PetscInt *rinds, *cinds;
