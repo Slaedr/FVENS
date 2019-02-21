@@ -1,0 +1,107 @@
+;; Sample control file for FVENS
+ ; Steady case
+
+io {
+	mesh_file                    "testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh"
+	solution_output_file         "visc-naca.vtu"
+	log_file_prefix              "visc-naca"
+	convergence_history_required true
+}
+
+flow_conditions 
+{
+	;; Type of flow to solve for - euler or navierstokes
+	flow_type                     navierstokes
+	
+	adiabatic_index               1.4
+	
+	;; Angle of attack in degrees
+	angle_of_attack               0.0
+	
+	freestream_Mach_number        0.5
+	
+	freestream_Reynolds_number    5000.0
+	
+	;; Free-streeam temperature in Kelvin
+	freestream_temperature        288.15
+	
+	Prandtl_number                0.72
+	
+	;; Optional - false by default, in which case Sutherland model is used
+	use_constant_viscosity        false
+}
+
+bc
+{
+	;; Markers in the mesh file corresponding to each kind of boundary.
+	 ; Some boundary conditions require boundary values and some require options as well
+	 
+	bc0 {
+		type                     inflowoutflow
+		marker                    4
+	}
+	
+	bc1 {
+		type                    adiabaticwall
+		marker                   2
+		;; Non-dimensional tangential velocity at the wall
+		boundary_values          0.0
+	}
+	
+	;; List of boundary markers at which surface output is required
+	 ; and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "vnaca"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization 
+{
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    Roe
+	
+	;; Gradient computation method - none (first-order), leastSquares, greenGauss
+	gradient_method                  leastsquares
+	
+	;; Limiter for shock-capturing - none, Venkatakrishnan, VanAlbada, WENO
+	limiter                          none
+	;; A parameter controlling the limiter - the meaning differs with the limiter
+	limiter_parameter                20.0
+}
+
+;; Pseudo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  500.0
+		cfl_max                  5000.0
+		tolerance                1e-6
+		max_timesteps            150
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	 ; Uses a first-order spatial discretization for steady cases
+	initialization {	
+		cfl_min                  200.0
+		cfl_max                  1000.0
+		tolerance                1e-1
+		max_timesteps            50
+	}
+	
+	nonlinear_update_scheme     full
+}
+
+;; Inviscid flux function to use for computing the Jacobian for implicit solvers
+ ; Apart from all the fluxes available, 'consistent' can be specified.
+ ; This will cause FVENS to use the same flux as specified above for
+ ; the spatial discretization (usually a good choice).
+Jacobian_inviscid_flux         consistent
+

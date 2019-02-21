@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
+#include <boost/algorithm/string.hpp>
 #include "ameshutils.hpp"
 #include "meshpartitioning.hpp"
 #include "meshordering.hpp"
@@ -59,6 +60,21 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 			lineReorder(m,threshold);
 		}
 		else if(orderstr.find("line") != std::string::npos) {
+			// split string at _
+			std::vector<std::string> orders;
+			boost::split(orders, orderstr, boost::is_any_of("_"));
+			if(orders.size() < 2)
+				throw std::runtime_error("Invalid ordering!");
+			const std::string secondorder = orders[1];
+
+			double threshold;
+			ierr = PetscOptionsGetReal(NULL, NULL, "-mesh_anisotropy_threshold", &threshold, &flag);
+			CHKERRQ(ierr);
+			if(!flag) {
+				throw std::runtime_error("No anisotropy threshold given!");
+			}
+
+			hybridLineReorder(m, threshold, secondorder.c_str());
 		}
 		else {
 			DiffusionMA<1> sd(&m, 1.0, 0.0,
