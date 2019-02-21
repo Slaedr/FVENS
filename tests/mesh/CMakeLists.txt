@@ -35,15 +35,22 @@ add_test(NAME MeshUtils_LevelSchedule_Internal WORKING_DIRECTORY ${CMAKE_CURRENT
 add_test(NAME MeshUtils_findLines_smallmesh
   COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testlineordering
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
-  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-checkdata.txt
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-lines.txt
   10.0
   )
 
 add_test(NAME MeshUtils_hybridLineOrdering_natural_smallmesh
   COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testhybridlineordering
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
-  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-checkdata.txt
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-lineordering.txt
   natural
+  10.0
+  )
+add_test(NAME MeshUtils_hybridLineOrdering_rcm_smallmesh
+  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_CURRENT_BINARY_DIR}/exec_testhybridlineordering
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic.msh
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testanisotropic-line_rcm_ordering.txt
+  rcm
   10.0
   )
 

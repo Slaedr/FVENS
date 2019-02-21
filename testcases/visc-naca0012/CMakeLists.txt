@@ -18,7 +18,7 @@ add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_ResidualConvergence
   ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/laminar-implicit.ctrl
   -options_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/opts.solverc
   --mesh_file ${CMAKE_BINARY_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh
-  -mesh_reorder line)
+  -mesh_reorder line -mesh_anisotropy_threshold 10.0)
 
 add_test(NAME SpatialFlow_NS_NACA0012_LeastSquares_Roe_MatFree_ResidualConvergence
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

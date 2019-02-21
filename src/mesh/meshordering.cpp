@@ -72,11 +72,26 @@ std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real
 	const LineConfig lc = findLines(m, threshold);
 	const GraphVertices gv = createLinePointGraphVertices(m, lc);
 
+	// for(size_t i = 0; i < gv.gverts.size(); i++)
+	// 	printf(" %d,%c ", gv.gverts[i].idx, gv.gverts[i].isline ? 'l':'p');
+	// printf("\n");
+
+	// printf(" Point list:\n");
+	// for(size_t i = 0; i < gv.pointList.size(); i++)
+	// 	printf(" %d ", gv.pointList[i]+1+m.gnbface());
+	// printf("\n");
+
 	Mat G;
 	createLinePointGraph(m, gv, &G);
+	// MatView(G, PETSC_VIEWER_STDOUT_SELF);
 
 	// use PETSc to reorder the graph
 	const std::vector<PetscInt> grordering = getPetscOrdering(G, ordering);
+
+	// printf("graph ordering:\n");
+	// for(size_t i = 0; i < grordering.size(); i++)
+	// 	printf(" %d ", grordering[i]+1);
+	// printf("\n"); fflush(stdout);
 
 	int ierr = MatDestroy(&G);
 	petsc_throw(ierr, "Could not destroy graph matrix!");
@@ -104,7 +119,7 @@ std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real
 			}
 		}
 		else {
-			cellordering[iord] = gv.pointList[i];
+			cellordering[iord] = gv.pointList[rogv[i].idx];
 			iord++;
 		}
 	}
@@ -203,8 +218,10 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 		std::vector<a_int> linelems;
 		const a_int belem = m.gintfac(iface,0);
 		if(lc.celline[belem] >= 0) {
+#ifdef DEBUG
 			printf("  lineReorder: A boundary cell is already part of a line.\n");
 			fflush(stdout);
+#endif
 			continue;
 		}
 
@@ -286,6 +303,8 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 {
 	const a_int nlines = static_cast<a_int>(gv.lc->lines.size());
 	const a_int npoints = static_cast<a_int>(gv.pointList.size());
+	// printf("createLPGraph: Num lines = %d\n", nlines);
+	// printf("createLPGraph: Num points = %d\n", npoints);
 
 	// Set up Petsc mat
 	int ierr = MatCreateSeqAIJ(PETSC_COMM_SELF, nlines+npoints, nlines+npoints, 4, NULL, G);
@@ -313,21 +332,24 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 				}
 				else {
 					assert(gv.cellsToPtsMap[cellnbr] >= 0);
-					pointnbrs.insert(gv.cellsToPtsMap[cellnbr]);
+					pointnbrs.insert(gv.cellsToPtsMap[cellnbr]+nlines);
 				}
 			}
 		}
 
 		// add to graph
+		const a_real val = 1.0;
+#pragma omp critical
+		{
+			ierr = MatSetValues(*G, 1, &iline, 1, &iline, &val, INSERT_VALUES);
+		}
 		for( a_int nbr : linenbrs ) {
-			const a_real val = 1.0;
 #pragma omp critical
 			{
 				ierr = MatSetValues(*G, 1, &iline, 1, &nbr, &val, INSERT_VALUES);
 			}
 		}
 		for(a_int nbr : pointnbrs) {
-			const a_real val = 1.0;
 #pragma omp critical
 			{
 				ierr = MatSetValues(*G, 1, &iline, 1, &nbr, &val, INSERT_VALUES);
@@ -341,6 +363,13 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 	for(a_int ipoin = 0; ipoin < npoints; ipoin++)
 	{
 		const a_int cell = gv.pointList[ipoin];
+		const a_int ipdx = ipoin+nlines;
+		const a_real val = 1.0;
+
+#pragma omp critical
+		{
+			ierr = MatSetValues(*G, 1, &ipdx, 1, &ipdx, &val, INSERT_VALUES);
+		}
 
 		for(EIndex j = 0; j < m.gnfael(cell); j++)
 		{
@@ -348,21 +377,20 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 			if(cellnbr >= m.gnelem())
 				continue;
 
-			const a_real val = 1.0;
+			a_int nbidx;
 			if(gv.lc->celline[cellnbr] >= 0)
 			{
-#pragma omp critical
-				{
-					ierr = MatSetValues(*G, 1, &ipoin, 1, &gv.lc->celline[cellnbr], &val, INSERT_VALUES);
-				}
+				nbidx = gv.lc->celline[cellnbr];
 			}
 			else
 			{
 				assert(gv.cellsToPtsMap[cellnbr] >= 0);
+				nbidx = gv.cellsToPtsMap[cellnbr]+nlines;
+			}
+
 #pragma omp critical
-				{
-					ierr = MatSetValues(*G, 1, &ipoin, 1, &gv.cellsToPtsMap[cellnbr], &val, INSERT_VALUES);
-				}
+			{
+				ierr = MatSetValues(*G, 1, &ipdx, 1, &nbidx, &val, INSERT_VALUES);
 			}
 		}
 	}

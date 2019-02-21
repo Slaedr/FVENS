@@ -36,11 +36,12 @@ struct GraphVertices
 	/// List of graph vertices
 	std::vector<GraphVertex> gverts;
 
-	/// Create list of points (cells not belonging to any line)
-	/** pointList holds cell indices of 'points', while cellsToPtsMap holds, for each cell,
-	 *  its point index or -1 depending on whether it's a point or in a line respectively.
-	 */
+	/// Contiguous list of 'points' (cells not belonging to any line); holds cell indices of points.
 	std::vector<a_int> pointList;
+
+	/** Holds, for each cell, its point index or -1 depending on whether it's a point
+	 * or in a line respectively.
+	 */
 	std::vector<a_int> cellsToPtsMap;
 
 	/// The lines configuration for the mesh

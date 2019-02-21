@@ -36,40 +36,17 @@ The solution file must have cell-numbers exactly according to the msh file.\n";
 
 	printf("Computed order is\n");
 	for(a_int i = 0; i < m.gnelem(); i++) {
-		printf(" %d ", lorder[i]);
+		printf(" %d ", lorder[i]+1+m.gnbface());
 	}
-	printf("\n");
+	printf("\n"); fflush(stdout);
 
-	// std::vector<std::vector<int>> solines;
+	std::vector<a_int> solnord(m.gnelem());
+	std::ifstream infile(solnfile);
+	for(a_int i = 0; i < m.gnelem(); i++)
+		infile >> solnord[i];
 
-	// std::ifstream infile(solnfile);
-	// std::string fileline;
-	// while(std::getline(infile, fileline)) {
-	// 	std::stringstream ss(fileline);
-	// 	int a;
-	// 	std::vector<int> meshline;
-	// 	while(ss >> a)
-	// 		meshline.push_back(a);
-	// 	solines.push_back(meshline);
-	// }
-	// infile.close();
-
-	// std::cout << "Reference solution is \n";
-	// for(size_t i = 0; i < solines.size(); i++)
-	// {
-	// 	for(size_t j = 0; j < solines[i].size(); j++)
-	// 		std::cout << " " << solines[i][j];
-	// 	std::cout << std::endl;
-	// }
-	// std::cout << std::endl;
-
-	// assert(lc.lines.size() == solines.size());
-	// for(size_t i = 0; i < solines.size(); i++)
-	// {
-	// 	assert(lc.lines[i].size() == solines[i].size());
-	// 	for(size_t j = 0; j < solines[i].size(); j++)
-	// 		assert(lc.lines[i][j]+m.gnbface()+1 == solines[i][j]);
-	// }
+	for(a_int i = 0; i < m.gnelem(); i++)
+		assert(lorder[i]+1+m.gnbface() == solnord[i]);
 
 	PetscFinalize();
 	return ierr;

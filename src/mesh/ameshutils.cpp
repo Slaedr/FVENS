@@ -45,15 +45,20 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 		std::cout << "preprocessMesh: No reordering requested.\n";
 	}
 	else {
+		const std::string orderstr = ordstr;
+
 		m.compute_topological();
 		m.compute_face_data();
 
 		std::cout << "preprocessMesh: Reording cells in " << ordstr << " ordering.\n";
 
 		if(!strcmp(ordstr,"line")) {
-			lineReorder(m,10.0);
+			double threshold;
+			ierr = PetscOptionsGetReal(NULL, NULL, "-mesh_anisotropy_threshold", &threshold, &flag);
+			CHKERRQ(ierr);
+			lineReorder(m,threshold);
 		}
-		else if(!strcmp(ordstr,"minneigh")) {
+		else if(orderstr.find("line") != std::string::npos) {
 		}
 		else {
 			DiffusionMA<1> sd(&m, 1.0, 0.0,
