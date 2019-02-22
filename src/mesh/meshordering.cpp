@@ -440,6 +440,8 @@ std::vector<PetscInt> getPetscOrdering(Mat G, const char *const ordering)
 }
 
 template void lineReorder(UMesh2dh<a_real>& m, const a_real threshold);
+template std::vector<a_int> getHybridLineOrdering(const UMesh2dh<a_real>& m, const a_real threshold,
+                                                  const char *const ordering);
 template void hybridLineReorder(UMesh2dh<a_real>& m, const a_real threshold, const char *const ordering);
 
 }
