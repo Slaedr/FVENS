@@ -32,6 +32,10 @@ Tolerance_error::Tolerance_error(const std::string& msg)
 	: Numerical_error(msg)
 { }
 
+InputNotGivenError::InputNotGivenError(const std::string& msg) 
+	: std::runtime_error(std::string("Input not given: ")+msg)
+{ }
+
 void open_file_toRead(const std::string file, std::ifstream& fin)
 {
 	fin.open(file);

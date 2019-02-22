@@ -96,7 +96,9 @@ std::string parsePetscCmd_string(const std::string optionname, const size_t p_st
 	char* tt = new char[p_strlen+1];
 	ierr = PetscOptionsGetString(NULL, NULL, optionname.data(), tt, p_strlen, &set);
 	petsc_throw(ierr, std::string("Could not get string ") + std::string(optionname));
-	fvens_throw(!set, std::string("String ") + optionname + std::string(" not set"));
+	if(!set) {
+		throw InputNotGivenError(std::string("String ") + optionname + std::string(" not set"));
+	}
 	const std::string stropt = tt;
 	delete [] tt;
 	return stropt;

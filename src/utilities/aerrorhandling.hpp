@@ -43,6 +43,12 @@ public:
 	Petsc_exception(const char *const msg);
 };
 
+class InputNotGivenError : public std::runtime_error
+{
+public:
+	InputNotGivenError(const std::string& msg);
+};
+
 /// Throw an error from an error code
 /** \param ierr An expression which, if true, triggers the exception
  * \param str A short string message describing the error

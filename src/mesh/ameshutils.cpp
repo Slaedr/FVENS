@@ -63,7 +63,7 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 			// split string at _
 			std::vector<std::string> orders;
 			boost::split(orders, orderstr, boost::is_any_of("_"));
-			if(orders.size() < 2)
+			if(orders.size() != 2)
 				throw std::runtime_error("Invalid ordering!");
 			const std::string secondorder = orders[1];
 
