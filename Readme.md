@@ -62,7 +62,7 @@ This requires you to have [Doxygen](http://www.stack.nl/~dimitri/doxygen/index.h
 
 Running the code
 ----------------
-Please refer to the [user manual](docs/user-doc.md).
+Please refer to the [user manual](doc/user-doc.md).
 
 Browsing the code
 -----------------
