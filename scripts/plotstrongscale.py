@@ -43,6 +43,9 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, tit
     elif phase == "liniters":
         plotcol = 8
         ylabelstr = "Total linear solver iterations"
+    elif phase == "nliters":
+        plotcol = 10
+        ylabelstr = "Pseudo-time steps"
     else:
         print("Invalid phase!")
         return
@@ -51,7 +54,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, tit
         filename = filelist[i]
         data = np.genfromtxt(filename)
 
-        if phase == "liniters":
+        if phase == "liniters" or phase == "nliters":
             fulldata = np.zeros((data.shape[0],data.shape[1]))
             fulldata[:,:] = data[:,:]
         else:
@@ -70,7 +73,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, tit
                 label=labellist[i]+labelstr)
 
     # Note that we now just use data from the last file to be processed in the list of files
-    if phase != "liniters":
+    if phase != "liniters" and phase != "nliters":
         plt.plot(fulldata[:,0]/ht, fulldata[:,0]/ht, lw=opts['linewidth']+0.1, ls=':', label="Ideal")
     if maxspeedup < fulldata[-1,0]/ht:
         maxspeedup = fulldata[-1,0]/ht
@@ -78,7 +81,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, tit
     plt.ylabel(ylabelstr, fontsize="medium")
 
     ax = plt.axes()
-    if phase != "liniters":
+    if phase != "liniters" and phase != "nliters":
         ymin = basethreads
         ymax = maxspeedup+0.5
         #ax.set_ymargin(0.05)
@@ -91,7 +94,7 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, tit
         fig.suptitle(titlestr, fontsize="medium")
 
     plt.savefig(filename.split('/')[-1].split('.')[0] + "-" + phasestring + "-speedup"+"." \
-            + imageformatstring, dpi=150)
+            + imageformatstring, dpi=150, bbox_inches='tight')
 
 if __name__ == "__main__":
 
