@@ -363,4 +363,12 @@ void TrivialReplicatedGlobalMeshPartitioner::compute_partition()
 		elemdist[iel] = nranks-1;
 }
 
+SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh2dh<a_real>& globalmesh)
+	: ReplicatedGlobalMeshPartitioner(globalmesh)
+{ }
+
+void SimpleRGMPartitioner::compute_partition()
+{
+}
+
 }
