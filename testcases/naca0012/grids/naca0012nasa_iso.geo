@@ -1,12 +1,12 @@
 // params
-refine = 1;
+refine = 2;
 // ---
 
 radiusFF = 20;
 
 meshSizeWing = 0.5/refine;
 meshSizeLead = meshSizeWing/20.0;
-meshSizeTrail = meshSizeWing/15.0;
+meshSizeTrail = meshSizeWing/20.0;
 meshSizeFF = radiusFF*meshSizeWing;
 
 nsplinepoints = 20*refine;
@@ -82,25 +82,36 @@ Field[1].VIn = meshSizeLead;
 Field[1].VOut = meshSizeFF/2.5;
 Field[1].XCenter = 0.0;
 Field[1].YCenter = 0.0;
-Field[1].Radius = 0.15;
+Field[1].Radius = 0.2;
 
-Field[2] = Box;
+//Field[2] = Box;
+//Field[2].VIn = meshSizeTrail;
+//Field[2].VOut = meshSizeFF/2.5;
+//Field[2].XMax = 1.5;
+//Field[2].XMin = 0.85;
+//Field[2].YMax = 0.2;
+//Field[2].YMin = -0.2;
+
+Field[2] = Ball;
 Field[2].VIn = meshSizeTrail;
 Field[2].VOut = meshSizeFF/2.5;
-Field[2].XMax = 1.5;
-Field[2].XMin = 0.85;
-Field[2].YMax = 0.2;
-Field[2].YMin = -0.2;
+Field[2].XCenter = 1.0;
+Field[2].YCenter = 0.0;
+Field[2].Radius = 0.1;
 
 Field[3] = Min;
 Field[3].FieldsList = {1,2};
 
 Field[4] = Mean;
-Field[4].Delta = 0.001;
+Field[4].Delta = 0.02;
 Field[4].IField = 3;
 
-Background Field = 3;
+Field[5] = Mean;
+Field[5].Delta = 0.05;
+Field[5].IField = 4;
 
-Mesh.Algorithm=6;		// Frontal
+Background Field = 5;
+
+//Mesh.Algorithm=6;		// Frontal
 
 Color Black{ Surface{10}; }
