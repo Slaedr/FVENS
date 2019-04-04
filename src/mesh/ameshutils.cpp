@@ -57,6 +57,9 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 			double threshold;
 			ierr = PetscOptionsGetReal(NULL, NULL, "-mesh_anisotropy_threshold", &threshold, &flag);
 			CHKERRQ(ierr);
+			if(!flag) {
+				throw std::runtime_error("No anisotropy threshold given!");
+			}
 			lineReorder(m,threshold);
 		}
 		else if(orderstr.find("line") != std::string::npos) {
