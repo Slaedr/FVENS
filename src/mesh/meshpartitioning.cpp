@@ -369,6 +369,50 @@ SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh2dh<a_real>& globalmesh)
 
 void SimpleRGMPartitioner::compute_partition()
 {
+	const int nranks = get_mpi_size(MPI_COMM_WORLD);
+	const int numloceleminit = gm.gnelem() / nranks;
+	elemdist.resize(gm.gnelem());
+
+	std::vector<bool> ismarked(gm.gnelem(), false);
+
+	a_int startcell = 0;
+
+	for(int irank = 0; irank < nranks; irank++)
+	{
+		const a_int ncellsrank = (irank == nranks-1) ?
+			(gm.gnelem()-numloceleminit*(nranks-1)) : numloceleminit;
+
+		bool endoftheline = false;        // True if no unmarked neighbors exist
+		a_int nmarkedcells = 0;           // Number of cells marked
+
+		std::vector<a_int> cellsinrank;   // Will contain this rank's cells
+		cellsinrank.reserve(ncellsrank);
+
+		a_int baseidx = 0;                // Cell in cellsinrank from which to mark neighbors
+		ismarked[startcell] = true;
+		cellsinrank.push_back(startcell);
+		nmarkedcells++;
+
+		while(!endoftheline && nmarkedcells <= ncellsrank)
+		{
+			const a_int basecell = cellsinrank[baseidx];
+			for(int iface = 0; iface < gm.gnfael(startcell); iface++)
+			{
+				if(nmarkedcells >= ncellsrank)
+					break;
+
+				const a_int nbdcell = gm.gesuel(startcell,iface);
+				if(!ismarked[nbdcell] && nbdcell < gm.gnelem())
+				{
+					cellsinrank.push_back(nbdcell);
+					nmarkedcells++;
+					ismarked[nbdcell] = true;
+				}
+			}
+
+			baseidx++;
+		}
+	}
 }
 
 }
