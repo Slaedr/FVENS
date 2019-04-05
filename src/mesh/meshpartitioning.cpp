@@ -396,7 +396,7 @@ void SimpleRGMPartitioner::compute_partition()
 		while(!endoftheline && nmarkedcells <= ncellsrank)
 		{
 			const a_int basecell = cellsinrank[baseidx];
-			for(int iface = 0; iface < gm.gnfael(startcell); iface++)
+			for(int iface = 0; iface < gm.gnfael(basecell); iface++)
 			{
 				if(nmarkedcells >= ncellsrank)
 					break;
