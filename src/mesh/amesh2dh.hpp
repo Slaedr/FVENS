@@ -243,6 +243,7 @@ public:
 	/// Re-orders cells according to some permutation vector locally in the subdomain
 	/** \warning If reordering is needed, this function must be called immediately after reading
 	 * and distributing the mesh.
+	 * \todo TODO: Update connectivity data between subdomains after reordering the cells!
 	 */
 	void reorder_cells(const PetscInt *const permvec);
 
