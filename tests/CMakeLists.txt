@@ -1,7 +1,7 @@
 # Test executables
 	
 # Gmsh for generating meshes
-find_program(GMSH_EXEC gmsh)
+find_program(GMSH_EXEC gmsh PATHS ${GMSH_DIR} ENV GMSH_DIR PATH_SUFFIXES bin DOC "Gmsh exec")
 if(${GMSH_EXEC} STREQUAL "GMSH_EXEC-NOTFOUND")
   message(WARNING "Gmsh not found")
 else()

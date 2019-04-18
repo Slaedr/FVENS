@@ -3,17 +3,16 @@ Next steps
 
 MPI
 ---
-- Read mesh on one rank, partition and distribute
-- Interface with Scotch
+- Read partitioned meshes from Gmsh 4.x format files
 - Enable local renumbering of cells
-- Enable BAIJ format with MPI
 
 3D
 --
-- Generalize mesh to 3D
+- Generalize mesh to 3D (no need of internal faces - we will only need boundary faces)
 - Make physics dimension-agnostic and/or 3D
 
 Residual computation
 -----------------------
-- Make numerical flux classes compute numerical fluxes for all faces, such that kernels can be inlined
-- Similarly, make boundary conditions compute ghost states for all relevant faces
+- Convert all operations to cell-based loops. 
+  For face-unique operations: (option 1) visit each face of the cell and check whether the neighboring cell has lower index; if it has lower index, the face's operation must already have been done; (option 2) double-compute face-unique quantities.
+- Make boundary conditions compute ghost states for all relevant faces

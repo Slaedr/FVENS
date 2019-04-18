@@ -256,6 +256,18 @@ endif()
 find_package(MPI REQUIRED)
 include_directories(${MPI_C_INCLUDE_PATH} ${MPI_CXX_INCLUDE_PATH})
 
+# Gmsh
+# if(NOT DEFINED GMSH_DIR)
+#   set(GMSH_DIR $ENV{GMSH_DIR} CACHE PATH "Gmsh library directory")
+# endif()
+find_library(GMSH_LIB NAMES gmsh PATHS ${GMSH_DIR} ENV GMSH_DIR PATH_SUFFIXES lib
+  DOC "Location of Gmsh library file")
+if(${GMSH_LIB} STREQUAL "GMSH_LIB-NOTFOUND")
+  message(SEND_ERROR "Gmsh library not found!")
+endif()
+include_directories(${GMSH_DIR}/include)
+message(STATUS "Found Gmsh library at ${GMSH_LIB}")
+
 # PETSc
 # If PETSc variables were not passed to CMake, set them from environment variables
 if(NOT DEFINED PETSC_DIR)
