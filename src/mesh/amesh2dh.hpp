@@ -230,6 +230,9 @@ public:
 	// }
 	std::vector<a_int> getConnectivityGlobalIndices() const;
 
+	/// Checks whether boundary faces are oriented to "point outwards"
+	void correctBoundaryFaceOrientation();
+
 	/// Set coordinates of a certain point
 	/** 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
 	 */

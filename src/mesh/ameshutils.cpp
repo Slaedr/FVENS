@@ -39,6 +39,7 @@ template <typename scalar>
 StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 {
 	int ierr = 0;
+
 	char ordstr[PETSCOPTION_STR_LEN];
 	PetscBool flag = PETSC_FALSE;
 	CHKERRQ(PetscOptionsGetString(NULL, NULL, "-mesh_reorder", ordstr, PETSCOPTION_STR_LEN, &flag));
@@ -106,6 +107,9 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 	if(mpirank == 0)
 		std::cout << "Global mesh:\n";
 	UMesh2dh<a_real> gm(readMesh(mesh_path));
+
+	gm.correctBoundaryFaceOrientation();
+
 	gm.compute_topological();
 	if(mpirank == 0)
 		std::cout << "**" << std::endl;

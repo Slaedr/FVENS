@@ -52,6 +52,36 @@ UMesh2dh<scalar>::~UMesh2dh()
 }
 
 template <typename scalar>
+void UMesh2dh<scalar>::correctBoundaryFaceOrientation()
+{
+	compute_elementsSurroundingPoints();
+	const std::vector<std::pair<a_int,EIndex>> hostelems = compute_phyBFaceNeighboringElements();
+
+	bool flag = false;
+
+	for(a_int iface = 0; iface < nbface; iface++)
+	{
+		const a_int helem = hostelems[iface].first;
+		const EIndex eface = hostelems[iface].second;
+
+		static_assert(NDIM == 2, "Generalize this to 3D");
+
+		if( inpoel(helem, getNodeEIndex(helem,eface,0)) != bface(iface,0) ||
+		    inpoel(helem, getNodeEIndex(helem,eface,1)) != bface(iface,1) )
+		{
+			// inconsistent orientation - reverse the bface
+			const a_int temp = bface(iface,0);
+			bface(iface,0) = bface(iface,1);
+			bface(iface,1) = temp;
+			flag = true;
+		}
+	}
+
+	if(flag)
+		std::cout << " UMesh: Some boundary faces were inverted for consistency." << std::endl;
+}
+
+template <typename scalar>
 void UMesh2dh<scalar>::reorder_cells(const PetscInt *const permvec)
 {
 	// reorder inpoel, nnode, nfael, vol_regions
