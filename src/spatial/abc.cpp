@@ -41,7 +41,7 @@ FlowBC<scalar,j_real>::~FlowBC()
 template <typename scalar, typename j_real>
 InOutFlow<scalar,j_real>::InOutFlow(const int bc_tag,
                                     const IdealGasPhysics<scalar>& gasphysics,
-                                    const std::array<a_real,NVARS>& u_far)
+                                    const std::array<freal,NVARS>& u_far)
 	: FlowBC<scalar,j_real>(INFLOW_OUTFLOW_BC, bc_tag, gasphysics), uinf(u_far)
 { }
 
@@ -140,7 +140,7 @@ void InOutFlow<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const 
 
 template <typename scalar, typename j_real>
 InFlow<scalar,j_real>::InFlow(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                              const a_real t_pressure, const a_real t_temp)
+                              const freal t_pressure, const freal t_temp)
 	: FlowBC<scalar,j_real>(SUBSONIC_INFLOW_BC, bc_tag, gasphysics), ptotal{t_pressure}, ttotal{t_temp}
 { }
 
@@ -185,7 +185,7 @@ void InFlow<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins
 
 template <typename scalar, typename j_real>
 Farfield<scalar,j_real>::Farfield(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                                  const std::array<a_real,NVARS>& u_far)
+                                  const std::array<freal,NVARS>& u_far)
 	: FlowBC<scalar,j_real>(FARFIELD_BC, bc_tag, gasphysics), uinf(u_far)
 { }
 
@@ -264,7 +264,7 @@ void Slipwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const i
 template <typename scalar, typename j_real>
 Adiabaticwall2D<scalar,j_real>::Adiabaticwall2D(const int bc_tag,
                                                 const IdealGasPhysics<scalar>& gasphysics,
-                                                const a_real wall_tangential_velocity)
+                                                const freal wall_tangential_velocity)
 	: FlowBC<scalar,j_real>(ADIABATIC_WALL_BC, bc_tag, gasphysics), tangvel{wall_tangential_velocity}
 { }
 
@@ -306,7 +306,7 @@ void Adiabaticwall2D<scalar,j_real>::computeGhostStateAndJacobian(const j_real *
 
 template <typename scalar, typename j_real>
 Adiabaticwall<scalar,j_real>::Adiabaticwall(const int bc_tag, const IdealGasPhysics<scalar>& gasphysics,
-                                            const std::array<a_real,NDIM> wall_velocity)
+                                            const std::array<freal,NDIM> wall_velocity)
 	: FlowBC<scalar,j_real>(ADIABATIC_WALL_BC, bc_tag, gasphysics), wallvel(wall_velocity)
 { }
 
@@ -346,7 +346,7 @@ void Adiabaticwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *co
 template <typename scalar, typename j_real>
 Isothermalwall2D<scalar,j_real>::Isothermalwall2D(const int bc_tag,
                                                   const IdealGasPhysics<scalar>& gasphysics,
-                                                  const a_real wtv, const a_real temp)
+                                                  const freal wtv, const freal temp)
 	: FlowBC<scalar,j_real>(ISOTHERMAL_WALL_BC, bc_tag, gasphysics), tangvel{wtv}, walltemperature{temp}
 { }
 
@@ -436,14 +436,14 @@ void Extrapolation<scalar,j_real>::computeGhostStateAndJacobian(const j_real *co
 	}
 }
 
-template class InOutFlow<a_real>;
-template class Slipwall<a_real>;
-template class Adiabaticwall2D<a_real>;
-template class Adiabaticwall<a_real>;
-template class Isothermalwall2D<a_real>;
-template class Extrapolation<a_real>;
-template class InFlow<a_real>;
-template class Farfield<a_real>;
+template class InOutFlow<freal>;
+template class Slipwall<freal>;
+template class Adiabaticwall2D<freal>;
+template class Adiabaticwall<freal>;
+template class Isothermalwall2D<freal>;
+template class Extrapolation<freal>;
+template class InFlow<freal>;
+template class Farfield<freal>;
 
 #ifdef USE_ADOLC
 template class InOutFlow<adouble>;
@@ -460,7 +460,7 @@ template class Farfield<adouble>;
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<scalar>& physics,
-                                                         const std::array<a_real,NVARS>& uinf)
+                                                         const std::array<freal,NVARS>& uinf)
 {
 	std::map<int,const FlowBC<scalar>*> bcmap;
 
@@ -500,14 +500,14 @@ std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowB
 }
 
 template
-std::map<int,const FlowBC<a_real>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
-                                                         const IdealGasPhysics<a_real>& physics,
-                                                         const std::array<a_real,NVARS>& uinf);
+std::map<int,const FlowBC<freal>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
+                                                         const IdealGasPhysics<freal>& physics,
+                                                         const std::array<freal,NVARS>& uinf);
 
 #ifdef USE_ADOLC
 template
 std::map<int,const FlowBC<adouble>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<adouble>& physics,
-                                                         const std::array<a_real,NVARS>& uinf);
+                                                         const std::array<freal,NVARS>& uinf);
 #endif
 }

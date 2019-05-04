@@ -6,7 +6,7 @@
 
 namespace fvens {
 
-StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v)
+StatusCode createSystemVector(const UMesh<freal,NDIM> *const m, const int nvars, Vec *const v)
 {
 	StatusCode ierr = VecCreateMPI(PETSC_COMM_WORLD, m->gnelem()*nvars, m->gnelemglobal()*nvars, v);
 	CHKERRQ(ierr);
@@ -14,11 +14,11 @@ StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, 
 	return ierr;
 }
 
-StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v)
+StatusCode createGhostedSystemVector(const UMesh<freal,NDIM> *const m, const int nvars, Vec *const v)
 {
 	StatusCode ierr = 0;
 
-	const std::vector<a_int> globindices = m->getConnectivityGlobalIndices();
+	const std::vector<fint> globindices = m->getConnectivityGlobalIndices();
 
 	ierr = VecCreateGhostBlock(PETSC_COMM_WORLD, nvars, m->gnelem()*nvars,
 	                           m->gnelemglobal()*nvars, m->gnConnFace(),
@@ -29,7 +29,7 @@ StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int 
 }
 
 template <int nvars>
-static StatusCode setJacobianSizes(const UMesh2dh<a_real> *const m, Mat A) 
+static StatusCode setJacobianSizes(const UMesh<freal,NDIM> *const m, Mat A) 
 {
 	StatusCode ierr = 0;
 	ierr = MatSetSizes(A, m->gnelem()*nvars, m->gnelem()*nvars,
@@ -40,20 +40,20 @@ static StatusCode setJacobianSizes(const UMesh2dh<a_real> *const m, Mat A)
 }
 
 template <int nvars>
-StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A) 
+StatusCode setJacobianPreallocation(const UMesh<freal,NDIM> *const m, Mat A) 
 {
 	StatusCode ierr = 0;
 
 	// set block preallocation
 	{
 		std::vector<PetscInt> dnnz(m->gnelem());
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(fint iel = 0; iel < m->gnelem(); iel++)
 		{
 			dnnz[iel] = m->gnfael(iel)+1;
 		}
 
 		std::vector<PetscInt> onnz(m->gnelem(),0);
-		for(a_int iface = 0; iface < m->gnConnFace(); iface++)
+		for(fint iface = 0; iface < m->gnConnFace(); iface++)
 			onnz[m->gconnface(iface,0)] = 1;
 
 		ierr = MatSeqBAIJSetPreallocation(A, nvars, 0, &dnnz[0]); CHKERRQ(ierr);
@@ -63,7 +63,7 @@ StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A)
 	// set scalar (non-block) preallocation
 	{
 		std::vector<PetscInt> dnnz(m->gnelem()*nvars);
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(fint iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int i = 0; i < nvars; i++) {
 				dnnz[iel*nvars+i] = (m->gnfael(iel)+1)*nvars;
@@ -71,7 +71,7 @@ StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A)
 		}
 
 		std::vector<PetscInt> onnz(m->gnelem()*nvars,0);
-		for(a_int iface = 0; iface < m->gnConnFace(); iface++)
+		for(fint iface = 0; iface < m->gnConnFace(); iface++)
 		{
 			for(int i = 0; i < nvars; i++)
 				onnz[m->gconnface(iface,0)*nvars+i] = nvars;
@@ -84,11 +84,11 @@ StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A)
 	return ierr;
 }
 
-template StatusCode setJacobianPreallocation<1>(const UMesh2dh<a_real> *const m, Mat A);
-template StatusCode setJacobianPreallocation<NVARS>(const UMesh2dh<a_real> *const m, Mat A);
+template StatusCode setJacobianPreallocation<1>(const UMesh<freal,NDIM> *const m, Mat A);
+template StatusCode setJacobianPreallocation<NVARS>(const UMesh<freal,NDIM> *const m, Mat A);
 
 template <int nvars>
-StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
+StatusCode setupSystemMatrix(const UMesh<freal,NDIM> *const m, Mat *const A)
 {
 	StatusCode ierr = 0;
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
@@ -118,11 +118,11 @@ StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A)
 	return ierr;
 }
 
-template StatusCode setupSystemMatrix<NVARS>(const UMesh2dh<a_real> *const m, Mat *const A);
-template StatusCode setupSystemMatrix<1>(const UMesh2dh<a_real> *const m, Mat *const A);
+template StatusCode setupSystemMatrix<NVARS>(const UMesh<freal,NDIM> *const m, Mat *const A);
+template StatusCode setupSystemMatrix<1>(const UMesh<freal,NDIM> *const m, Mat *const A);
 
 template<int nvars>
-MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const s)
+MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<freal,nvars> *const s)
 	: spatial{s}, eps{1e-7}
 {
 	PetscBool set = PETSC_FALSE;
@@ -149,7 +149,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_POINTER,
 		        "Spatial context not set!");
 
-	const UMesh2dh<a_real> *const m = spatial->mesh();
+	const UMesh<freal,NDIM> *const m = spatial->mesh();
 	//ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 
 	Vec aux, yg;
@@ -160,11 +160,11 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 	ierr = VecNorm(x, NORM_2, &xnorm); CHKERRQ(ierr);
 
 #ifdef DEBUG
-	if(xnorm < 10.0*std::numeric_limits<a_real>::epsilon())
+	if(xnorm < 10.0*std::numeric_limits<freal>::epsilon())
 		SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FP,
 				"Norm of offset is too small for finite difference Jacobian!");
 #endif
-	const a_real pertmag = eps/xnorm;
+	const freal pertmag = eps/xnorm;
 
 	// aux <- u + eps/xnorm * x ;    y <- 0
 	{
@@ -178,13 +178,13 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		PetscScalar *const ygr = ygh.getArray(); 
 
 #pragma omp parallel for simd default(shared)
-		for(a_int i = 0; i < m->gnelem()*nvars; i++) {
+		for(fint i = 0; i < m->gnelem()*nvars; i++) {
 			ygr[i] = 0;
 			auxr[i] = ur[i] + pertmag * xr[i];
 		}
 
 #pragma omp parallel for simd default(shared)
-		for(a_int i = m->gnelem(); i < m->gnelem()+m->gnConnFace(); i++) {
+		for(fint i = m->gnelem(); i < m->gnelem()+m->gnConnFace(); i++) {
 			ygr[i] = 0;
 		}
 	}
@@ -217,7 +217,7 @@ StatusCode MatrixFreeSpatialJacobian<nvars>::apply(const Vec x, Vec y) const
 		PetscScalar *const yr = yh.getArray(); 
 
 #pragma omp parallel for simd default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(fint iel = 0; iel < m->gnelem(); iel++)
 		{
 			for(int i = 0; i < nvars; i++) {
 				// finally, add the pseudo-time term (Vol/dt du = Vol/dt x)
@@ -258,11 +258,11 @@ StatusCode matrixfree_destroy(Mat A)
 }
 
 template <int nvars>
-StatusCode create_matrixfree_jacobian(const Spatial<a_real,nvars> *const s, Mat *const A)
+StatusCode create_matrixfree_jacobian(const Spatial<freal,nvars> *const s, Mat *const A)
 {
 	StatusCode ierr = 0;
 
-	const UMesh2dh<a_real> *const m = s->mesh();
+	const UMesh<freal,NDIM> *const m = s->mesh();
 	MatrixFreeSpatialJacobian<nvars> *const mfj = new MatrixFreeSpatialJacobian<nvars>(s);
 	
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
@@ -280,9 +280,9 @@ StatusCode create_matrixfree_jacobian(const Spatial<a_real,nvars> *const s, Mat 
 }
 
 template
-StatusCode create_matrixfree_jacobian<NVARS>(const Spatial<a_real,NVARS> *const s, Mat *const A);
+StatusCode create_matrixfree_jacobian<NVARS>(const Spatial<freal,NVARS> *const s, Mat *const A);
 template
-StatusCode create_matrixfree_jacobian<1>(const Spatial<a_real,1> *const s, Mat *const A);
+StatusCode create_matrixfree_jacobian<1>(const Spatial<freal,1> *const s, Mat *const A);
 
 bool isMatrixFree(Mat M) 
 {
@@ -360,7 +360,7 @@ StatusCode getPC(KSP ksp, const char *const type_name, PC* pcfound)
 #ifdef USE_BLASTED
 
 template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const startprob,
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<freal,nvars> *const startprob,
                          Blasted_data_list& bctx)
 {
 	StatusCode ierr = 0;
@@ -377,9 +377,9 @@ StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const star
 	return ierr;
 }
 
-template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,NVARS> *const startprob, 
+template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<freal,NVARS> *const startprob, 
                                   Blasted_data_list& bctx);
-template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,1> *const startprob, 
+template StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<freal,1> *const startprob, 
                                   Blasted_data_list& bctx);
 #endif
 

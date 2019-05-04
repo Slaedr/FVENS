@@ -31,7 +31,7 @@ inline int get_mpi_rank(const MPI_Comm comm)
 
 /// Generic wrapper for MPI allreduce from an array into itself
 template <typename scalar>
-void mpi_all_reduce(scalar *const arr, const a_int count, MPI_Op op, MPI_Comm comm);
+void mpi_all_reduce(scalar *const arr, const fint count, MPI_Op op, MPI_Comm comm);
 
 /// Waits until a debugger is attached and a variable is changed
 /** Only activated if environment variable FVENS_MPI_DEBUG is set.

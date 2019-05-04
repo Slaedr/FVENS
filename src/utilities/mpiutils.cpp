@@ -12,7 +12,7 @@
 namespace fvens {
 
 template <>
-void mpi_all_reduce(a_real *const arr, const a_int count, MPI_Op op, MPI_Comm comm)
+void mpi_all_reduce(freal *const arr, const fint count, MPI_Op op, MPI_Comm comm)
 {
 	MPI_Allreduce(arr, arr, count, FVENS_MPI_REAL, op, comm);
 }

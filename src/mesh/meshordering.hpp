@@ -7,7 +7,7 @@
 #ifndef FVENS_MESH_ORDERING_H
 #define FVENS_MESH_ORDERING_H
 
-#include "amesh2dh.hpp"
+#include "mesh.hpp"
 
 namespace fvens {
 
@@ -19,7 +19,7 @@ namespace fvens {
  * \param threshold The lower limit for the local anisotropy metric for which lines will be extended
  */
 template <typename scalar>
-void lineReorder(UMesh2dh<scalar>& m, const a_real threshold);
+void lineReorder(UMesh<scalar,2>& m, const freal threshold);
 
 /// Orders the mesh cells according to a hybrid of line ordering and some other specified ordering.
 /** Divides the mesh cells into lines and points, determines the connectivity between lines and points
@@ -30,7 +30,7 @@ void lineReorder(UMesh2dh<scalar>& m, const a_real threshold);
  * \param ordering The ordering to use for the lines and points
  */
 template <typename scalar>
-void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *const ordering);
+void hybridLineReorder(UMesh<scalar,2>& m, const freal threshold, const char *const ordering);
 
 }
 

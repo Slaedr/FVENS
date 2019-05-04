@@ -17,7 +17,7 @@ template <typename scalar, int nvars>
 class MUSCLReconstruction : public SolutionReconstruction<scalar,nvars>
 {
 public:
-	MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
+	MUSCLReconstruction(const UMesh<scalar,2> *const mesh,
 	                    const scalar *const c_centres, 
 	                    const scalar *const c_centres_ghost,
 	                    const amat::Array2d<scalar>& gauss_r);
@@ -34,8 +34,8 @@ protected:
 	using SolutionReconstruction<scalar,nvars>::ribp;
 	using SolutionReconstruction<scalar,nvars>::gr;
 
-	const a_real eps;                       ///< Small number
-	const a_real k;                         ///< MUSCL order parameter
+	const freal eps;                       ///< Small number
+	const freal k;                         ///< MUSCL order parameter
 
 	/// Computes a biased difference
 	/** The direction of biasing depends on the gradients supplied in the last parameter.
@@ -72,7 +72,7 @@ template <typename scalar, int nvars>
 class MUSCLVanAlbada : public MUSCLReconstruction<scalar,nvars>
 {
 public:
-	MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
+	MUSCLVanAlbada(const UMesh<scalar,2> *const mesh,
 	               const scalar *const c_centres, 
 	               const scalar *const c_centres_ghost,
 	               const amat::Array2d<scalar>& gauss_r);

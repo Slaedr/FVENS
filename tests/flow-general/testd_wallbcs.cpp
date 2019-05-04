@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 	std::string testchoice = argv[2];
 
-	UMesh2dh<a_real> m(readMesh(opts.meshfile));
+	UMesh<freal,NDIM> m(readMesh(opts.meshfile));
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	if(testchoice == "wall_boundaries") 
 	{
 		TestFlowFV testfv(&m, pconf, nconf);
-		const std::array<a_real,NVARS> u = get_test_state();
+		const std::array<freal,NVARS> u = get_test_state();
 		
 		/* tests whether mass flux is zero at solid walls and whether
 		 * energy flux is zero at adiabatic and slip walls.
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 		nconf.conv_numflux_jac = testflux;
 		TestFlowFV testfv(&m, pconf, nconf);
 		
-		const std::array<a_real,NVARS> u = get_test_state();
+		const std::array<freal,NVARS> u = get_test_state();
 	
 		/* tests whether mass flux is zero at solid walls and whether
 		 * energy flux is zero at adiabatic and slip walls.

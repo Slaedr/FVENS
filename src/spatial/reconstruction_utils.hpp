@@ -20,7 +20,7 @@ linearExtrapolate(const scalar ucell,                          ///< Relevant cel
                   const GradBlock_t<scalar,NDIM,nvars>& grad,  ///< Gradients
                   const int ivar,                              ///< Index of physical variable to be
                   ///<  reconstructed
-                  const a_real lim,                            ///< Limiter value
+                  const freal lim,                            ///< Limiter value
                   const scalar *const gp,                      ///< Quadrature point coords
                   const scalar *const rc                       ///< Cell centre coords
                   )

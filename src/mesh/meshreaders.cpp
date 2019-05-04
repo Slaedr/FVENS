@@ -46,7 +46,7 @@ MeshData readMesh(const std::string mfile)
 		mdata = readGmsh2(mfile);
 
 	// broadcast global mesh size data to all ranks
-	// a_int numdata[] = {mdata.npoin, mdata.nelem, mdata.nface, mdata.maxnnode, mdata.maxnfael,
+	// fint numdata[] = {mdata.npoin, mdata.nelem, mdata.nface, mdata.maxnnode, mdata.maxnfael,
 	//                    mdata.nnofa, mdata.nbtag, mdata.ndtag};
 	// MPI_Bcast((void*)numdata, 8, FVENS_MPI_INT, 0, MPI_COMM_WORLD);
 	// if(mpirank != 0) {
@@ -96,7 +96,7 @@ MeshData readGmsh2(const std::string mfile)
 	/// elmtype is the standard element type in the Gmsh 2 mesh format - of either faces or elements
 	m.ndtag = 0; m.nbtag = 0;
 	infile >> nelm;
-	amat::Array2d<a_int > elms(nelm,width_elms);
+	amat::Array2d<fint > elms(nelm,width_elms);
 	m.nbface = 0; m.nelem = 0;
 	std::vector<int> nnodes(nelm,0);
 	std::vector<int> nfaels(nelm,0);
@@ -288,7 +288,7 @@ MeshData readSU2(const std::string mfile)
 	m.inpoel.resize(m.nelem,m.maxnnode);
 	m.nnode.resize(m.nelem); m.nfael.resize(m.nelem);
 
-	for(a_int iel = 0; iel < m.nelem; iel++)
+	for(fint iel = 0; iel < m.nelem; iel++)
 	{
 		int id, ddum;
 		fin >> id;
@@ -322,7 +322,7 @@ MeshData readSU2(const std::string mfile)
 #endif
 
 	m.coords.resize(m.npoin,NDIM);
-	for(a_int ip = 0; ip < m.npoin; ip++)
+	for(fint ip = 0; ip < m.npoin; ip++)
 	{
 		int ddum;
 		for(int j = 0; j < NDIM; j++)
@@ -342,10 +342,10 @@ MeshData readSU2(const std::string mfile)
 	std::cout << "UMesh2dh: readSU2: Number of BC markers = " << nbmarkers << std::endl;
 #endif
 
-	std::vector<std::vector<std::vector<a_int>>> bfacs(nbmarkers);
+	std::vector<std::vector<std::vector<fint>>> bfacs(nbmarkers);
 
 	std::vector<int> tags(nbmarkers);
-	std::vector<a_int> numfacs(nbmarkers);
+	std::vector<fint> numfacs(nbmarkers);
 	m.nbface = 0;
 
 	for(int ib = 0; ib < nbmarkers; ib++)
@@ -359,7 +359,7 @@ MeshData readSU2(const std::string mfile)
 		bfacs[ib].resize(numfacs[ib]);
 		m.nnofa = 2;
 
-		for(a_int iface = 0; iface < numfacs[ib]; iface++)
+		for(fint iface = 0; iface < numfacs[ib]; iface++)
 		{
 			bfacs[ib][iface].resize(m.nnofa);
 			int ddum;
@@ -378,10 +378,10 @@ MeshData readSU2(const std::string mfile)
 	std::cout << "UMesh2dh: readSU2: Number of boundary faces = " << m.nbface << std::endl;
 
 	m.bface.resize(m.nbface,m.nnofa+m.nbtag);
-	a_int count=0;
+	fint count=0;
 	for(int ib = 0; ib < nbmarkers; ib++)
 	{
-		for(a_int iface = 0; iface < numfacs[ib]; iface++)
+		for(fint iface = 0; iface < numfacs[ib]; iface++)
 		{
 			for(int inofa = 0; inofa < m.nnofa; inofa++)
 				m.bface(count,inofa) = bfacs[ib][iface][inofa];

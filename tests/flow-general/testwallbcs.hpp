@@ -15,28 +15,28 @@
 namespace fvens {
 namespace fvens_tests {
 
-class TestFlowFV : public FlowFV<a_real,true,false>
+class TestFlowFV : public FlowFV<freal,true,false>
 {
 public:
-	TestFlowFV(const UMesh2dh<a_real> *const mesh, const FlowPhysicsConfig& pconf,
+	TestFlowFV(const UMesh<freal,NDIM> *const mesh, const FlowPhysicsConfig& pconf,
 	           const FlowNumericsConfig& nconf)
-		: FlowFV<a_real,true,false>(mesh, pconf, nconf)
+		: FlowFV<freal,true,false>(mesh, pconf, nconf)
 	{ }
 	
 	/// Tests whether the inviscid numerical mass flux is zero at solid walls
 	/** 'Solid walls' include slip walls, adiabatic walls, and isothermal walls.
 	 * \param u Interior state for boundary cells
 	 */
-	int testWalls(const a_real *const u) const;
+	int testWalls(const freal *const u) const;
 
 protected:
-	using FlowFV_base<a_real>::bcs;
-	using FlowFV<a_real,true,false>::compute_boundary_state;
-	using FlowFV<a_real,true,false>::inviflux;
+	using FlowFV_base<freal>::bcs;
+	using FlowFV<freal,true,false>::compute_boundary_state;
+	using FlowFV<freal,true,false>::inviflux;
 };
 
 /// Returns a state vector in conserved variables that can be used in testing
-std::array<a_real,NVARS> get_test_state();
+std::array<freal,NVARS> get_test_state();
 
 }
 }

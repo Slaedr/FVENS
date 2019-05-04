@@ -16,7 +16,7 @@ namespace fvens {
 /** The class is such that given the left and right states and a face normal,
  * the numerical flux and its Jacobian w.r.t. left and right states is computed.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class InviscidFlux
 {
 public:
@@ -53,10 +53,10 @@ protected:
 	/// This is a copy of physics above, but using scalar type.
 	const IdealGasPhysics<j_real> *const jphy;
 
-	const a_real g;                                ///< Adiabatic index
+	const freal g;                                ///< Adiabatic index
 };
 
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class LocalLaxFriedrichsFlux : public InviscidFlux<scalar,j_real>
 {
 public:
@@ -88,7 +88,7 @@ protected:
 };
 
 /// Van-Leer flux-vector-splitting
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class VanLeerFlux : public InviscidFlux<scalar,j_real>
 {
 public:
@@ -112,7 +112,7 @@ protected:
  * separately.
  * \warning The Jacobian does not work; use the LLF Jacobian instead.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class AUSMFlux : public InviscidFlux<scalar,j_real>
 {
 public:
@@ -136,7 +136,7 @@ protected:
 };
 
 /// Liou's AUSM+ flux
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class AUSMPlusFlux : public InviscidFlux<scalar,j_real>
 {
 public:
@@ -156,7 +156,7 @@ protected:
 };
 
 /// Abstract class for fluxes which depend on Roe-averages
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class RoeAverageBasedFlux : public InviscidFlux<scalar,j_real>
 {
 public:
@@ -206,7 +206,7 @@ protected:
 /// Roe-Pike flux-difference splitting
 /** From Blazek \cite{blazek}.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class RoeFlux : public RoeAverageBasedFlux<scalar,j_real>
 {
 public:
@@ -231,14 +231,14 @@ protected:
 	using RoeAverageBasedFlux<scalar,j_real>::getJacobiansRoeAveragesWrtConserved;
 
 	/// Entropy fix parameter
-	const a_real fixeps;
+	const freal fixeps;
 };
 
 /// Harten Lax Van-Leer numerical flux
 /** Decent for inviscid flows.
  * \cite invflux_batten
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class HLLFlux : public RoeAverageBasedFlux<scalar,j_real>
 {
 public:
@@ -268,7 +268,7 @@ protected:
 /** Implemented as described by Batten et al. \cite invflux_hllc_batten
  * Good for both inviscid and viscous flows.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class HLLCFlux : public RoeAverageBasedFlux<scalar,j_real>
 {
 public:

@@ -14,7 +14,7 @@ template <int nvars>
 NonlinearUpdate<nvars>::~NonlinearUpdate() { }
 
 template <int nvars>
-FlowSimpleUpdate<nvars>::FlowSimpleUpdate(const IdealGasPhysics<a_real> p, const a_real mf)
+FlowSimpleUpdate<nvars>::FlowSimpleUpdate(const IdealGasPhysics<freal> p, const freal mf)
 	: phy{p}, minfactor{mf}
 {
 	if(minfactor <= 0 || minfactor > 1.0)
@@ -22,15 +22,15 @@ FlowSimpleUpdate<nvars>::FlowSimpleUpdate(const IdealGasPhysics<a_real> p, const
 }
 
 template <int nvars>
-a_real FlowSimpleUpdate<nvars>::getLocalRelaxationFactor(const a_real du[nvars],
-                                                         const a_real u[nvars]) const
+freal FlowSimpleUpdate<nvars>::getLocalRelaxationFactor(const freal du[nvars],
+                                                         const freal u[nvars]) const
 {
-	const a_real p = phy.getPressureFromConserved(u);
-	const a_real dp = std::abs(phy.getDeltaPressureFromConserved(u, du)) / p;
-	const a_real drho = std::abs(du[0])/u[0];
-	const a_real danger_level = std::max(dp,drho);
+	const freal p = phy.getPressureFromConserved(u);
+	const freal dp = std::abs(phy.getDeltaPressureFromConserved(u, du)) / p;
+	const freal drho = std::abs(du[0])/u[0];
+	const freal danger_level = std::max(dp,drho);
 
-	a_real omega = minfactor;
+	freal omega = minfactor;
 	if(danger_level < 1.0-minfactor)
 		omega = 1.0-danger_level;
 

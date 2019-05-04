@@ -110,14 +110,14 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	opts.lognres = infopts.get<bool>(c_io+".convergence_history_required");
 
 	opts.flowtype = get_upperCaseString(infopts, c_flowconds+".flow_type");
-	opts.gamma = infopts.get<a_real>(c_flowconds+".adiabatic_index");
-	opts.alpha = PI/180.0*infopts.get<a_real>(c_flowconds+".angle_of_attack");
-	opts.Minf = infopts.get<a_real>(c_flowconds+".freestream_Mach_number");
+	opts.gamma = infopts.get<freal>(c_flowconds+".adiabatic_index");
+	opts.alpha = PI/180.0*infopts.get<freal>(c_flowconds+".angle_of_attack");
+	opts.Minf = infopts.get<freal>(c_flowconds+".freestream_Mach_number");
 	if(opts.flowtype == "NAVIERSTOKES") {
 		opts.viscsim = true;
-		opts.Tinf = infopts.get<a_real>(c_flowconds+".freestream_temperature");
-		opts.Reinf = infopts.get<a_real>(c_flowconds+".freestream_Reynolds_number");
-		opts.Pr = infopts.get<a_real>(c_flowconds+".Prandtl_number");
+		opts.Tinf = infopts.get<freal>(c_flowconds+".freestream_temperature");
+		opts.Reinf = infopts.get<freal>(c_flowconds+".freestream_Reynolds_number");
+		opts.Pr = infopts.get<freal>(c_flowconds+".Prandtl_number");
 		opts.useconstvisc = infopts.get(c_flowconds+".use_constant_viscosity",false);
 	}
 
@@ -149,14 +149,14 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	opts.sim_type = get_upperCaseString(infopts, c_phy_time+".simulation_type");
 	if(opts.sim_type == "UNSTEADY")
 	{
-		opts.final_time = infopts.get<a_real>(c_phy_time+".final_time");
+		opts.final_time = infopts.get<freal>(c_phy_time+".final_time");
 		opts.time_integrator = get_upperCaseString(infopts, c_phy_time + ".time_integrator");
 		opts.time_order = infopts.get<int>(c_phy_time + ".temporal_order");
 
 		if(opts.time_integrator == "TVDRK")
-			opts.phy_cfl = infopts.get<a_real>(c_phy_time+".physical_cfl");
+			opts.phy_cfl = infopts.get<freal>(c_phy_time+".physical_cfl");
 		else
-			opts.phy_timestep = infopts.get<a_real>(c_phy_time+".physical_time_step");
+			opts.phy_timestep = infopts.get<freal>(c_phy_time+".physical_time_step");
 	}
 
 	opts.invflux = get_upperCaseString(infopts, c_spatial+".inviscid_flux");
@@ -167,15 +167,15 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 
 	opts.pseudotimetype = get_upperCaseString(infopts, c_pseudotime+".pseudotime_stepping_type");
 
-	opts.initcfl = infopts.get<a_real>(c_pseudotime+"."+pt_main+".cfl_min");
-	opts.endcfl = infopts.get<a_real>(c_pseudotime+"."+pt_main+".cfl_max");
-	opts.tolerance = infopts.get<a_real>(c_pseudotime+"."+pt_main+".tolerance");
+	opts.initcfl = infopts.get<freal>(c_pseudotime+"."+pt_main+".cfl_min");
+	opts.endcfl = infopts.get<freal>(c_pseudotime+"."+pt_main+".cfl_max");
+	opts.tolerance = infopts.get<freal>(c_pseudotime+"."+pt_main+".tolerance");
 	opts.maxiter = infopts.get<int>(c_pseudotime+"."+pt_main+".max_timesteps");
 	if(infopts.get_child_optional(c_pseudotime+"."+pt_init)) {
 		opts.usestarter = 1;
-		opts.firstinitcfl = infopts.get<a_real>(c_pseudotime+"."+pt_init+".cfl_min");
-		opts.firstendcfl = infopts.get<a_real>(c_pseudotime+"."+pt_init+".cfl_max");
-		opts.firsttolerance = infopts.get<a_real>(c_pseudotime+"."+pt_init+".tolerance");
+		opts.firstinitcfl = infopts.get<freal>(c_pseudotime+"."+pt_init+".cfl_min");
+		opts.firstendcfl = infopts.get<freal>(c_pseudotime+"."+pt_init+".cfl_max");
+		opts.firsttolerance = infopts.get<freal>(c_pseudotime+"."+pt_init+".tolerance");
 		opts.firstmaxiter = infopts.get<int>(c_pseudotime+"."+pt_init+".max_timesteps");
 	}
 
@@ -253,7 +253,7 @@ static std::vector<FlowBCConfig> parse_BC_options(const pt::ptree& infopts,
 			   bconf.bc_type == SUBSONIC_INFLOW_BC)   {
 				std::string bvals = infopts.get<std::string>(c_bcs+".bc"+std::to_string(ibc)+
 				                                             ".boundary_values");
-				bconf.bc_vals = parseStringToVector<a_real>(bvals);
+				bconf.bc_vals = parseStringToVector<freal>(bvals);
 			}
 
 			// array of options

@@ -52,7 +52,7 @@ const InviscidFlux<scalar>* create_const_inviscidflux(const std::string& type,
  */
 template <typename scalar, int nvars>
 GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& type, 
-                                                            const UMesh2dh<scalar> *const m,
+                                                            const UMesh<scalar,NDIM> *const m,
                                                             const scalar *const rc,
                                                             const scalar *const rcbp);
 
@@ -61,7 +61,7 @@ GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& t
  */
 template <typename scalar, int nvars>
 const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::string& type, 
-                                                                const UMesh2dh<scalar> *const m,
+                                                                const UMesh<scalar,NDIM> *const m,
                                                                 const scalar *const rc,
                                                                 const scalar *const rcbp);
 
@@ -79,27 +79,27 @@ const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::strin
 template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>*
 create_mutable_reconstruction(const std::string& type,
-                              const UMesh2dh<scalar> *const m,
+                              const UMesh<scalar,NDIM> *const m,
                               const scalar *const rc,
                               const scalar *const rcbp,
                               const amat::Array2d<scalar>& gr,
-                              const a_real param);
+                              const freal param);
 
 /// Returns an immutable solution reconstruction context \sa create_mutable_reconstruction
 template <typename scalar, int nvars>
 const SolutionReconstruction<scalar,nvars>*
 create_const_reconstruction(const std::string& type,
-                            const UMesh2dh<scalar> *const m,
+                            const UMesh<scalar,NDIM> *const m,
                             const scalar *const rc,
                             const scalar *const rcbp,
-                            const amat::Array2d<scalar>& gr, const a_real param);
+                            const amat::Array2d<scalar>& gr, const freal param);
 
 /// Creates the appropriate flow solver class
 /** This function is needed to instantiate the appropriate class from the \ref FlowFV template.
  */
 template <typename scalar>
 FlowFV_base<scalar>* create_mutable_flowSpatialDiscretization(
-	const UMesh2dh<scalar> *const m,               ///< Mesh context
+	const UMesh<scalar,NDIM> *const m,               ///< Mesh context
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 
@@ -108,7 +108,7 @@ FlowFV_base<scalar>* create_mutable_flowSpatialDiscretization(
  */
 template <typename scalar>
 const FlowFV_base<scalar>* create_const_flowSpatialDiscretization(
-	const UMesh2dh<scalar> *const m,               ///< Mesh context
+	const UMesh<scalar,NDIM> *const m,               ///< Mesh context
 	const FlowPhysicsConfig& pconf,                ///< Physical data about the problem
 	const FlowNumericsConfig& nconf);              ///< Options controlling the numerical method
 

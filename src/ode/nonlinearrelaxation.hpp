@@ -24,7 +24,7 @@ public:
 	virtual ~NonlinearUpdate();
 
 	/// Computes a local relaxation factor based on the local state and the local update
-	virtual a_real getLocalRelaxationFactor(const a_real du[nvars], const a_real u[nvars]) const = 0;
+	virtual freal getLocalRelaxationFactor(const freal du[nvars], const freal u[nvars]) const = 0;
 };
 
 /// Trivial relaxation factor of constant 1
@@ -32,7 +32,7 @@ template <int nvars>
 class FullUpdate : public NonlinearUpdate<nvars>
 {
 public:
-	a_real getLocalRelaxationFactor(const a_real du[nvars], const a_real u[nvars]) const {
+	freal getLocalRelaxationFactor(const freal du[nvars], const freal u[nvars]) const {
 		return 1.0;
 	}
 };
@@ -45,15 +45,15 @@ template <int nvars>
 class FlowSimpleUpdate : public NonlinearUpdate<nvars>
 {
 public:
-	FlowSimpleUpdate(const IdealGasPhysics<a_real> physics, const a_real min_factor);
+	FlowSimpleUpdate(const IdealGasPhysics<freal> physics, const freal min_factor);
 
-	a_real getLocalRelaxationFactor(const a_real du[nvars], const a_real u[nvars]) const;
+	freal getLocalRelaxationFactor(const freal du[nvars], const freal u[nvars]) const;
 
 protected:
 	/// Gas physics context
-	const IdealGasPhysics<a_real> phy;
+	const IdealGasPhysics<freal> phy;
 	/// The minimum allowed relaxation factor
-	const a_real minfactor;
+	const freal minfactor;
 };
 
 }

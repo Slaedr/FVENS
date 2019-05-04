@@ -33,11 +33,11 @@ namespace fvens {
 /// Integrated quantities of interest in the solution of a flow problem
 struct FlowSolutionFunctionals
 {
-	a_real meshSizeParameter;   ///< Not a solution functional but needed for verification studies
-	a_real entropy;             ///< Any measure of entropy difference from the free-stream
-	a_real CL;                  ///< Lift coefficient
-	a_real CDp;                 ///< Coefficient of drag induced by pressure
-	a_real CDsf;                ///< Coefficient of drag caused by skin-friction
+	freal meshSizeParameter;   ///< Not a solution functional but needed for verification studies
+	freal entropy;             ///< Any measure of entropy difference from the free-stream
+	freal CL;                  ///< Lift coefficient
+	freal CDp;                 ///< Coefficient of drag induced by pressure
+	freal CDsf;                ///< Coefficient of drag caused by skin-friction
 };
 
 /// Construct a mesh from the base mesh name in the [options database](\ref FlowParserOptions)
@@ -47,15 +47,15 @@ struct FlowSolutionFunctionals
  * \param mesh_suffix A string to concatenate to the
  *   [mesh file name](\ref FlowParserOptions::meshfile) before passing to the mesh class.
  */
-UMesh2dh<a_real> constructMeshFlow(const FlowParserOptions& opts, const std::string mesh_suffix);
+UMesh<freal,NDIM> constructMeshFlow(const FlowParserOptions& opts, const std::string mesh_suffix);
 
 /// Create a spatial discretization context for the flow problem
-const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
-                                             const UMesh2dh<a_real>& m);
+const FlowFV_base<freal>* createFlowSpatial(const FlowParserOptions& opts,
+                                             const UMesh<freal,NDIM>& m);
 
 /// Allocate a vector of size number of cells times the number of PDEs, and initialize it with
 ///  free-stream values from control file options
-int initializeSystemVector(const FlowParserOptions& opts, const UMesh2dh<a_real>& m, Vec *const u);
+int initializeSystemVector(const FlowParserOptions& opts, const UMesh<freal,NDIM>& m, Vec *const u);
 
 /// Solve a flow problem, either steady or unsteady, with conditions specified in the FVENS control file
 /** \todo Ideally, the solution vector would be owned by the nonlinear solver to accommodate adaptation,
@@ -74,7 +74,7 @@ public:
 	/** \param mesh The mesh context
 	 * \param u An allocated and initialized PETSc vec used for storing the solution
 	 */
-	virtual int run(const UMesh2dh<a_real>& mesh, Vec u) const;
+	virtual int run(const UMesh<freal,NDIM>& mesh, Vec u) const;
 
 	/// Setup and run a case, return some functionals of interest and optionally write output files
 	/** Whether VTU volume output and surface variable output is required to files is given by
@@ -91,7 +91,7 @@ public:
 	 */
 	virtual FlowSolutionFunctionals run_output(const bool surface_file_needed,
 	                                           const bool vtu_output_needed,
-	                                           const UMesh2dh<a_real>& mesh, Vec u) const;
+	                                           const UMesh<freal,NDIM>& mesh, Vec u) const;
 
 	/// Solve a case given a spatial discretization context
 	/** Specific case types must provide an implementation of this.
@@ -99,7 +99,7 @@ public:
 	 *   (two separate) files
 	 * \return An error code (may also throw exceptions)
 	 */
-	virtual int execute(const Spatial<a_real,NVARS> *const prob, const bool output_conv_history,
+	virtual int execute(const Spatial<freal,NVARS> *const prob, const bool output_conv_history,
 	                    Vec u) const = 0;
 
 	/// Solve a startup problem corresponding to the actual problem to be solved
@@ -108,7 +108,7 @@ public:
 	 * \param[in] prob The original problem to be solved
 	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
 	 */
-	virtual int execute_starter(const Spatial<a_real,NVARS> *const prob, Vec u) const = 0;
+	virtual int execute_starter(const Spatial<freal,NVARS> *const prob, Vec u) const = 0;
 
 	/// Solve the problem from some (decent) initial condition
 	/**
@@ -117,7 +117,7 @@ public:
 	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
 	 * \return Time taken by various phases of the solve and whether or not it converged
 	 */
-	virtual TimingData execute_main(const Spatial<a_real,NVARS> *const prob, Vec u) const = 0;
+	virtual TimingData execute_main(const Spatial<freal,NVARS> *const prob, Vec u) const = 0;
 
 protected:
 	const FlowParserOptions& opts;
@@ -147,7 +147,7 @@ protected:
 	 * \param[in] use_mfjac Whether a matrix-free Jacobian should be set up (true) or not (false)
 	 * \return Objects required for implicit solution of the problem
 	 */
-	static LinearProblemLHS setupImplicitSolver(const Spatial<a_real,NVARS> *const s, const bool use_mfjac);
+	static LinearProblemLHS setupImplicitSolver(const Spatial<freal,NVARS> *const s, const bool use_mfjac);
 
 	/// Sets up only the KSP context, assuming the Mats have been set up
 	static void setupKSP(LinearProblemLHS& solver, const bool use_matrix_free);
@@ -167,7 +167,7 @@ public:
 	/** Throws a \ref Tolerance_error if the main solve does not converge.
 	 * \param output_reshistory If true, residual history is written to file
 	 */
-	int execute(const Spatial<a_real,NVARS> *const prob, const bool output_reshistory, Vec u) const;
+	int execute(const Spatial<freal,NVARS> *const prob, const bool output_reshistory, Vec u) const;
 
 	/// Solve the 1st-order problem corresponding to the actual problem to be solved
 	/** Even if the solver does not converge to required tolerance, no exception is thrown.
@@ -175,7 +175,7 @@ public:
 	 * \param[in] prob The original problem to be solved
 	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
 	 */
-	int execute_starter(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+	int execute_starter(const Spatial<freal,NVARS> *const prob, Vec u) const;
 
 	/// Solve the steady-state problem from some (decent) initial condition
 	/** If the solver does not converge to required tolerance, a \ref Tolerance_error is thrown.
@@ -184,7 +184,7 @@ public:
 	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
 	 * \return Time taken by various phases of the solve and whether or not it converged
 	 */
-	TimingData execute_main(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+	TimingData execute_main(const Spatial<freal,NVARS> *const prob, Vec u) const;
 
 protected:
 
@@ -202,7 +202,7 @@ public:
 	UnsteadyFlowCase(const FlowParserOptions& options);
 
 	/// Solve a case given a spatial discretization context
-	int execute(const Spatial<a_real,NVARS> *const prob, Vec u) const;
+	int execute(const Spatial<freal,NVARS> *const prob, Vec u) const;
 };
 
 }

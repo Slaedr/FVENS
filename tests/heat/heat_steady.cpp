@@ -81,14 +81,14 @@ int main(int argc, char* argv[])
 	
 	// rhs and exact soln
 	
-	std::function<void(const a_real *const, const a_real, const a_real *const, a_real *const)> rhs 
-		= [diffcoeff](const a_real *const r, const a_real t, const a_real *const u, 
-				a_real *const sourceterm)
+	std::function<void(const freal *const, const freal, const freal *const, freal *const)> rhs 
+		= [diffcoeff](const freal *const r, const freal t, const freal *const u, 
+				freal *const sourceterm)
 		{ 
 			sourceterm[0] = diffcoeff*8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]); 
 		};
 	
-	auto uexact = [](const a_real *const r)->a_real { return sin(2*PI*r[0])*sin(2*PI*r[1]); };
+	auto uexact = [](const freal *const r)->freal { return sin(2*PI*r[0])*sin(2*PI*r[1]); };
 
 	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
 
@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
 	{
 		std::string meshfile = meshprefix + std::to_string(imesh) + ".msh";
 
-		const UMesh2dh<a_real> m = constructMesh(meshfile);
+		const UMesh<freal,NDIM> m = constructMesh(meshfile);
 
 		// set up problem
 		
@@ -204,12 +204,12 @@ int main(int argc, char* argv[])
 
 		// postprocess
 
-		const a_real *uarr;
+		const freal *uarr;
 		ierr = VecGetArrayRead(u, &uarr); CHKERRQ(ierr);
-		a_real err = 0;
-		for(int iel = 0; iel < m.gnelem(); iel++)
+		freal err = 0;
+		for(fint iel = 0; iel < m.gnelem(); iel++)
 		{
-			a_real rc[NDIM];
+			freal rc[NDIM];
 			for(int j = 0; j < NDIM; j++)
 				rc[j] = 0;
 			for(int inode = 0; inode < m.gnnode(iel); inode++) {
@@ -219,7 +219,7 @@ int main(int argc, char* argv[])
 			for(int j = 0; j < NDIM; j++)
 				rc[j] /= m.gnnode(iel);
 
-			const a_real trueval = uexact(rc);
+			const freal trueval = uexact(rc);
 			err += (uarr[iel]-trueval)*(uarr[iel]-trueval)*m.garea(iel);
 		}
 		ierr = VecRestoreArrayRead(u, &uarr); CHKERRQ(ierr);

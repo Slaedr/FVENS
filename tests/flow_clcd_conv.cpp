@@ -61,7 +61,7 @@ skin-friction drag respectively");
 	}
 
 	// read exact calues
-	a_real ex_CL, ex_CDp, ex_CDsf;
+	freal ex_CL, ex_CDp, ex_CDsf;
 	std::ifstream fexact;
 	fexact.open(exf);
 	if(!fexact) {
@@ -85,7 +85,7 @@ skin-friction drag respectively");
 	{
 		// Mesh
 		std::string meshsuffix = std::to_string(imesh) + ".msh";
-		const UMesh2dh<a_real> m = constructMeshFlow(opts, meshsuffix);
+		const UMesh<freal,NDIM> m = constructMeshFlow(opts, meshsuffix);
 		
 		// solution vector
 		Vec u;

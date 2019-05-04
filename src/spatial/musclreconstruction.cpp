@@ -22,7 +22,7 @@
 namespace fvens {
 
 template <typename scalar, int nvars>
-MUSCLReconstruction<scalar,nvars>::MUSCLReconstruction(const UMesh2dh<scalar> *const mesh,
+MUSCLReconstruction<scalar,nvars>::MUSCLReconstruction(const UMesh<scalar,2> *const mesh,
                                                        const scalar *const r_centres, 
                                                        const scalar *const r_centres_ghost,
                                                        const amat::Array2d<scalar>& gauss_r)
@@ -59,7 +59,7 @@ MUSCLReconstruction<scalar,nvars>::musclReconstructRight(const scalar ui, const 
 }
 
 template <typename scalar, int nvars>
-MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh2dh<scalar> *const mesh,
+MUSCLVanAlbada<scalar,nvars>::MUSCLVanAlbada(const UMesh<scalar,2> *const mesh,
                                              const scalar *const r_centres,
                                              const scalar *const r_centres_ghost,
                                              const amat::Array2d<scalar>& gauss_r)
@@ -77,10 +77,10 @@ void MUSCLVanAlbada<scalar,nvars>
 		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
 
 #pragma omp parallel for default(shared)
-	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
+	for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
-		const a_int ielem = m->gintfac(ied,0);
-		const a_int ibface = ied - m->gPhyBFaceStart();
+		const fint ielem = m->gintfac(ied,0);
+		const fint ibface = ied - m->gPhyBFaceStart();
 
 		for(int i = 0; i < nvars; i++)
 		{
@@ -101,10 +101,10 @@ void MUSCLVanAlbada<scalar,nvars>
 	 * This property is shared with linear reconstruction but is opposed to WENO reconstruction.
 	 */
 #pragma omp parallel for default(shared)
-	for(a_int ied = m->gDomFaceStart(); ied < m->gDomFaceEnd(); ied++)
+	for(fint ied = m->gDomFaceStart(); ied < m->gDomFaceEnd(); ied++)
 	{
-		const a_int ielem = m->gintfac(ied,0);
-		const a_int jelem = m->gintfac(ied,1);
+		const fint ielem = m->gintfac(ied,0);
+		const fint jelem = m->gintfac(ied,1);
 
 		for(int i = 0; i < nvars; i++)
 		{
@@ -129,7 +129,7 @@ void MUSCLVanAlbada<scalar,nvars>
 	}
 }
 
-template class MUSCLVanAlbada<a_real,NVARS>;
-template class MUSCLVanAlbada<a_real,1>;
+template class MUSCLVanAlbada<freal,NVARS>;
+template class MUSCLVanAlbada<freal,1>;
 
 }

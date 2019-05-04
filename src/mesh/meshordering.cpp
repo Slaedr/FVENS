@@ -31,22 +31,22 @@ namespace fvens {
 using amat::Array2d;
 
 template <typename scalar>
-void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
+void lineReorder(UMesh<scalar,2>& m, const freal threshold)
 {
 	const LineConfig lc = findLines(m, threshold);
 
 	// Create the permutation vector using the lines
-	std::vector<a_int> ordering(m.gnelem());
-	a_int k = 0;
+	std::vector<fint> ordering(m.gnelem());
+	fint k = 0;
 	for(size_t iline = 0; iline < lc.lines.size(); iline++)
 	{
-		for(a_int i = 0; i < static_cast<a_int>(lc.lines[iline].size()); i++) {
+		for(fint i = 0; i < static_cast<fint>(lc.lines[iline].size()); i++) {
 			ordering[k] = lc.lines[iline][i];
 			k++;
 		}
 	}
 
-	for(a_int iel = 0; iel < m.gnelem(); iel++)
+	for(fint iel = 0; iel < m.gnelem(); iel++)
 		if(lc.celline[iel] == -1)
 		{
 			ordering[k] = iel;
@@ -57,16 +57,16 @@ void lineReorder(UMesh2dh<scalar>& m, const a_real threshold)
 }
 
 template <typename scalar>
-void hybridLineReorder(UMesh2dh<scalar>& m, const a_real threshold, const char *const ordering)
+void hybridLineReorder(UMesh<scalar,2>& m, const freal threshold, const char *const ordering)
 {
-	const std::vector<a_int> cellordering = getHybridLineOrdering(m, threshold, ordering);
+	const std::vector<fint> cellordering = getHybridLineOrdering(m, threshold, ordering);
 
 	// Reorder the mesh
 	m.reorder_cells(&cellordering[0]);
 }
 
 template <typename scalar>
-std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real threshold,
+std::vector<fint> getHybridLineOrdering(const UMesh<scalar,2>& m, const freal threshold,
                                          const char *const ordering)
 {
 	const LineConfig lc = findLines(m, threshold);
@@ -104,11 +104,11 @@ std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real
 	for(size_t i = 0; i < rogv.size(); i++)
 		rogv[i] = gv.gverts[grordering[i]];
 
-	std::vector<a_int> cellordering(m.gnelem());
+	std::vector<fint> cellordering(m.gnelem());
 
 	// Build ordering of all cells
-	a_int iord=0;
-	for(a_int i = 0; i < static_cast<a_int>(rogv.size()); i++)
+	fint iord=0;
+	for(fint i = 0; i < static_cast<fint>(rogv.size()); i++)
 	{
 		if(rogv[i].isline) {
 			const int linesize = static_cast<int>(lc.lines[rogv[i].idx].size());
@@ -131,7 +131,7 @@ std::vector<a_int> getHybridLineOrdering(const UMesh2dh<scalar>& m, const a_real
 struct LocalAnisotropies
 {
 	/// Measure of local anisotropy for each cell for each neighbor, ordered decreasing
-	Array2d<a_real> aniso;
+	Array2d<freal> aniso;
 	/// Local face index ordered according to \ref aniso
 	Array2d<EIndex> faceIdx;
 	/// Number of real neighbors for each cell
@@ -140,40 +140,40 @@ struct LocalAnisotropies
 
 /// Returns the edge weights about each cell, ordered by decreasing weight
 template <typename scalar>
-LocalAnisotropies computeWeights(const UMesh2dh<scalar>& m)
+LocalAnisotropies computeWeights(const UMesh<scalar,2>& m)
 {
 	LocalAnisotropies la;
 	la.aniso.resize(m.gnelem(), m.gmaxnfael());
 	la.faceIdx.resize(m.gnelem(), m.gmaxnfael());
-	for(a_int i = 0; i < m.gnelem(); i++)
+	for(fint i = 0; i < m.gnelem(); i++)
 		for(int j = 0; j < m.gmaxnfael(); j++)
 			la.faceIdx(i,j) = -1;
 	la.nRealNbrs.resize(m.gnelem());
 
 	Array2d<scalar> ccentres(m.gnelem(),NDIM);
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m.gnelem(); iel++)
+	for(fint iel = 0; iel < m.gnelem(); iel++)
 	{
 		kernel_computeCellCentreAoS(m, iel, &ccentres(iel,0));
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m.gnelem(); iel++)
+	for(fint iel = 0; iel < m.gnelem(); iel++)
 	{
-		std::vector<std::pair<a_real,EIndex>> elaniso;
+		std::vector<std::pair<freal,EIndex>> elaniso;
 		elaniso.reserve(m.gnfael(iel));
-		a_real minw = 1e20;
+		freal minw = 1e20;
 
 		for(EIndex j = 0; j < m.gnfael(iel); j++)
 		{
-			const a_int jel = m.gesuel(iel,j);
+			const fint jel = m.gesuel(iel,j);
 			// Skip ghost neighbors across boundary faces
 			if(jel >= m.gnelem())
 				continue;
 
-			std::pair<a_real,EIndex> nbrwt;
+			std::pair<freal,EIndex> nbrwt;
 
-			a_real dist = 0;
+			freal dist = 0;
 			for(int idim = 0; idim < NDIM; idim++)
 				dist += std::pow(getvalue(ccentres(iel,idim)-ccentres(jel,idim)),2);
 			nbrwt.first = 1.0/std::sqrt(dist);
@@ -190,7 +190,7 @@ LocalAnisotropies computeWeights(const UMesh2dh<scalar>& m)
 
 		// sort by *decreasing* weight
 		std::sort(elaniso.begin(), elaniso.end(),
-		          [](std::pair<a_real,EIndex> a, std::pair<a_real,EIndex> b) {
+		          [](std::pair<freal,EIndex> a, std::pair<freal,EIndex> b) {
 			          return a.first > b.first;
 		          });
 
@@ -205,7 +205,7 @@ LocalAnisotropies computeWeights(const UMesh2dh<scalar>& m)
 }
 
 template <typename scalar>
-LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
+LineConfig findLines(const UMesh<scalar,2>& m, const freal threshold)
 {
 	LineConfig lc;
 	const LocalAnisotropies la = computeWeights(m);
@@ -213,10 +213,10 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 	lc.celline.assign(m.gnelem(), -1);
 
 	// Try to build a line starting at each boundary cell
-	for(a_int iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
+	for(fint iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
 	{
-		std::vector<a_int> linelems;
-		const a_int belem = m.gintfac(iface,0);
+		std::vector<fint> linelems;
+		const fint belem = m.gintfac(iface,0);
 		if(lc.celline[belem] >= 0) {
 #ifdef DEBUG
 			printf("  lineReorder: A boundary cell is already part of a line.\n");
@@ -226,7 +226,7 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 		}
 
 		bool endoftheline = false;
-		a_int curelem = belem;
+		fint curelem = belem;
 
 		while(!endoftheline)
 		{
@@ -241,7 +241,7 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 
 			for(EIndex j = 0; j < la.nRealNbrs[curelem]; j++)
 			{
-				const a_int nbrelem = m.gesuel(curelem, la.faceIdx(curelem,j));
+				const fint nbrelem = m.gesuel(curelem, la.faceIdx(curelem,j));
 
 				if(lc.celline[nbrelem]==-1 && la.aniso(curelem,j) > threshold) {
 					curelem = nbrelem;
@@ -264,32 +264,32 @@ LineConfig findLines(const UMesh2dh<scalar>& m, const a_real threshold)
 }
 
 template <typename scalar>
-GraphVertices createLinePointGraphVertices(const UMesh2dh<scalar>& m, const LineConfig& lc)
+GraphVertices createLinePointGraphVertices(const UMesh<scalar,2>& m, const LineConfig& lc)
 {
 	assert(lc.celline.size() == static_cast<size_t>(m.gnelem()));
 
 	GraphVertices gv;
 
-	const a_int nlines = static_cast<a_int>(lc.lines.size());
+	const fint nlines = static_cast<fint>(lc.lines.size());
 
 	gv.cellsToPtsMap.assign(m.gnelem(), -1);
 	gv.pointList.reserve(m.gnelem());
 	for(size_t i = 0; i < lc.celline.size(); i++)
 		if(lc.celline[i] == -1) {
 			gv.pointList.push_back(i);
-			gv.cellsToPtsMap[i] = static_cast<a_int>(gv.pointList.size()-1);
+			gv.cellsToPtsMap[i] = static_cast<fint>(gv.pointList.size()-1);
 		}
 	gv.pointList.shrink_to_fit();
 
-	const a_int npoints = static_cast<a_int>(gv.pointList.size());
+	const fint npoints = static_cast<fint>(gv.pointList.size());
 
 	gv.gverts.resize(nlines+npoints);
 
-	for(a_int iline = 0; iline < nlines; iline++) {
+	for(fint iline = 0; iline < nlines; iline++) {
 		gv.gverts[iline].isline = true;
 		gv.gverts[iline].idx = iline;
 	}
-	for(a_int ipoin = 0; ipoin < npoints; ipoin++) {
+	for(fint ipoin = 0; ipoin < npoints; ipoin++) {
 		gv.gverts[nlines+ipoin].isline = false;
 		gv.gverts[nlines+ipoin].idx = ipoin;
 	}
@@ -299,10 +299,10 @@ GraphVertices createLinePointGraphVertices(const UMesh2dh<scalar>& m, const Line
 }
 
 template <typename scalar>
-void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Mat *const G)
+void createLinePointGraph(const UMesh<scalar,2>& m, const GraphVertices& gv, Mat *const G)
 {
-	const a_int nlines = static_cast<a_int>(gv.lc->lines.size());
-	const a_int npoints = static_cast<a_int>(gv.pointList.size());
+	const fint nlines = static_cast<fint>(gv.lc->lines.size());
+	const fint npoints = static_cast<fint>(gv.pointList.size());
 	// printf("createLPGraph: Num lines = %d\n", nlines);
 	// printf("createLPGraph: Num points = %d\n", npoints);
 
@@ -314,16 +314,16 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 	petsc_throw(ierr, "Could not set Mat option");
 	
 	// find connections between lines and other lines or points
-	for(a_int iline = 0; iline < nlines; iline++)
+	for(fint iline = 0; iline < nlines; iline++)
 	{
-		std::set<a_int> linenbrs, pointnbrs;
+		std::set<fint> linenbrs, pointnbrs;
 
 		for(int icell = 0; icell < static_cast<int>(gv.lc->lines[iline].size()); icell++)
 		{
-			const a_int cell = gv.lc->lines[iline][icell];
+			const fint cell = gv.lc->lines[iline][icell];
 			for(EIndex j = 0; j < m.gnfael(cell); j++)
 			{
-				const a_int cellnbr = m.gesuel(cell,j);
+				const fint cellnbr = m.gesuel(cell,j);
 				if(cellnbr >= m.gnelem())
 					continue;
 
@@ -338,18 +338,18 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 		}
 
 		// add to graph
-		const a_real val = 1.0;
+		const freal val = 1.0;
 #pragma omp critical
 		{
 			ierr = MatSetValues(*G, 1, &iline, 1, &iline, &val, INSERT_VALUES);
 		}
-		for( a_int nbr : linenbrs ) {
+		for( fint nbr : linenbrs ) {
 #pragma omp critical
 			{
 				ierr = MatSetValues(*G, 1, &iline, 1, &nbr, &val, INSERT_VALUES);
 			}
 		}
-		for(a_int nbr : pointnbrs) {
+		for(fint nbr : pointnbrs) {
 #pragma omp critical
 			{
 				ierr = MatSetValues(*G, 1, &iline, 1, &nbr, &val, INSERT_VALUES);
@@ -360,11 +360,11 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 	petsc_throw(ierr, "Error in setting values of line-point graph!");
 
 	// find connections between each point and neighbouring lines or points and add them to the graph
-	for(a_int ipoin = 0; ipoin < npoints; ipoin++)
+	for(fint ipoin = 0; ipoin < npoints; ipoin++)
 	{
-		const a_int cell = gv.pointList[ipoin];
-		const a_int ipdx = ipoin+nlines;
-		const a_real val = 1.0;
+		const fint cell = gv.pointList[ipoin];
+		const fint ipdx = ipoin+nlines;
+		const freal val = 1.0;
 
 #pragma omp critical
 		{
@@ -373,11 +373,11 @@ void createLinePointGraph(const UMesh2dh<scalar>& m, const GraphVertices& gv, Ma
 
 		for(EIndex j = 0; j < m.gnfael(cell); j++)
 		{
-			const a_int cellnbr = m.gesuel(cell,j);
+			const fint cellnbr = m.gesuel(cell,j);
 			if(cellnbr >= m.gnelem())
 				continue;
 
-			a_int nbidx;
+			fint nbidx;
 			if(gv.lc->celline[cellnbr] >= 0)
 			{
 				nbidx = gv.lc->celline[cellnbr];
@@ -424,7 +424,7 @@ std::vector<PetscInt> getPetscOrdering(Mat G, const char *const ordering)
 	ierr = ISGetIndices(cperm, &cinds);
 
 	// check for symmetric permutation
-	for(a_int i = 0; i < rows; i++)
+	for(fint i = 0; i < rows; i++)
 		assert(rinds[i] == cinds[i]);
 
 	std::vector<PetscInt> ord(rows);
@@ -439,9 +439,9 @@ std::vector<PetscInt> getPetscOrdering(Mat G, const char *const ordering)
 	return ord;
 }
 
-template void lineReorder(UMesh2dh<a_real>& m, const a_real threshold);
-template std::vector<a_int> getHybridLineOrdering(const UMesh2dh<a_real>& m, const a_real threshold,
+template void lineReorder(UMesh<freal,2>& m, const freal threshold);
+template std::vector<fint> getHybridLineOrdering(const UMesh<freal,2>& m, const freal threshold,
                                                   const char *const ordering);
-template void hybridLineReorder(UMesh2dh<a_real>& m, const a_real threshold, const char *const ordering);
+template void hybridLineReorder(UMesh<freal,2>& m, const freal threshold, const char *const ordering);
 
 }

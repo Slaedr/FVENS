@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 #include "spatial/aoutput.hpp"
 
 using namespace fvens;
@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 	//cout << "Input file is of type " << informat << ". Writing as " << outformat << ".\n";
 
 	const MeshData md = readMesh(inmesh);
-	const UMesh2dh<a_real> m(md);
+	const UMesh<freal,NDIM> m(md);
 
 	if(outformat == "msh")	
 		m.writeGmsh2(outmesh);

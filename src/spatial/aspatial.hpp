@@ -29,7 +29,7 @@
 #include "utilities/aarray2d.hpp"
 #include "linalg/petscutils.hpp"
 
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 
 namespace fvens {
 
@@ -42,7 +42,7 @@ public:
 	/** Computes and stores cell centre coordinates, ghost cells' centres, and
 	 * quadrature point coordinates.
 	 */
-	Spatial(const UMesh2dh<scalar> *const mesh);
+	Spatial(const UMesh<scalar,2> *const mesh);
 
 	virtual ~Spatial();
 
@@ -72,34 +72,34 @@ public:
 	 * diagonal blocks of the respective cells.
 	 */
 	virtual void
-	compute_local_jacobian_interior(const a_int iface,
-	                                const a_real *const ul, const a_real *const ur,
-	                                Eigen::Matrix <a_real,nvars,nvars,Eigen::RowMajor>& L,
-	                                Eigen::Matrix <a_real,nvars,nvars,Eigen::RowMajor>& U
+	compute_local_jacobian_interior(const fint iface,
+	                                const freal *const ul, const freal *const ur,
+	                                Eigen::Matrix <freal,nvars,nvars,Eigen::RowMajor>& L,
+	                                Eigen::Matrix <freal,nvars,nvars,Eigen::RowMajor>& U
 	                                ) const = 0;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
 	/** The convention is that L is the negative of the matrix that is added to the diagonal block
 	 * corresponding to the interior cell.
 	 */
-	virtual void compute_local_jacobian_boundary(const a_int iface,
-	                                             const a_real *const ul,
-	                                             Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L
+	virtual void compute_local_jacobian_boundary(const fint iface,
+	                                             const freal *const ul,
+	                                             Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>& L
 	                                             ) const = 0;
 
 
 	/// Computes gradients of field variables and stores them in the argument
-	virtual void getGradients(const Vec u, GradBlock_t<a_real,NDIM,nvars> *const grads) const = 0;
+	virtual void getGradients(const Vec u, GradBlock_t<freal,NDIM,nvars> *const grads) const = 0;
 
 	/// Exposes access to the mesh context
-	const UMesh2dh<scalar>* mesh() const
+	const UMesh<scalar,2>* mesh() const
 	{
 		return m;
 	}
 
 protected:
 	/// Mesh context
-	const UMesh2dh<scalar> *const m;
+	const UMesh<scalar,2> *const m;
 
 	/// Cell centers of both real cells and connectivity ghost cells
 	Vec rcvec;
@@ -159,8 +159,8 @@ protected:
 	 * \param[out] dgradr Jacobian of right cell-centred gradients
 	 */
 	void getFaceGradientAndJacobian_thinLayer(const scalar *const ccleft, const scalar *const ccright,
-	                                          const a_real *const ucl, const a_real *const ucr,
-	                                          const a_real *const dul, const a_real *const dur,
+	                                          const freal *const ucl, const freal *const ucr,
+	                                          const freal *const dul, const freal *const dur,
 	                                          scalar grad[NDIM][nvars],
 	                                          scalar dgradl[NDIM][nvars][nvars],
 	                                          scalar dgradr[NDIM][nvars][nvars]) const;

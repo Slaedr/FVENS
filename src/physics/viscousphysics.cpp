@@ -133,19 +133,19 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 	static_assert(ndim == NDIM, "3D not implemented yet.");
 	static_assert(nvars == ndim+2, "Only single-phase ideal gas is supported.");
 
-	a_real vflux[nvars];             // output variable to be differentiated
+	scalar vflux[nvars];             // output variable to be differentiated
 
 	// Non-dimensional dynamic viscosity divided by free-stream Reynolds number
-	const a_real muRe = constVisc ?
+	const scalar muRe = constVisc ?
 			jphy.getConstantViscosityCoeff()
 		:
 			0.5*( jphy.getViscosityCoeffFromConserved(ul)
 			+ jphy.getViscosityCoeffFromConserved(ur) );
 
 	// Non-dimensional thermal conductivity
-	const a_real kdiff = jphy.getThermalConductivityFromViscosity(muRe);
+	const scalar kdiff = jphy.getThermalConductivityFromViscosity(muRe);
 
-	a_real dmul[nvars], dmur[nvars], dkdl[nvars], dkdr[nvars];
+	scalar dmul[nvars], dmur[nvars], dkdl[nvars], dkdr[nvars];
 	for(int k = 0; k < nvars; k++) {
 		dmul[k] = 0; dmur[k] = 0; dkdl[k] = 0; dkdr[k] = 0;
 	}
@@ -161,7 +161,7 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 		jphy.getJacobianThermCondWrtConservedFromJacobianSutherViscWrtConserved(dmur, dkdr);
 	}
 
-	a_real stress[ndim][ndim], dstressl[ndim][ndim][nvars], dstressr[ndim][ndim][nvars];
+	scalar stress[ndim][ndim], dstressl[ndim][ndim][nvars], dstressr[ndim][ndim][nvars];
 	for(int i = 0; i < ndim; i++)
 		for(int j = 0; j < ndim; j++)
 		{
@@ -192,7 +192,7 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 	}
 
 	// for the energy dissipation, compute avg velocities first
-	a_real vavg[ndim], dvavgl[ndim][nvars], dvavgr[ndim][nvars];
+	scalar vavg[ndim], dvavgl[ndim][nvars], dvavgr[ndim][nvars];
 	for(int j = 0; j < ndim; j++)
 	{
 		vavg[j] = 0.5*( ul[j+1]/ul[0] + ur[j+1]/ur[0] );
@@ -212,8 +212,8 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 	vflux[nvars-1] = 0;
 	for(int i = 0; i < ndim; i++)
 	{
-		a_real comp = 0;
-		a_real dcompl[nvars], dcompr[nvars];
+		scalar comp = 0;
+		scalar dcompl[nvars], dcompr[nvars];
 		for(int k = 0; k < nvars; k++) {
 			dcompl[k] = 0;
 			dcompr[k] = 0;
@@ -246,50 +246,50 @@ void computeViscousFluxJacobian(const IdealGasPhysics<scalar>& jphy,
 }
 
 template void
-getPrimitive2StatesAndGradients<a_real,NDIM,true>(const IdealGasPhysics<a_real>& physics,
-                                                  const a_real *const ucl, const a_real *const ucr,
-                                                  const a_real *const gradl, const a_real *const gradr,
-                                                  a_real *const uctl, a_real *const uctr,
-                                                  a_real *const gradtl, a_real *const gradtr);
+getPrimitive2StatesAndGradients<freal,NDIM,true>(const IdealGasPhysics<freal>& physics,
+                                                  const freal *const ucl, const freal *const ucr,
+                                                  const freal *const gradl, const freal *const gradr,
+                                                  freal *const uctl, freal *const uctr,
+                                                  freal *const gradtl, freal *const gradtr);
 template void
-getPrimitive2StatesAndGradients<a_real,NDIM,false>(const IdealGasPhysics<a_real>& physics,
-                                                   const a_real *const ucl, const a_real *const ucr,
-                                                   const a_real *const gradl, const a_real *const gradr,
-                                                   a_real *const uctl, a_real *const uctr,
-                                                   a_real *const gradtl, a_real *const gradtr);
+getPrimitive2StatesAndGradients<freal,NDIM,false>(const IdealGasPhysics<freal>& physics,
+                                                   const freal *const ucl, const freal *const ucr,
+                                                   const freal *const gradl, const freal *const gradr,
+                                                   freal *const uctl, freal *const uctr,
+                                                   freal *const gradtl, freal *const gradtr);
 
 template void
-computeViscousFlux<a_real,NDIM,NVARS,true>(const IdealGasPhysics<a_real>& physics,
-                                           const a_real *const n,
-                                           const a_real grad[NDIM][NVARS],
-                                           const a_real *const ul, const a_real *const ur,
-                                           a_real *const __restrict vflux);
+computeViscousFlux<freal,NDIM,NVARS,true>(const IdealGasPhysics<freal>& physics,
+                                           const freal *const n,
+                                           const freal grad[NDIM][NVARS],
+                                           const freal *const ul, const freal *const ur,
+                                           freal *const __restrict vflux);
 template void
-computeViscousFlux<a_real,NDIM,NVARS,false>(const IdealGasPhysics<a_real>& physics,
-                                           const a_real *const n,
-                                           const a_real grad[NDIM][NVARS],
-                                           const a_real *const ul, const a_real *const ur,
-                                           a_real *const __restrict vflux);
+computeViscousFlux<freal,NDIM,NVARS,false>(const IdealGasPhysics<freal>& physics,
+                                           const freal *const n,
+                                           const freal grad[NDIM][NVARS],
+                                           const freal *const ul, const freal *const ur,
+                                           freal *const __restrict vflux);
 
 template void
-computeViscousFluxJacobian<a_real,NDIM,NVARS,true>(const IdealGasPhysics<a_real>& jphy,
-                                                   const a_real *const n,
-                                                   const a_real *const ul, const a_real *const ur,
-                                                   const a_real grad[NDIM][NVARS],
-                                                   const a_real dgradl[NDIM][NVARS][NVARS],
-                                                   const a_real dgradr[NDIM][NVARS][NVARS],
-                                                   a_real *const __restrict dvfi,
-                                                   a_real *const __restrict dvfj);
+computeViscousFluxJacobian<freal,NDIM,NVARS,true>(const IdealGasPhysics<freal>& jphy,
+                                                   const freal *const n,
+                                                   const freal *const ul, const freal *const ur,
+                                                   const freal grad[NDIM][NVARS],
+                                                   const freal dgradl[NDIM][NVARS][NVARS],
+                                                   const freal dgradr[NDIM][NVARS][NVARS],
+                                                   freal *const __restrict dvfi,
+                                                   freal *const __restrict dvfj);
 
 template void
-computeViscousFluxJacobian<a_real,NDIM,NVARS,false>(const IdealGasPhysics<a_real>& jphy,
-                                                    const a_real *const n,
-                                                    const a_real *const ul, const a_real *const ur,
-                                                    const a_real grad[NDIM][NVARS],
-                                                    const a_real dgradl[NDIM][NVARS][NVARS],
-                                                    const a_real dgradr[NDIM][NVARS][NVARS],
-                                                    a_real *const __restrict dvfi,
-                                                    a_real *const __restrict dvfj);
+computeViscousFluxJacobian<freal,NDIM,NVARS,false>(const IdealGasPhysics<freal>& jphy,
+                                                    const freal *const n,
+                                                    const freal *const ul, const freal *const ur,
+                                                    const freal grad[NDIM][NVARS],
+                                                    const freal dgradl[NDIM][NVARS][NVARS],
+                                                    const freal dgradr[NDIM][NVARS][NVARS],
+                                                    freal *const __restrict dvfi,
+                                                    freal *const __restrict dvfj);
 
 //CHANGE HERE
 #ifdef USE_ADOLC

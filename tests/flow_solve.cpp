@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 	// Mesh
-	const UMesh2dh<a_real> m = constructMeshFlow(opts, "");
+	const UMesh<freal,NDIM> m = constructMeshFlow(opts, "");
 	// solution vector
 	Vec u;
 	ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);

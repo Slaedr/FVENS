@@ -22,7 +22,7 @@ template <typename scalar>
 MutableVecHandler<scalar>::MutableVecHandler(Vec x) : vec{NULL}
 {
 	static_assert(std::is_convertible<PetscScalar,scalar>::value,
-	              "a_real type does not match PETSc scalar!");
+	              "freal type does not match PETSc scalar!");
 	setVec(x);
 }
 
@@ -63,7 +63,7 @@ scalar *MutableVecHandler<scalar>::getArray()
 	return sdata;
 }
 
-template class MutableVecHandler<a_real>;
+template class MutableVecHandler<freal>;
 
 template <typename scalar>
 ConstVecHandler<scalar>::ConstVecHandler() : vec{NULL}, data{NULL}, sdata{nullptr}
@@ -72,7 +72,7 @@ ConstVecHandler<scalar>::ConstVecHandler() : vec{NULL}, data{NULL}, sdata{nullpt
 template <typename scalar>
 ConstVecHandler<scalar>::ConstVecHandler(Vec x) : vec{NULL}
 {
-	static_assert(std::is_same<PetscScalar,a_real>::value, "a_real type does not match PETSc scalar!");
+	static_assert(std::is_same<PetscScalar,freal>::value, "freal type does not match PETSc scalar!");
 	setVec(x);
 }
 
@@ -113,7 +113,7 @@ const scalar *ConstVecHandler<scalar>::getArray() const
 	return sdata;
 }
 
-template class ConstVecHandler<a_real>;
+template class ConstVecHandler<freal>;
 
 template <typename scalar>
 MutableGhostedVecHandler<scalar>::MutableGhostedVecHandler()
@@ -164,7 +164,7 @@ void MutableGhostedVecHandler<scalar>::restore()
 	}
 }
 
-template class MutableGhostedVecHandler<a_real>;
+template class MutableGhostedVecHandler<freal>;
 
 template <typename scalar>
 ConstGhostedVecHandler<scalar>::ConstGhostedVecHandler() : ConstVecHandler<scalar>(), localvec{NULL}
@@ -214,7 +214,7 @@ void ConstGhostedVecHandler<scalar>::restore()
 	}
 }
 
-template class ConstGhostedVecHandler<a_real>;
+template class ConstGhostedVecHandler<freal>;
 
 #if 0
 #ifdef USE_ADOLC

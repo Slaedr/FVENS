@@ -17,7 +17,7 @@ FlowParserOptions parse_solution_file(std::ifstream& inf)
 {
 	FlowParserOptions pd;
 	pd.bcconf.resize(2);
-	a_real tempalpha;
+	freal tempalpha;
 	inf >> pd.meshfile >> pd.vtu_output_file >> pd.logfile >> pd.lognres
 	    >> pd.flowtype >> pd.gamma >> tempalpha >> pd.Minf;
 	pd.bcconf[0].bc_type = SLIP_WALL_BC; inf >> pd.bcconf[0].bc_tag;

@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 
 	int ierr = 0;
 
-	UMesh2dh<a_real> m(readMesh(argv[1]));
+	UMesh<freal,NDIM> m(readMesh(argv[1]));
 	m.compute_topological();
 	m.compute_areas();
 	m.compute_face_data();

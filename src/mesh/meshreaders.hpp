@@ -29,9 +29,9 @@ namespace fvens{
 /// Data which is read from a mesh file
 struct MeshData
 {
-	a_int npoin;                    ///< Number of nodes
-	a_int nelem;                    ///< Number of elements
-	a_int nbface;                   ///< Number of boundary faces
+	fint npoin;                    ///< Number of nodes
+	fint nelem;                    ///< Number of elements
+	fint nbface;                   ///< Number of boundary faces
 	std::vector<int> nnode;         ///< number of nodes to an element, for each element
 	int maxnnode;                   ///< Maximum number of nodes per element for any element
 	std::vector<int> nfael;         ///< number of faces to an element for each element
@@ -41,14 +41,14 @@ struct MeshData
 	int ndtag;                      ///< number of tags for each element
 
 	/// Coordinates of nodes
-	amat::Array2d<a_real> coords;
+	amat::Array2d<freal> coords;
 
 	/// Interconnectivity matrix: lists node numbers of nodes in each element
-	amat::Array2d<a_int> inpoel;
+	amat::Array2d<fint> inpoel;
 
 	/// Physical boundary face data
 	///  Lists nodes belonging to a boundary face and contains boundary markers
-	amat::Array2d<a_int> bface;
+	amat::Array2d<fint> bface;
 
 	/// Volume tags
 	amat::Array2d<int> vol_regions;

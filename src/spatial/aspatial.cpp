@@ -37,7 +37,7 @@ namespace fvens {
  * \sa compute_ghost_cell_coords_about_face
  */
 template<typename scalar, int nvars>
-Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
+Spatial<scalar,nvars>::Spatial(const UMesh<scalar,2> *const mesh) : m(mesh)
 {
 	StatusCode ierr = 0;
 
@@ -53,7 +53,7 @@ Spatial<scalar,nvars>::Spatial(const UMesh2dh<scalar> *const mesh) : m(mesh)
 	// Compute coords of face centres
 	gr.resize(m->gnaface(), NDIM);
 	gr.zeros();
-	for(a_int ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
+	for(fint ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
 		for(int iv = 0; iv < m->gnnofa(ied); iv++)
 			for(int idim = 0; idim < NDIM; idim++)
@@ -103,9 +103,9 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array
 	const ConstGhostedVecHandler<scalar> rch(rcvec);
 	const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
-	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
+	for(fint iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
-		const a_int ielem = m->gintfac(iface,0);
+		const fint ielem = m->gintfac(iface,0);
 
 		for(int idim = 0; idim < NDIM; idim++)
 		{
@@ -131,9 +131,9 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<s
 	const ConstGhostedVecHandler<scalar> rch(rcvec);
 	const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
-	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
+	for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
-		const a_int ielem = m->gintfac(ied,0);
+		const fint ielem = m->gintfac(ied,0);
 		const scalar nx = m->gfacemetric(ied,0);
 		const scalar ny = m->gfacemetric(ied,1);
 
@@ -209,8 +209,8 @@ getFaceGradient_modifiedAverage(const scalar *const rcl, const scalar *const rcr
 template <typename scalar, int nvars>
 void Spatial<scalar,nvars>
 ::getFaceGradientAndJacobian_thinLayer(const scalar *const ccleft, const scalar *const ccright,
-                                       const a_real *const ucl, const a_real *const ucr,
-                                       const a_real *const dul, const a_real *const dur,
+                                       const freal *const ucl, const freal *const ucr,
+                                       const freal *const dul, const freal *const dur,
                                        scalar grad[NDIM][nvars], scalar dgradl[NDIM][nvars][nvars],
                                        scalar dgradr[NDIM][nvars][nvars]) const
 {
@@ -264,12 +264,12 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 	const PetscScalar *const uarr = uvh.getArray();
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
+	for(fint iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
+		const fint lelem = m->gintfac(iface,0);
+		const fint lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
 
-		Matrix<a_real,nvars,nvars,RowMajor> left;
+		Matrix<freal,nvars,nvars,RowMajor> left;
 		compute_local_jacobian_boundary(iface, &uarr[lelem*nvars], left);
 
 		// negative L and U contribute to diagonal blocks
@@ -281,15 +281,15 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
+	for(fint iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++)
 	{
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
-		const a_int lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
-		const a_int relemg = isdistributed ? m->gglobalElemIndex(relem) : relem;
+		const fint lelem = m->gintfac(iface,0);
+		const fint relem = m->gintfac(iface,1);
+		const fint lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
+		const fint relemg = isdistributed ? m->gglobalElemIndex(relem) : relem;
 
-		Matrix<a_real,nvars,nvars,RowMajor> L;
-		Matrix<a_real,nvars,nvars,RowMajor> U;
+		Matrix<freal,nvars,nvars,RowMajor> L;
+		Matrix<freal,nvars,nvars,RowMajor> U;
 		compute_local_jacobian_interior(iface, &uarr[lelem*nvars], &uarr[relem*nvars], L, U);
 
 #pragma omp critical
@@ -314,15 +314,15 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 	}
 
 #pragma omp parallel for default(shared)
-	for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
+	for(fint iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++)
 	{
-		const a_int lelem = m->gintfac(iface,0);
-		const a_int relem = m->gintfac(iface,1);
-		const a_int lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
-		const a_int relemg = isdistributed ? m->gconnface(iface-m->gConnBFaceStart(), 3) : -1;
+		const fint lelem = m->gintfac(iface,0);
+		const fint relem = m->gintfac(iface,1);
+		const fint lelemg = isdistributed ? m->gglobalElemIndex(lelem) : lelem;
+		const fint relemg = isdistributed ? m->gconnface(iface-m->gConnBFaceStart(), 3) : -1;
 
-		Matrix<a_real,nvars,nvars,RowMajor> L;
-		Matrix<a_real,nvars,nvars,RowMajor> U;
+		Matrix<freal,nvars,nvars,RowMajor> L;
+		Matrix<freal,nvars,nvars,RowMajor> U;
 		compute_local_jacobian_interior(iface, &uarr[lelem*nvars], &uarr[relem*nvars], L, U);
 
 #pragma omp critical
@@ -342,8 +342,8 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 }
 
 
-template class Spatial<a_real,NVARS>;
-template class Spatial<a_real,1>;
+template class Spatial<freal,NVARS>;
+template class Spatial<freal,1>;
 
 #ifdef USE_ADOLC
 template class Spatial<adouble,NVARS>;

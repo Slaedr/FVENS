@@ -18,11 +18,11 @@ namespace fvens {
 struct SteadySolverConfig {
 	bool lognres;                ///< Whether to output nonlinear residual history
 	std::string logfile;         ///< File in which to write nonlinear residual history if needed
-	a_real cflinit;              ///< Initial CFL number, used for steps before \ref rampstart
-	a_real cflfin;               ///< Final CFL, used for time steps after \ref rampend
+	freal cflinit;              ///< Initial CFL number, used for steps before \ref rampstart
+	freal cflfin;               ///< Final CFL, used for time steps after \ref rampend
 	int rampstart;               ///< Time step at which to begin CFL ramping
 	int rampend;                 ///< Time step at which to end CFL ramping
-	a_real tol;                  ///< Tolerance for the final solution to the nonlinear system
+	freal tol;                  ///< Tolerance for the final solution to the nonlinear system
 	int maxiter;                 ///< Maximum number of iterations to solve the nonlinear system
 	int linmaxiterstart;         ///< Max linear solver iterations before step \ref rampstart
 	int linmaxiterend;           ///< Max number of solver iterations after step \ref rampend
@@ -44,7 +44,7 @@ struct SteadyStepMonitor {
 /// A collection of variables used for benchmarking purposes
 struct TimingData
 {
-	a_int nelem;                 ///< Size of the problem - the number of cells
+	fint nelem;                 ///< Size of the problem - the number of cells
 	int num_threads;             ///< Number of threads used to solve the problem
 	double lin_walltime;         ///< Wall-clock time taken by all the linear solves
 	double lin_cputime;          ///< CPU time taken by all the linear solves
@@ -77,7 +77,7 @@ public:
 	 * \param[in] spatial Spatial discretization context
 	 * \param[in] conf Reference to temporal discretization configuration settings
 	 */
-	SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf);
+	SteadySolver(const Spatial<freal,nvars> *const spatial, const SteadySolverConfig& conf);
 
 	/// Get timing data
 	TimingData getTimingData() const;
@@ -88,17 +88,17 @@ public:
 	virtual ~SteadySolver() {}
 
 protected:
-	const Spatial<a_real,nvars> *const space;
+	const Spatial<freal,nvars> *const space;
 	const SteadySolverConfig& config;
 	TimingData tdata;
 
 	/// Linear CFL ramping
-	a_real linearRamp(const a_real cstart, const a_real cend, const int itstart, const int itend,
+	freal linearRamp(const freal cstart, const freal cend, const int itstart, const int itend,
 	                  const int itcur) const;
 
 	/// A kind of exponential ramping, designed to be dependent on the residual ratio as base
-	a_real expResidualRamp(const a_real cflmin, const a_real cflmax, const a_real prevcfl,
-	                       const a_real resratio, const a_real paramup, const a_real paramdown);
+	freal expResidualRamp(const freal cflmin, const freal cflmax, const freal prevcfl,
+	                       const freal resratio, const freal paramup, const freal paramdown);
 };
 	
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
@@ -116,7 +116,7 @@ public:
 	/// Sets the spatial context and problem configuration, and allocates required data
 	/** \param x A PETSc Vec from which the residual vector is duplicated.
 	 */
-	SteadyForwardEulerSolver(const Spatial<a_real,nvars> *const euler, const Vec x,
+	SteadyForwardEulerSolver(const Spatial<freal,nvars> *const euler, const Vec x,
 			const SteadySolverConfig& conf);
 
 	~SteadyForwardEulerSolver();
@@ -148,7 +148,7 @@ public:
 	 * \param[in] conf Temporal discretization settings
 	 * \param[in] ksp The PETSc top-level solver context
 	 */
-	SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf,
+	SteadyBackwardEulerSolver(const Spatial<freal,nvars> *const spatial, const SteadySolverConfig& conf,
 	                          KSP ksp, const NonlinearUpdate<nvars> *const nl_upd);
 
 	~SteadyBackwardEulerSolver();
@@ -181,10 +181,10 @@ protected:
 	 *   the term added to the diagonal on output, ie, vol / (cfl * dt).
 	 * \param[in,out] M The Jacobian matrix to add the time term to
 	 */
-	StatusCode addPseudoTimeTerm(const a_real cfl, Vec dtmvec, Mat M);
+	StatusCode addPseudoTimeTerm(const freal cfl, Vec dtmvec, Mat M);
 
 	/// Same as \ref addPseudoTimeTerm but slower, using non-block assembly
-	StatusCode addPseudoTimeTerm_slow(const a_real cfl, Vec dtmvec, Mat M);
+	StatusCode addPseudoTimeTerm_slow(const freal cfl, Vec dtmvec, Mat M);
 };
 
 /// Base class for unsteady simulations
@@ -195,7 +195,7 @@ template <int nvars>
 class UnsteadySolver
 {
 protected:
-	const Spatial<a_real,nvars> * space;
+	const Spatial<freal,nvars> * space;
 	Vec uvec;
 	Vec rvec;
 	const int order;               ///< Deisgn order of accuracy in time
@@ -210,7 +210,7 @@ public:
 	 * \param[in] soln The solution vector to use and update
 	 * \param[in] temporal_order Design order of accuracy in time
 	 */
-	UnsteadySolver(const Spatial<a_real,nvars> *const spatial, Vec soln,
+	UnsteadySolver(const Spatial<freal,nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file);
 
 	/// Get timing data
@@ -219,7 +219,7 @@ public:
 	}
 
 	/// Solve the ODE
-	virtual StatusCode solve(const a_real time) = 0;
+	virtual StatusCode solve(const freal time) = 0;
 
 	virtual ~UnsteadySolver() {}
 };
@@ -229,12 +229,12 @@ template<int nvars>
 class TVDRKSolver : public UnsteadySolver<nvars>
 {
 public:
-	TVDRKSolver(const Spatial<a_real,nvars> *const spatial, Vec soln,
+	TVDRKSolver(const Spatial<freal,nvars> *const spatial, Vec soln,
 			const int temporal_order, const std::string log_file, const double cfl_num);
 
 	~TVDRKSolver();
 	
-	StatusCode solve(const a_real finaltime);
+	StatusCode solve(const freal finaltime);
 
 protected:
 	using UnsteadySolver<nvars>::space;
@@ -248,7 +248,7 @@ protected:
 	const double cfl;
 
 	/// Coefficients of TVD schemes
-	const Eigen::Matrix<a_real, Eigen::Dynamic,Eigen::Dynamic> tvdcoeffs;
+	const Eigen::Matrix<freal, Eigen::Dynamic,Eigen::Dynamic> tvdcoeffs;
 
 private:
 	/// Characteristic local time step for each cell

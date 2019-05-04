@@ -78,7 +78,7 @@ static double std_deviation(const double *const vals, const double avg, const in
  * \return An arrray containing, in order, the factor walltime, apply wall time and ODE wall time.
  */
 static std::array<double,3>
-runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<a_real,NVARS> *const prob,
+runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS> *const prob,
                 const int nbswps, const int naswps, const int numthreads, const int numrepeat,
                 const double factor_basewtime, const double apply_basewtime, const double ode_basewtime,
                 const bool basecase, const bool conv_history_reqd, const std::string perflogprefix,
@@ -213,8 +213,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 	StatusCode ierr = 0;
 
 	// Set up mesh
-	const UMesh2dh<a_real> m = constructMeshFlow(opts,"");
-	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
+	const UMesh<freal,NDIM> m = constructMeshFlow(opts,"");
+	const Spatial<freal,NVARS> *const prob = createFlowSpatial(opts, m);
 
 	// solution vector
 	Vec u;

@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
 
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
 
-	const UMesh2dh<a_real> m = constructMeshFlow(opts, "");
-	const FlowFV_base<a_real> *const spatial = createFlowSpatial(opts, m);
+	const UMesh<freal,NDIM> m = constructMeshFlow(opts, "");
+	const FlowFV_base<freal> *const spatial = createFlowSpatial(opts, m);
 
 	Vec u;
 	ierr = initializeSystemVector(opts, m, &u); CHKERRQ(ierr);

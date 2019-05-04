@@ -11,20 +11,20 @@
 namespace fvens {
 
 template<int nvars>
-Diffusion<nvars>::Diffusion(const UMesh2dh<a_real> *const mesh,
-                            const a_real diffcoeff, const a_real bvalue,
+Diffusion<nvars>::Diffusion(const UMesh<freal,NDIM> *const mesh,
+                            const freal diffcoeff, const freal bvalue,
                             std::function <
-								void(const a_real *const, const a_real, const a_real *const,
-								     a_real *const)
+								void(const freal *const, const freal, const freal *const,
+								     freal *const)
                             > sourcefunc)
-	: Spatial<a_real,nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
+	: Spatial<freal,nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
 {
 	h.resize(m->gnelem());
-	for(a_int iel = 0; iel < m->gnelem(); iel++) {
+	for(fint iel = 0; iel < m->gnelem(); iel++) {
 		h[iel] = 0;
 		// max face length
 		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
-			const a_int face = m->gelemface(iel,ifael);
+			const fint face = m->gelemface(iel,ifael);
 			if(h[iel] < m->gfacemetric(face,NDIM))
 				h[iel] = m->gfacemetric(face,NDIM);
 		}
@@ -38,17 +38,17 @@ Diffusion<nvars>::~Diffusion()
 // Currently, all boundaries are constant Dirichlet
 template<int nvars>
 inline void Diffusion<nvars>::compute_boundary_state(const int ied,
-		const a_real *const ins, a_real *const bs) const
+		const freal *const ins, freal *const bs) const
 {
 	for(int ivar = 0; ivar < nvars; ivar++)
 		bs[ivar] = 2.0*bval - ins[ivar];
 }
 
 template<int nvars>
-void Diffusion<nvars>::compute_boundary_states(const a_real *const instates,
-                                               a_real *const bounstates) const
+void Diffusion<nvars>::compute_boundary_states(const freal *const instates,
+                                               freal *const bounstates) const
 {
-	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
+	for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		compute_boundary_state(ied,
 		                       &instates [(ied-m->gPhyBFaceStart())*nvars],
 		                       &bounstates[(ied-m->gPhyBFaceStart())*nvars]);
@@ -56,12 +56,12 @@ void Diffusion<nvars>::compute_boundary_states(const a_real *const instates,
 
 template<int nvars>
 DiffusionMA<nvars>
-::DiffusionMA(const UMesh2dh<a_real> *const mesh,
-              const a_real diffcoeff, const a_real bvalue,
-              std::function<void(const a_real *const,const a_real,const a_real *const,a_real *const)> sf,
+::DiffusionMA(const UMesh<freal,NDIM> *const mesh,
+              const freal diffcoeff, const freal bvalue,
+              std::function<void(const freal *const,const freal,const freal *const,freal *const)> sf,
               const std::string grad_scheme)
 	: Diffusion<nvars>(mesh, diffcoeff, bvalue, sf),
-	gradcomp {create_const_gradientscheme<a_real,nvars>(grad_scheme, m, rch.getArray(), rcbptr)}
+	gradcomp {create_const_gradientscheme<freal,nvars>(grad_scheme, m, rch.getArray(), rcbptr)}
 { }
 
 template<int nvars>
@@ -71,17 +71,17 @@ DiffusionMA<nvars>::~DiffusionMA()
 }
 
 template<int nvars>
-inline void DiffusionMA<nvars>::compute_flux_interior(const a_int iface,
-                                                      const amat::Array2dView<a_real>& rc,
-                                                      const a_real *const uarr,
-                                                      const GradBlock_t<a_real,NDIM,nvars> *const grads,
-                                                      amat::Array2dMutableView<a_real>& residual) const
+inline void DiffusionMA<nvars>::compute_flux_interior(const fint iface,
+                                                      const amat::Array2dView<freal>& rc,
+                                                      const freal *const uarr,
+                                                      const GradBlock_t<freal,NDIM,nvars> *const grads,
+                                                      amat::Array2dMutableView<freal>& residual) const
 {
-	const a_int lelem = m->gintfac(iface,0);
-	const a_int relem = m->gintfac(iface,1);
-	const a_real len = m->gfacemetric(iface,2);
+	const fint lelem = m->gintfac(iface,0);
+	const fint relem = m->gintfac(iface,1);
+	const freal len = m->gfacemetric(iface,2);
 
-	a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+	freal gradl[NDIM*nvars], gradr[NDIM*nvars];
 	for(int ivar = 0; ivar < nvars; ivar++) {
 		for(int idim = 0; idim < NDIM; idim++) {
 			gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
@@ -89,7 +89,7 @@ inline void DiffusionMA<nvars>::compute_flux_interior(const a_int iface,
 		}
 	}
 
-	a_real gradf[NDIM][nvars];
+	freal gradf[NDIM][nvars];
 	getFaceGradient_modifiedAverage
 		(&rc(lelem,0), &rc(relem,0), &uarr[lelem*nvars], &uarr[relem*nvars],
 		 gradl, gradr, gradf);
@@ -97,7 +97,7 @@ inline void DiffusionMA<nvars>::compute_flux_interior(const a_int iface,
 	for(int ivar = 0; ivar < nvars; ivar++)
 	{
 		// compute nu*(-grad u . n) * l
-		a_real flux = 0;
+		freal flux = 0;
 		for(int idim = 0; idim < NDIM; idim++)
 			flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
 		flux *= (-diffusivity*len);
@@ -125,22 +125,22 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	locnelem /= nvars;
 	assert(locnelem == m->gnelem());
 
-	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+	const amat::Array2dView<freal> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
 
-	const ConstGhostedVecHandler<a_real> uvh(uvec);
-	const a_real *const uarr = uvh.getArray();
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem()+m->gnConnFace(), nvars);
+	const ConstGhostedVecHandler<freal> uvh(uvec);
+	const freal *const uarr = uvh.getArray();
+	Eigen::Map<const MVector<freal>> u(uarr, m->gnelem()+m->gnConnFace(), nvars);
 
-	amat::Array2d<a_real> uleft;
-	amat::Array2d<a_real> ug;
+	amat::Array2d<freal> uleft;
+	amat::Array2d<freal> ug;
 	uleft.resize(m->gnbface(),nvars);	// Modified
 	ug.resize(m->gnbface(),nvars);
 
-	a_real *const ugptr = m->gnbface() > 0 ? &ug(0,0) : nullptr;
+	freal *const ugptr = m->gnbface() > 0 ? &ug(0,0) : nullptr;
 
-	for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
+	for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
-		const a_int ielem = m->gintfac(ied,0);
+		const fint ielem = m->gintfac(ied,0);
 		for(int ivar = 0; ivar < nvars; ivar++)
 			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
@@ -151,11 +151,11 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	Vec gradvec;
 	ierr = createGhostedSystemVector(m, NDIM*nvars, &gradvec); CHKERRQ(ierr);
 	{
-		MutableGhostedVecHandler<a_real> grh(gradvec);
-		a_real *const gradarray = grh.getArray();
-		const amat::Array2dView<a_real> ua(uarr, m->gnelem()+m->gnConnFace(), nvars);
+		MutableGhostedVecHandler<freal> grh(gradvec);
+		freal *const gradarray = grh.getArray();
+		const amat::Array2dView<freal> ua(uarr, m->gnelem()+m->gnConnFace(), nvars);
 
-		gradcomp->compute_gradients(ua, amat::Array2dView<a_real>(ugptr,m->gnbface(),nvars),
+		gradcomp->compute_gradients(ua, amat::Array2dView<freal>(ugptr,m->gnbface(),nvars),
 		                            gradarray);
 	}
 	//std::cout << "Computed gradients." << std::endl;
@@ -163,22 +163,22 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 	{
-		MutableGhostedVecHandler<a_real> rvh(rvec);
-		a_real *const rarr = rvh.getArray();
-		amat::Array2dMutableView<a_real> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
+		MutableGhostedVecHandler<freal> rvh(rvec);
+		freal *const rarr = rvh.getArray();
+		amat::Array2dMutableView<freal> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
 
-		ConstGhostedVecHandler<a_real> grh(gradvec);
-		const GradBlock_t<a_real,NDIM,nvars> *const grads
-			= reinterpret_cast<const GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
+		ConstGhostedVecHandler<freal> grh(gradvec);
+		const GradBlock_t<freal,NDIM,nvars> *const grads
+			= reinterpret_cast<const GradBlock_t<freal,NDIM,nvars>*>(grh.getArray());
 
 #pragma omp parallel for default(shared)
 		for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 		{
-			const a_int lelem = m->gintfac(iface,0);
-			const a_int ibpface = iface - m->gPhyBFaceStart();
-			const a_real len = m->gfacemetric(iface,2);
+			const fint lelem = m->gintfac(iface,0);
+			const fint ibpface = iface - m->gPhyBFaceStart();
+			const freal len = m->gfacemetric(iface,2);
 
-			a_real gradl[NDIM*nvars], gradr[NDIM*nvars];
+			freal gradl[NDIM*nvars], gradr[NDIM*nvars];
 			for(int ivar = 0; ivar < nvars; ivar++) {
 				for(int idim = 0; idim < NDIM; idim++) {
 					gradl[idim*nvars+ivar] = grads[lelem](idim,ivar);
@@ -186,14 +186,14 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 				}
 			}
 
-			a_real gradf[NDIM][nvars];
+			freal gradf[NDIM][nvars];
 			getFaceGradient_modifiedAverage(&rc(lelem,0), &rcbp(ibpface,0),
 			                                &uarr[lelem*nvars], &ug(ibpface,0), gradl, gradr, gradf);
 
 			for(int ivar = 0; ivar < nvars; ivar++)
 			{
 				// compute nu*(-grad u . n) * l
-				a_real flux = 0;
+				freal flux = 0;
 				for(int idim = 0; idim < NDIM; idim++)
 					flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
 				flux *= (-diffusivity*len);
@@ -208,16 +208,16 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 	{
-		MutableGhostedVecHandler<a_real> rvh(rvec);
-		a_real *const rarr = rvh.getArray();
-		amat::Array2dMutableView<a_real> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
+		MutableGhostedVecHandler<freal> rvh(rvec);
+		freal *const rarr = rvh.getArray();
+		amat::Array2dMutableView<freal> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
 
-		ConstGhostedVecHandler<a_real> grh(gradvec);
-		const GradBlock_t<a_real,NDIM,nvars> *const grads
-			= reinterpret_cast<const GradBlock_t<a_real,NDIM,nvars>*>(grh.getArray());
+		ConstGhostedVecHandler<freal> grh(gradvec);
+		const GradBlock_t<freal,NDIM,nvars> *const grads
+			= reinterpret_cast<const GradBlock_t<freal,NDIM,nvars>*>(grh.getArray());
 
 #pragma omp parallel for default(shared)
-		for(a_int iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
+		for(fint iface = m->gDomFaceStart(); iface < m->gDomFaceEnd(); iface++)
 		{
 			compute_flux_interior(iface, rc, uarr, grads, residual);
 		}
@@ -226,11 +226,11 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	ierr = VecDestroy(&gradvec); CHKERRQ(ierr);
 
 	{
-		MutableVecHandler<a_real> dtvh(timesteps);
-		a_real *const dtm = dtvh.getArray();
-		MutableVecHandler<a_real> rvh(rvec);
-		a_real *const rarr = rvh.getArray();
-		Eigen::Map<MVector<a_real>> residual(rarr, m->gnelem(), nvars);
+		MutableVecHandler<freal> dtvh(timesteps);
+		freal *const dtm = dtvh.getArray();
+		MutableVecHandler<freal> rvh(rvec);
+		freal *const rarr = rvh.getArray();
+		Eigen::Map<MVector<freal>> residual(rarr, m->gnelem(), nvars);
 
 #pragma omp parallel for default(shared)
 		for(int iel = 0; iel < m->gnelem(); iel++)
@@ -239,7 +239,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 				dtm[iel] = h[iel]*h[iel]/diffusivity;
 
 			// subtract source term
-			a_real sourceterm[nvars];
+			freal sourceterm[nvars];
 			source(&rc(iel,0), 0, &uarr[iel*nvars], sourceterm);
 			for(int ivar = 0; ivar < nvars; ivar++)
 				residual(iel,ivar) += sourceterm[ivar]*m->garea(iel);
@@ -251,30 +251,30 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 template<int nvars>
 void DiffusionMA<nvars>
-::compute_local_jacobian_interior(const a_int iface,
-                                  const a_real *const ul, const a_real *const ur,
-                                  Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L,
-                                  Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& U) const
+::compute_local_jacobian_interior(const fint iface,
+                                  const freal *const ul, const freal *const ur,
+                                  Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>& L,
+                                  Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>& U) const
 {
-	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
-	const a_int lelem = m->gintfac(iface,0);
-	const a_int relem = m->gintfac(iface,1);
-	const a_real len = m->gfacemetric(iface,2);
+	const amat::Array2dView<freal> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+	const fint lelem = m->gintfac(iface,0);
+	const fint relem = m->gintfac(iface,1);
+	const freal len = m->gfacemetric(iface,2);
 
-	a_real du[nvars*nvars];
+	freal du[nvars*nvars];
 	for(int i = 0; i < nvars; i++) {
 		for(int j = 0; j < nvars; j++)
 			du[i*nvars+j] = 0;
 		du[i*nvars+i] = 1.0;
 	}
 
-	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
+	freal grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
 
 	// Compute the face gradient Jacobian; we don't actually need the gradient, however..
 	getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rc(relem), ul, ur, du, du, grad, dgradl, dgradr);
 
-	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
-	U = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
+	L = Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>::Zero();
+	U = Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>::Zero();
 	for(int ivar = 0; ivar < nvars; ivar++)
 	{
 		// compute nu*(d(-grad u)/du_l . n) * l
@@ -289,29 +289,29 @@ void DiffusionMA<nvars>
 
 template<int nvars>
 void DiffusionMA<nvars>
-::compute_local_jacobian_boundary(const a_int iface,
-                                  const a_real *const ul,
-                                  Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>& L) const
+::compute_local_jacobian_boundary(const fint iface,
+                                  const freal *const ul,
+                                  Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>& L) const
 {
-	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
-	const a_int lelem = m->gintfac(iface,0);
-	const a_int ibpface = iface - m->gPhyBFaceStart();
-	const a_real len = m->gfacemetric(iface,2);
+	const amat::Array2dView<freal> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+	const fint lelem = m->gintfac(iface,0);
+	const fint ibpface = iface - m->gPhyBFaceStart();
+	const freal len = m->gfacemetric(iface,2);
 
-	a_real du[nvars*nvars];
+	freal du[nvars*nvars];
 	for(int i = 0; i < nvars; i++) {
 		for(int j = 0; j < nvars; j++)
 			du[i*nvars+j] = 0;
 		du[i*nvars+i] = 1.0;
 	}
 
-	a_real grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
+	freal grad[NDIM][nvars], dgradl[NDIM][nvars][nvars], dgradr[NDIM][nvars][nvars];
 
 	// Compute the face gradient and its Jacobian; we don't actually need the gradient, however
 	getFaceGradientAndJacobian_thinLayer(&rc(lelem), &rcbp(ibpface), ul, ul, du, du,
 	                                     grad, dgradl, dgradr);
 
-	L = Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Zero();
+	L = Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>::Zero();
 	for(int ivar = 0; ivar < nvars; ivar++)
 	{
 		// compute nu*(d(-grad u)/du_l . n) * l
@@ -323,28 +323,28 @@ void DiffusionMA<nvars>
 
 template <int nvars>
 void DiffusionMA<nvars>::getGradients(const Vec uvec,
-                                      GradBlock_t<a_real,NDIM,nvars> *const grads) const
+                                      GradBlock_t<freal,NDIM,nvars> *const grads) const
 {
-	amat::Array2d<a_real> ug(m->gnbface(),nvars);
-	ConstGhostedVecHandler<a_real> uh(uvec);
-	const amat::Array2dView<a_real> u(uh.getArray(), m->gnelem()+m->gnConnFace(), nvars);
-	for(a_int iface = 0; iface < m->gnbface(); iface++)
+	amat::Array2d<freal> ug(m->gnbface(),nvars);
+	ConstGhostedVecHandler<freal> uh(uvec);
+	const amat::Array2dView<freal> u(uh.getArray(), m->gnelem()+m->gnConnFace(), nvars);
+	for(fint iface = 0; iface < m->gnbface(); iface++)
 	{
-		const a_int lelem = m->gintfac(iface+m->gPhyBFaceStart(),0);
+		const fint lelem = m->gintfac(iface+m->gPhyBFaceStart(),0);
 		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
 	}
 
-	gradcomp->compute_gradients(u, amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),nvars),
+	gradcomp->compute_gradients(u, amat::Array2dView<freal>(&ug(0,0),m->gnbface(),nvars),
 	                            &grads[0](0,0));
 }
 
 template<int nvars>
-StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec uvec,
-                                    amat::Array2d<a_real>& up)
+StatusCode scalar_postprocess_point(const UMesh<freal,NDIM> *const m, const Vec uvec,
+                                    amat::Array2d<freal>& up)
 {
 	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
 
-	std::vector<a_real> areasum(m->gnpoin(),0);
+	std::vector<freal> areasum(m->gnpoin(),0);
 	up.resize(m->gnpoin(), nvars);
 	up.zeros();
 	//areasum.zeros();
@@ -352,9 +352,9 @@ StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec u
 	StatusCode ierr = 0;
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<freal>> u(uarr, m->gnelem(), NVARS);
 
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	for(fint ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(int inode = 0; inode < m->gnnode(ielem); inode++)
 			for(int ivar = 0; ivar < nvars; ivar++)
@@ -364,7 +364,7 @@ StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec u
 			}
 	}
 
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	for(fint ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 		for(int ivar = 0; ivar < nvars; ivar++)
 			up(ipoin,ivar) /= areasum[ipoin];
 
@@ -377,6 +377,6 @@ StatusCode scalar_postprocess_point(const UMesh2dh<a_real> *const m, const Vec u
 //CHANGE HERE
 template class Diffusion<1>;
 template class DiffusionMA<1>;
-template StatusCode scalar_postprocess_point<1>(const UMesh2dh<a_real> *const m, const Vec uvec,
-                                                amat::Array2d<a_real>& up);
+template StatusCode scalar_postprocess_point<1>(const UMesh<freal,NDIM> *const m, const Vec uvec,
+                                                amat::Array2d<freal>& up);
 }

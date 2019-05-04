@@ -32,11 +32,11 @@ namespace fvens {
  * \param m The mesh context
  */
 template <typename scalar>
-static StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>& sd,
-                                   UMesh2dh<scalar>& m);
+static StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<freal,1>& sd,
+                                   UMesh<scalar,NDIM>& m);
 
 template <typename scalar>
-StatusCode preprocessMesh(UMesh2dh<scalar>& m)
+StatusCode preprocessMesh(UMesh<scalar,NDIM>& m)
 {
 	int ierr = 0;
 	char ordstr[PETSCOPTION_STR_LEN];
@@ -81,9 +81,9 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 		}
 		else {
 			DiffusionMA<1> sd(&m, 1.0, 0.0,
-			                  [](const a_real *const r, const a_real t,
-			                     const a_real *const u,
-			                     a_real *const sourceterm)
+			                  [](const freal *const r, const freal t,
+			                     const freal *const u,
+			                     freal *const sourceterm)
 			                  { sourceterm[0] = 0; },
 			                  "NONE");
 
@@ -98,14 +98,14 @@ StatusCode preprocessMesh(UMesh2dh<scalar>& m)
 	return ierr;
 }
 
-UMesh2dh<a_real> constructMesh(const std::string mesh_path)
+UMesh<freal,NDIM> constructMesh(const std::string mesh_path)
 {
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	// Read mesh
 	if(mpirank == 0)
 		std::cout << "Global mesh:\n";
-	UMesh2dh<a_real> gm(readMesh(mesh_path));
+	UMesh<freal,NDIM> gm(readMesh(mesh_path));
 	gm.compute_topological();
 	if(mpirank == 0)
 		std::cout << "**" << std::endl;
@@ -116,7 +116,7 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 		std::cout << "Distributing the mesh\n";
 	TrivialReplicatedGlobalMeshPartitioner p(gm);
 	p.compute_partition();
-	UMesh2dh<a_real> lm = p.restrictMeshToPartitions();
+	UMesh<freal,NDIM> lm = p.restrictMeshToPartitions();
 
 #ifdef DEBUG
 	const int mpisize = get_mpi_size(PETSC_COMM_WORLD);
@@ -127,7 +127,7 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 	}
 #endif
 
-	int ierr = preprocessMesh<a_real>(lm); 
+	int ierr = preprocessMesh<freal>(lm); 
 	fvens_throw(ierr, "Mesh could not be preprocessed!");
 
 #ifdef DEBUG
@@ -135,7 +135,7 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
 	          << ",\n\t interior faces = " << lm.gninface() << ", phy boun faces = " << lm.gnbface()
 	          << ", conn faces = " << lm.gnConnFace() << ",\n\t vertices = " << lm.gnpoin() << std::endl;
 	assert(lm.gnelemglobal() == gm.gnelem());
-	for(a_int iel = 0; iel < lm.gnelem(); iel++) {
+	for(fint iel = 0; iel < lm.gnelem(); iel++) {
 		assert(lm.gglobalElemIndex(iel) >= 0);
 		assert(lm.gglobalElemIndex(iel) < lm.gnelemglobal());
 	}
@@ -150,13 +150,13 @@ UMesh2dh<a_real> constructMesh(const std::string mesh_path)
  * The length of the list is one more than the number of levels.
  */
 template <typename scalar>
-std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m)
+std::vector<fint> levelSchedule(const UMesh<scalar,NDIM>& m)
 {
 	// zeroth level starts at cell 0
-	std::vector<a_int> levels;
+	std::vector<fint> levels;
 	levels.push_back(0);
 
-	a_int icell = 0;
+	fint icell = 0;
 
 	std::vector<bool> marked(m.gnelem(), false);
 
@@ -189,7 +189,7 @@ std::vector<a_int> levelSchedule(const UMesh2dh<scalar>& m)
 	return levels;
 }
 
-std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_real>& m2)
+std::array<bool,8> compareMeshes(const UMesh<freal,NDIM>& m1, const UMesh<freal,NDIM>& m2)
 {
 	std::array<bool,8> isequal;
 	isequal[0] = (m1.gnelem() == m2.gnelem());
@@ -201,7 +201,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 	isequal[6] = true;
 	isequal[7] = true;
 
-	for(a_int i = 0; i < m1.gnelem(); i++) {
+	for(fint i = 0; i < m1.gnelem(); i++) {
 		if(m1.gnnode(i) != m2.gnnode(i)) {
 			isequal[3] = false;
 			break;
@@ -217,16 +217,16 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 			}
 		}
 	}
-	for(a_int i = 0; i < m1.gnpoin(); i++) {
+	for(fint i = 0; i < m1.gnpoin(); i++) {
 		for(int j = 0; j < NDIM; j++)
-			if(std::abs(m1.gcoords(i,j)-m2.gcoords(i,j)) > std::numeric_limits<a_real>::epsilon())
+			if(std::abs(m1.gcoords(i,j)-m2.gcoords(i,j)) > std::numeric_limits<freal>::epsilon())
 			{
 				isequal[7] = false;
 				break;
 			}
 	}
 	static_assert(NDIM==2, "Only 2D is currently supported!");  // change the hard-coded "2" below before removing this line
-	for(a_int i = 0; i < m1.gnbface(); i++)
+	for(fint i = 0; i < m1.gnbface(); i++)
 		for(int j = 0; j < 2 +m1.gnbtag(); j++)
 			if(m1.gbface(i,j) != m2.gbface(i,j)) {
 				isequal[6] = false;
@@ -237,7 +237,7 @@ std::array<bool,8> compareMeshes(const UMesh2dh<a_real>& m1, const UMesh2dh<a_re
 }
 
 template <typename scalar>
-StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>& sd, UMesh2dh<scalar>& m)
+StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<freal,1>& sd, UMesh<scalar,NDIM>& m)
 {
 	// The implementation must be changed for the multi-process case
 	StatusCode ierr = 0;
@@ -264,7 +264,7 @@ StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>&
 		CHKERRQ(ISGetIndices(rperm, &rinds));
 		CHKERRQ(ISGetIndices(cperm, &cinds));
 		// check for symmetric permutation
-		for(a_int i = 0; i < m.gnelem(); i++)
+		for(fint i = 0; i < m.gnelem(); i++)
 			assert(rinds[i] == cinds[i]);
 
 		m.reorder_cells(rinds);
@@ -281,16 +281,11 @@ StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>&
 	return ierr;
 }
 
-template StatusCode preprocessMesh(UMesh2dh<a_real>& m);
+template StatusCode preprocessMesh(UMesh<freal,NDIM>& m);
 
-// template StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<a_real,1>& sd,
-//                                      UMesh2dh<a_real>& m);
+// template StatusCode reorderMeshPetsc(const char *const ordering, const Spatial<freal,1>& sd,
+//                                      UMesh<freal,NDIM>& m);
 
-template std::vector<a_int> levelSchedule(const UMesh2dh<a_real>& m);
-
-//CHANGE HERE
-#ifdef USE_ADOLC
-template std::vector<a_int> levelSchedule(const UMesh2dh<adouble>& m);
-#endif
+template std::vector<fint> levelSchedule(const UMesh<freal,NDIM>& m);
 
 }

@@ -15,8 +15,8 @@ namespace fvens {
 
 /// Fill a raw array of scalars with zeros
 template <typename scalar>
-inline void zeros(scalar *const __restrict a, const a_int n) {
-	for(a_int i = 0; i < n; i++)
+inline void zeros(scalar *const __restrict a, const fint n) {
+	for(fint i = 0; i < n; i++)
 		a[i] = 0;
 }
 

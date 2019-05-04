@@ -28,7 +28,7 @@
 namespace fvens {
 
 template <typename scalar, int nvars>
-SolutionReconstruction<scalar,nvars>::SolutionReconstruction (const UMesh2dh<scalar> *const mesh,
+SolutionReconstruction<scalar,nvars>::SolutionReconstruction (const UMesh<scalar,2> *const mesh,
                                                               const scalar *const c_centres,
                                                               const scalar *const c_centres_ghost,
                                                               const amat::Array2d<scalar>& gauss_r)
@@ -41,7 +41,7 @@ SolutionReconstruction<scalar,nvars>::~SolutionReconstruction()
 
 template <typename scalar, int nvars>
 LinearUnlimitedReconstruction<scalar,nvars>
-::LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
+::LinearUnlimitedReconstruction(const UMesh<scalar,2> *const mesh,
                                 const scalar *const c_centres,
                                 const scalar *const c_centres_ghost,
                                 const amat::Array2d<scalar>& gauss_r)
@@ -62,9 +62,9 @@ void LinearUnlimitedReconstruction<scalar,nvars>
 #pragma omp parallel default(shared)
 	{
 #pragma omp for nowait
-		for(a_int ied = m->gConnBFaceStart(); ied < m->gConnBFaceEnd(); ied++)
+		for(fint ied = m->gConnBFaceStart(); ied < m->gConnBFaceEnd(); ied++)
 		{
-			const a_int ielem = m->gintfac(ied,0);
+			const fint ielem = m->gintfac(ied,0);
 
 			for(int i = 0; i < nvars; i++)
 			{
@@ -74,10 +74,10 @@ void LinearUnlimitedReconstruction<scalar,nvars>
 		}
 
 #pragma omp for nowait
-		for(a_int ied = m->gSubDomFaceStart(); ied < m->gSubDomFaceEnd(); ied++)
+		for(fint ied = m->gSubDomFaceStart(); ied < m->gSubDomFaceEnd(); ied++)
 		{
-			const a_int ielem = m->gintfac(ied,0);
-			const a_int jelem = m->gintfac(ied,1);
+			const fint ielem = m->gintfac(ied,0);
+			const fint jelem = m->gintfac(ied,1);
 
 			for(int i = 0; i < nvars; i++)
 			{
@@ -89,9 +89,9 @@ void LinearUnlimitedReconstruction<scalar,nvars>
 		}
 
 #pragma omp for
-		for(a_int ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
+		for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 		{
-			const a_int ielem = m->gintfac(ied,0);
+			const fint ielem = m->gintfac(ied,0);
 
 			for(int i = 0; i < nvars; i++)
 			{
@@ -102,10 +102,10 @@ void LinearUnlimitedReconstruction<scalar,nvars>
 	}
 }
 
-template class SolutionReconstruction<a_real,NVARS>;
-template class SolutionReconstruction<a_real,1>;
-template class LinearUnlimitedReconstruction<a_real,NVARS>;
-template class LinearUnlimitedReconstruction<a_real,1>;
+template class SolutionReconstruction<freal,NVARS>;
+template class SolutionReconstruction<freal,1>;
+template class LinearUnlimitedReconstruction<freal,NVARS>;
+template class LinearUnlimitedReconstruction<freal,1>;
 
 #ifdef USE_ADOLC
 template class SolutionReconstruction<adouble,NVARS>;

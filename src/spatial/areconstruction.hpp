@@ -8,7 +8,7 @@
 
 #include "aconstants.hpp"
 #include "utilities/aarray2d.hpp"
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 
 namespace fvens {
 
@@ -20,7 +20,7 @@ template <typename scalar, int nvars>
 class SolutionReconstruction
 {
 protected:
-	const UMesh2dh<scalar> *const m;            ///< Mesh context
+	const UMesh<scalar,2> *const m;            ///< Mesh context
 	/// Coords of cell-centres of subdomain and connectivity ghost cells
 	const scalar *const ri;
 	/// Coords of cell-centres of physical boundary ghost cells
@@ -29,7 +29,7 @@ protected:
 	const amat::Array2d<scalar>& gr;
 
 public:
-	SolutionReconstruction (const UMesh2dh<scalar> *const  mesh,          ///< Mesh context
+	SolutionReconstruction (const UMesh<scalar,2> *const  mesh,          ///< Mesh context
 	                        const scalar *const c_centres,                ///< Cell centres
 	                        const scalar *const c_centres_ghost,          ///< Ghost cell centres
 	                        const amat::Array2d<scalar>& gauss_r);        ///< Coords of Gauss points
@@ -54,7 +54,7 @@ class LinearUnlimitedReconstruction : public SolutionReconstruction<scalar,nvars
 {
 public:
 	/// Constructor. \sa SolutionReconstruction::SolutionReconstruction.
-	LinearUnlimitedReconstruction(const UMesh2dh<scalar> *const mesh,
+	LinearUnlimitedReconstruction(const UMesh<scalar,2> *const mesh,
 	                              const scalar *const c_centres, 
 	                              const scalar *const c_centres_ghost,
 	                              const amat::Array2d<scalar>& gauss_r);

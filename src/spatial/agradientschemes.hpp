@@ -7,7 +7,7 @@
 #ifndef AGRADIENTSCHEMES_H
 #define AGRADIENTSCHEMES_H 1
 
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 
 namespace fvens
 {
@@ -20,7 +20,7 @@ class GradientScheme
 {
 protected:
 	/// Mesh context
-	const UMesh2dh<scalar> *const m;
+	const UMesh<scalar,2> *const m;
 	/// Coords of subdomain and connectivity ghost cell-centres
 	const scalar *const rc;
 	/// Coords of physical boundary ghost cell centres
@@ -34,7 +34,7 @@ public:
 	 * \param _rcbp Cell centres of physical boundary ghost cells stored as a row-major nElem x ndim
 	 *   array
 	 */
-	GradientScheme(const UMesh2dh<scalar> *const mesh,
+	GradientScheme(const UMesh<scalar,2> *const mesh,
 	               const scalar *const _rc,
 	               const scalar *const _rcbp);
 	
@@ -53,7 +53,7 @@ template<typename scalar, int nvars>
 class ZeroGradients : public GradientScheme<scalar,nvars>
 {
 public:
-	ZeroGradients(const UMesh2dh<scalar> *const mesh, 
+	ZeroGradients(const UMesh<scalar,2> *const mesh, 
 	              const scalar *const _rc,
 	              const scalar *const _rcbp);
 
@@ -76,7 +76,7 @@ template<typename scalar, int nvars>
 class GreenGaussGradients : public GradientScheme<scalar,nvars>
 {
 public:
-	GreenGaussGradients(const UMesh2dh<scalar> *const mesh, 
+	GreenGaussGradients(const UMesh<scalar,2> *const mesh, 
 	                    const scalar *const _rc,
 	                    const scalar *const _rcbp);
 
@@ -95,7 +95,7 @@ template<typename scalar, int nvars>
 class WeightedLeastSquaresGradients : public GradientScheme<scalar,nvars>
 {
 public:
-	WeightedLeastSquaresGradients(const UMesh2dh<scalar> *const mesh, 
+	WeightedLeastSquaresGradients(const UMesh<scalar,2> *const mesh, 
 	                              const scalar *const _rc,
 	                              const scalar *const _rcbp);
 

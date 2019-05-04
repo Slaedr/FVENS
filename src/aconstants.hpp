@@ -50,9 +50,9 @@ using std::fabs;
 /// The floating-point type to use for all float computations
 /** If this is changed, the appropriate PETSc library will be required. \sa FVENS_MPI_REAL
  */
-typedef double a_real;
+typedef double freal;
 
-/// MPI data type corresponding to fvens::a_real. Make sure to change this whenever a_real is changed.
+/// MPI data type corresponding to fvens::freal. Make sure to change this whenever freal is changed.
 #define FVENS_MPI_REAL MPI_DOUBLE
 
 /// Integer type to use for indexing etc
@@ -60,7 +60,7 @@ typedef double a_real;
  * eg., to iterate backwards over an entire array (down to index 0).
  * \sa FVENS_MPI_INT
  */
-typedef int a_int;
+typedef int fint;
 
 /// MPI data type corresponding to fvens::a_int. Make sure to keep this in sync with a_int.
 #define FVENS_MPI_INT MPI_INT

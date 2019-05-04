@@ -14,8 +14,8 @@ template <typename scalar>
 Physics<scalar>::~Physics() { }
 
 template <typename scalar>
-IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf,
-		const a_real T_inf, const a_real Re_inf, const a_real _Pr)
+IdealGasPhysics<scalar>::IdealGasPhysics(const freal _g, const freal M_inf,
+		const freal T_inf, const freal Re_inf, const freal _Pr)
 	: g{_g}, Minf{M_inf}, Tinf{T_inf}, Reinf{Re_inf}, Pr{_Pr}, sC{110.5}
 {
 #ifdef DEBUG
@@ -27,7 +27,7 @@ IdealGasPhysics<scalar>::IdealGasPhysics(const a_real _g, const a_real M_inf,
 
 template <typename scalar>
 void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *const u, const scalar* const n,
-		scalar *const __restrict flux) const
+                                                              scalar *const __restrict flux) const
 {
 	const scalar vn = dimDotProduct(&u[1],n)/u[0];
 	const scalar p = getPressure(u[NVARS-1] - 0.5*dimDotProduct(&u[1],&u[1])/u[0]);
@@ -38,9 +38,9 @@ void IdealGasPhysics<scalar>::getDirectionalFluxFromConserved(const scalar *cons
  * the non-dimensional free-stream density and velocity magnitude are 1.0.
  */
 template <typename scalar>
-std::array<a_real,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const a_real aoa) const
+std::array<freal,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const freal aoa) const
 {
-	std::array<a_real,NVARS> uinf;
+	std::array<freal,NVARS> uinf;
 	uinf[0] = 1.0;
 	uinf[1] = cos(aoa);
 	uinf[2] = sin(aoa);
@@ -50,8 +50,8 @@ std::array<a_real,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const
 
 template <typename scalar>
 void IdealGasPhysics<scalar>::getJacobianDirectionalFluxWrtConserved(const scalar *const u,
-		const scalar* const n,
-		scalar *const __restrict dfdu) const
+                                                                     const scalar* const n,
+                                                                     scalar *const __restrict dfdu) const
 {
 	const scalar rhovn = dimDotProduct(&u[1],n), u02 = u[0]*u[0];
 	// first row
@@ -163,8 +163,8 @@ void IdealGasPhysics<scalar>::getJacobianStress(const scalar mu, const scalar *c
 	}
 }
 
-template class Physics<a_real>;
-template class IdealGasPhysics<a_real>;
+template class Physics<freal>;
+template class IdealGasPhysics<freal>;
 
 #ifdef USE_ADOLC
 template class Physics<adouble>;

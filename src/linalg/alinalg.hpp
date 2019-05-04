@@ -7,7 +7,7 @@
 #define ALINALG_H
 
 #include "aconstants.hpp"
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 #include "spatial/aspatial.hpp"
 
 #include <petscksp.h>
@@ -23,12 +23,12 @@ namespace fvens {
 /// Sets up global vectors with storage with ghost locations for connectivity boundaries
 /** \param[in] nvars Number of physical variables per grid location
  */
-StatusCode createGhostedSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v);
+StatusCode createGhostedSystemVector(const UMesh<freal,NDIM> *const m, const int nvars, Vec *const v);
 
 /// Creates a Vec with one unknown per mesh cell
 /** Currently, a 'sequential' Vec is created.
  */
-StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, Vec *const v);
+StatusCode createSystemVector(const UMesh<freal,NDIM> *const m, const int nvars, Vec *const v);
 
 /// Sets up storage preallocation for sparse matrix formats
 /** \param[in] m Mesh context
@@ -41,11 +41,11 @@ StatusCode createSystemVector(const UMesh2dh<a_real> *const m, const int nvars, 
  * only MPI matrices are supported.
  */
 template <int nvars>
-StatusCode setupSystemMatrix(const UMesh2dh<a_real> *const m, Mat *const A);
+StatusCode setupSystemMatrix(const UMesh<freal,NDIM> *const m, Mat *const A);
 
 /// Computes the amount of memory to be reserved for the Jacobian matrix
 template <int nvars>
-StatusCode setJacobianPreallocation(const UMesh2dh<a_real> *const m, Mat A);
+StatusCode setJacobianPreallocation(const UMesh<freal,NDIM> *const m, Mat A);
 
 /// Matrix-free Jacobian of the flux
 /** An object of this type is associated with a specific spatial discretization context.
@@ -61,7 +61,7 @@ public:
 	 * \param[in] spatial_discretization The spatial discretization of which this objact
 	 *   will act as Jacobian
 	 */
-	MatrixFreeSpatialJacobian(const Spatial<a_real,nvars> *const spatial_discretization);
+	MatrixFreeSpatialJacobian(const Spatial<freal,nvars> *const spatial_discretization);
 
 	/// Set the state u at which the Jacobian is computed, the corresponding residual r(u) and 
 	/// the diagonal vector of the mass matrix for each cell
@@ -75,10 +75,10 @@ public:
 
 protected:
 	/// Spatial discretization context
-	const Spatial<a_real,nvars> *const spatial;
+	const Spatial<freal,nvars> *const spatial;
 
 	/// step length for finite difference Jacobian
-	a_real eps;
+	freal eps;
 
 	/// The state at which to compute the Jacobian
 	Vec u;
@@ -97,7 +97,7 @@ protected:
  * \param[out] A The Mat to setup
  */
 template <int nvars>
-StatusCode create_matrixfree_jacobian(const Spatial<a_real,nvars> *const spatial, Mat *const A);
+StatusCode create_matrixfree_jacobian(const Spatial<freal,nvars> *const spatial, Mat *const A);
 
 /// Returns true iff the argument is a matrix-free PETSc Mat
 bool isMatrixFree(Mat);
@@ -113,7 +113,7 @@ bool isMatrixFree(Mat);
  * \param[in,out] bctx The BLASTed contexts
  */
 template <int nvars>
-StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<a_real,nvars> *const startprob,
+StatusCode setup_blasted(KSP ksp, Vec u, const Spatial<freal,nvars> *const startprob,
                          Blasted_data_list& bctx);
 
 #endif

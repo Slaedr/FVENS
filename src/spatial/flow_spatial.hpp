@@ -32,12 +32,12 @@ namespace fvens {
 /// The collection of physical data needed to initialize flow spatial discretizations
 struct FlowPhysicsConfig
 {
-	a_real gamma;                       ///< Adiabatic index
-	a_real Minf;                        ///< Free-stream Mach number
-	a_real Tinf;                        ///< Free-stream temperature in Kelvin
-	a_real Reinf;                       ///< Free-stream Reynolds number
-	a_real Pr;                          ///< (Constant) Prandtl number
-	a_real aoa;                         ///< Angle of attack in radians
+	freal gamma;                       ///< Adiabatic index
+	freal Minf;                        ///< Free-stream Mach number
+	freal Tinf;                        ///< Free-stream temperature in Kelvin
+	freal Reinf;                       ///< Free-stream Reynolds number
+	freal Pr;                          ///< (Constant) Prandtl number
+	freal aoa;                         ///< Angle of attack in radians
 	bool viscous_sim;                   ///< Whether to include viscous effects
 	bool const_visc;                    ///< Whether to use constant viscosity
 	std::vector<FlowBCConfig> bcconf;   ///< Boundary condition specification
@@ -50,7 +50,7 @@ struct FlowNumericsConfig
 	std::string conv_numflux_jac;     ///< Conv. numer. flux to use for approximate Jacobian
 	std::string gradientscheme;       ///< Method to use to compute gradients
 	std::string reconstruction;       ///< Method to use to reconstruct the solution
-	a_real limiter_param;             ///< Parameter that is required for some limiters
+	freal limiter_param;             ///< Parameter that is required for some limiters
 	bool order2;                      ///< Whether to compute a second-order solution
 };
 
@@ -63,7 +63,7 @@ class FlowFV_base : public Spatial<scalar,NVARS>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV_base(const UMesh2dh<scalar> *const mesh,              ///< Mesh context
+	FlowFV_base(const UMesh<scalar,2> *const mesh,              ///< Mesh context
 	            const FlowPhysicsConfig& pconfig,        ///< Physical data defining the problem
 	            const FlowNumericsConfig& nconfig        ///< Options defining the numerical method
 	            );
@@ -111,8 +111,8 @@ protected:
 	using Spatial<scalar,NVARS>::m;
 	using Spatial<scalar,NVARS>::rcvec;
 	using Spatial<scalar,NVARS>::rch;
-	using Spatial<a_real,NVARS>::rcbp;
-	using Spatial<a_real,NVARS>::rcbptr;
+	using Spatial<freal,NVARS>::rcbp;
+	using Spatial<freal,NVARS>::rcbptr;
 	using Spatial<scalar,NVARS>::gr;
 	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
 
@@ -126,7 +126,7 @@ protected:
 	const IdealGasPhysics<scalar> physics;
 
 	/// Free-stream/reference condition
-	const std::array<a_real,NVARS> uinf;
+	const std::array<freal,NVARS> uinf;
 
 	/// Numerical inviscid flux calculation context for residual computation
 	/** This is the "actual" flux being used.
@@ -180,7 +180,7 @@ class FlowFV : public FlowFV_base<scalar>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV(const UMesh2dh<scalar> *const mesh,                  ///< Mesh context
+	FlowFV(const UMesh<scalar,2> *const mesh,                  ///< Mesh context
 	       const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
 	       const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
 	);
@@ -211,28 +211,28 @@ public:
 	 */
 	void compute_max_timestep(const amat::Array2dView<scalar> uleft,
 	                          const amat::Array2dView<scalar> uright,
-	                          a_real *const timesteps) const;
+	                          freal *const timesteps) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across an interior face
 	/** \see Spatial::compute_local_jacobian_interior
 	 */
-	void compute_local_jacobian_interior(const a_int iface,
-	                                     const a_real *const ul, const a_real *const ur,
-	                                     Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& L,
-	                                     Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& U) const;
+	void compute_local_jacobian_interior(const fint iface,
+	                                     const freal *const ul, const freal *const ur,
+	                                     Eigen::Matrix<freal,NVARS,NVARS,Eigen::RowMajor>& L,
+	                                     Eigen::Matrix<freal,NVARS,NVARS,Eigen::RowMajor>& U) const;
 
 	/// Computes the blocks of the Jacobian matrix for the flux across a boundary face
 	/** \see Spatial::compute_local_jacobian_boundary
 	 */
-	void compute_local_jacobian_boundary(const a_int iface,
-	                                     const a_real *const ul,
-	                                     Eigen::Matrix<a_real,NVARS,NVARS,Eigen::RowMajor>& L) const;
+	void compute_local_jacobian_boundary(const fint iface,
+	                                     const freal *const ul,
+	                                     Eigen::Matrix<freal,NVARS,NVARS,Eigen::RowMajor>& L) const;
 
 protected:
 	using Spatial<scalar,NVARS>::m;
 	using Spatial<scalar,NVARS>::rcvec;
 	using Spatial<scalar,NVARS>::rch;
-	using Spatial<a_real,NVARS>::rcbp;
+	using Spatial<freal,NVARS>::rcbp;
 	using Spatial<scalar,NVARS>::gr;
 	using Spatial<scalar,NVARS>::getFaceGradient_modifiedAverage;
 	using Spatial<scalar,NVARS>::getFaceGradientAndJacobian_thinLayer;
@@ -264,7 +264,7 @@ protected:
 	 * provided so that analytical Jacobians can be constructed when the scalar is not double or float,
 	 * if need be.
 	 */
-	const IdealGasPhysics<a_real> jphy;
+	const IdealGasPhysics<freal> jphy;
 
 	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.
@@ -302,18 +302,18 @@ protected:
 	 * \param[in,out] vfluxj Flux Jacobian \f$ \partial \mathbf{f}_{ij} / \partial \mathbf{u}_j \f$
 	 *   NVARS x NVARS array stored as a 1D row-major array
 	 */
-	void compute_viscous_flux_jacobian(const a_int iface,
-	                                   const a_real *const ul, const a_real *const ur,
-	                                   a_real *const __restrict vfluxi,
-	                                   a_real *const __restrict vfluxj) const;
+	void compute_viscous_flux_jacobian(const fint iface,
+	                                   const freal *const ul, const freal *const ur,
+	                                   freal *const __restrict vfluxi,
+	                                   freal *const __restrict vfluxj) const;
 
 	/// Computes the spectral radius of the thin-layer Jacobian times the identity matrix
 	/** The inputs are same as \ref compute_viscous_flux_jacobian
 	 */
-	void compute_viscous_flux_approximate_jacobian(const a_int iface,
-	                                               const a_real *const ul, const a_real *const ur,
-	                                               a_real *const __restrict vfluxi,
-	                                               a_real *const __restrict vfluxj) const;
+	void compute_viscous_flux_approximate_jacobian(const fint iface,
+	                                               const freal *const ul, const freal *const ur,
+	                                               freal *const __restrict vfluxi,
+	                                               freal *const __restrict vfluxj) const;
 };
 
 }

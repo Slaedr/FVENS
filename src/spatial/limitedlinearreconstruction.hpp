@@ -31,15 +31,15 @@ namespace fvens {
 template <typename scalar, int nvars>
 class WENOReconstruction : public SolutionReconstruction<scalar,nvars>
 {
-	const a_real gamma;               ///< Exponent for oscillation indicator
-	const a_real lambda;              ///< Weight of central stencil relative to biased stencils
-	const a_real epsilon;             ///< Small constant to avoid division by zero
+	const freal gamma;               ///< Exponent for oscillation indicator
+	const freal lambda;              ///< Weight of central stencil relative to biased stencils
+	const freal epsilon;             ///< Small constant to avoid division by zero
 public:
-	WENOReconstruction(const UMesh2dh<scalar> *const mesh,
+	WENOReconstruction(const UMesh<scalar,2> *const mesh,
 	                   const scalar *const c_centres,
 	                   const scalar *const c_centres_ghost,
 	                   const amat::Array2d<scalar>& gauss_r,
-	                   const a_real central_weight);
+	                   const freal central_weight);
 
 	void compute_face_values(const MVector<scalar>& unknowns, 
 	                         const amat::Array2dView<scalar> unknow_ghost, 
@@ -60,7 +60,7 @@ template <typename scalar, int nvars>
 class BarthJespersenLimiter : public SolutionReconstruction<scalar,nvars>
 {
 public:
-	BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh,
+	BarthJespersenLimiter(const UMesh<scalar,2> *const mesh,
 	                      const scalar *const c_centres,
 	                      const scalar *const c_centres_ghost,
 	                      const amat::Array2d<scalar>& gauss_r);
@@ -84,7 +84,7 @@ template <typename scalar, int nvars>
 class VenkatakrishnanLimiter: public SolutionReconstruction<scalar,nvars>
 {
 	/// Parameter for adjusting limiting vs convergence
-	const a_real K;
+	const freal K;
 
 	/// List of characteristic length of cells
 	std::vector<scalar> clength;
@@ -93,10 +93,10 @@ public:
 	/** \param[in] k_param Smaller values lead to better limiting at the expense of convergence,
 	 *    higher values improve convergence at the expense of some oscillations in the solution.
 	 */
-	VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh,
+	VenkatakrishnanLimiter(const UMesh<scalar,2> *const mesh,
 	                       const scalar *const c_centres,
 	                       const scalar *const c_centres_ghost,
-	                       const amat::Array2d<scalar>& gauss_r, const a_real k_param);
+	                       const amat::Array2d<scalar>& gauss_r, const freal k_param);
  
 	void compute_face_values(const MVector<scalar>& unknowns,
 	                         const amat::Array2dView<scalar> unknow_ghost,

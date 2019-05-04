@@ -1389,13 +1389,13 @@ void HLLCFlux<scalar,j_real>::get_jacobian(const j_real *const ul, const j_real 
 		dfdl[i] *= -1.0;
 }
 
-template class LocalLaxFriedrichsFlux<a_real>;
-template class VanLeerFlux<a_real>;
-template class AUSMFlux<a_real>;
-template class AUSMPlusFlux<a_real>;
-template class RoeFlux<a_real>;
-template class HLLFlux<a_real>;
-template class HLLCFlux<a_real>;
+template class LocalLaxFriedrichsFlux<freal>;
+template class VanLeerFlux<freal>;
+template class AUSMFlux<freal>;
+template class AUSMPlusFlux<freal>;
+template class RoeFlux<freal>;
+template class HLLFlux<freal>;
+template class HLLCFlux<freal>;
 
 //CHANGE HERE
 #ifdef USE_ADOLC

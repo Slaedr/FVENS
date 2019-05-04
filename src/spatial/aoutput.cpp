@@ -14,18 +14,18 @@
 namespace fvens {
 
 template <short nvars>
-Output<nvars>::Output(const Spatial<a_real,nvars> *const fv)
+Output<nvars>::Output(const Spatial<freal,nvars> *const fv)
 	: space(fv), m(space->mesh())
 { }
 
-FlowOutput::FlowOutput(const FlowFV_base<a_real> *const fv,
-                       const IdealGasPhysics<a_real> *const physics, const a_real aoa)
+FlowOutput::FlowOutput(const FlowFV_base<freal> *const fv,
+                       const IdealGasPhysics<freal> *const physics, const freal aoa)
 	: Output<NVARS>(fv), space(fv), phy(physics), angleOfAttack{aoa},
 	av{std::cos(aoa) ,std::sin(aoa)}
 {
 }
 
-a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
+freal FlowOutput::compute_entropy_cell(const Vec uvec) const
 {
 	StatusCode ierr = 0;
 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
@@ -34,23 +34,23 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 	ierr = VecGetArrayRead(uvec, &uarr);
 	petsc_throw(ierr, "Could not get vec array!");
 
-	std::array<a_real,NVARS> uinf = phy->compute_freestream_state(angleOfAttack);
+	std::array<freal,NVARS> uinf = phy->compute_freestream_state(angleOfAttack);
 
-	const a_real sinf = phy->getEntropyFromConserved(&uinf[0]);
+	const freal sinf = phy->getEntropyFromConserved(&uinf[0]);
 
-	//amat::Array2d<a_real> s_err(m->gnelem(),1);
-	a_real error = 0;
+	//amat::Array2d<freal> s_err(m->gnelem(),1);
+	freal error = 0;
 #pragma omp parallel for default(shared) reduction(+:error)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
-		const a_real s_err = (phy->getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
+		const freal s_err = (phy->getEntropyFromConserved(&uarr[iel*NVARS]) - sinf) / sinf;
 		error += s_err*s_err*m->garea(iel);
 	}
 
-	mpi_all_reduce<a_real>(&error, 1, MPI_SUM, PETSC_COMM_WORLD);
+	mpi_all_reduce<freal>(&error, 1, MPI_SUM, PETSC_COMM_WORLD);
 	error = sqrt(error);
 
-	const a_real h = 1.0/sqrt(m->gnelem());
+	const freal h = 1.0/sqrt(m->gnelem());
 
 	if(mpirank == 0)
 		std::cout << "FlowOutput: log mesh size and log entropy:   " << log10(h) << "  " 
@@ -62,8 +62,8 @@ a_real FlowOutput::compute_entropy_cell(const Vec uvec) const
 }
 
 StatusCode FlowOutput::postprocess_cell(const Vec uvec, 
-                                        amat::Array2d<a_real>& scalars, 
-                                        amat::Array2d<a_real>& velocities) const
+                                        amat::Array2d<freal>& scalars, 
+                                        amat::Array2d<freal>& velocities) const
 {
 	std::cout << "FlowFV: postprocess_cell(): Creating output arrays...\n";
 	scalars.resize(m->gnelem(), 3);
@@ -72,19 +72,19 @@ StatusCode FlowOutput::postprocess_cell(const Vec uvec,
 	StatusCode ierr = 0;
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<freal>> u(uarr, m->gnelem(), NVARS);
 
-	for(a_int iel = 0; iel < m->gnelem(); iel++) {
+	for(fint iel = 0; iel < m->gnelem(); iel++) {
 		scalars(iel,0) = u(iel,0);
 	}
 
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		velocities(iel,0) = u(iel,1)/u(iel,0);
 		velocities(iel,1) = u(iel,2)/u(iel,0);
-		a_real vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
+		freal vmag2 = pow(velocities(iel,0), 2) + pow(velocities(iel,1), 2);
 		scalars(iel,2) = phy->getPressureFromConserved(&uarr[iel*NVARS]);
-		a_real c = phy->getSoundSpeedFromConserved(&uarr[iel*NVARS]);
+		freal c = phy->getSoundSpeedFromConserved(&uarr[iel*NVARS]);
 		scalars(iel,1) = sqrt(vmag2)/c;
 	}
 	compute_entropy_cell(uvec);
@@ -95,24 +95,24 @@ StatusCode FlowOutput::postprocess_cell(const Vec uvec,
 }
 
 StatusCode FlowOutput::postprocess_point(const Vec uvec,
-                                         amat::Array2d<a_real>& scalars,
-                                         amat::Array2d<a_real>& velocities) const
+                                         amat::Array2d<freal>& scalars,
+                                         amat::Array2d<freal>& velocities) const
 {
 	std::cout << "FlowFV: postprocess_point(): Creating output arrays...\n";
 	scalars.resize(m->gnpoin(),4);
 	velocities.resize(m->gnpoin(),NDIM);
 
-	amat::Array2d<a_real> areasum(m->gnpoin(),1);
-	amat::Array2d<a_real> up(m->gnpoin(), NVARS);
+	amat::Array2d<freal> areasum(m->gnpoin(),1);
+	amat::Array2d<freal> up(m->gnpoin(), NVARS);
 	up.zeros();
 	areasum.zeros();
 
 	StatusCode ierr = 0;
 	const PetscScalar* uarr;
 	ierr = VecGetArrayRead(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<const MVector<a_real>> u(uarr, m->gnelem(), NVARS);
+	Eigen::Map<const MVector<freal>> u(uarr, m->gnelem(), NVARS);
 
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	for(fint ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(int inode = 0; inode < m->gnnode(ielem); inode++)
 			for(int ivar = 0; ivar < NVARS; ivar++)
@@ -122,20 +122,20 @@ StatusCode FlowOutput::postprocess_point(const Vec uvec,
 			}
 	}
 
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	for(fint ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 		for(int ivar = 0; ivar < NVARS; ivar++)
 			up(ipoin,ivar) /= areasum(ipoin);
 	
-	for(a_int ipoin = 0; ipoin < m->gnpoin(); ipoin++)
+	for(fint ipoin = 0; ipoin < m->gnpoin(); ipoin++)
 	{
 		scalars(ipoin,0) = up(ipoin,0);
 
 		for(int idim = 0; idim < NDIM; idim++)
 			velocities(ipoin,idim) = up(ipoin,idim+1)/up(ipoin,0);
-		const a_real vmag2 = dimDotProduct(&velocities(ipoin,0),&velocities(ipoin,0));
+		const freal vmag2 = dimDotProduct(&velocities(ipoin,0),&velocities(ipoin,0));
 
 		scalars(ipoin,2) = phy->getPressureFromConserved(&up(ipoin,0));
-		a_real c = phy->getSoundSpeedFromConserved(&up(ipoin,0));
+		freal c = phy->getSoundSpeedFromConserved(&up(ipoin,0));
 		scalars(ipoin,1) = sqrt(vmag2)/c;
 		scalars(ipoin,3) = phy->getTemperatureFromConserved(&up(ipoin,0));
 	}
@@ -147,21 +147,21 @@ StatusCode FlowOutput::postprocess_point(const Vec uvec,
 	return ierr;
 }
 
-void FlowOutput::exportVolumeData(const MVector<a_real>& u, std::string volfile) const
+void FlowOutput::exportVolumeData(const MVector<freal>& u, std::string volfile) const
 {
 	std::ofstream fout;
 	open_file_toWrite(volfile+"-vol.out", fout);
 	fout << "#   x    y    rho     u      v      p      T      M \n";
 
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
-		const a_real T = phy->getTemperatureFromConserved(&u(iel,0));
-		const a_real c = phy->getSoundSpeedFromConserved(&u(iel,0));
-		const a_real p = phy->getPressureFromConserved(&u(iel,0));
-		a_real vmag = std::sqrt(u(iel,1)/u(iel,0)*u(iel,1)/u(iel,0)
+		const freal T = phy->getTemperatureFromConserved(&u(iel,0));
+		const freal c = phy->getSoundSpeedFromConserved(&u(iel,0));
+		const freal p = phy->getPressureFromConserved(&u(iel,0));
+		freal vmag = std::sqrt(u(iel,1)/u(iel,0)*u(iel,1)/u(iel,0)
 				+u(iel,2)/u(iel,0)*u(iel,2)/u(iel,0));
 
-		a_real rc[NDIM] = {0.0,0.0};
+		freal rc[NDIM] = {0.0,0.0};
 		for(int ino = 0; ino < m->gnnode(iel); ino++)
 			for(int j = 0; j < NDIM; j++)
 				rc[j] += m->gcoords(m->ginpoel(iel,ino),j);
@@ -185,19 +185,19 @@ void FlowOutput::exportSurfaceData(const Vec u,
 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 
 	// Get conserved variables' gradients
-	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
+	std::vector<GradBlock_t<freal,NDIM,NVARS>> grad;
 	grad.resize(m->gnelem());
 
 	space->getGradients(u, &grad[0]);
 
-	ConstVecHandler<a_real> uh(u);
-	const amat::Array2dView<a_real> ua(uh.getArray(), m->gnelem(), NVARS);
+	ConstVecHandler<freal> uh(u);
+	const amat::Array2dView<freal> ua(uh.getArray(), m->gnelem(), NVARS);
 
 	// get number of faces in wall boundary and other boundary
 	
 	std::vector<int> nwbfaces(wbcm.size(),0), nobfaces(obcm.size(),0);
 
-	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
+	for(fint iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
 		for(int im = 0; im < static_cast<int>(wbcm.size()); im++)
 			if(m->gbtags(iface,0) == wbcm[im]) nwbfaces[im]++;
@@ -212,9 +212,9 @@ void FlowOutput::exportSurfaceData(const Vec u,
 		std::ofstream fout; 
 		open_file_toWrite(fname, fout);
 		
-		MVector<a_real> output(nwbfaces[im], 2+NDIM);
+		MVector<freal> output(nwbfaces[im], 2+NDIM);
 
-		a_real Cdf=0, Cdp=0, Cl=0;
+		freal Cdf=0, Cdp=0, Cl=0;
 
 		fout << "#  x \t y \t Cp  \t Cf \n";
 
@@ -223,7 +223,7 @@ void FlowOutput::exportSurfaceData(const Vec u,
 
 		// write out the output
 
-		for(a_int i = 0; i < output.rows(); i++)
+		for(fint i = 0; i < output.rows(); i++)
 		{
 			for(int j = 0; j < output.cols(); j++)
 				fout << "  " << output(i,j);
@@ -248,26 +248,26 @@ void FlowOutput::exportSurfaceData(const Vec u,
 		std::ofstream fout;
 		open_file_toWrite(fname, fout);
 
-		MVector<a_real> output(nobfaces[im], 2+NDIM);
-		a_int facecoun = 0;
+		MVector<freal> output(nobfaces[im], 2+NDIM);
+		fint facecoun = 0;
 
 		fout << "#   x         y          u           v\n";
 
-		for(a_int iface = 0; iface < m->gnbface(); iface++)
+		for(fint iface = 0; iface < m->gnbface(); iface++)
 		{
 			if(m->gbtags(iface,0) == obcm[im])
 			{
-				a_int lelem = m->gintfac(iface,0);
-				/*a_real n[NDIM];
+				fint lelem = m->gintfac(iface,0);
+				/*freal n[NDIM];
 				for(int j = 0; j < NDIM; j++)
 					n[j] = m->gfacemetric(iface,j);
-				const a_real len = m->gfacemetric(iface,2);*/
+				const freal len = m->gfacemetric(iface,2);*/
 
 				// coords of face center
-				a_int ijp[NDIM];
+				fint ijp[NDIM];
 				ijp[0] = m->gintfac(iface,2);
 				ijp[1] = m->gintfac(iface,3);
-				a_real coord[NDIM];
+				freal coord[NDIM];
 				for(int j = 0; j < NDIM; j++) 
 				{
 					coord[j] = 0;
@@ -287,7 +287,7 @@ void FlowOutput::exportSurfaceData(const Vec u,
 		
 		// write out the output
 
-		for(a_int i = 0; i < output.rows(); i++)
+		for(fint i = 0; i < output.rows(); i++)
 		{
 			for(int j = 0; j < output.cols(); j++)
 				fout << "  " << output(i,j);
@@ -298,7 +298,7 @@ void FlowOutput::exportSurfaceData(const Vec u,
 	}
 }
 
-void writeScalarsVectorToVtu_CellData(std::string fname, const fvens::UMesh2dh<a_real>& m, 
+void writeScalarsVectorToVtu_CellData(std::string fname, const fvens::UMesh<freal,NDIM>& m, 
                                       const amat::Array2d<double>& x, std::string scaname[], 
                                       const amat::Array2d<double>& y, std::string vecname)
 {
@@ -424,7 +424,7 @@ void writeScalarsVectorToVtu_CellData(std::string fname, const fvens::UMesh2dh<a
 	std::cout << "Vtu file written.\n";
 }
 
-void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh2dh<a_real>& m, 
+void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh<freal,NDIM>& m, 
                                        const amat::Array2d<double>& x, std::string scaname[], 
                                        const amat::Array2d<double>& y, std::string vecname)
 {
@@ -554,7 +554,7 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh2dh<
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, const fvens::UMesh2dh<a_real>& m)
+void writeMeshToVtu(std::string fname, const fvens::UMesh<freal,NDIM>& m)
 {
 	std::cout << "Writing vtu output...\n";
 	std::ofstream out(fname);

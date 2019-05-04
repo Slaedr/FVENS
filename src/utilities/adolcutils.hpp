@@ -13,14 +13,14 @@
 
 namespace fvens {
 
-/// Returns the value of the input as a_real
+/// Returns the value of the input as freal
 template <typename scalar>
-static inline a_real getvalue(const scalar x);
+static inline freal getvalue(const scalar x);
 
 // Trivial implementations
 
 template <>
-a_real getvalue(const a_real x) {
+freal getvalue(const freal x) {
 	return x;
 }
 
@@ -29,7 +29,7 @@ a_real getvalue(const a_real x) {
 #ifdef USE_ADOLC
 
 template <>
-a_real getvalue(const adouble x) {
+freal getvalue(const adouble x) {
 	return x.value();
 }
 

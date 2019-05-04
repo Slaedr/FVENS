@@ -42,9 +42,9 @@
 namespace fvens {
 
 /// Returns an array containing TVD Runge-Kutta coefficients for high-order accuracy
-static Eigen::Matrix<a_real,Eigen::Dynamic,Eigen::Dynamic> initialize_TVDRK_Coeffs(const int _order) 
+static Eigen::Matrix<freal,Eigen::Dynamic,Eigen::Dynamic> initialize_TVDRK_Coeffs(const int _order) 
 {
-	Eigen::Matrix<a_real,Eigen::Dynamic,Eigen::Dynamic> tvdrk(_order,3);
+	Eigen::Matrix<freal,Eigen::Dynamic,Eigen::Dynamic> tvdrk(_order,3);
 	if(_order == 1) {
 		tvdrk(0,0) = 1.0;	tvdrk(0,1) = 0.0; tvdrk(0,2) = 1.0;
 	}
@@ -73,7 +73,7 @@ TimingData::TimingData()
 { }
 
 template <int nvars>
-SteadySolver<nvars>::SteadySolver(const Spatial<a_real,nvars> *const spatial, const SteadySolverConfig& conf)
+SteadySolver<nvars>::SteadySolver(const Spatial<freal,nvars> *const spatial, const SteadySolverConfig& conf)
 	: space{spatial}, config{conf}
 {
 	tdata.nelem = spatial->mesh()->gnelem();
@@ -85,10 +85,10 @@ TimingData SteadySolver<nvars>::getTimingData() const {
 }
 	
 template <int nvars>
-a_real SteadySolver<nvars>::linearRamp(const a_real cstart, const a_real cend, 
+freal SteadySolver<nvars>::linearRamp(const freal cstart, const freal cend, 
                                        const int itstart, const int itend, const int itcur) const
 {
-	a_real curCFL;
+	freal curCFL;
 	if(itcur < itstart) {
 		curCFL = cstart;
 	}
@@ -97,7 +97,7 @@ a_real SteadySolver<nvars>::linearRamp(const a_real cstart, const a_real cend,
 			curCFL = cend;
 		}
 		else {
-			const a_real slopec = (cend-cstart)/(itend-itstart);
+			const freal slopec = (cend-cstart)/(itend-itstart);
 			curCFL = cstart + slopec*(itcur-itstart);
 		}
 	}
@@ -108,10 +108,10 @@ a_real SteadySolver<nvars>::linearRamp(const a_real cstart, const a_real cend,
 }
 
 template <int nvars>
-a_real SteadySolver<nvars>::expResidualRamp(const a_real cflmin, const a_real cflmax, 
-                                            const a_real prevcfl, const a_real resratio, const a_real paramup, const a_real paramdown)
+freal SteadySolver<nvars>::expResidualRamp(const freal cflmin, const freal cflmax, 
+                                            const freal prevcfl, const freal resratio, const freal paramup, const freal paramdown)
 {
-	const a_real newcfl = resratio > 1.0 ? prevcfl * std::pow(resratio, paramup)
+	const freal newcfl = resratio > 1.0 ? prevcfl * std::pow(resratio, paramup)
 		: prevcfl * std::pow(resratio, paramdown);
 
 	if(newcfl < cflmin) return cflmin;
@@ -121,7 +121,7 @@ a_real SteadySolver<nvars>::expResidualRamp(const a_real cflmin, const a_real cf
 
 
 template<int nvars>
-SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
+SteadyForwardEulerSolver<nvars>::SteadyForwardEulerSolver(const Spatial<freal,nvars> *const spatial,
                                                           const Vec uvec,
                                                           const SteadySolverConfig& conf)
 
@@ -138,7 +138,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	StatusCode ierr = 0;
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
-	const UMesh2dh<a_real> *const m = space->mesh();
+	const UMesh<freal,NDIM> *const m = space->mesh();
 
 	if(config.maxiter <= 0) {
 		std::cout << " SteadyForwardEulerSolver: solve(): No iterations to be done.\n";
@@ -156,9 +156,9 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	assert(locnelem == m->gnelem());
 
 	int step = 0;
-	a_real resi = 1.0;
-	a_real resiold = resi;
-	a_real initres = 1.0;
+	freal resi = 1.0;
+	freal resiold = resi;
+	freal initres = 1.0;
 
 	// struct timeval time1, time2;
 	// gettimeofday(&time1, NULL);
@@ -167,7 +167,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	const double initialctime = (double)clock() / (double)CLOCKS_PER_SEC;
 
 	std::cout << " Starting CFL = " << config.cflinit << std::endl;
-	a_real curCFL = config.cflinit;
+	freal curCFL = config.cflinit;
 
 	SteadyStepMonitor convstep;
 	if(mpirank == 0)
@@ -181,7 +181,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			PetscScalar *const rarr = rh.getArray();
 
 #pragma omp parallel for simd default(shared)
-			for(a_int i = 0; i < (m->gnelem()+m->gnConnFace())*nvars; i++) {
+			for(fint i = 0; i < (m->gnelem()+m->gnConnFace())*nvars; i++) {
 				rarr[i] = 0;
 			}
 		}
@@ -197,12 +197,12 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			ConstVecHandler<PetscScalar> dth(dtmvec);
 			const PetscScalar *const dtm = dth.getArray();
 			MutableGhostedVecHandler<PetscScalar> uh(uvec);
-			Eigen::Map<MVector<a_real>> u(uh.getArray(), locnelem, nvars);
+			Eigen::Map<MVector<freal>> u(uh.getArray(), locnelem, nvars);
 			ConstGhostedVecHandler<PetscScalar> rh(rvec);
-			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), locnelem, nvars);
+			Eigen::Map<const MVector<freal>> residual(rh.getArray(), locnelem, nvars);
 
 #pragma omp parallel for default(shared)
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(fint iel = 0; iel < m->gnelem(); iel++)
 			{
 				for(int i = 0; i < nvars; i++)
 					u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
@@ -211,19 +211,19 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
-		a_real locresenergy = 0;
+		freal locresenergy = 0;
 		{
 			ConstGhostedVecHandler<PetscScalar> rh(rvec);
-			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), locnelem, nvars);
+			Eigen::Map<const MVector<freal>> residual(rh.getArray(), locnelem, nvars);
 #pragma omp parallel for simd reduction(+:locresenergy) default(shared)
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(fint iel = 0; iel < m->gnelem(); iel++)
 			{
 				locresenergy += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
 			}
 		}
 
 		// Reduce across and communicate to all processes: the residual norm
-		a_real glres = 0;
+		freal glres = 0;
 		MPI_Allreduce(&locresenergy, &glres, 1, FVENS_MPI_REAL, MPI_SUM, PETSC_COMM_WORLD);
 
 		resiold = resi;
@@ -285,7 +285,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
  */
 template <int nvars>
 SteadyBackwardEulerSolver<nvars>::
-SteadyBackwardEulerSolver(const Spatial<a_real,nvars> *const spatial,
+SteadyBackwardEulerSolver(const Spatial<freal,nvars> *const spatial,
                           const SteadySolverConfig& conf,
                           KSP ksp, const NonlinearUpdate<nvars> *const nlr)
 
@@ -298,10 +298,10 @@ SteadyBackwardEulerSolver<nvars>::~SteadyBackwardEulerSolver()
 { }
 
 template <int nvars>
-StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl, Vec dtmvec, Mat M)
+StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const freal cfl, Vec dtmvec, Mat M)
 {
 	StatusCode ierr = 0;
-	const UMesh2dh<a_real> *const m = space->mesh();
+	const UMesh<freal,NDIM> *const m = space->mesh();
 
 	MutableVecHandler<PetscScalar> dth(dtmvec);
 	PetscScalar *const dtm = dth.getArray();
@@ -311,13 +311,13 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl,
 	//   This is required in case of matrix-free solvers.
 
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
-		const a_int ielg = m->gglobalElemIndex(iel);
+		const fint ielg = m->gglobalElemIndex(iel);
 
-		const Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor> db
-			= dtm[iel] * Eigen::Matrix<a_real,nvars,nvars,Eigen::RowMajor>::Identity();
+		const Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor> db
+			= dtm[iel] * Eigen::Matrix<freal,nvars,nvars,Eigen::RowMajor>::Identity();
 	
 #pragma omp critical
 		{
@@ -329,10 +329,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm(const a_real cfl,
 }
 
 template <int nvars>
-StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real cfl, Vec dtmvec, Mat M)
+StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const freal cfl, Vec dtmvec, Mat M)
 {
 	StatusCode ierr = 0;
-	const UMesh2dh<a_real> *const m = space->mesh();
+	const UMesh<freal,NDIM> *const m = space->mesh();
 
 	MutableVecHandler<PetscScalar> dth(dtmvec);
 	PetscScalar *const dtm = dth.getArray();
@@ -342,14 +342,14 @@ StatusCode SteadyBackwardEulerSolver<nvars>::addPseudoTimeTerm_slow(const a_real
 	//   This is required in case of matrix-free solvers.
 
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		dtm[iel] = m->garea(iel) / (cfl*dtm[iel]);
-		const a_int ielg = m->gglobalElemIndex(iel);
+		const fint ielg = m->gglobalElemIndex(iel);
 
 		for(int i = 0; i < nvars; i++)
 		{
-			const a_int index = ielg*nvars+i;
+			const fint index = ielg*nvars+i;
 #pragma omp critical
 			{
 				MatSetValues(M, 1, &index, 1, &index, &dtm[iel], ADD_VALUES);
@@ -371,7 +371,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		return 0;
 	}
 	
-	const UMesh2dh<a_real> *const m = space->mesh();
+	const UMesh<freal,NDIM> *const m = space->mesh();
 	StatusCode ierr = 0;
 
 	Vec rvec, duvec, dtmvec;
@@ -399,10 +399,10 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 
 	bool tocomputeamginterpolation = false;
 
-	a_real curCFL=0;
+	freal curCFL=0;
 	int step = 0;
-	a_real resi = 1.0, resiold = 1.0;
-	a_real initres = 1.0;
+	freal resi = 1.0, resiold = 1.0;
+	freal initres = 1.0;
 
 	if(config.lognres)
 		tdata.convhis.reserve(100);
@@ -423,7 +423,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 			PetscScalar *const rarr = rh.getArray();
 
 #pragma omp parallel for simd default(shared)
-			for(a_int i = 0; i < (m->gnelem()+m->gnConnFace())*nvars; i++) {
+			for(fint i = 0; i < (m->gnelem()+m->gnConnFace())*nvars; i++) {
 					rarr[i] = 0;
 			}
 		}
@@ -494,32 +494,32 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		// Update solution and compute residual norm
 		{
 			MutableGhostedVecHandler<PetscScalar> uh(uvec);
-			Eigen::Map<MVector<a_real>> u(uh.getArray(), m->gnelem(), nvars);
+			Eigen::Map<MVector<freal>> u(uh.getArray(), m->gnelem(), nvars);
 			ConstGhostedVecHandler<PetscScalar> rh(rvec);
-			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), m->gnelem(), nvars);
+			Eigen::Map<const MVector<freal>> residual(rh.getArray(), m->gnelem(), nvars);
 
 			ConstVecHandler<PetscScalar> duh(duvec);
 			const PetscScalar *const duarr = duh.getArray();
-			Eigen::Map<const MVector<a_real>> du(duarr, m->gnelem(), nvars);
+			Eigen::Map<const MVector<freal>> du(duarr, m->gnelem(), nvars);
 
 
 #pragma omp parallel for
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(fint iel = 0; iel < m->gnelem(); iel++)
 			{
-				const a_real omega = update_relax->getLocalRelaxationFactor(duarr+iel*nvars, &u(iel,0));
+				const freal omega = update_relax->getLocalRelaxationFactor(duarr+iel*nvars, &u(iel,0));
 				u.row(iel) += omega*du.row(iel);
 			}
 		}
 
 		ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
-		a_real resnorm2 = 0;
+		freal resnorm2 = 0;
 		{
 			ConstGhostedVecHandler<PetscScalar> rh(rvec);
-			Eigen::Map<const MVector<a_real>> residual(rh.getArray(), m->gnelem(), nvars);
+			Eigen::Map<const MVector<freal>> residual(rh.getArray(), m->gnelem(), nvars);
 
 #pragma omp parallel for simd reduction(+:resnorm2)
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(fint iel = 0; iel < m->gnelem(); iel++)
 			{
 				resnorm2 += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
 			}
@@ -608,14 +608,14 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 }
 
 template <int nvars>
-UnsteadySolver<nvars>::UnsteadySolver(const Spatial<a_real,nvars> *const spatial, Vec soln,
+UnsteadySolver<nvars>::UnsteadySolver(const Spatial<freal,nvars> *const spatial, Vec soln,
 		const int temporal_order, const std::string log_file)
 	: space(spatial), uvec(soln), order{temporal_order}, cputime{0.0}, walltime{0.0},
 	  logfile{log_file}
 { }
 
 template <int nvars>
-TVDRKSolver<nvars>::TVDRKSolver(const Spatial<a_real,nvars> *const spatial, 
+TVDRKSolver<nvars>::TVDRKSolver(const Spatial<freal,nvars> *const spatial, 
 		Vec soln, const int temporal_order, const std::string log_file, const double cfl_num)
 	: UnsteadySolver<nvars>(spatial, soln, temporal_order, log_file), cfl{cfl_num},
 	tvdcoeffs(initialize_TVDRK_Coeffs(temporal_order))
@@ -639,9 +639,9 @@ TVDRKSolver<nvars>::~TVDRKSolver() {
 }
 
 template<int nvars>
-StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
+StatusCode TVDRKSolver<nvars>::solve(const freal finaltime)
 {
-	const UMesh2dh<a_real> *const m = space->mesh();
+	const UMesh<freal,NDIM> *const m = space->mesh();
 	StatusCode ierr = 0;
 	int mpirank;
 	MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank);
@@ -653,18 +653,18 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 	assert(locnelem == m->gnelem());
 
 	ierr = VecGetArray(uvec, &uarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> u(uarr, locnelem, nvars);
+	Eigen::Map<MVector<freal>> u(uarr, locnelem, nvars);
 	ierr = VecGetArray(rvec, &rarr); CHKERRQ(ierr);
-	Eigen::Map<MVector<a_real>> residual(rarr, locnelem, nvars);
+	Eigen::Map<MVector<freal>> residual(rarr, locnelem, nvars);
 
 
 	int step = 0;
-	a_real time = 0;   //< Physical time elapsed
+	freal time = 0;   //< Physical time elapsed
 
 	// Stage solution vector
-	MVector<a_real> ustage(m->gnelem(),nvars);
+	MVector<freal> ustage(m->gnelem(),nvars);
 #pragma omp parallel for simd default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 		for(int ivar = 0; ivar < nvars; ivar++)
 			ustage(iel,ivar) = u(iel,ivar);
 	
@@ -675,12 +675,12 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 
 	while(time <= finaltime - A_SMALL_NUMBER)
 	{
-		a_real dtmin=0;      //< Time step
+		freal dtmin=0;      //< Time step
 
 		for(int istage = 0; istage < order; istage++)
 		{
 #pragma omp parallel for simd default(shared)
-			for(a_int iel = 0; iel < m->gnelem(); iel++) {
+			for(fint iel = 0; iel < m->gnelem(); iel++) {
 				for(int i = 0; i < nvars; i++)
 					residual(iel,i) = 0;
 			}
@@ -701,7 +701,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 				throw Numerical_error("TVDRK solver diverged - dtmin is Nan or inf!");
 
 #pragma omp parallel for simd default(shared)
-			for(a_int iel = 0; iel < m->gnelem(); iel++)
+			for(fint iel = 0; iel < m->gnelem(); iel++)
 			{
 				for(int i = 0; i < nvars; i++)
 				{
@@ -713,7 +713,7 @@ StatusCode TVDRKSolver<nvars>::solve(const a_real finaltime)
 		}
 
 #pragma omp parallel for simd default(shared)
-		for(a_int iel = 0; iel < m->gnelem(); iel++)
+		for(fint iel = 0; iel < m->gnelem(); iel++)
 			for(int ivar = 0; ivar < nvars; ivar++)
 				u(iel,ivar) = ustage(iel,ivar);
 

@@ -22,7 +22,7 @@
 #define FVENS_TRACE_VECTOR_H
 
 #include <vector>
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 
 namespace fvens {
 
@@ -32,7 +32,7 @@ namespace fvens {
  * The faces are ordered in [the same way](@ref FaceIterators) as in the mesh object.
  * 
  * \warning Even though this class is templated on the scalar type, it is only for future use.
- *   Currently, only the fvens::a_real type works.
+ *   Currently, only the fvens::freal type works.
  */
 template <typename scalar, int nvars>
 class L2TraceVector
@@ -42,7 +42,7 @@ public:
 	/** \param mesh The distributed mesh over which the vector is defined.
 	 * The mesh must have its face structure available.
 	 */
-	L2TraceVector(const UMesh2dh<scalar>& mesh);
+	L2TraceVector(const UMesh<scalar,NDIM>& mesh);
 
 	/// Access to the "left" vector over all faces in the local subdomain
 	scalar *getLocalArrayLeft();
@@ -60,7 +60,7 @@ public:
 
 protected:
 	/// The mesh over whose trace the vectors are defined
-	const UMesh2dh<scalar>& m;
+	const UMesh<scalar,NDIM>& m;
 	/// Storage for left vector
 	std::vector<scalar> left;
 	/// Storage for right vector
@@ -71,7 +71,7 @@ protected:
 	/// List of connectivity face indices associated with each of the neighbouring subdomains
 	/** For each neighbouring subdomain, gives the connface index associated with each face.
 	 */
-	std::vector<std::vector<a_int>> sharedfaces;
+	std::vector<std::vector<fint>> sharedfaces;
 
 	/// Connectivity face indices associated with shared faces as seen by the neighbouring subdomain
 	/** This gives the connface index (of this subdomain) associated with each face of
@@ -79,14 +79,14 @@ protected:
 	 *  This is necessary because the other subdomain has a different ordering
 	 *  of the shared connectivity faces.
 	 */
-	std::vector<std::vector<a_int>> sharedfacesother;
+	std::vector<std::vector<fint>> sharedfacesother;
 
 	/// Indices into the received buffer corresponding to the connectivity faces of this subdomain
 	/** For each connectivity face in this subdomain, we store, in order,
 	 *  - Index into nbdranks of the neighbouring subdomain which shares this face
 	 *  NO: - Index (modulo nvars) into the buffer that will be received from that subdomain.
 	 */
-	amat::Array2d<a_int> sharedfacemap;
+	amat::Array2d<fint> sharedfacemap;
 
 	/// Temporary storage to buffer the message
 	std::vector<std::vector<scalar>> sendbuffers;

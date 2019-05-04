@@ -35,7 +35,7 @@ struct FlowBCConfig
 {
 	int bc_tag;                   ///< Boundary marker in mesh file
 	BCType bc_type;               ///< Type of boundary
-	std::vector<a_real> bc_vals;  ///< Boundary value(s)
+	std::vector<freal> bc_vals;  ///< Boundary value(s)
 	std::vector<int> bc_opts;     ///< Other info needed by boundary condition
 };
 
@@ -47,9 +47,9 @@ struct FlowBCConfig
  *
  * Template parameter scalar is the type used for computing the boundary value only. Type j_real is
  * is used for computing Jacobian of the boundary state w.r.t. the interior state. By default,
- * j_real is set the same as \ref a_real, the default type for the residual computation.
+ * j_real is set the same as \ref freal, the default type for the residual computation.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class FlowBC
 {
 public:
@@ -109,7 +109,7 @@ protected:
  * Whether the flow is subsonic or supersonic at the boundary
  * is decided by interior value of the Mach number.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class InOutFlow : public FlowBC<scalar,j_real>
 {
 public:
@@ -118,7 +118,7 @@ public:
 	 * \param ufar Far-field state
 	 */
 	InOutFlow(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	          const std::array<a_real,NVARS>& u_far);
+	          const std::array<freal,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -130,7 +130,7 @@ public:
 	                                  j_real *const __restrict dugdui) const;
 
 protected:
-	const std::array<a_real,NVARS> uinf;
+	const std::array<freal,NVARS> uinf;
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
@@ -141,7 +141,7 @@ protected:
  * This is mainly based on the latter (Blazek). One difference though is that here,
  * the flow is constrained normal to the boundary.
  */
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class InFlow : public FlowBC<scalar,j_real>
 {
 public:
@@ -151,7 +151,7 @@ public:
 	 * \param totaltemperature Total temperature at inflow
 	 */
 	InFlow(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	       const a_real totalpressure, const a_real totaltemperature);
+	       const freal totalpressure, const freal totaltemperature);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -163,15 +163,15 @@ public:
 	                                  j_real *const __restrict dugdui) const;
 
 protected:
-	const a_real ptotal;
-	const a_real ttotal;
+	const freal ptotal;
+	const freal ttotal;
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
 };
 
 /// Simply sets the ghost state as the given free-stream state
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class Farfield : public FlowBC<scalar, j_real>
 {
 public:
@@ -180,7 +180,7 @@ public:
 	 * \param ufar Far-field state
 	 */
 	Farfield(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	         const std::array<a_real,NVARS>& u_far);
+	         const std::array<freal,NVARS>& u_far);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -192,14 +192,14 @@ public:
 	                                  j_real *const __restrict dugdui) const;
 
 protected:
-	const std::array<a_real,NVARS> uinf;
+	const std::array<freal,NVARS> uinf;
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
 };
 
 /// Simply sets the ghost state as the interior state
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class Extrapolation : public FlowBC<scalar, j_real>
 {
 public:
@@ -223,7 +223,7 @@ protected:
 };
 
 /// Slip wall BC for Euler equations
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class Slipwall : public FlowBC<scalar, j_real>
 {
 public:
@@ -248,7 +248,7 @@ protected:
 };
 
 /// No-slip adiabatic wall BC for 2D NS equations
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class Adiabaticwall2D : public FlowBC<scalar, j_real>
 {
 	static_assert(NDIM == 2, "Adiabaticwall2D is only defined for 2D cases.");
@@ -257,7 +257,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 */
 	Adiabaticwall2D(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	                const a_real wall_tangential_velocity);
+	                const freal wall_tangential_velocity);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -272,11 +272,11 @@ protected:
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
-	const a_real tangvel;
+	const freal tangvel;
 };
 
 /// General adiabatic wall suitable for geometry in Cartesian coordinates
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class Adiabaticwall : public FlowBC<scalar,j_real>
 {
 public:
@@ -284,7 +284,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 */
 	Adiabaticwall(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	              const std::array<a_real,NDIM> wall_velocity);
+	              const std::array<freal,NDIM> wall_velocity);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -299,11 +299,11 @@ protected:
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
-	const std::array<a_real,NDIM> wallvel;
+	const std::array<freal,NDIM> wallvel;
 };
 
 /// No-slip isothermal wall BC for 2D NS equations
-template <typename scalar, typename j_real = a_real>
+template <typename scalar, typename j_real = freal>
 class Isothermalwall2D : public FlowBC<scalar,j_real>
 {
 	static_assert(NDIM == 2, "Isothermalwall2D is only defined for 2D cases.");
@@ -312,7 +312,7 @@ public:
 	/** \sa FlowBC::FlowBC
 	 */
 	Isothermalwall2D(const int boundary_tag, const IdealGasPhysics<scalar>& gasphysics,
-	                 const a_real wall_tangential_velocity, const a_real wall_temperature);
+	                 const freal wall_tangential_velocity, const freal wall_temperature);
 
 	/// Computes the ghost state given the interior state and normal vector
 	void computeGhostState(const scalar *const uin, const scalar *const n,
@@ -327,8 +327,8 @@ protected:
 	using FlowBC<scalar,j_real>::btag;
 	using FlowBC<scalar,j_real>::phy;
 	using FlowBC<scalar,j_real>::jphy;
-	const a_real tangvel;
-	const a_real walltemperature;
+	const freal tangvel;
+	const freal walltemperature;
 };
 
 /// Create a set of pointers to immutable boundary condition objects, possibly of different types
@@ -340,7 +340,7 @@ protected:
 template <typename scalar>
 std::map<int,const FlowBC<scalar>*> create_const_flowBCs(const std::vector<FlowBCConfig>& conf,
                                                          const IdealGasPhysics<scalar>& physics,
-                                                         const std::array<a_real,NVARS>& uinf);
+                                                         const std::array<freal,NVARS>& uinf);
 
 }
 #endif

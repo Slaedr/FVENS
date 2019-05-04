@@ -2,7 +2,7 @@
 
 spatial_discretization {
 	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
-	inviscid_flux                    hllc
+	inviscid_flux                    roe
 	gradient_method                  greengauss
 	limiter                          none
 }

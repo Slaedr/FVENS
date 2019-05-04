@@ -92,16 +92,16 @@ const InviscidFlux<scalar>* create_const_inviscidflux(
 }
 
 // instantiations
-template InviscidFlux<a_real>* create_mutable_inviscidflux(
+template InviscidFlux<freal>* create_mutable_inviscidflux(
 		const std::string& type, 
-		const IdealGasPhysics<a_real> *const p);
-template const InviscidFlux<a_real>* create_const_inviscidflux(
+		const IdealGasPhysics<freal> *const p);
+template const InviscidFlux<freal>* create_const_inviscidflux(
 		const std::string& type, 
-		const IdealGasPhysics<a_real> *const p);
+		const IdealGasPhysics<freal> *const p);
 
 template <typename scalar, int nvars>
 GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& type, 
-                                                            const UMesh2dh<scalar> *const m,
+                                                            const UMesh<scalar,NDIM> *const m,
                                                             const scalar *const rc,
                                                             const scalar *const rcbp)
 {
@@ -131,7 +131,7 @@ GradientScheme<scalar,nvars>* create_mutable_gradientscheme(const std::string& t
 
 template <typename scalar, int nvars>
 const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::string& type, 
-                                                                const UMesh2dh<scalar> *const m,
+                                                                const UMesh<scalar,NDIM> *const m,
                                                                 const scalar *const rc,
                                                                 const scalar *const rcbp)
 {
@@ -139,38 +139,38 @@ const GradientScheme<scalar,nvars>* create_const_gradientscheme(const std::strin
 }
 
 // template instantiations
-template GradientScheme<a_real,NVARS>* create_mutable_gradientscheme<a_real,NVARS>(
+template GradientScheme<freal,NVARS>* create_mutable_gradientscheme<freal,NVARS>(
 		const std::string& type, 
-		const UMesh2dh<a_real> *const m,
-		const a_real *const rc,
-		const a_real *const rcbp);
+		const UMesh<freal,NDIM> *const m,
+		const freal *const rc,
+		const freal *const rcbp);
 
-template const GradientScheme<a_real,NVARS>* create_const_gradientscheme<a_real,NVARS>(
+template const GradientScheme<freal,NVARS>* create_const_gradientscheme<freal,NVARS>(
 		const std::string& type, 
-		const UMesh2dh<a_real> *const m,
-		const a_real *const rc,
-		const a_real *const rcbp);
+		const UMesh<freal,NDIM> *const m,
+		const freal *const rc,
+		const freal *const rcbp);
 
-template GradientScheme<a_real,1>* create_mutable_gradientscheme<a_real,1>(
+template GradientScheme<freal,1>* create_mutable_gradientscheme<freal,1>(
 		const std::string& type, 
-		const UMesh2dh<a_real> *const m,
-		const a_real *const rc,
-		const a_real *const rcbp);
+		const UMesh<freal,NDIM> *const m,
+		const freal *const rc,
+		const freal *const rcbp);
 
-template const GradientScheme<a_real,1>* create_const_gradientscheme<a_real,1>(
+template const GradientScheme<freal,1>* create_const_gradientscheme<freal,1>(
 		const std::string& type, 
-		const UMesh2dh<a_real> *const m,
-		const a_real *const rc,
-		const a_real *const rcbp);
+		const UMesh<freal,NDIM> *const m,
+		const freal *const rc,
+		const freal *const rcbp);
 
 
 template <typename scalar, int nvars>
 SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::string& type,
-                                                                    const UMesh2dh<scalar> *const m,
+                                                                    const UMesh<scalar,NDIM> *const m,
                                                                     const scalar *const rc,
                                                                     const scalar *const rcbp,
                                                                     const amat::Array2d<scalar>& gr,
-                                                                    const a_real param)
+                                                                    const freal param)
 {
 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 	SolutionReconstruction<scalar,nvars> * reconst = nullptr;
@@ -215,42 +215,42 @@ SolutionReconstruction<scalar,nvars>* create_mutable_reconstruction(const std::s
 
 template <typename scalar, int nvars>
 const SolutionReconstruction<scalar,nvars>*
-create_const_reconstruction(const std::string& type, const UMesh2dh<scalar> *const m,
+create_const_reconstruction(const std::string& type, const UMesh<scalar,NDIM> *const m,
                             const scalar *const rc,
                             const scalar *const rcbp,
                             const amat::Array2d<scalar>& gr,
-                            const a_real param)
+                            const freal param)
 {
 	return create_mutable_reconstruction<scalar,nvars>(type, m, rc, rcbp, gr, param);
 }
 
 // template instantiations
-template SolutionReconstruction<a_real,NVARS>*
+template SolutionReconstruction<freal,NVARS>*
 create_mutable_reconstruction(const std::string& type,
-                              const UMesh2dh<a_real> *const m, const a_real *const rc,
-                              const a_real *const rcbp,
-                              const amat::Array2d<a_real>& gr, const a_real param);
-template const SolutionReconstruction<a_real,NVARS>*
+                              const UMesh<freal,NDIM> *const m, const freal *const rc,
+                              const freal *const rcbp,
+                              const amat::Array2d<freal>& gr, const freal param);
+template const SolutionReconstruction<freal,NVARS>*
 create_const_reconstruction(const std::string& type,
-                            const UMesh2dh<a_real> *const m, const a_real *const rc,
-                            const a_real *const rcbp,
-                            const amat::Array2d<a_real>& gr, const a_real param);
+                            const UMesh<freal,NDIM> *const m, const freal *const rc,
+                            const freal *const rcbp,
+                            const amat::Array2d<freal>& gr, const freal param);
 
-template SolutionReconstruction<a_real,1>*
+template SolutionReconstruction<freal,1>*
 create_mutable_reconstruction(const std::string& type,
-                              const UMesh2dh<a_real> *const m, const a_real *const rc,
-                              const a_real *const rcbp,
-                              const amat::Array2d<a_real>& gr, const a_real param);
-template const SolutionReconstruction<a_real,1>*
+                              const UMesh<freal,NDIM> *const m, const freal *const rc,
+                              const freal *const rcbp,
+                              const amat::Array2d<freal>& gr, const freal param);
+template const SolutionReconstruction<freal,1>*
 create_const_reconstruction(const std::string& type,
-                            const UMesh2dh<a_real> *const m, const a_real *const rc,
-                            const a_real *const rcbp,
-                            const amat::Array2d<a_real>& gr, const a_real param);
+                            const UMesh<freal,NDIM> *const m, const freal *const rc,
+                            const freal *const rcbp,
+                            const amat::Array2d<freal>& gr, const freal param);
 
 
 template <typename scalar>
 FlowFV_base<scalar>* create_mutable_flowSpatialDiscretization(
-	const UMesh2dh<scalar> *const m,
+	const UMesh<scalar,NDIM> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
 {
@@ -268,7 +268,7 @@ FlowFV_base<scalar>* create_mutable_flowSpatialDiscretization(
 
 template <typename scalar>
 const FlowFV_base<scalar>* create_const_flowSpatialDiscretization(
-	const UMesh2dh<scalar> *const m,
+	const UMesh<scalar,NDIM> *const m,
 	const FlowPhysicsConfig& pconf,
 	const FlowNumericsConfig& nconf)
 {
@@ -276,15 +276,15 @@ const FlowFV_base<scalar>* create_const_flowSpatialDiscretization(
 }
 
 template
-const FlowFV_base<a_real>*
-create_const_flowSpatialDiscretization<a_real>(const UMesh2dh<a_real> *const m,
+const FlowFV_base<freal>*
+create_const_flowSpatialDiscretization<freal>(const UMesh<freal,NDIM> *const m,
                                                const FlowPhysicsConfig& pconf,
                                                const FlowNumericsConfig& nconf);
 
 template <int nvars>
 const NonlinearUpdate<nvars>* create_const_nonlinearUpdateScheme(const FlowParserOptions& opts)
 {
-	const IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	const IdealGasPhysics<freal> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	if(opts.nl_update_scheme == "FULL")
 		return new FullUpdate<nvars>();
 	else if(opts.nl_update_scheme == "ROBUST_FLOW")

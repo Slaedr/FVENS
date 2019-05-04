@@ -26,10 +26,10 @@ namespace fvens {
 namespace amat {
 	
 /// Real type
-using fvens::a_real;
+using fvens::freal;
 
 /// Integer type
-using fvens::a_int;
+using fvens::fint;
 
 const int WIDTH = 10;		// width of field for printing matrices
 
@@ -42,9 +42,9 @@ template <class T>
 class Array2d
 {
 protected:
-	a_int nrows;           ///< Number of rows
-	a_int ncols;           ///< Number of columns
-	a_int size;            ///< Total number of entries
+	fint nrows;           ///< Number of rows
+	fint ncols;           ///< Number of columns
+	fint size;            ///< Total number of entries
 	T* elems;              ///< Raw array of entries
 
 public:
@@ -53,7 +53,7 @@ public:
 	{ }
 
 	/// Allocate some storage
-	Array2d(const a_int nr, const a_int nc)
+	Array2d(const fint nr, const fint nc)
 	{
 		assert(nc>=0);
 		assert(nr>=0);
@@ -80,7 +80,7 @@ public:
 	Array2d<T>& operator=(const Array2d<T>& rhs);
 	
 	/// Sets a new size for the array, deletes the contents and allocates new memory
-	void resize(const a_int nr, const a_int nc)
+	void resize(const fint nr, const fint nc)
 	{
 		assert(nc>=0);
 		assert(nr>=0);
@@ -94,7 +94,7 @@ public:
 	/// Fill the array with zeros.
 	void zeros()
 	{
-		for(a_int i = 0; i < size; i++)
+		for(fint i = 0; i < size; i++)
 			elems[i] = (T)(0);
 	}
 
@@ -102,10 +102,10 @@ public:
 	void ones();
 
 	/// function to copy matrix elements from a ROW-MAJOR array
-	void setdata(const T* A, a_int sz);
+	void setdata(const T* A, fint sz);
 
 	/// Getter function \sa operator()
-	T get(const a_int i, const a_int j=0) const
+	T get(const fint i, const fint j=0) const
 	{
 		assert(i < nrows);
 		assert(j < ncols);
@@ -113,13 +113,13 @@ public:
 		return elems[i*ncols + j];
 	}
 
-	a_int rows() const { return nrows; }
-	a_int cols() const { return ncols; }
-	a_int msize() const { return size; }
+	fint rows() const { return nrows; }
+	fint cols() const { return ncols; }
+	fint msize() const { return size; }
 
 	/// Getter/setter function for expressions like A(1,2) = 141
 	///  to set the element at 1st row and 2nd column to 141
-	T& operator()(const a_int x, const a_int y=0)
+	T& operator()(const fint x, const fint y=0)
 	{
 		assert(x < nrows);
 		assert(y < ncols);
@@ -128,7 +128,7 @@ public:
 	}
 	
 	/// Const getter function for expressions like x = A(1,2) to get the element at 1st row and 2nd column
-	const T& operator()(const a_int x, const a_int y=0) const
+	const T& operator()(const fint x, const fint y=0) const
 	{
 		assert(x < nrows);
 		assert(y < ncols);
@@ -137,14 +137,14 @@ public:
 	}
 
 	/// Returns a pointer-to-const to the beginning of a row
-	const T* const_row_pointer(const a_int r) const
+	const T* const_row_pointer(const fint r) const
 	{
 		assert(r < nrows);
 		return &elems[r*ncols];
 	}
 	
 	/// Returns a pointer to the beginning of a row
-	T* row_pointer(const a_int r)
+	T* row_pointer(const fint r)
 	{
 		assert(r < nrows);
 		return &elems[r*ncols];
@@ -168,17 +168,17 @@ template <typename T>
 class Array2dView
 {
 protected:
-	a_int nrows;             ///< Number of rows
-	a_int ncols;             ///< Number of columns
+	fint nrows;             ///< Number of rows
+	fint ncols;             ///< Number of columns
 	const T *const elems;    ///< Pointer to data
 public:
 	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2dView(const T *const array, const a_int nr, const a_int nc)
+	Array2dView(const T *const array, const fint nr, const fint nc)
 		: nrows{nr}, ncols{nc}, elems{array}
 	{ }
 
 	/// Accessor
-	const T& operator()(const a_int x, const a_int y=0) const
+	const T& operator()(const fint x, const fint y=0) const
 	{
 		assert(x < nrows);
 		assert(y < ncols);
@@ -186,8 +186,8 @@ public:
 		return elems[x*ncols + y];
 	}
 
-	a_int rows() const { return nrows; }
-	a_int cols() const { return ncols; }
+	fint rows() const { return nrows; }
+	fint cols() const { return ncols; }
 };
 
 /// A mutable 2D view of a raw array
@@ -195,17 +195,17 @@ template <typename T>
 class Array2dMutableView
 {
 protected:
-	a_int nrows;
-	a_int ncols;
+	fint nrows;
+	fint ncols;
 	T *const elems;
 public:
 	/// Wrapper constructor - does not take ownership and does not delete storage once done
-	Array2dMutableView(T *const array, const a_int nr, const a_int nc)
+	Array2dMutableView(T *const array, const fint nr, const fint nc)
 		: nrows{nr}, ncols{nc}, elems{array}
 	{ }
 
 	/// Accessor
-	T& operator()(const a_int x, const a_int y=0)
+	T& operator()(const fint x, const fint y=0)
 	{
 		assert(x < nrows);
 		assert(y < ncols);
@@ -213,8 +213,8 @@ public:
 		return elems[x*ncols + y];
 	}
 
-	a_int rows() const { return nrows; }
-	a_int cols() const { return ncols; }
+	fint rows() const { return nrows; }
+	fint cols() const { return ncols; }
 };
 
 

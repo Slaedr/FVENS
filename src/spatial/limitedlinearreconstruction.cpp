@@ -25,11 +25,11 @@
 namespace fvens {
 
 template <typename scalar, int nvars>
-WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh2dh<scalar> *const mesh,
+WENOReconstruction<scalar,nvars>::WENOReconstruction(const UMesh<scalar,2> *const mesh,
                                                      const scalar *const c_centres, 
                                                      const scalar *const c_centres_ghost,
                                                      const amat::Array2d<scalar>& gauss_r,
-                                                     const a_real l)
+                                                     const freal l)
 	: SolutionReconstruction<scalar,nvars>(mesh, c_centres, c_centres_ghost, gauss_r),
 	  gamma{4.0}, lambda{l}, epsilon{1.0e-5}
 {
@@ -48,7 +48,7 @@ void WENOReconstruction<scalar,nvars>
 	// first compute limited derivatives at each cell
 
 #pragma omp parallel for default(shared)
-	for(a_int ielem = 0; ielem < m->gnelem(); ielem++)
+	for(fint ielem = 0; ielem < m->gnelem(); ielem++)
 	{
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
@@ -68,7 +68,7 @@ void WENOReconstruction<scalar,nvars>
 			// Biased stencils
 			for(int jel = 0; jel < m->gnfael(ielem); jel++)
 			{
-				const a_int jelem = m->gesuel(ielem,jel);
+				const fint jelem = m->gesuel(ielem,jel);
 
 				// ignore ghost cells
 				if(jelem >= m->gnelem()+m->gnConnFace())
@@ -86,8 +86,8 @@ void WENOReconstruction<scalar,nvars>
 			
 			for(int jfa = 0; jfa < m->gnfael(ielem); jfa++)
 			{
-				const a_int face = m->gelemface(ielem,jfa);
-				const a_int jelem = m->gesuel(ielem,jfa);
+				const fint face = m->gelemface(ielem,jfa);
+				const fint jelem = m->gesuel(ielem,jfa);
 				
 				if(ielem < jelem) {
 					ufl(face,ivar) = u(ielem,ivar);
@@ -105,7 +105,7 @@ void WENOReconstruction<scalar,nvars>
 }
 
 template <typename scalar, int nvars>
-BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh2dh<scalar> *const mesh, 
+BarthJespersenLimiter<scalar,nvars>::BarthJespersenLimiter(const UMesh<scalar,2> *const mesh, 
                                                            const scalar *const r_centres, 
                                                            const scalar *const r_centres_ghost,
                                                      const amat::Array2d<scalar>& gauss_r)
@@ -124,14 +124,14 @@ void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scal
 		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
 
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		for(int ivar = 0; ivar < nvars; ivar++)
 		{
 			scalar duimin=0, duimax=0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
-				const a_int jel = m->gesuel(iel,j);
+				const fint jel = m->gesuel(iel,j);
 				const scalar dui = u(jel,ivar)-u(iel,ivar);
 				if(dui > duimax) duimax = dui;
 				if(dui < duimin) duimin = dui;
@@ -140,7 +140,7 @@ void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scal
 			scalar lim = 1.0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
-				const a_int face = m->gelemface(iel,j);
+				const fint face = m->gelemface(iel,j);
 				
 				const scalar uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
 						&gr(face,0), ri+iel*NDIM);
@@ -160,8 +160,8 @@ void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scal
 			
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
-				const a_int face = m->gelemface(iel,j);
-				const a_int jel = m->gesuel(iel,j);
+				const fint face = m->gelemface(iel,j);
+				const fint jel = m->gesuel(iel,j);
 				
 				if(iel < jel)
 					ufl(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
@@ -177,11 +177,11 @@ void BarthJespersenLimiter<scalar,nvars>::compute_face_values(const MVector<scal
 
 template <typename scalar, int nvars>
 VenkatakrishnanLimiter<scalar,nvars>
-::VenkatakrishnanLimiter(const UMesh2dh<scalar> *const mesh,
+::VenkatakrishnanLimiter(const UMesh<scalar,2> *const mesh,
                          const scalar *const r_centres, 
                          const scalar *const r_centres_ghost,
                          const amat::Array2d<scalar>& gauss_r,
-                         const a_real k_param)
+                         const freal k_param)
 	: SolutionReconstruction<scalar,nvars>(mesh, r_centres, r_centres_ghost, gauss_r), K{k_param}
 {
 	std::cout << "  Venkatakrishnan Limiter: Constant K = " << K << std::endl;
@@ -189,7 +189,7 @@ VenkatakrishnanLimiter<scalar,nvars>
 	clength.resize(m->gnelem());
 	static_assert(NDIM == 2, "Works only in 2D for now");
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		for(int ifa = 0; ifa < m->gnnode(iel); ifa++)
 		{
@@ -217,7 +217,7 @@ void VenkatakrishnanLimiter<scalar,nvars>
 		= reinterpret_cast<const GradBlock_t<scalar,NDIM,nvars>*>(gradarray);
 
 #pragma omp parallel for default(shared)
-	for(a_int iel = 0; iel < m->gnelem(); iel++)
+	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		const scalar eps2 = std::pow(K*clength[iel], 3);
 
@@ -226,7 +226,7 @@ void VenkatakrishnanLimiter<scalar,nvars>
 			scalar duimin=0, duimax=0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
-				const a_int jel = m->gesuel(iel,j);
+				const fint jel = m->gesuel(iel,j);
 				const scalar dui = u(jel,ivar)-u(iel,ivar);
 				if(dui > duimax) duimax = dui;
 				if(dui < duimin) duimin = dui;
@@ -235,7 +235,7 @@ void VenkatakrishnanLimiter<scalar,nvars>
 			scalar lim = 1.0;
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
-				const a_int face = m->gelemface(iel,j);
+				const fint face = m->gelemface(iel,j);
 				
 				const scalar uface = linearExtrapolate(u(iel,ivar), grads[iel], ivar, 1.0,
 						&gr(face,0), ri+iel*NDIM);
@@ -252,8 +252,8 @@ void VenkatakrishnanLimiter<scalar,nvars>
 			
 			for(int j = 0; j < m->gnfael(iel); j++)
 			{
-				const a_int face = m->gelemface(iel,j);
-				const a_int jel = m->gesuel(iel,j);
+				const fint face = m->gelemface(iel,j);
+				const fint jel = m->gesuel(iel,j);
 				
 				if(iel < jel)
 					ufl(face,ivar) = linearExtrapolate(u(iel,ivar), grads[iel], ivar, lim,
@@ -267,11 +267,11 @@ void VenkatakrishnanLimiter<scalar,nvars>
 	}
 }
 
-template class WENOReconstruction<a_real,NVARS>;
-template class BarthJespersenLimiter<a_real,NVARS>;
-template class VenkatakrishnanLimiter<a_real,NVARS>;
-template class WENOReconstruction<a_real,1>;
-template class BarthJespersenLimiter<a_real,1>;
-template class VenkatakrishnanLimiter<a_real,1>;
+template class WENOReconstruction<freal,NVARS>;
+template class BarthJespersenLimiter<freal,NVARS>;
+template class VenkatakrishnanLimiter<freal,NVARS>;
+template class WENOReconstruction<freal,1>;
+template class BarthJespersenLimiter<freal,1>;
+template class VenkatakrishnanLimiter<freal,1>;
 
 }

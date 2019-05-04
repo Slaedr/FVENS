@@ -41,7 +41,7 @@ for testing detection of NaN or inf during nonlinear sovlve");
 
 	// Read control file
 	const FlowParserOptions opts = parse_flow_controlfile(argc, argv, cmdvars);
-	const UMesh2dh<a_real> m = constructMeshFlow(opts, "");
+	const UMesh<freal,NDIM> m = constructMeshFlow(opts, "");
 	SteadyFlowCase case1(opts);
 
 	// solution vector

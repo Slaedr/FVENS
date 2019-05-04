@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "mesh/amesh2dh.hpp"
+#include "mesh/mesh.hpp"
 #include "mesh/ameshutils.hpp"
 
 #include <cassert>
@@ -13,13 +13,13 @@ using namespace fvens;
 /// For each element in the esup list of a point, check if that point is actually part of each
 ///  of those elements.
 template<typename scalar>
-int test_topology_internalconsistency_esup(const UMesh2dh<scalar>& m)
+int test_topology_internalconsistency_esup(const UMesh<scalar,NDIM>& m)
 {
-	for(a_int ipoin = 0; ipoin < m.gnpoin(); ipoin++)
+	for(fint ipoin = 0; ipoin < m.gnpoin(); ipoin++)
 	{
 		for(int ielind = m.gesup_p(ipoin); ielind < m.gesup_p(ipoin+1); ielind++)
 		{
-			const a_int iel = m.gesup(ielind);
+			const fint iel = m.gesup(ielind);
 			if(iel >= m.gnelem())
 				continue;
 
@@ -36,28 +36,28 @@ int test_topology_internalconsistency_esup(const UMesh2dh<scalar>& m)
 
 /// For each mesh face, check if the left and right elements actually contain that face
 template<typename scalar>
-int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
+int test_topology_internalconsistency_intfac(const UMesh<scalar,NDIM>& m)
 {
 	static_assert(NDIM==2, "Only 2D meshes are currently supported!");
 
-	for(a_int iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
+	for(fint iface = m.gPhyBFaceStart(); iface < m.gPhyBFaceEnd(); iface++)
 	{
-		const a_int lelem = m.gintfac(iface,0);
+		const fint lelem = m.gintfac(iface,0);
 		const EIndex locface = m.getFaceEIndex(false, iface, lelem);
 		assert(locface >= 0);
 	}
-	for(a_int iface = m.gSubDomFaceStart(); iface < m.gSubDomFaceEnd(); iface++)
+	for(fint iface = m.gSubDomFaceStart(); iface < m.gSubDomFaceEnd(); iface++)
 	{
-		const a_int lelem = m.gintfac(iface,0);
-		const a_int relem = m.gintfac(iface,1);
+		const fint lelem = m.gintfac(iface,0);
+		const fint relem = m.gintfac(iface,1);
 		const EIndex locface1 = m.getFaceEIndex(false, iface, lelem);
 		assert(locface1 >= 0);
 		const EIndex locface2 = m.getFaceEIndex(false, iface, relem);
 		assert(locface2 >= 0);
 	}
-	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
+	for(fint iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 	{
-		const a_int lelem = m.gintfac(iface,0);
+		const fint lelem = m.gintfac(iface,0);
 		const EIndex locface = m.getFaceEIndex(false, iface, lelem);
 		assert(locface >= 0);
 	}
@@ -65,14 +65,14 @@ int test_topology_internalconsistency_intfac(const UMesh2dh<scalar>& m)
 }
 
 template<typename scalar>
-int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
+int test_periodic_map(UMesh<scalar,NDIM>& m, const int bcm, const int axis)
 {
 	m.compute_face_data();
 	m.compute_periodic_map(bcm,axis);
 
 	const int numfaces = 5;
-	const a_int faces1[] = {8,9,10,11,12};
-	const a_int faces2[] = {25,24,23,22,21};
+	const fint faces1[] = {8,9,10,11,12};
+	const fint faces2[] = {25,24,23,22,21};
 
 	int ierr = 0;
 
@@ -85,9 +85,9 @@ int test_periodic_map(UMesh2dh<scalar>& m, const int bcm, const int axis)
 }
 
 template<typename scalar>
-int test_levelscheduling(const UMesh2dh<scalar>& m, const std::string levelsfile)
+int test_levelscheduling(const UMesh<scalar,NDIM>& m, const std::string levelsfile)
 {
-	std::vector<a_int> levels = levelSchedule(m);
+	std::vector<fint> levels = levelSchedule(m);
 	const int nlevels = (int)(levels.size()-1);
 
 	std::ifstream lfile;
@@ -99,7 +99,7 @@ int test_levelscheduling(const UMesh2dh<scalar>& m, const std::string levelsfile
 
 	int real_nlevels;
 	lfile >> real_nlevels;
-	std::vector<a_int> real_levels(real_nlevels+1);
+	std::vector<fint> real_levels(real_nlevels+1);
 	for(int i = 0; i < real_nlevels+1; i++)
 		lfile >> real_levels[i];
 
@@ -118,9 +118,9 @@ int test_levelscheduling(const UMesh2dh<scalar>& m, const std::string levelsfile
 }
 
 template<typename scalar>
-int test_levelscheduling_internalconsistency(const UMesh2dh<scalar>& m)
+int test_levelscheduling_internalconsistency(const UMesh<scalar,NDIM>& m)
 {
-	std::vector<a_int> levels = levelSchedule(m);
+	std::vector<fint> levels = levelSchedule(m);
 	const int nlevels = (int)(levels.size()-1);
 
 	for(int ilevel = 0; ilevel < nlevels; ilevel++)
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	int err = 0;
 
 	const MeshData md = readMesh(argv[2]);
-	UMesh2dh<a_real> m(md);
+	UMesh<freal,NDIM> m(md);
 
 	m.compute_topological();
 

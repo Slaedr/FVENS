@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		// Mesh file suffix
 		std::string meshsuffix = std::to_string(imesh) + ".msh";
 		//Mesh
-		const UMesh2dh<a_real> m = constructMeshFlow(opts, meshsuffix);
+		const UMesh<freal,NDIM> m = constructMeshFlow(opts, meshsuffix);
 
 		// solution vector
 		Vec u;
@@ -59,8 +59,8 @@ int main(int argc, char *argv[])
 			std::cout << e.what() << std::endl;
 		}
 
-		const a_real h = fnls.meshSizeParameter;
-		const a_real err = fnls.entropy;
+		const freal h = fnls.meshSizeParameter;
+		const freal err = fnls.entropy;
 		std::cout << "Log of Mesh size and error are " << log10(h) << "  " << log10(err) << std::endl;
 		lh[imesh] = log10(h);
 		lerrors[imesh] = log10(err);

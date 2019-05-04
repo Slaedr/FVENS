@@ -16,13 +16,13 @@ template <short nvars>
 class Output
 {
 public:
-	Output(const Spatial<a_real,nvars> *const fv);
+	Output(const Spatial<freal,nvars> *const fv);
 
 	/// Exports data for the entire domain
 	/** \param[in] u The field variables
 	 * \param[in] volfile The name of the file to be written.
 	 */
-	virtual void exportVolumeData(const MVector<a_real>& u, const std::string volfile) const = 0;
+	virtual void exportVolumeData(const MVector<freal>& u, const std::string volfile) const = 0;
 
 	/// Exports data on surfaces
 	/** \param[in] u The field variables.
@@ -34,8 +34,8 @@ public:
 			const std::vector<int> obcm, const std::string basename) const = 0;
 
 protected:
-	const Spatial<a_real,nvars> *const space;
-	const UMesh2dh<a_real> *const m;
+	const Spatial<freal,nvars> *const space;
+	const UMesh<freal,NDIM> *const m;
 };
 
 /// Output for flow simulations
@@ -48,11 +48,11 @@ public:
 	/// Sets required data
 	/** \param[in] angleOfAttack The angle of attack in radians
 	 */
-	FlowOutput(const FlowFV_base<a_real> *const fv,
-			const IdealGasPhysics<a_real> *const physics, const a_real angleOfAttack);
+	FlowOutput(const FlowFV_base<freal> *const fv,
+			const IdealGasPhysics<freal> *const physics, const freal angleOfAttack);
 	
 	/// Compute norm of cell-centered entropy production
-	a_real compute_entropy_cell(const Vec uvec) const;
+	freal compute_entropy_cell(const Vec uvec) const;
 
 	/// Compute nodal quantities to export
 	/** Based on area-weighted averaging which takes into account ghost cells as well.
@@ -60,18 +60,18 @@ public:
 	 * and velocity is exported as well.
 	 */
 	StatusCode postprocess_point(const Vec uvec,
-	                             amat::Array2d<a_real>& scalars,
-	                             amat::Array2d<a_real>& velocities) const;
+	                             amat::Array2d<freal>& scalars,
+	                             amat::Array2d<freal>& velocities) const;
 
 	/// Compute cell-centred quantities to export \deprecated Use postprocess_point instead.
 	StatusCode postprocess_cell(const Vec uvec,
-	                            amat::Array2d<a_real>& scalars, 
-	                            amat::Array2d<a_real>& velocities) const;
+	                            amat::Array2d<freal>& scalars, 
+	                            amat::Array2d<freal>& velocities) const;
 
 	/** For each cell, writes out the coordinates of the cell-centre,
 	 * density, velocities, pressure, temperature and Mach number.
 	 */
-	void exportVolumeData(const MVector<a_real>& u, const std::string volfile) const;
+	void exportVolumeData(const MVector<freal>& u, const std::string volfile) const;
 
 	/// Export surface data
 	/** We compute pressure and skin-friction coefficients for wall boundaries, and
@@ -84,11 +84,11 @@ public:
 
 protected:
 	//using Output<NVARS>::space;
-	const FlowFV_base<a_real> *const space;
+	const FlowFV_base<freal> *const space;
 	using Output<NVARS>::m;
-	const IdealGasPhysics<a_real> *const phy;
-	const a_real angleOfAttack;
-	const a_real av[NDIM];				///< Unit vector in the direction of freestream flow
+	const IdealGasPhysics<freal> *const phy;
+	const freal angleOfAttack;
+	const freal av[NDIM];				///< Unit vector in the direction of freestream flow
 };
 
 /** \brief Writes multiple scalar data sets and one vector data set, 
@@ -97,19 +97,19 @@ protected:
  * If either x or y is a 0x0 matrix, it is ignored.
  * \param fname is the output vtu file name
  */
-void writeScalarsVectorToVtu_CellData(std::string fname, const UMesh2dh<a_real>& m, 
+void writeScalarsVectorToVtu_CellData(std::string fname, const UMesh<freal,NDIM>& m, 
                                       const amat::Array2d<double>& x, std::string scaname[], 
                                       const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes nodal data to VTU file
-void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh2dh<a_real>& m, 
+void writeScalarsVectorToVtu_PointData(std::string fname, const UMesh<freal,NDIM>& m, 
                                        const amat::Array2d<double>& x, std::string scaname[], 
                                        const amat::Array2d<double>& y, std::string vecname);
 
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, const UMesh2dh<a_real>& m);
+void writeMeshToVtu(std::string fname, const UMesh<freal,NDIM>& m);
 
 /// Prints out the column of headers of convergence history to a file
 void writeConvergenceHistoryHeader(std::ostream& outf);

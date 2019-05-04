@@ -10,7 +10,7 @@
 #include <vector>
 #include <map>
 #include <tuple>
-#include "amesh2dh.hpp"
+#include "mesh.hpp"
 
 namespace fvens {
 
@@ -21,19 +21,19 @@ public:
 	/// Sets the global mesh to partition
 	/** The mesh must be setup with the element adjacency list (esuel) before passing here.
 	 */
-	ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& global_mesh);
+	ReplicatedGlobalMeshPartitioner(const UMesh<freal,NDIM>& global_mesh);
 	
 	/// Given the global mesh, computes the distribution of the elements
 	virtual void compute_partition() = 0;
 
 	/// Computes the localized mesh on this rank given a partition of the cells of the global mesh
-	UMesh2dh<a_real> restrictMeshToPartitions() const;
+	UMesh<freal,NDIM> restrictMeshToPartitions() const;
 
 	/// Check whether the global face numbering stored in the local mesh argument gives consistent
 	///  left elements in the actual global mesh
 	/** \param[in] lmesh A restricted mesh with face structure computed
 	 */
-	bool checkConnFaces(const UMesh2dh<a_real>& lmesh) const;
+	bool checkConnFaces(const UMesh<freal,NDIM>& lmesh) const;
 
 protected:
 	/// Extracts the local element-node connectivity info from the global mesh into the argument mesh
@@ -43,7 +43,7 @@ protected:
 	 *   These arrays must be pre-allocated. Local number of elements nelem must be set beforehand.
 	 * \return the local-to-global element map
 	 */
-	std::vector<a_int> extractInpoel(UMesh2dh<a_real>& local_mesh) const;
+	std::vector<fint> extractInpoel(UMesh<freal,NDIM>& local_mesh) const;
 
 	/// Extracts point coordinates required by this rank
 	/** \param lm The local mesh with inpoel pre-computed in terms of the global point indices
@@ -51,31 +51,31 @@ protected:
 	 * \param[out] locpoints The global point indices of local points
 	 * \return The local point indices of global points required by this rank
 	 */
-	std::map<a_int,a_int> extractPointCoords(UMesh2dh<a_real>& lm,
-	                                         std::vector<a_int>& locpoints) const;
+	std::map<fint,fint> extractPointCoords(UMesh<freal,NDIM>& lm,
+	                                         std::vector<fint>& locpoints) const;
 
 	/// Extracts the physical boundary faces which are a part of the subdomain on this rank
 	/** \param pointGlobal2Local Map from global to local indices for points present in this rank.
 	 */
-	void extractbfaces(const std::map<a_int,a_int>& pointGlobal2Local, UMesh2dh<a_real>& lm) const;
+	void extractbfaces(const std::map<fint,fint>& pointGlobal2Local, UMesh<freal,NDIM>& lm) const;
 
 	/// Marks points of this subdomain which are adjacent to physical boundary faces
 	/** As a by-product, also computes the number of physical boundary points in the local mesh in
 	 * nbpoin.
 	 * \return The vector of point marks
 	 */
-	std::vector<bool> markLocalPhysicalBoundaryPoints(const UMesh2dh<a_real>& lm) const;
+	std::vector<bool> markLocalPhysicalBoundaryPoints(const UMesh<freal,NDIM>& lm) const;
 
 	/// Returns a list of containing, for each local element, face E-indices that are connectivity
 	///  faces, if any
 	/** \param[in] isPhyBounPoint For each local point, whether or not it lies on a physical boundary
 	 */
 	std::vector<std::vector<EIndex>>
-	getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
+	getConnectivityFaceEIndices(const UMesh<freal,NDIM>& lm,
 	                            const std::vector<bool>& isPhyBounPoint) const;
 
 	/// The global mesh to partition
-	const UMesh2dh<a_real>& gm;
+	const UMesh<freal,NDIM>& gm;
 
 	/// The distribution of elements among the ranks
 	/** Supposed to hold the rank where each element of the global mesh is supposed to go
@@ -90,7 +90,7 @@ public:
 	/// Sets the global mesh to partition
 	/** The mesh must be setup with all topological connectivity structures before passing here.
 	 */
-	TrivialReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& global_mesh);
+	TrivialReplicatedGlobalMeshPartitioner(const UMesh<freal,NDIM>& global_mesh);
 
 	void compute_partition();
 };
@@ -99,7 +99,7 @@ public:
 class SimpleRGMPartitioner : public ReplicatedGlobalMeshPartitioner
 {
 public:
-	SimpleRGMPartitioner(const UMesh2dh<a_real>& global_mesh);
+	SimpleRGMPartitioner(const UMesh<freal,NDIM>& global_mesh);
 
 	void compute_partition();
 };

@@ -16,16 +16,16 @@ int test(const std::string meshpath)
 {
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
-	const UMesh2dh<a_real> m = constructMesh(meshpath);
+	const UMesh<freal,NDIM> m = constructMesh(meshpath);
 
-	L2TraceVector<a_real,NVARS> tvec(m);
+	L2TraceVector<freal,NVARS> tvec(m);
 
 	// Fill some data
 
-	a_real *const left = tvec.getLocalArrayLeft();
-	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
+	freal *const left = tvec.getLocalArrayLeft();
+	for(fint iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 	{
-		const a_int icface = iface - m.gConnBFaceStart();
+		const fint icface = iface - m.gConnBFaceStart();
 		for(int j = 0; j < NVARS; j++)
 			left[iface*NVARS+j] = mpirank*1000+m.gconnface(icface,4)*10+j;
 	}
@@ -36,11 +36,11 @@ int test(const std::string meshpath)
 
 	// check whether data came from the correct ranks, at least
 
-	a_real *const right = tvec.getLocalArrayRight();
+	freal *const right = tvec.getLocalArrayRight();
 
-	for(a_int iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
+	for(fint iface = m.gConnBFaceStart(); iface < m.gConnBFaceEnd(); iface++)
 	{
-		const a_int icface = iface - m.gConnBFaceStart();
+		const fint icface = iface - m.gConnBFaceStart();
 		const int nbdrank = m.gconnface(icface,2);
 		for(int j = 0; j < NVARS; j++) {
 			assert(right[iface*NVARS+j] == nbdrank*1000+m.gconnface(icface,4)*10+j);

@@ -9,7 +9,7 @@
 
 namespace fvens {
 
-ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
+ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh<freal,2>& globalmesh)
 	: gm{globalmesh}
 {
 	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
@@ -18,13 +18,13 @@ ReplicatedGlobalMeshPartitioner::ReplicatedGlobalMeshPartitioner(const UMesh2dh<
 		                         std::to_string(mpisize) + " processes!");
 }
 
-UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
+UMesh<freal,2> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 
-	UMesh2dh<a_real> lm;
+	UMesh<freal,2> lm;
 	lm.nelem = 0;
-	for(a_int iel = 0; iel < gm.nelem; iel++)
+	for(fint iel = 0; iel < gm.nelem; iel++)
 		if(elemdist[iel] == rank)
 			lm.nelem++;
 
@@ -52,16 +52,16 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	/*! 2. Copy required point coords into local mesh
 	 *     get global to local and local-to-global point maps
 	 */
-	std::vector<a_int> pointLoc2Glob;
-	const std::map<a_int,a_int> pointGlob2Loc = extractPointCoords(lm, pointLoc2Glob);
+	std::vector<fint> pointLoc2Glob;
+	const std::map<fint,fint> pointGlob2Loc = extractPointCoords(lm, pointLoc2Glob);
 
 #ifdef DEBUG
-	for(a_int ip = 0; ip < lm.npoin; ip++)
+	for(fint ip = 0; ip < lm.npoin; ip++)
 		assert(pointGlob2Loc.at(pointLoc2Glob[ip]) == ip);
 #endif
 
 	//! 3. Convert inpoel entries from global indices to local
-	for(a_int iel = 0; iel < lm.nelem; iel++)
+	for(fint iel = 0; iel < lm.nelem; iel++)
 		for(int j = 0; j < lm.nnode[iel]; j++)
 			lm.inpoel(iel,j) = pointGlob2Loc.at(lm.inpoel(iel,j));
 
@@ -86,13 +86,13 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 		= getConnectivityFaceEIndices(lm, isPhyBounPoint);
 
 	lm.nconnface = 0;
-	for(a_int i = 0; i < lm.nelem; i++)
-		lm.nconnface += static_cast<a_int>(connElemLocalFace[i].size());
+	for(fint i = 0; i < lm.nelem; i++)
+		lm.nconnface += static_cast<fint>(connElemLocalFace[i].size());
 
 	if(lm.nconnface > 0)
 		lm.connface.resize(lm.nconnface,5);
-	a_int icofa = 0;
-	for(a_int iel = 0; iel < lm.nelem; iel++)
+	fint icofa = 0;
+	for(fint iel = 0; iel < lm.nelem; iel++)
 	{
 		for(size_t iconface = 0; iconface < connElemLocalFace[iel].size(); iconface++)
 		{
@@ -103,11 +103,11 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 			lm.connface(icofa,3) = -1;
 			lm.connface(icofa,4) = gm.gelemface(lm.globalElemIndex[iel],localConnFace);
 
-			std::vector<a_int> locfacepoints(lm.nnofa,-1);  // points of the connectivity face
+			std::vector<fint> locfacepoints(lm.nnofa,-1);  // points of the connectivity face
 			for(FIndex linofa = 0; linofa < lm.nnofa; linofa++)
 				locfacepoints[linofa] = lm.inpoel(iel, lm.getNodeEIndex(iel,localConnFace,linofa));
 
-			const a_int glind = lm.globalElemIndex[iel];
+			const fint glind = lm.globalElemIndex[iel];
 
 			// identify the face of the global element which matches the index of connectivity face
 			for(EIndex jgf = 0; jgf < gm.nfael[glind]; jgf++)
@@ -115,7 +115,7 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 				bool matched = true;
 				for(FIndex jnofa = 0; jnofa < gm.nnofa; jnofa++)
 				{
-					const a_int globpoint = gm.inpoel(glind, gm.getNodeEIndex(glind,jgf,jnofa));
+					const fint globpoint = gm.inpoel(glind, gm.getNodeEIndex(glind,jgf,jnofa));
 					bool pointmatched = false;
 					for(FIndex linofa = 0; linofa < lm.nnofa; linofa++)
 					{
@@ -155,14 +155,14 @@ UMesh2dh<a_real> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() con
 	return lm;
 }
 
-std::vector<a_int>
-ReplicatedGlobalMeshPartitioner::extractInpoel(UMesh2dh<a_real>& lm) const
+std::vector<fint>
+ReplicatedGlobalMeshPartitioner::extractInpoel(UMesh<freal,2>& lm) const
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
-	std::vector<a_int> elemLoc2Glob(lm.nelem);
+	std::vector<fint> elemLoc2Glob(lm.nelem);
 
-	a_int lociel = 0;
-	for(a_int iel = 0; iel < gm.nelem; iel++)
+	fint lociel = 0;
+	for(fint iel = 0; iel < gm.nelem; iel++)
 		if(elemdist[iel] == rank)
 		{
 			elemLoc2Glob[lociel] = iel;
@@ -178,15 +178,15 @@ ReplicatedGlobalMeshPartitioner::extractInpoel(UMesh2dh<a_real>& lm) const
 	return elemLoc2Glob;
 }
 
-std::map<a_int,a_int>
+std::map<fint,fint>
 ReplicatedGlobalMeshPartitioner::
-extractPointCoords(UMesh2dh<a_real>& lm, std::vector<a_int>& locpoints) const
+extractPointCoords(UMesh<freal,2>& lm, std::vector<fint>& locpoints) const
 {
 	const int nranks = get_mpi_size(MPI_COMM_WORLD);
 
 	// get global indices of the points needed on this rank
 	locpoints.reserve(2*gm.npoin/nranks);
-	for(a_int iel = 0; iel < lm.inpoel.rows(); iel++)
+	for(fint iel = 0; iel < lm.inpoel.rows(); iel++)
 		for(int inode = 0; inode < lm.nnode[iel]; inode++)
 			locpoints.push_back(lm.inpoel(iel,inode));
 
@@ -195,16 +195,16 @@ extractPointCoords(UMesh2dh<a_real>& lm, std::vector<a_int>& locpoints) const
 	auto endpoint = std::unique(locpoints.begin(), locpoints.end());
 	locpoints.erase(endpoint, locpoints.end());
 
-	lm.npoin = static_cast<a_int>(locpoints.size());
+	lm.npoin = static_cast<fint>(locpoints.size());
 	lm.coords.resize(lm.npoin,NDIM);
 
 	// Get the global-to-local point index map - this has n log n cost.
-	std::map<a_int,a_int> glbToLocPointMap;
-	for(a_int i = 0; i < lm.npoin; i++) {
+	std::map<fint,fint> glbToLocPointMap;
+	for(fint i = 0; i < lm.npoin; i++) {
 		glbToLocPointMap[locpoints[i]] = i;
 	}
 
-	a_int globpointer = 0, locpointer = 0;
+	fint globpointer = 0, locpointer = 0;
 	while(globpointer < gm.npoin && locpointer < lm.npoin)
 	{
 		if(globpointer == locpoints[locpointer])
@@ -219,19 +219,19 @@ extractPointCoords(UMesh2dh<a_real>& lm, std::vector<a_int>& locpoints) const
 	return glbToLocPointMap;
 }
 
-void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>& pointGlob2Loc,
-                                                    UMesh2dh<a_real>& lm) const
+void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<fint,fint>& pointGlob2Loc,
+                                                    UMesh<freal,2>& lm) const
 {
 	const int irank = get_mpi_rank(MPI_COMM_WORLD);
 
 	lm.nbface = 0;
-	std::vector<std::array<a_int,6>> tbfaces;         // assuming max 4 points and 2 tags per face
+	std::vector<std::array<fint,6>> tbfaces;         // assuming max 4 points and 2 tags per face
 	assert(gm.nnofa <= 4);
 	assert(gm.nbtag <= 2);
-	for(a_int iface = 0; iface < gm.nbface; iface++)
+	for(fint iface = 0; iface < gm.nbface; iface++)
 	{
 		bool reqd = true;
-		std::array<a_int,6> locbfpoints;
+		std::array<fint,6> locbfpoints;
 		// for(int j = 0; j < gm.nnofa; j++)
 		// {
 		// 	try {
@@ -241,7 +241,7 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 		// 		break;
 		// 	}
 		// }
-		const a_int globelem = gm.gintfac(iface+gm.gPhyBFaceStart(),0);
+		const fint globelem = gm.gintfac(iface+gm.gPhyBFaceStart(),0);
 		if(elemdist[globelem] == irank)
 		{
 			for(int j = 0; j < gm.nnofa; j++)
@@ -260,25 +260,25 @@ void ReplicatedGlobalMeshPartitioner::extractbfaces(const std::map<a_int,a_int>&
 #ifdef DEBUG
 		// Do the global intfac and element partition agree that this face is in this partition?
 		if(reqd) {
-			const a_int globelem = gm.gintfac(iface+gm.gPhyBFaceStart(),0);
+			const fint globelem = gm.gintfac(iface+gm.gPhyBFaceStart(),0);
 			assert(elemdist[globelem] == irank);
 		}
 #endif
 	}
 
 	lm.bface.resize(lm.nbface, lm.nnofa+lm.nbtag);
-	for(a_int iface = 0; iface < lm.nbface; iface++)
+	for(fint iface = 0; iface < lm.nbface; iface++)
 		for(int j = 0; j < lm.nnofa+lm.nbtag; j++)
 			lm.bface(iface,j) = tbfaces[iface][j];
 }
 
 std::vector<bool>
 ReplicatedGlobalMeshPartitioner::
-markLocalPhysicalBoundaryPoints(const UMesh2dh<a_real>& lm) const
+markLocalPhysicalBoundaryPoints(const UMesh<freal,2>& lm) const
 {
 	std::vector<bool> isBounPoin(lm.npoin,false);
 
-	for(a_int iface = 0; iface < lm.nbface; iface++)
+	for(fint iface = 0; iface < lm.nbface; iface++)
 	{
 		for(int inode = 0; inode < lm.nnofa; inode++) {
 			isBounPoin[lm.bface(iface,inode)] = true;
@@ -289,7 +289,7 @@ markLocalPhysicalBoundaryPoints(const UMesh2dh<a_real>& lm) const
 
 std::vector<std::vector<EIndex>>
 ReplicatedGlobalMeshPartitioner::
-getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
+getConnectivityFaceEIndices(const UMesh<freal,2>& lm,
                             const std::vector<bool>& isPhyBounPoint) const
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
@@ -298,7 +298,7 @@ getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
 	//  it stores the connectivity faces' index w.r.t. the element (their EIndex) in this subdomain
 	std::vector<std::vector<EIndex>> connElemLocalFace(lm.nelem);
 
-	for(a_int iel = 0; iel < lm.nelem; iel++)
+	for(fint iel = 0; iel < lm.nelem; iel++)
 	{
 		// Check whether face points are physical boundary points to identify connectivity faces
 		for(EIndex iface = 0; iface < lm.nfael[iel]; iface++)
@@ -311,7 +311,7 @@ getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
 				 */
 				for(FIndex inode = 0; inode < lm.nnofa; inode++)
 				{
-					const a_int locpoint = lm.inpoel(iel,lm.getNodeEIndex(iel,iface,inode));
+					const fint locpoint = lm.inpoel(iel,lm.getNodeEIndex(iel,iface,inode));
 					if(!isPhyBounPoint[locpoint]) {
 						isconnface = true;
 						break;
@@ -327,13 +327,13 @@ getConnectivityFaceEIndices(const UMesh2dh<a_real>& lm,
 	return connElemLocalFace;
 }
 
-bool ReplicatedGlobalMeshPartitioner::checkConnFaces(const UMesh2dh<a_real>& lm) const
+bool ReplicatedGlobalMeshPartitioner::checkConnFaces(const UMesh<freal,2>& lm) const
 {
 	bool match = true;
-	for(a_int iface = lm.gConnBFaceStart(); iface < lm.gConnBFaceEnd(); iface++)
+	for(fint iface = lm.gConnBFaceStart(); iface < lm.gConnBFaceEnd(); iface++)
 	{
-		const a_int leftelem = lm.gglobalElemIndex(lm.gintfac(iface,0));
-		const a_int globface = lm.gconnface(iface-lm.gConnBFaceStart(),4);
+		const fint leftelem = lm.gglobalElemIndex(lm.gintfac(iface,0));
+		const fint globface = lm.gconnface(iface-lm.gConnBFaceStart(),4);
 		assert(globface < gm.gnaface());
 		if(leftelem != gm.gintfac(globface,0)) {
 			match = false;
@@ -344,7 +344,7 @@ bool ReplicatedGlobalMeshPartitioner::checkConnFaces(const UMesh2dh<a_real>& lm)
 }
 
 TrivialReplicatedGlobalMeshPartitioner::
-TrivialReplicatedGlobalMeshPartitioner(const UMesh2dh<a_real>& globalmesh)
+TrivialReplicatedGlobalMeshPartitioner(const UMesh<freal,2>& globalmesh)
 	: ReplicatedGlobalMeshPartitioner(globalmesh)
 { }
 
@@ -356,14 +356,14 @@ void TrivialReplicatedGlobalMeshPartitioner::compute_partition()
 	elemdist.resize(gm.gnelem());
 
 	for(int irank = 0; irank < nranks; irank++) {
-		for(a_int iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
+		for(fint iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
 			elemdist[iel] = irank;
 	}
-	for(a_int iel = nranks*numloceleminit; iel < gm.gnelem(); iel++)
+	for(fint iel = nranks*numloceleminit; iel < gm.gnelem(); iel++)
 		elemdist[iel] = nranks-1;
 }
 
-SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh2dh<a_real>& globalmesh)
+SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh<freal,2>& globalmesh)
 	: ReplicatedGlobalMeshPartitioner(globalmesh)
 { }
 
@@ -375,33 +375,33 @@ void SimpleRGMPartitioner::compute_partition()
 
 	std::vector<bool> ismarked(gm.gnelem(), false);
 
-	a_int startcell = 0;
+	fint startcell = 0;
 
 	for(int irank = 0; irank < nranks; irank++)
 	{
-		const a_int ncellsrank = (irank == nranks-1) ?
+		const fint ncellsrank = (irank == nranks-1) ?
 			(gm.gnelem()-numloceleminit*(nranks-1)) : numloceleminit;
 
 		bool endoftheline = false;        // True if no unmarked neighbors exist
-		a_int nmarkedcells = 0;           // Number of cells marked
+		fint nmarkedcells = 0;           // Number of cells marked
 
-		std::vector<a_int> cellsinrank;   // Will contain this rank's cells
+		std::vector<fint> cellsinrank;   // Will contain this rank's cells
 		cellsinrank.reserve(ncellsrank);
 
-		a_int baseidx = 0;                // Cell in cellsinrank from which to mark neighbors
+		fint baseidx = 0;                // Cell in cellsinrank from which to mark neighbors
 		ismarked[startcell] = true;
 		cellsinrank.push_back(startcell);
 		nmarkedcells++;
 
 		while(!endoftheline && nmarkedcells <= ncellsrank)
 		{
-			const a_int basecell = cellsinrank[baseidx];
+			const fint basecell = cellsinrank[baseidx];
 			for(int iface = 0; iface < gm.gnfael(basecell); iface++)
 			{
 				if(nmarkedcells >= ncellsrank)
 					break;
 
-				const a_int nbdcell = gm.gesuel(startcell,iface);
+				const fint nbdcell = gm.gesuel(startcell,iface);
 				if(!ismarked[nbdcell] && nbdcell < gm.gnelem())
 				{
 					cellsinrank.push_back(nbdcell);

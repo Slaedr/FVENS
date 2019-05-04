@@ -31,20 +31,20 @@ add_library(fvens_base
   spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
   spatial/aoutput.cpp spatial/diffusion.cpp
 
-  mesh/ameshutils.cpp mesh/amesh2dh.cpp mesh/meshpartitioning.cpp mesh/meshreaders.cpp
+  mesh/ameshutils.cpp mesh/mesh.cpp mesh/meshpartitioning.cpp mesh/meshreaders.cpp
   mesh/meshordering.cpp
 
   utilities/aarray2d.cpp utilities/mpiutils.cpp
   )
 
-target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB} ${ADOLC_LIB})
+target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB})
 if(WITH_BLASTED)
   target_link_libraries(fvens_base ${BLASTED_LIB})
 endif()
 target_link_libraries(fvens_base ${MPI_C_LIBRARIES} ${MPI_C_LINK_FLAGS})
-if(CXX_COMPILER_CLANG)
-  target_compile_options(fvens_base PRIVATE "-Wno-error=pass-failed")
-endif()
+# if(CXX_COMPILER_CLANG)
+#   target_compile_options(fvens_base PRIVATE "-Wno-error=pass-failed")
+# endif()
 
 # for the final executable(s)
 

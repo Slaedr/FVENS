@@ -15,26 +15,26 @@
 using namespace fvens;
 
 /// Gets global element numbering
-std::vector<a_int> getElemDist(const a_int nelem, std::ifstream& fin)
+std::vector<fint> getElemDist(const fint nelem, std::ifstream& fin)
 {
-	std::vector<a_int> elems(nelem);
+	std::vector<fint> elems(nelem);
 	std::string dum;
 	fin >> dum;
-	for(a_int i = 0; i < nelem; i++)
+	for(fint i = 0; i < nelem; i++)
 		fin >> elems[i];
 	return elems;
 }
 
 /// Gets connectivity face data
 /// assumes getElemDist has been called using the same ifstream beforehand
-amat::Array2d<a_int> getConnMatrix(const a_int nconnface, std::ifstream& fin)
+amat::Array2d<fint> getConnMatrix(const fint nconnface, std::ifstream& fin)
 {
-	amat::Array2d<a_int> conn;
+	amat::Array2d<fint> conn;
 	if(nconnface > 0)
 		conn.resize(nconnface,4);
 	std::string dum;
 	fin >> dum;
-	for(a_int i = 0; i < nconnface; i++)
+	for(fint i = 0; i < nconnface; i++)
 		for(int j = 0; j < 4; j++)
 			fin >> conn(i,j);
 	return conn;
@@ -65,21 +65,21 @@ int main(int argc, char *argv[])
 	assert(localmeshfiles.size() == static_cast<size_t>(nranks));
 	assert(distfiles.size() == static_cast<size_t>(nranks));
 
-	UMesh2dh<a_real> gm(readMesh(globalmeshfile));
+	UMesh<freal,NDIM> gm(readMesh(globalmeshfile));
 	gm.compute_topological();
 
 	TrivialReplicatedGlobalMeshPartitioner p(gm);
 	p.compute_partition();
-	const UMesh2dh<a_real> lm = p.restrictMeshToPartitions();
+	const UMesh<freal,NDIM> lm = p.restrictMeshToPartitions();
 
 	// Read solution to check against
-	const UMesh2dh<a_real> reflm(readMesh(localmeshfiles[rank]));
+	const UMesh<freal,NDIM> reflm(readMesh(localmeshfiles[rank]));
 	std::ifstream fin(distfiles[rank]);
 	if(!fin) {
 		throw std::runtime_error("File not found!");
 	}
-	const std::vector<a_int> elemglindices = getElemDist(lm.gnelem(), fin);
-	const amat::Array2d<a_int> connface = getConnMatrix(lm.gnConnFace(), fin);
+	const std::vector<fint> elemglindices = getElemDist(lm.gnelem(), fin);
+	const amat::Array2d<fint> connface = getConnMatrix(lm.gnConnFace(), fin);
 	fin.close();
 
 	// check
@@ -100,10 +100,10 @@ int main(int argc, char *argv[])
 			assert(isequal[6]);
 			assert(isequal[7]);
 
-			for(a_int i = 0; i < lm.gnelem(); i++) {
+			for(fint i = 0; i < lm.gnelem(); i++) {
 				assert(lm.gglobalElemIndex(i) == elemglindices[i]);
 			}
-			for(a_int i = 0; i < lm.gnConnFace(); i++)
+			for(fint i = 0; i < lm.gnConnFace(); i++)
 				for(int j = 0; j < 4; j++)
 					assert(lm.gconnface(i,j) == connface(i,j));
 		}

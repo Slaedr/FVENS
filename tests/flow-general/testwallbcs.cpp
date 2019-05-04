@@ -11,20 +11,20 @@
 namespace fvens {
 namespace fvens_tests {
 
-int TestFlowFV::testWalls(const a_real *const u) const
+int TestFlowFV::testWalls(const freal *const u) const
 {
 	int ierr = 0;
 
 	for(int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
 	{
-		a_real ug[NVARS];
-		a_real n[NDIM];
+		freal ug[NVARS];
+		freal n[NDIM];
 		for(int i = 0; i < NDIM; i++)
 			n[i] = m->gfacemetric(iface,i);
 
 		compute_boundary_state(iface, u, ug);
 
-		a_real flux[NVARS];
+		freal flux[NVARS];
 		inviflux->get_flux(u,ug,n,flux);
 		
 		if(bcs.at(m->gbtags(iface,0))->bctype == ADIABATIC_WALL_BC)
@@ -70,10 +70,10 @@ int TestFlowFV::testWalls(const a_real *const u) const
 	return ierr;
 }
 
-std::array<a_real,NVARS> get_test_state()
+std::array<freal,NVARS> get_test_state()
 {
-	const a_real p_nondim = 10.0;
-	std::array<a_real,NVARS> u {1.0, 0.5, 0.5, p_nondim/(1.4-1.0) + 0.5*0.5 };
+	const freal p_nondim = 10.0;
+	std::array<freal,NVARS> u {1.0, 0.5, 0.5, p_nondim/(1.4-1.0) + 0.5*0.5 };
 	return u;
 }
 

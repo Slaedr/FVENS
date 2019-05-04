@@ -22,11 +22,11 @@
 namespace fvens {
 
 /// Prepare a mesh for use in a fluid simulation
-UMesh2dh<a_real> constructMeshFlow(const FlowParserOptions& opts, const std::string mesh_suffix)
+UMesh<freal,NDIM> constructMeshFlow(const FlowParserOptions& opts, const std::string mesh_suffix)
 {
 	// Set up mesh
 	const std::string meshfile = opts.meshfile + mesh_suffix;
-	UMesh2dh<a_real> m(constructMesh(meshfile));
+	UMesh<freal,NDIM> m(constructMesh(meshfile));
 
 	// check if there are any periodic boundaries
 	for(auto it = opts.bcconf.begin(); it != opts.bcconf.end(); it++) {
@@ -37,8 +37,8 @@ UMesh2dh<a_real> constructMeshFlow(const FlowParserOptions& opts, const std::str
 	return m;
 }
 
-const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
-                                             const UMesh2dh<a_real>& m)
+const FlowFV_base<freal>* createFlowSpatial(const FlowParserOptions& opts,
+                                             const UMesh<freal,NDIM>& m)
 {
 	std::cout << "Setting up main spatial scheme.\n";
 	// physical configuration
@@ -49,19 +49,19 @@ const FlowFV_base<a_real>* createFlowSpatial(const FlowParserOptions& opts,
 	return create_const_flowSpatialDiscretization(&m, pconf, nconfmain);
 }
 
-int initializeSystemVector(const FlowParserOptions& opts, const UMesh2dh<a_real>& m, Vec *const u)
+int initializeSystemVector(const FlowParserOptions& opts, const UMesh<freal,NDIM>& m, Vec *const u)
 {
 	//int ierr = VecCreateSeq(PETSC_COMM_SELF, m.gnelem()*NVARS, u); CHKERRQ(ierr);
 	int ierr = createGhostedSystemVector(&m, NVARS, u); CHKERRQ(ierr);
 
-	const IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
-	const std::array<a_real,NVARS> uinf = phy.compute_freestream_state(opts.alpha);
+	const IdealGasPhysics<freal> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	const std::array<freal,NVARS> uinf = phy.compute_freestream_state(opts.alpha);
 
 	MutableGhostedVecHandler<PetscScalar> uh(*u);
 	PetscScalar *const uloc = uh.getArray();
 	
 	//initial values are equal to free-stream values
-	for(a_int i = 0; i < m.gnelem()+m.gnConnFace(); i++)
+	for(fint i = 0; i < m.gnelem()+m.gnConnFace(); i++)
 		for(int j = 0; j < NVARS; j++)
 			uloc[i*NVARS+j] = uinf[j];
 
@@ -72,10 +72,10 @@ FlowCase::FlowCase(const FlowParserOptions& options) : opts{options}
 {
 }
 
-int FlowCase::run(const UMesh2dh<a_real>& m, Vec u) const
+int FlowCase::run(const UMesh<freal,NDIM>& m, Vec u) const
 {
 	int ierr = 0;
-	const Spatial<a_real,NVARS> *const prob = createFlowSpatial(opts, m);
+	const Spatial<freal,NVARS> *const prob = createFlowSpatial(opts, m);
 
 	ierr = execute(prob, false, u); CHKERRQ(ierr);
 
@@ -85,16 +85,16 @@ int FlowCase::run(const UMesh2dh<a_real>& m, Vec u) const
 
 FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 											 const bool vtu_output_needed,
-                                             const UMesh2dh<a_real>& m, Vec u) const
+                                             const UMesh<freal,NDIM>& m, Vec u) const
 {
 	int ierr = 0;
 	std::cout << "\nSetting up flow case with output\n";
 	const int mpisize = get_mpi_size(PETSC_COMM_WORLD);
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
-	const FlowFV_base<a_real> *const prob = createFlowSpatial(opts, m);
+	const FlowFV_base<freal> *const prob = createFlowSpatial(opts, m);
 
-	const a_real h = 1.0 / ( std::pow((a_real)m.gnelem(), 1.0/NDIM) );
+	const freal h = 1.0 / ( std::pow((freal)m.gnelem(), 1.0/NDIM) );
 
 	try {
 		ierr = execute(prob, opts.lognres, u);
@@ -104,20 +104,20 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 	}
 	fvens_throw(ierr, "Could not solve steady case! Error code " + std::to_string(ierr));
 
-	MVector<a_real> umat; umat.resize(m.gnelem(),NVARS);
+	MVector<freal> umat; umat.resize(m.gnelem(),NVARS);
 	const PetscScalar *uarr;
 	ierr = VecGetArrayRead(u, &uarr); 
 	petsc_throw(ierr, "Petsc VecGetArrayRead error");
-	for(a_int i = 0; i < m.gnelem(); i++)
+	for(fint i = 0; i < m.gnelem(); i++)
 		for(int j = 0; j < NVARS; j++)
 			umat(i,j) = uarr[i*NVARS+j];
 	ierr = VecRestoreArrayRead(u, &uarr); 
 	petsc_throw(ierr, "Petsc VecRestoreArrayRead error");
 
-	IdealGasPhysics<a_real> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
+	IdealGasPhysics<freal> phy(opts.gamma, opts.Minf, opts.Tinf, opts.Reinf, opts.Pr);
 	FlowOutput out(prob, &phy, opts.alpha);
 
-	const a_real entropy = out.compute_entropy_cell(u);
+	const freal entropy = out.compute_entropy_cell(u);
 
 	// Currently, ouput to files only works in single-process runs
 	if(mpisize == 1) {
@@ -131,8 +131,8 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 		}
 	
 		if(vtu_output_needed) {
-			amat::Array2d<a_real> scalars;
-			amat::Array2d<a_real> velocities;
+			amat::Array2d<freal> scalars;
+			amat::Array2d<freal> velocities;
 			out.postprocess_point(u, scalars, velocities);
 
 			std::string scalarnames[] = {"density", "mach-number", "pressure", "temperature"};
@@ -148,14 +148,14 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 			std::cout << "FlowCase: Files will not be written in multi-process runs.\n";
 	}
 	
-	MVector<a_real> output; output.resize(m.gnelem(),NDIM+2);
-	std::vector<GradBlock_t<a_real,NDIM,NVARS>> grad;
+	MVector<freal> output; output.resize(m.gnelem(),NDIM+2);
+	std::vector<GradBlock_t<freal,NDIM,NVARS>> grad;
 	grad.resize(m.gnelem());
 	prob->getGradients(u, &grad[0]);
 
-	ConstVecHandler<a_real> uh(u);
-	const amat::Array2dView<a_real> ua(uh.getArray(), m.gnelem(), NVARS);
-	const std::tuple<a_real,a_real,a_real> fnls 
+	ConstVecHandler<freal> uh(u);
+	const amat::Array2dView<freal> ua(uh.getArray(), m.gnelem(), NVARS);
+	const std::tuple<freal,freal,freal> fnls 
 		{ prob->computeSurfaceData(ua, &grad[0], opts.lwalls[0], output)};
 
 	delete prob;
@@ -179,11 +179,11 @@ void FlowCase::setupKSP(LinearProblemLHS& solver, const bool use_mfjac) {
 	ierr = KSPSetFromOptions(solver.ksp); petsc_throw(ierr, "KSP set from options");
 }
 
-FlowCase::LinearProblemLHS FlowCase::setupImplicitSolver(const Spatial<a_real,NVARS> *const space,
+FlowCase::LinearProblemLHS FlowCase::setupImplicitSolver(const Spatial<freal,NVARS> *const space,
                                                          const bool use_mfjac)
 {
 	LinearProblemLHS solver;
-	const UMesh2dh<a_real> *const mesh = space->mesh();
+	const UMesh<freal,NDIM> *const mesh = space->mesh();
 
 	// Initialize Jacobian for implicit schemes
 	int ierr = setupSystemMatrix<NVARS>(mesh, &solver.M); fvens_throw(ierr, "Setup system matrix");
@@ -206,19 +206,19 @@ SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 	  mf_flg {parsePetscCmd_isDefined("-matrix_free_jacobian")}
 { }
 
-int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec u) const
+int SteadyFlowCase::execute_starter(const Spatial<freal,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 	
-	const UMesh2dh<a_real> *const m = prob->mesh();
+	const UMesh<freal,NDIM> *const m = prob->mesh();
 
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
 	const FlowNumericsConfig nconfstart = firstorder_spatial_numerics_config(opts);
 
 	if(mpirank == 0)
 		std::cout << "\nSetting up spatial scheme for the initial guess.\n";
-	const Spatial<a_real,NVARS> *const startprob
+	const Spatial<freal,NVARS> *const startprob
 		= create_const_flowSpatialDiscretization(m, pconf, nconfstart);
 
 	if(mpirank == 0)
@@ -297,7 +297,7 @@ int SteadyFlowCase::execute_starter(const Spatial<a_real,NVARS> *const prob, Vec
 	return ierr;
 }
 
-TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob, Vec u) const
+TimingData SteadyFlowCase::execute_main(const Spatial<freal,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
@@ -370,7 +370,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<a_real,NVARS> *const prob,
 	return tdata;
 }
 
-int SteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, const bool outhist, Vec u) const
+int SteadyFlowCase::execute(const Spatial<freal,NVARS> *const prob, const bool outhist, Vec u) const
 {
 	int ierr = 0;
 	
@@ -412,7 +412,7 @@ UnsteadyFlowCase::UnsteadyFlowCase(const FlowParserOptions& options)
 
 /** \todo Implement an unsteady integrator factory and use that here.
  */
-int UnsteadyFlowCase::execute(const Spatial<a_real,NVARS> *const prob, Vec u) const
+int UnsteadyFlowCase::execute(const Spatial<freal,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 

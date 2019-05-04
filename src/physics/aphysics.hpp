@@ -52,13 +52,13 @@ public:
 	/// Number of conserved variables
 	static constexpr int nvars = NDIM+2;
 
-	IdealGasPhysics(const a_real _g, const a_real M_inf,
-			const a_real T_inf, const a_real Re_inf, const a_real _Pr);
+	IdealGasPhysics(const freal _g, const freal M_inf,
+			const freal T_inf, const freal Re_inf, const freal _Pr);
 
 	/// Returns an array containing the non-dimensional free-stream state
 	/** \param aoa The angle of attack in radians
 	 */
-	std::array<a_real,NVARS> compute_freestream_state(const a_real aoa) const;
+	std::array<freal,NVARS> compute_freestream_state(const freal aoa) const;
 
 	/// Computes flux in a given direction efficiently using specific data
 	/** Note that this function is independent of what kind of gas it is.
@@ -325,17 +325,17 @@ public:
 		scalar stress[NDIM][NDIM], scalar dstress[NDIM][NDIM][NVARS]) const;
 
 	/// Adiabatic constant
-	const a_real g;
+	const freal g;
 	/// Free-stream Mach number
-	const a_real Minf;
+	const freal Minf;
 	/// Free-stream static temperature
-	const a_real Tinf;
+	const freal Tinf;
 	/// Free-stream Reynolds number
-	const a_real Reinf;
+	const freal Reinf;
 	/// Prandtl number
-	const a_real Pr;
+	const freal Pr;
 	/// Sutherland constant
-	const a_real sC;
+	const freal sC;
 };
 
 }

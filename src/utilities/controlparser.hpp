@@ -34,7 +34,7 @@ struct FlowParserOptions
 		/// How to compute under-relaxation factors for implicit pseudo-time or Newton solvers
 		nl_update_scheme;
 
-	a_real initcfl, endcfl,                  ///< Starting CFL number and max CFL number
+	freal initcfl, endcfl,                  ///< Starting CFL number and max CFL number
 		tolerance,                           ///< Relative tolerance for the whole nonlinear problem
 		firstinitcfl, firstendcfl,           ///< Starting and max CFL numbers for starting problem
 		firsttolerance,                      ///< Relative tolerance for starting problem
@@ -44,7 +44,7 @@ struct FlowParserOptions
 		final_time,                          ///< Physical time upto which to simulate
 		phy_timestep,                        ///< Constant physical time step for unsteady implicit
 		phy_cfl;                             ///< CFL used only by unsteady explicit solvers
-	a_real min_nl_update;                    ///< Minimum under-relaxation factor for nonlinear updates
+	freal min_nl_update;                    ///< Minimum under-relaxation factor for nonlinear updates
 
 	int maxiter,
 		rampstart, rampend,

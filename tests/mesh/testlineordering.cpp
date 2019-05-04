@@ -26,8 +26,8 @@ The solution file must have cell-numbers exactly according to the msh file.\n";
 	const std::string solnfile = argv[2];
 	const double threshold = std::stod(argv[3]);
 
-	UMesh2dh<a_real> m = constructMesh(meshfile);
-	int ierr = preprocessMesh<a_real>(m);
+	UMesh<freal,NDIM> m = constructMesh(meshfile);
+	int ierr = preprocessMesh<freal>(m);
 
 	const LineConfig lc = findLines(m, threshold);
 	std::cout << "Found " << lc.lines.size() << " lines." << std::endl;

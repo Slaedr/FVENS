@@ -27,25 +27,25 @@ The solution file must have cell-numbers exactly according to the msh file.\n";
 	const std::string petscordering = argv[3];
 	const double threshold = std::stod(argv[4]);
 
-	UMesh2dh<a_real> m = constructMesh(meshfile);
-	const a_int orignelem = m.gnelem();
-	int ierr = preprocessMesh<a_real>(m);
+	UMesh<freal,NDIM> m = constructMesh(meshfile);
+	const fint orignelem = m.gnelem();
+	int ierr = preprocessMesh<freal>(m);
 
-	const std::vector<a_int> lorder = getHybridLineOrdering<a_real>(m, threshold, petscordering.c_str());
+	const std::vector<fint> lorder = getHybridLineOrdering<freal>(m, threshold, petscordering.c_str());
 	assert(lorder.size() == static_cast<size_t>(orignelem));
 
 	printf("Computed order is\n");
-	for(a_int i = 0; i < m.gnelem(); i++) {
+	for(fint i = 0; i < m.gnelem(); i++) {
 		printf(" %d ", lorder[i]+1+m.gnbface());
 	}
 	printf("\n"); fflush(stdout);
 
-	std::vector<a_int> solnord(m.gnelem());
+	std::vector<fint> solnord(m.gnelem());
 	std::ifstream infile(solnfile);
-	for(a_int i = 0; i < m.gnelem(); i++)
+	for(fint i = 0; i < m.gnelem(); i++)
 		infile >> solnord[i];
 
-	for(a_int i = 0; i < m.gnelem(); i++)
+	for(fint i = 0; i < m.gnelem(); i++)
 		assert(lorder[i]+1+m.gnbface() == solnord[i]);
 
 	PetscFinalize();

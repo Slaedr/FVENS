@@ -17,62 +17,62 @@ namespace fvens_tests {
 
 using namespace fvens;
 
-static inline a_real linearfunc(const a_real *const x) {
+static inline freal linearfunc(const freal *const x) {
 	static_assert(NDIM <= 3, "Only upto 3 dimensions supported.");
-	const a_real coeffs[] = {2.0, 0.5, -1.0};
-	const a_real constcoeff = 2.5;
+	const freal coeffs[] = {2.0, 0.5, -1.0};
+	const freal constcoeff = 2.5;
 
-	a_real val = 0;
+	freal val = 0;
 	for(int i = 0; i < NDIM; i++)
 		val += coeffs[i]*x[i];
 	val += constcoeff;
 	return val;
 }
 
-TestSpatial::TestSpatial(const fvens::UMesh2dh<a_real> *const mesh)
-	: fvens::Spatial<a_real,1>(mesh)
+TestSpatial::TestSpatial(const fvens::UMesh<freal,NDIM> *const mesh)
+	: fvens::Spatial<freal,1>(mesh)
 { }
 
 int TestSpatial::test_oneExact(const std::string reconst_type) const
 {
-	const amat::Array2dView<a_real> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
-	const GradientScheme<a_real,1> *const wls
-		= create_const_gradientscheme<a_real,1>(reconst_type, m, &rc(0,0), &rcbp(0,0));
+	const amat::Array2dView<freal> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+	const GradientScheme<freal,1> *const wls
+		= create_const_gradientscheme<freal,1>(reconst_type, m, &rc(0,0), &rcbp(0,0));
 
-	std::vector<GradBlock_t<a_real,NDIM,1>> grads(m->gnelem());
-	MVector<a_real> u(m->gnelem(),1);
-	amat::Array2d<a_real> ug(m->gnbface(),1);
-	amat::Array2d<a_real> uleft(m->gnaface(),1);
-	amat::Array2d<a_real> uright(m->gnaface(),1);
+	std::vector<GradBlock_t<freal,NDIM,1>> grads(m->gnelem());
+	MVector<freal> u(m->gnelem(),1);
+	amat::Array2d<freal> ug(m->gnbface(),1);
+	amat::Array2d<freal> uleft(m->gnaface(),1);
+	amat::Array2d<freal> uright(m->gnaface(),1);
 
 	// set the field as ax+by+c
-	for(a_int i = 0; i < m->gnelem(); i++)
+	for(fint i = 0; i < m->gnelem(); i++)
 		u(i,0) = linearfunc(&rc(i,0));
-	for(a_int i = 0; i < m->gnbface(); i++)
+	for(fint i = 0; i < m->gnbface(); i++)
 		ug(i,0) = linearfunc(&rcbp(i));
 
 	// get gradients
-	wls->compute_gradients(amat::Array2dView<a_real>(&u(0,0),m->gnelem()+m->gnConnFace(),1),
-	                       amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),1), &grads[0](0,0));
+	wls->compute_gradients(amat::Array2dView<freal>(&u(0,0),m->gnelem()+m->gnConnFace(),1),
+	                       amat::Array2dView<freal>(&ug(0,0),m->gnbface(),1), &grads[0](0,0));
 
-	LinearUnlimitedReconstruction<a_real,1> lur(m, &rc(0,0), &rcbp(0,0), gr);
-	lur.compute_face_values(u, amat::Array2dView<a_real>(&ug(0,0),m->gnbface(),1), &grads[0](0,0),
-	                        amat::Array2dMutableView<a_real>(&uleft(0,0),m->gnaface(),1),
-	                        amat::Array2dMutableView<a_real>(&uright(0,0),m->gnaface(),1));
+	LinearUnlimitedReconstruction<freal,1> lur(m, &rc(0,0), &rcbp(0,0), gr);
+	lur.compute_face_values(u, amat::Array2dView<freal>(&ug(0,0),m->gnbface(),1), &grads[0](0,0),
+	                        amat::Array2dMutableView<freal>(&uleft(0,0),m->gnaface(),1),
+	                        amat::Array2dMutableView<freal>(&uright(0,0),m->gnaface(),1));
 
-	constexpr a_real a_epsilon = std::numeric_limits<a_real>::epsilon();
-	a_real errnorm = 0;
-	a_real lrerrnorm = 0;
+	constexpr freal a_epsilon = std::numeric_limits<freal>::epsilon();
+	freal errnorm = 0;
+	freal lrerrnorm = 0;
 
 	// Compute RMS errors
-	for(a_int iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++) {
+	for(fint iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++) {
 		errnorm += std::pow(uleft(iface,0) - linearfunc(&gr(iface,0)),2);
 	}
-	for(a_int iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++) {
+	for(fint iface = m->gSubDomFaceStart(); iface < m->gSubDomFaceEnd(); iface++) {
 		lrerrnorm += std::pow(uleft(iface,0)-uright(iface,0),2);
 		errnorm += std::pow(uleft(iface,0)-linearfunc(&gr(iface,0)),2);
 	}
-	for(a_int iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++) {
+	for(fint iface = m->gConnBFaceStart(); iface < m->gConnBFaceEnd(); iface++) {
 		errnorm += std::pow(uleft(iface,0) - linearfunc(&gr(iface,0)),2);
 	}
 
