@@ -248,7 +248,7 @@ if(WITH_BLASTED)
 	message(SEND_ERROR "BLASTed requested, but library not found!")
   endif()
 
-  message(STATUS "Building with BLASTed: ${BLASTED_INCLUDE_DIR}, ${BLASTED_LIB}")
+  message(STATUS "Found BLASTed: ${BLASTED_INCLUDE_DIR}, ${BLASTED_LIB}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_BLASTED=1")
 endif()
 
