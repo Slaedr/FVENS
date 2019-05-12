@@ -39,6 +39,7 @@ template <typename scalar>
 StatusCode preprocessMesh(UMesh<scalar,NDIM>& m)
 {
 	int ierr = 0;
+
 	char ordstr[PETSCOPTION_STR_LEN];
 	PetscBool flag = PETSC_FALSE;
 	CHKERRQ(PetscOptionsGetString(NULL, NULL, "-mesh_reorder", ordstr, PETSCOPTION_STR_LEN, &flag));
@@ -105,7 +106,11 @@ UMesh<freal,NDIM> constructMesh(const std::string mesh_path)
 	// Read mesh
 	if(mpirank == 0)
 		std::cout << "Global mesh:\n";
+
 	UMesh<freal,NDIM> gm(readMesh(mesh_path));
+
+	gm.correctBoundaryFaceOrientation();
+
 	gm.compute_topological();
 	if(mpirank == 0)
 		std::cout << "**" << std::endl;

@@ -52,6 +52,36 @@ UMesh<scalar,ndim>::~UMesh()
 }
 
 template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::correctBoundaryFaceOrientation()
+{
+	compute_elementsSurroundingPoints();
+	const std::vector<std::pair<fint,EIndex>> hostelems = compute_phyBFaceNeighboringElements();
+
+	bool flag = false;
+
+	for(fint iface = 0; iface < nbface; iface++)
+	{
+		const fint helem = hostelems[iface].first;
+		const EIndex eface = hostelems[iface].second;
+
+		static_assert(NDIM == 2, "Generalize this to 3D");
+
+		if( inpoel(helem, getNodeEIndex(helem,eface,0)) != bface(iface,0) ||
+		    inpoel(helem, getNodeEIndex(helem,eface,1)) != bface(iface,1) )
+		{
+			// inconsistent orientation - reverse the bface
+			const fint temp = bface(iface,0);
+			bface(iface,0) = bface(iface,1);
+			bface(iface,1) = temp;
+			flag = true;
+		}
+	}
+
+	if(flag)
+		std::cout << " UMesh: Some boundary faces were inverted for consistency." << std::endl;
+}
+
+template <typename scalar, int ndim>
 void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
 {
 	// reorder inpoel, nnode, nfael, vol_regions
@@ -516,7 +546,7 @@ void UMesh<scalar,ndim>::compute_elementsSurroundingElements()
 
 template <typename scalar, int ndim>
 EIndex UMesh<scalar,ndim>::getFaceEIndex(const bool phyboundary, const fint iface,
-                                       const fint lelem) const
+                                         const fint lelem) const
 {
 	static_assert(ndim==2, "Only 2D is currently supported!");
 
