@@ -13,12 +13,13 @@ namespace fvens {
 template <typename scalar>
 inline
 void IdealGasPhysics<scalar>::getDirectionalFlux(const scalar *const uc, const scalar *const n,
-		const scalar vn, const scalar p, scalar *const __restrict flux) const
+                                                 const scalar vn, const scalar p,
+                                                 scalar *const __restrict flux) const
 {
 	flux[0] = vn*uc[0];
 	for(int i = 1; i < NDIM+1; i++)
 		flux[i] = vn*uc[i] + p*n[i-1];
-	flux[NVARS-1] = vn*(uc[NVARS-1] + p);
+	flux[NDIM+1] = vn*(uc[NDIM+1] + p);
 }
 
 template <typename scalar>
@@ -82,7 +83,7 @@ scalar IdealGasPhysics<scalar>::getDeltaPressureFromConserved(const scalar *cons
 template <typename scalar>
 inline
 scalar IdealGasPhysics<scalar>::getGradPressureFromConservedAndGradConserved(const scalar *const uc,
-		const scalar *const guc) const
+                                                                             const scalar *const guc) const
 {
 	const scalar term1 = dimDotProduct(&uc[1],&guc[1]);
 	const scalar term2 = dimDotProduct(&uc[1],&uc[1]);
@@ -92,12 +93,12 @@ scalar IdealGasPhysics<scalar>::getGradPressureFromConservedAndGradConserved(con
 template <typename scalar>
 inline
 void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *const uc,
-		scalar *const __restrict dp) const
+                                                              scalar *const __restrict dp) const
 {
-	dp[0] += (g-1.0)*0.5*dimDotProduct(&uc[1],&uc[1])/(uc[0]*uc[0]);
+	dp[0] = (g-1.0)*0.5*dimDotProduct(&uc[1],&uc[1])/(uc[0]*uc[0]);
 	for(int i = 1; i < NDIM+1; i++)
-		dp[i] += -(g-1.0)*uc[i]/uc[0];
-	dp[NDIM+1] += (g-1.0);
+		dp[i] = -(g-1.0)*uc[i]/uc[0];
+	dp[NDIM+1] = (g-1.0);
 }
 
 template <typename scalar>
@@ -106,10 +107,10 @@ void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *cons
 		const scalar rho2vmag2,
 		scalar *const __restrict dp) const
 {
-	dp[0] += (g-1.0)*0.5*rho2vmag2/(uc[0]*uc[0]);
+	dp[0] = (g-1.0)*0.5*rho2vmag2/(uc[0]*uc[0]);
 	for(int i = 1; i < NDIM+1; i++)
-		dp[i] += -(g-1.0)*uc[i]/uc[0];
-	dp[NDIM+1] += (g-1.0);
+		dp[i] = -(g-1.0)*uc[i]/uc[0];
+	dp[NDIM+1] = (g-1.0);
 }
 
 template <typename scalar>
@@ -167,7 +168,8 @@ void IdealGasPhysics<scalar>::getJacobianSoundSpeedWrtConserved(const scalar *co
 {
 	scalar p =getPressureFromConserved(uc);
 	scalar dp[NVARS];
-	for(int i = 0; i < NVARS; i++) dp[i] = 0;
+	for(int i = 0; i < NVARS; i++)
+		dp[i] = 0;
 	getJacobianPressureWrtConserved(uc, dp);
 
 	const scalar c = getSoundSpeed(uc[0],p);
@@ -187,9 +189,9 @@ void IdealGasPhysics<scalar>::getJacobianMachNormalWrtConserved(const scalar *co
 
 	const scalar vn = dimDotProduct(&uc[1],n)/uc[0];
 	dvn[0] = -vn/uc[0];
-	dvn[1] = n[0]/uc[0];
-	dvn[2] = n[1]/uc[0];
-	dvn[3] = 0;
+	for(int i = 1; i < NDIM+1; i++)
+		dvn[i] = n[i-1]/uc[0];
+	dvn[NDIM+1] = 0;
 
 	getQuotientDerivatives(vn, dvn, c, dc, dmn);
 }
@@ -324,7 +326,9 @@ void IdealGasPhysics<scalar>::getJacobianTemperatureWrtConserved(const scalar *c
 		scalar *const __restrict dT) const
 {
 	const scalar p = getPressureFromConserved(uc);
-	scalar dp[NVARS]; for(int i = 0; i < NVARS; i++) dp[i] = 0;
+	scalar dp[NVARS];
+	for(int i = 0; i < NVARS; i++)
+		dp[i] = 0;
 	getJacobianPressureWrtConserved(uc,dp);
 	getJacobianTemperature(uc[0],p,dp, dT);
 }
@@ -419,13 +423,14 @@ void IdealGasPhysics<scalar>::getJacobianSutherlandViscosityWrtConserved(const s
 		scalar *const __restrict dmu) const
 {
 	const scalar T = getTemperatureFromConserved(uc);
-	scalar dT[NVARS]; for(int i = 0; i < NVARS; i++) dT[i] = 0;
+	scalar dT[NVARS];
+	for(int i = 0; i < NVARS; i++)
+		dT[i] = 0;
 	getJacobianTemperatureWrtConserved(uc, dT);
 
 	const scalar coef = (1.0+sC/Tinf)/Reinf;
 	const scalar T15 = pow(T,1.5), Tm15 = pow(T,-1.5);
 	const scalar denom = (T + sC/Tinf)*(T+sC/Tinf);
-	// coef * pow(T,1.5) / (T + sC/Tinf)
 	for(int i = 0; i < NVARS; i++)
 		dmu[i] += coef* (1.5*Tm15*dT[i]*(T+sC/Tinf) - T15*dT[i])/denom;
 }

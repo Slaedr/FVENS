@@ -133,9 +133,6 @@ public:
 		const scalar *const guc) const;
 
 	/// Derivative of pressure w.r.t. conserved variables
-	/** Note that the derivative is added to the second argument - the latter is not zeroed
-	 * or anything.
-	 */
 	void getJacobianPressureWrtConserved(const scalar *const uc, scalar *const __restrict dp) const;
 
 	/// Gives the pressure more efficiently using an additional input - the momemtum magnitude
