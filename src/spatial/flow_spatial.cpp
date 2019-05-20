@@ -259,7 +259,8 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh<scalar,NDIM> *
 	: FlowFV_base<scalar>(mesh, pconf, nconf),
 	  uface(*m),
 	  gradvec{NULL},
-	  jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr)
+	  jphy(pconfig.gamma, pconfig.Minf, pconfig.Tinf, pconfig.Reinf, pconfig.Pr),
+	  jiflux {create_const_inviscidflux<scalar>(nconfig.conv_numflux_jac, &jphy)}
 {
 #ifdef DEBUG
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
@@ -273,6 +274,9 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh<scalar,NDIM> *
 	}
 	if(constVisc)
 		std::cout << " FLowFV: Using constant viscosity.\n";
+
+	std::cout << " FlowFV: Using " << nconfig.conv_numflux << " for inviscid flux and "
+	          << nconfig.conv_numflux_jac << " for inviscid flux Jacobian.\n";
 }
 
 template<typename scalar, bool secondOrderRequested, bool constVisc>
@@ -771,7 +775,7 @@ void FlowFV<scalar,order2,constVisc>
 	const freal len = m->gfacemetric(iface,2);
 
 	// NOTE: the values of L and U get REPLACED here, not added to
-	inviflux->get_jacobian(ul, ur, &n[0], &L(0,0), &U(0,0));
+	jiflux->get_jacobian(ul, ur, &n[0], &L(0,0), &U(0,0));
 
 	if(pconfig.viscous_sim) {
 		// Vec rclocal;
@@ -805,7 +809,7 @@ void FlowFV<scalar,order2,constVisc>
 
 	bcs.at(m->gbtags(iface,0))->computeGhostStateAndJacobian(ul, &n[0], uface, &drdl(0,0));
 
-	inviflux->get_jacobian(ul, uface, &n[0], &left(0,0), &right(0,0));
+	jiflux->get_jacobian(ul, uface, &n[0], &left(0,0), &right(0,0));
 
 	if(pconfig.viscous_sim) {
 		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], uface,

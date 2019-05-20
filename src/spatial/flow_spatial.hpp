@@ -266,6 +266,9 @@ protected:
 	 */
 	const IdealGasPhysics<freal> jphy;
 
+	/// Numerical flux used for building Jacobian
+	const InviscidFlux<scalar> *const jiflux;
+
 	/// Computes viscous flux across a face at one point
 	/** The output vflux still needs to be integrated on the face.
 	 * \param[in] normals

@@ -263,14 +263,14 @@ AUSMFlux<scalar,j_real>::AUSMFlux(const IdealGasPhysics<scalar> *const analytica
 
 template <typename scalar, typename j_real>
 void AUSMFlux<scalar,j_real>::get_flux(const scalar *const ul, const scalar *const ur,
-		const scalar* const n, scalar *const __restrict flux) const
+                                       const scalar* const n, scalar *const __restrict flux) const
 {
 	scalar ML, MR, pL, pR;
-	scalar vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	scalar vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj;
 	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
-	ci = physics->getSoundSpeed(ul[0],pi);
-	cj = physics->getSoundSpeed(ur[0],pj);
+	const scalar ci = physics->getSoundSpeed(ul[0],pi);
+	const scalar cj = physics->getSoundSpeed(ur[0],pj);
 
 	const scalar Mni = vni/ci, Mnj = vnj/cj;
 
@@ -320,11 +320,11 @@ void AUSMFlux<scalar,j_real>::get_jacobian(const j_real *const ul, const j_real 
                                            j_real *const dfdl, j_real *const dfdr) const
 {
 	j_real ML, MR;
-	j_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	j_real vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj;
 	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
-	ci = physics->getSoundSpeed(ul[0],pi);
-	cj = physics->getSoundSpeed(ur[0],pj);
+	const j_real ci = physics->getSoundSpeed(ul[0],pi);
+	const j_real cj = physics->getSoundSpeed(ur[0],pj);
 
 	const j_real Mni = vni/ci, Mnj = vnj/cj;
 
@@ -481,11 +481,11 @@ void AUSMPlusFlux<scalar,j_real>::get_flux(const scalar *const ul, const scalar 
 		const scalar* const n, scalar *const __restrict flux) const
 {
 	scalar ML, MR, pL, pR;
-	scalar vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj, ci, cj;
+	scalar vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj;
 	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
-	ci = physics->getSoundSpeed(ul[0],pi);
-	cj = physics->getSoundSpeed(ur[0],pj);
+	const scalar ci = physics->getSoundSpeed(ul[0],pi);
+	const scalar cj = physics->getSoundSpeed(ur[0],pj);
 	const scalar vmag2i = dimDotProduct(vi,vi);
 	const scalar vmag2j = dimDotProduct(vj,vj);
 
