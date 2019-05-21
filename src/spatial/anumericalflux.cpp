@@ -578,7 +578,13 @@ void RoeAverageBasedFlux<scalar,j_real>::getJacobiansRoeAveragesWrtConserved (
 	j_real dvm2ijj[NVARS], j_real dvnijj[NVARS], j_real dHijj[NVARS], j_real dcijj[NVARS] ) const
 {
 	j_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+
+	j_real vi[NDIM], vj[NDIM], vij[NDIM];
+	vi[0] = vxi; vi[1] = vyi; vj[0] = vxj; vj[1] = vyj;
+
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
+
+	vxij = vij[0]; vyij = vij[1];
 
 	// Derivatives of Rij
 	dRiji[0] = 0.5/Rij * (-ur[0])/(ul[0]*ul[0]);
@@ -660,21 +666,22 @@ RoeFlux<scalar,j_real>::RoeFlux(const IdealGasPhysics<scalar> *const analyticalf
 
 template <typename scalar, typename j_real>
 void RoeFlux<scalar,j_real>::get_flux(const scalar *const ul, const scalar *const ur,
-		const scalar* const n, scalar *const __restrict flux) const
+                                      const scalar *const n, scalar *const __restrict flux) const
 {
 	scalar vi[NDIM], vj[NDIM], vni, vnj, pi, pj, Hi, Hj;
 	physics->getVarsFromConserved(ul, n, vi, vni, pi, Hi);
 	physics->getVarsFromConserved(ur, n, vj, vnj, pj, Hj);
 
-	const scalar vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
-
 	// compute Roe-averages
-	scalar Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+	scalar Rij,rhoij,vij[NDIM],vm2ij,vnij,Hij,cij;
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
 
 	// eigenvalues
-	scalar l[4];
-	l[0] = fabs(vnij-cij); l[1] = fabs(vnij); l[2] = l[1]; l[3] = fabs(vnij+cij);
+	scalar l[NVARS];
+	l[0] = fabs(vnij-cij);
+	for(int j = 1; j < NDIM+1; j++)
+		l[j] = fabs(vnij);
+	l[NDIM+1] = fabs(vnij+cij);
 
 	// Harten entropy fix
 	const scalar delta = fixeps*cij;
@@ -698,24 +705,24 @@ void RoeFlux<scalar,j_real>::get_flux(const scalar *const ul, const scalar *cons
 
 	// un-c:
 	adu[0] = lalpha[0];
-	adu[1] = lalpha[0]*(vxij-cij*n[0]);
-	adu[2] = lalpha[0]*(vyij-cij*n[1]);
+	adu[1] = lalpha[0]*(vij[0]-cij*n[0]);
+	adu[2] = lalpha[0]*(vij[1]-cij*n[1]);
 	adu[3] = lalpha[0]*(Hij-cij*vnij);
 
 	// un:
 	adu[0] += lalpha[1];
-	adu[1] += lalpha[1]*vxij +      lalpha[2]*(vxj-vxi - devn*n[0]);
-	adu[2] += lalpha[1]*vyij +      lalpha[2]*(vyj-vyi - devn*n[1]);
-	adu[3] += lalpha[1]*vm2ij/2.0 + lalpha[2] *(vxij*(vxj-vxi) +vyij*(vyj-vyi) -vnij*devn);
+	adu[1] += lalpha[1]*vij[0] +      lalpha[2]*(vj[0]-vi[0] - devn*n[0]);
+	adu[2] += lalpha[1]*vij[1] +      lalpha[2]*(vj[1]-vi[1] - devn*n[1]);
+	adu[3] += lalpha[1]*vm2ij/2.0 + lalpha[2] *(vij[0]*(vj[0]-vi[0]) +vij[1]*(vj[1]-vi[1]) -vnij*devn);
 
 	// un+c:
 	adu[0] += lalpha[3];
-	adu[1] += lalpha[3]*(vxij+cij*n[0]);
-	adu[2] += lalpha[3]*(vyij+cij*n[1]);
+	adu[1] += lalpha[3]*(vij[0]+cij*n[0]);
+	adu[2] += lalpha[3]*(vij[1]+cij*n[1]);
 	adu[3] += lalpha[3]*(Hij+cij*vnij);
 
 	// get one-sided flux vectors
-	scalar fi[4], fj[4];
+	scalar fi[NVARS], fj[NVARS];
 	physics->getDirectionalFlux(ul,n,vni,pi,fi);
 	physics->getDirectionalFlux(ur,n,vnj,pj,fj);
 
@@ -739,8 +746,9 @@ void RoeFlux<scalar,j_real>::get_jacobian(const j_real *const ul, const j_real *
 	const j_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
-	j_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+	j_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij,vij[NDIM];
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
+	vxij = vij[0]; vyij = vij[1];
 
 	//> Derivatives of the above variables
 
@@ -972,11 +980,12 @@ void HLLFlux<scalar,j_real>::get_flux(const scalar *const __restrict__ ul, const
 	ci = physics->getSoundSpeed(ul[0], pi);
 	cj = physics->getSoundSpeed(ur[0], pj);
 
-	const scalar vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
+	//const scalar vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	//> compute Roe-averages
-	scalar Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+	scalar Rij,rhoij,/*vxij,vyij,*/vm2ij,vnij,Hij,cij,vij[NDIM];
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
+	//vxij = vij[0]; vyij = vij[0];
 
 	// Einfeldt estimate for signal speeds
 	scalar sl = vni - ci;
@@ -1012,11 +1021,11 @@ void HLLFlux<scalar,j_real>::get_jacobian(const j_real *const ul, const j_real *
 	ci = physics->getSoundSpeed(ul[0], pi);
 	cj = physics->getSoundSpeed(ur[0], pj);
 
-	const j_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
+	//const j_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
-	j_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+	j_real Rij,rhoij,/*vxij,vyij,*/vm2ij,vnij,Hij,cij,vij[NDIM];
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
 
 	// Einfeldt estimate for signal speeds
 	j_real sr, sl;
@@ -1174,11 +1183,9 @@ void HLLCFlux<scalar,j_real>::get_flux(const scalar *const ul, const scalar *con
 	ci = physics->getSoundSpeed(ul[0], pi);
 	cj = physics->getSoundSpeed(ur[0], pj);
 
-	const scalar vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
-
 	// compute Roe-averages
-	scalar Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+	scalar Rij,rhoij,vij[NDIM],vm2ij,vnij,Hij,cij;
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
 
 	// estimate signal speeds
 	scalar sr, sl;
@@ -1235,8 +1242,8 @@ void HLLCFlux<scalar,j_real>::get_jacobian(const j_real *const ul, const j_real 
 	const j_real vxi = vi[0], vxj=vj[0], vyi=vi[1], vyj=vj[1];
 
 	// compute Roe-averages
-	j_real Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij;
-	getRoeAverages(ul,ur,n,vxi,vyi,Hi,vxj,vyj,Hj, Rij,rhoij,vxij,vyij,vm2ij,vnij,Hij,cij);
+	j_real Rij,rhoij,vm2ij,vnij,Hij,cij,vij[NDIM];
+	getRoeAverages(ul,ur,n,vi,Hi,vj,Hj, Rij,rhoij,vij,vm2ij,vnij,Hij,cij);
 
 	//> Derivatives of the above variables
 

@@ -162,9 +162,9 @@ class RoeAverageBasedFlux : public InviscidFlux<scalar,j_real>
 public:
 	RoeAverageBasedFlux(const IdealGasPhysics<scalar> *const analyticalflux);
 	virtual void get_flux(const scalar *const ul, const scalar *const ur, const scalar* const n,
-			scalar *const flux) const = 0;
+	                      scalar *const flux) const = 0;
 	virtual void get_jacobian(const j_real *const ul, const j_real *const ur, const j_real* const n,
-			j_real *const dfdl, j_real *const dfdr) const = 0;
+	                          j_real *const dfdl, j_real *const dfdr) const = 0;
 
 protected:
 	using InviscidFlux<scalar,j_real>::physics;
@@ -173,18 +173,18 @@ protected:
 
 	/// Computes Roe-averaged quantities
 	void getRoeAverages(const scalar ul[NVARS], const scalar ur[NVARS], const scalar n[NDIM],
-		const scalar vxi, const scalar vyi, const scalar Hi,
-		const scalar vxj, const scalar vyj, const scalar Hj,
-		scalar& Rij, scalar& rhoij, scalar& vxij, scalar& vyij, scalar &vm2ij, scalar& vnij,
-		scalar& Hij, scalar& cij) const
+	                    const scalar vi[NDIM], const scalar Hi,
+	                    const scalar vj[NDIM], const scalar Hj,
+	                    scalar& Rij, scalar& rhoij, scalar vij[NDIM],
+	                    scalar &vm2ij, scalar& vnij, scalar& Hij, scalar& cij) const
 	{
 		Rij = sqrt(ur[0]/ul[0]);
 		rhoij = Rij*ul[0];
-		vxij = (Rij*vxj + vxi)/(Rij + 1.0);
-		vyij = (Rij*vyj + vyi)/(Rij + 1.0);
+		for(int i = 0; i < NDIM; i++)
+			vij[i] = (Rij*vj[i] + vi[i])/(Rij + 1.0);
 		Hij = (Rij*Hj + Hi)/(Rij + 1.0);
-		vm2ij = vxij*vxij + vyij*vyij;
-		vnij = vxij*n[0] + vyij*n[1];
+		vm2ij = dimDotProduct(vij,vij);
+		vnij = dimDotProduct(vij,n);
 		cij = sqrt( (g-1.0)*(Hij - vm2ij*0.5) );
 	}
 
