@@ -122,14 +122,11 @@ void FlowFV_base<scalar>::getGradients(const Vec uvec,
 template <typename scalar>
 static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa)
 {
-	std::array<scalar,NDIM> dir;
-	for(int i = 0; i < NDIM; i++) dir[i] = 0;
-
 	static_assert(NDIM == 2, "Flow direction not implemented for 3D yet");
-	dir[0] = cos(aoa);
-	dir[1] = sin(aoa);
+	// Take beta as a parameter and remove the above assert
+	const scalar beta = 0;
 
-	return dir;
+	return getNormalizedFreeStreamVector(aoa, beta);
 }
 
 template <typename scalar>

@@ -59,6 +59,21 @@ inline void getComponentsCartesian(const scalar mag, const scalar dir[NDIM], sca
         vec[1] = mag*cosphi*dir[1];
 }
 
+/// Computes the unit vector along free-stream direction
+/** \param aoa Angle of attack
+ * \param beta Sideslip angle
+ */
+template <typename scalar>
+std::array<scalar,NDIM> getNormalizedFreeStreamVector(const scalar aoa, const scalar beta)
+{
+	std::array<scalar,NDIM> wind;
+	wind[0] = cos(aoa)*cos(beta);
+	wind[1] = sin(aoa)*cos(beta);
+	if(NDIM == 3)
+		wind[2] = sin(beta);
+	return wind;
+}
+
 /// Returns the derivatives of f/g given the derivatives of f and g (for NVARS components)
 /** \note The result is added to the output array dq; so prior contents will affect the outcome.
  * \note It is possible for the output array dq to point to the same location as

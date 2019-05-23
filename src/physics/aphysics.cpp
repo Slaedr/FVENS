@@ -46,10 +46,13 @@ std::array<freal,NVARS> IdealGasPhysics<scalar>::compute_freestream_state(const 
 	std::array<freal,nvars> uinf;
 	const freal beta = 0;
 	uinf[0] = 1.0;
-	uinf[1] = cos(aoa)*cos(beta);
-	uinf[2] = sin(aoa)*cos(beta);
-	if(NDIM == 3)
-		uinf[3] = sin(beta);
+	const std::array<freal,NDIM> wind = getNormalizedFreeStreamVector(aoa, beta);
+	for(int i = 1; i < NDIM+1; i++)
+		uinf[i] = wind[i-1];
+	// uinf[1] = cos(aoa)*cos(beta);
+	// uinf[2] = sin(aoa)*cos(beta);
+	// if(NDIM == 3)
+	// 	uinf[3] = sin(beta);
     uinf[NDIM+1] = getvalue<scalar>(getEnergyFromPressure(getFreestreamPressure(),1.0,1.0));
 	return uinf;
 }
