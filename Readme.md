@@ -1,7 +1,9 @@
 FVENS
 =====
 
-This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. Linear, MUSCL and limited linear reconstructions are availble. The Van Albada limiter is used for MUSCL reconstruction while the WENO (weighted essentially non-oscillatory), Barth-Jespersen or Venkatakrishnan limiters can be used for limited linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. For steady-state problems, both explicit and implicit pseudo-time stepping are avaible. 
+![Laminar flow over an airfoil](testcases/visc-naca0012/machnumber-hybrid1-roe-wls.png)
+
+This is a cell-centered finite volume solver for the two-dimensional compressible Euler and Navier-Stokes equations. Unstructured grids having both triangles and quadrangles are supported. It includes gradient computation using either Green-Gauss or weighted least-squares methods. Linear, MUSCL and limited linear reconstructions are availble. The Van Albada limiter is used for MUSCL reconstruction while the WENO (weighted essentially non-oscillatory), Barth-Jespersen or Venkatakrishnan limiters can be used for limited linear reconstruction. A number of numerical inviscid fluxes are available - local Lax-Friedrichs (Rusanov), Van Leer flux vector splitting, AUSM, HLL (Harten - Lax - Van Leer), HLLC and Roe-Pike. Modified average gradients are used for viscous fluxes. For steady-state problems, both explicit and implicit pseudo-time stepping are avaible.
 
 'Dimension independent code' - using the same source code for 2D and 3D problems with only recompilation needed - is a goal. If you wish to contribute, please read the [guidelines](CONTRIBUTING.md).
 

@@ -5,14 +5,17 @@ configure_file(mgopts.solverc mgopts.solverc COPYONLY)
 
 add_subdirectory(grids)
 
-add_test(NAME SpatialFlow_NS_NACA0012_LeastSquares_Roe_ResidualConvergence
+add_test(NAME SpatialFlow_NS_NACA0012_LeastSquares_Roe_FunctionalRegression
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../../tests/e_testflow 
   ${CMAKE_CURRENT_SOURCE_DIR}/laminar-implicit.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/opts.solverc
-  --mesh_file grids/NACA0012_lam_hybrid_1.msh)
+  --mesh_file grids/NACA0012_lam_hybrid_1.msh
+  --regression_test true
+  --regression_file ${CMAKE_CURRENT_SOURCE_DIR}/regr-LeastSquares_Roe.txt
+  )
 
-add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_ResidualRegression
+add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_FunctionalRegression
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/tests/e_testflow 
   ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/laminar-implicit.ctrl
@@ -22,7 +25,7 @@ add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_ResidualRegression
   --regression_test true
   --regression_file ${CMAKE_CURRENT_SOURCE_DIR}/regr-LS_Roe_LineOrdering.txt)
 
-add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_RCM_ResidualRegression
+add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_RCM_FunctionalRegression
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/tests/e_testflow 
   ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/laminar-implicit-linercm.ctrl

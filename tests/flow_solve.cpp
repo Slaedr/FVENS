@@ -14,7 +14,7 @@
 #include "utilities/casesolvers.hpp"
 #include "utilities/mpiutils.hpp"
 
-#define REGR_TOL 1e-15
+#define REGR_DEFAULT_TOL 1e-13
 
 using namespace fvens;
 namespace po = boost::program_options;
@@ -37,7 +37,8 @@ int main(int argc, char *argv[])
 
 	desc.add_options()
 		("regression_test", po::value<bool>(), "1 to compare with a previous result, 0 otherwise")
-		("regression_file", po::value<std::string>(), "File name containing regression data");
+		("regression_file", po::value<std::string>(), "File name containing regression data")
+		("regression_tol", po::value<double>(), "Tolerance for regression test");
 
 	const po::variables_map cmdvars = parse_cmd_options(argc, argv, desc);
 
@@ -83,6 +84,8 @@ void test_regression(const po::variables_map& cmdvars, const FlowSolutionFunctio
 		cmdvars["regression_test"].as<bool>() : false;
 	const std::string regr_file = cmdvars.count("regression_test") ?
 		cmdvars["regression_file"].as<std::string>() : "";
+	const double regr_tol = cmdvars.count("regression_tol") ?
+		cmdvars["regression_tol"].as<double>() : REGR_DEFAULT_TOL;
 
 	if(run_regr)
 	{
@@ -96,11 +99,15 @@ void test_regression(const po::variables_map& cmdvars, const FlowSolutionFunctio
 
 		rfile.close();
 
-		if(std::abs(CL-fnls.CL) > REGR_TOL)
+		if(std::abs(CL-fnls.CL)/std::abs(CL) > regr_tol) {
+			std::cout << "  CL error = " << std::abs(CL-fnls.CL)/std::abs(CL) << std::endl;
 			throw std::runtime_error("CL does not match!");
-		if(std::abs(CDp-fnls.CDp) > REGR_TOL)
+		}
+		if(std::abs(CDp-fnls.CDp)/std::abs(CDp) > regr_tol) {
+			std::cout << "  CDp error = " << std::abs(CDp-fnls.CDp)/std::abs(CDp) << std::endl;
 			throw std::runtime_error("CDp does not match!");
-		if(std::abs(CDsf-fnls.CDsf) > REGR_TOL)
-			throw std::runtime_error("CDsf does not match!");
+		}
+		// if(std::abs(CDsf-fnls.CDsf)/std::abs(CDsf) > regr_tol)
+		// 	throw std::runtime_error("CDsf does not match!");
 	}
 }
