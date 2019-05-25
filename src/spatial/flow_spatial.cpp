@@ -156,21 +156,16 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 		if(m->gbtags(iface,0) == iwbcm)
 		{
 			const fint lelem = m->gintfac(iface,0);
-			scalar n[NDIM];
-			for(int j = 0; j < NDIM; j++)
-				n[j] = m->gfacemetric(iface,j);
-			const scalar len = m->gfacemetric(iface,2);
+			const std::array<scalar,NDIM> n = m->gnormal(iface);
+			const scalar len = m->gfacemetric(iface,NDIM);
 
 			// coords of face center
-			fint ijp[NDIM];
-			for(int j = 0; j < NDIM; j++)
-				ijp[j] = m->gintfac(iface,2+j);
 			scalar coord[NDIM];
 			for(int j = 0; j < NDIM; j++)
 			{
 				coord[j] = 0;
 				for(int inofa = 0; inofa < m->gnnofa(iface); inofa++)
-					coord[j] += m->gcoords(ijp[inofa],j);
+					coord[j] += m->gcoords(m->gintfac(iface,2+inofa),j);
 				coord[j] /= m->gnnofa(iface);
 
 				output(facecoun,j) = coord[j];

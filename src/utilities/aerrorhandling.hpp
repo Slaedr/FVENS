@@ -43,10 +43,18 @@ public:
 	Petsc_exception(const char *const msg);
 };
 
+/// Exception thrown when a required input was not provided
 class InputNotGivenError : public std::runtime_error
 {
 public:
 	InputNotGivenError(const std::string& msg);
+};
+
+/// Exception thrown when a user-supplied option is invalid
+class UnsupportedOptionError : public std::runtime_error
+{
+public:
+	UnsupportedOptionError(const std::string& msg);
 };
 
 /// Throw an error from an error code

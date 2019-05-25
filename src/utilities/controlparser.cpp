@@ -113,12 +113,20 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 	opts.gamma = infopts.get<freal>(c_flowconds+".adiabatic_index");
 	opts.alpha = PI/180.0*infopts.get<freal>(c_flowconds+".angle_of_attack");
 	opts.Minf = infopts.get<freal>(c_flowconds+".freestream_Mach_number");
-	if(opts.flowtype == "NAVIERSTOKES") {
+	if(opts.flowtype == "NAVIERSTOKES" || opts.flowtype == "RANS") {
 		opts.viscsim = true;
 		opts.Tinf = infopts.get<freal>(c_flowconds+".freestream_temperature");
 		opts.Reinf = infopts.get<freal>(c_flowconds+".freestream_Reynolds_number");
 		opts.Pr = infopts.get<freal>(c_flowconds+".Prandtl_number");
 		opts.useconstvisc = infopts.get(c_flowconds+".use_constant_viscosity",false);
+		if(opts.flowtype == "RANS")
+			throw UnsupportedOptionError("flowtype RANS");
+	}
+	else {
+		opts.viscsim = false;
+		opts.Tinf = 298.0;
+		opts.Reinf = 1.0/0.0;
+		opts.Pr = 0.0/0.0;
 	}
 
 	opts.bcconf = parse_BC_options(infopts, c_bcs);

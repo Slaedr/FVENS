@@ -36,6 +36,10 @@ InputNotGivenError::InputNotGivenError(const std::string& msg)
 	: std::runtime_error(std::string("Input not given: ")+msg)
 { }
 
+UnsupportedOptionError::UnsupportedOptionError(const std::string& msg)
+	: std::runtime_error(std::string("Unsupported option: ")+msg)
+{ }
+
 void open_file_toRead(const std::string file, std::ifstream& fin)
 {
 	fin.open(file);
