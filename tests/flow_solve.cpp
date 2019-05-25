@@ -14,7 +14,7 @@
 #include "utilities/casesolvers.hpp"
 #include "utilities/mpiutils.hpp"
 
-#define REGR_DEFAULT_TOL 1e-13
+#define REGR_DEFAULT_TOL 1e-10
 
 using namespace fvens;
 namespace po = boost::program_options;
@@ -107,7 +107,9 @@ void test_regression(const po::variables_map& cmdvars, const FlowSolutionFunctio
 			std::cout << "  CDp error = " << std::abs(CDp-fnls.CDp)/std::abs(CDp) << std::endl;
 			throw std::runtime_error("CDp does not match!");
 		}
-		// if(std::abs(CDsf-fnls.CDsf)/std::abs(CDsf) > regr_tol)
+		// if(std::abs(CDsf-fnls.CDsf)/std::abs(CDsf) > regr_tol) {
+		// 	std::cout << "  CDsf error = " << std::abs(CDsf-fnls.CDsf)/std::abs(CDsf) << std::endl;
 		// 	throw std::runtime_error("CDsf does not match!");
+		// }
 	}
 }

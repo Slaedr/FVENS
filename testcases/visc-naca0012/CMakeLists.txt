@@ -7,7 +7,7 @@ add_subdirectory(grids)
 
 add_test(NAME SpatialFlow_NS_NACA0012_LeastSquares_Roe_FunctionalRegression
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${THREADOPTS} ${SEQTASKS} ../../tests/e_testflow 
+  COMMAND env OMP_NUM_THREADS=1 ${SEQEXEC} ${SEQTASKS} ../../tests/e_testflow 
   ${CMAKE_CURRENT_SOURCE_DIR}/laminar-implicit.ctrl
   -options_file ${CMAKE_CURRENT_SOURCE_DIR}/opts.solverc
   --mesh_file grids/NACA0012_lam_hybrid_1.msh
@@ -17,7 +17,7 @@ add_test(NAME SpatialFlow_NS_NACA0012_LeastSquares_Roe_FunctionalRegression
 
 add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_FunctionalRegression
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/tests/e_testflow 
+  COMMAND env OMP_NUM_THREADS=1 ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/tests/e_testflow 
   ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/laminar-implicit.ctrl
   -options_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/opts.solverc
   --mesh_file ${CMAKE_BINARY_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh
@@ -27,7 +27,7 @@ add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_FunctionalRegression
 
 add_test(NAME SpatialFlow_NS_NACA0012_LS_Roe_LineOrdering_RCM_FunctionalRegression
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  COMMAND ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/tests/e_testflow 
+  COMMAND env OMP_NUM_THREADS=1 ${SEQEXEC} ${SEQTASKS} ${CMAKE_BINARY_DIR}/tests/e_testflow 
   ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/laminar-implicit-linercm.ctrl
   -options_file ${CMAKE_SOURCE_DIR}/testcases/visc-naca0012/opts.solverc
   --mesh_file ${CMAKE_BINARY_DIR}/testcases/visc-naca0012/grids/NACA0012_lam_hybrid_1.msh
