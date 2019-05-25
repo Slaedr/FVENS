@@ -1,5 +1,7 @@
 /** \file flow_solve.cpp
  * \brief Driver function for testing successful solution of one case, with no output files.
+ *
+ * Optionally compares the solution with a previous solution to a tolerance. \sa test_regression
  * \author Aditya Kashi
  */
 
@@ -14,11 +16,17 @@
 #include "utilities/casesolvers.hpp"
 #include "utilities/mpiutils.hpp"
 
-#define REGR_DEFAULT_TOL 1e-10
+/// Default tolerance for regression tests
+#define REGR_DEFAULT_TOL 1e-8
 
 using namespace fvens;
 namespace po = boost::program_options;
 
+/** \brief Compares flow functionals with a previously stored result.
+ *
+ * Invoke the executable with --help for relevant options.
+ * Note that the tolerance for CL is two orders of magnitude looser than that for CDp and CDsf.
+ */
 static void test_regression(const po::variables_map& cmdvars, const FlowSolutionFunctionals fnls);
 
 int main(int argc, char *argv[])
@@ -99,7 +107,7 @@ void test_regression(const po::variables_map& cmdvars, const FlowSolutionFunctio
 
 		rfile.close();
 
-		if(std::abs(CL-fnls.CL)/std::abs(CL) > regr_tol) {
+		if(std::abs(CL-fnls.CL)/std::abs(CL) > regr_tol*100) {
 			std::cout << "  CL error = " << std::abs(CL-fnls.CL)/std::abs(CL) << std::endl;
 			throw std::runtime_error("CL does not match!");
 		}
