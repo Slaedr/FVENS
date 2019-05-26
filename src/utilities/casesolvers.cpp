@@ -88,7 +88,6 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
                                              const UMesh<freal,NDIM>& m, Vec u) const
 {
 	int ierr = 0;
-	std::cout << "\nSetting up flow case with output\n";
 	const int mpisize = get_mpi_size(PETSC_COMM_WORLD);
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 

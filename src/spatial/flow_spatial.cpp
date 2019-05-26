@@ -129,6 +129,11 @@ static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa)
 	return getNormalizedFreeStreamVector(aoa, beta);
 }
 
+/** Throughout the function, the assumption is that the (constant) roll angle is zero.
+ * Therefore, the wall-tangent direction is the cross product n x k and
+ * the flow-normal direction (the "up" direction) is k x w,
+ * where k is the spanwise direction, w is the relative wind direction and n is the unit wall normal.
+ */
 template <typename scalar>
 std::tuple<scalar,scalar,scalar>
 FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
@@ -137,7 +142,7 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
                                          MVector<scalar>& output) const
 {
 	// unit vector in the direction of flow
-	const std::array<scalar,NDIM> av = flowDirectionVector(pconfig.aoa);
+	const std::array<scalar,NDIM> wind = flowDirectionVector(pconfig.aoa);
 
 	fint facecoun = 0;			// face iteration counter for this boundary marker
 	scalar totallen = 0;		// total area of the surface with this boundary marker
@@ -148,7 +153,10 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 	// unit vector normal to the free-stream flow direction
 	// TODO: Generalize to 3D
 	static_assert(NDIM == 2, "surface data not implemented for 3D yet");
-	scalar flownormal[NDIM]; flownormal[0] = -av[1]; flownormal[1] = av[0];
+	scalar flownormal[NDIM];
+	flownormal[0] = -wind[1]; flownormal[1] = wind[0];
+	if(NDIM == 3)
+		flownormal[2] = 0;
 
 	// iterate over faces having this boundary marker
 	for(fint iface = m->gPhyBFaceStart(); iface < m->gPhyBFaceEnd(); iface++)
@@ -159,16 +167,40 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 			const std::array<scalar,NDIM> n = m->gnormal(iface);
 			const scalar len = m->gfacemetric(iface,NDIM);
 
-			// coords of face center
-			scalar coord[NDIM];
-			for(int j = 0; j < NDIM; j++)
-			{
-				coord[j] = 0;
-				for(int inofa = 0; inofa < m->gnnofa(iface); inofa++)
-					coord[j] += m->gcoords(m->gintfac(iface,2+inofa),j);
-				coord[j] /= m->gnnofa(iface);
+			// tangent to the face - n x k
+			scalar tangf[NDIM];
+			tangf[0] = n[1]; tangf[1] = -n[0];
+			if(NDIM == 3)
+				tangf[2] = 0;
 
-				output(facecoun,j) = coord[j];
+			// coords of face center
+			scalar fcen[NDIM];
+			for(int jdim = 0; jdim < NDIM; jdim++)
+			{
+				fcen[jdim] = 0;
+				for(int inofa = 0; inofa < m->gnnofa(iface); inofa++)
+					fcen[jdim] += m->gcoords(m->gintfac(iface,2+inofa),jdim);
+				fcen[jdim] /= m->gnnofa(iface);
+
+				output(facecoun,jdim) = fcen[jdim];
+			}
+
+			// coords of cell center for reconstruction
+			// scalar ccen[NDIM];
+			// for(int jdim = 0; jdim < NDIM; jdim++)
+			// 	ccen[jdim] = 0;
+			// for(int inode = 0; inode < m->gnnode(lelem); inode++)
+			// 	for(int jdim = 0; jdim < NDIM; jdim++)
+			// 		ccen[jdim] += m->gcoords(m->ginpoel(lelem,inode),jdim);
+			// for(int jdim = 0; jdim < NDIM; jdim++)
+			// 	ccen[jdim] /= m->gnnode(lelem);
+
+			// reconstruct convserved state
+			scalar urec[NVARS];
+			for(int i = 0; i < NVARS; i++) {
+				urec[i] = u(lelem,i);
+				// for(int jdim = 0; jdim < NDIM; jdim++)
+				// 	urec[i] += grad[lelem](jdim,i) * (fcen[jdim]-ccen[jdim]);
 			}
 
 			/** Pressure coefficient:
@@ -176,7 +208,7 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 			 * = 2(p* - p_inf*) where *'s indicate non-dimensional values.
 			 * We note that p_inf* = 1/(gamma Minf^2) in our non-dimensionalization.
 			 */
-			output(facecoun, NDIM) = (physics.getPressureFromConserved(&u(lelem,0)) - pinf)*2.0;
+			output(facecoun, NDIM) = (physics.getPressureFromConserved(urec) - pinf)*2.0;
 
 			/** Skin friction coefficient \f% C_f = \tau_w / (\frac12 \rho v_\infty^2) \f$.
 			 *
@@ -197,38 +229,49 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 			 */
 
 			// non-dim viscosity / Re_inf
-			const scalar muhat = physics.getViscosityCoeffFromConserved(&u(lelem,0));
+			const scalar muhat = physics.getViscosityCoeffFromConserved(urec);
 
 			// velocity gradient tensor
 			scalar gradu[NDIM][NDIM];
-			gradu[0][0] = (grad[lelem](0,1)*u(lelem,0)-u(lelem,1)*grad[lelem](0,0))
-							/ (u(lelem,0)*u(lelem,0));
-			gradu[0][1] = (grad[lelem](1,1)*u(lelem,0)-u(lelem,1)*grad[lelem](1,0))
-							/ (u(lelem,0)*u(lelem,0));
-			gradu[1][0] = (grad[lelem](0,2)*u(lelem,0)-u(lelem,2)*grad[lelem](0,0))
-							/ (u(lelem,0)*u(lelem,0));
-			gradu[1][1] = (grad[lelem](1,2)*u(lelem,0)-u(lelem,2)*grad[lelem](1,0))
-							/ (u(lelem,0)*u(lelem,0));
+			for(int i = 0; i < NDIM; i++)
+				for(int j = 0; j < NDIM; j++)
+					gradu[i][j] = (grad[lelem](j,i+1)*urec[0] - urec[i+1]*grad[lelem](j,0)) /
+						(urec[0]*urec[0]);
 
-			const scalar tauw =
-				muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
-				+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
+			// const scalar tauw =
+			// 	muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
+			// 	+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 
-			output(facecoun, NDIM+1) = 2.0*tauw;
+			scalar force[NDIM];
+			for(int i = 0; i < NDIM; i++)
+			{
+				force[i] = 0;
+				for(int j = 0; j < NDIM; j++)
+					force[i] += (gradu[i][j] + gradu[j][i])*n[j];
+
+				// div += gradu[i][i];
+			}
+
+			// for(int i = 0; i < NDIM; i++)
+			// 	force[i] -= 2.0/3 * div*n[i];
+
+			const scalar tauw = muhat*dimDotProduct(force,tangf);
+
+			output(facecoun, NDIM+1) = 2*tauw;
 
 			// add contributions to Cdp, Cdf and Cl
 
 			// face normal dot free-stream direction
-			const scalar ndotf = n[0]*av[0]+n[1]*av[1];
+			const scalar ndotw = dimDotProduct(&n[0],&wind[0]); //n[0]*av[0]+n[1]*av[1];
 			// face normal dot "up" direction perpendicular to free stream
-			const scalar ndotnf = n[0]*flownormal[0]+n[1]*flownormal[1];
+			const scalar ndotnw = dimDotProduct(&n[0], flownormal); //n[0]*flownormal[0]+n[1]*flownormal[1];
 			// face tangent dot free-stream direction
-			const scalar tdotf = n[1]*av[0]-n[0]*av[1];
+			const scalar tdotw = dimDotProduct(tangf, &wind[0]);
 
 			totallen += len;
-			Cdp += output(facecoun,NDIM)*ndotf*len;
-			Cdf += output(facecoun,NDIM+1)*tdotf*len;
-			Cl += output(facecoun,NDIM)*ndotnf*len;
+			Cdp += output(facecoun,NDIM)*ndotw*len;
+			Cdf += output(facecoun,NDIM+1)*tdotw*len;
+			Cl += output(facecoun,NDIM)*ndotnw*len;
 
 			facecoun++;
 		}
