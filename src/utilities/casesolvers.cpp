@@ -228,7 +228,7 @@ int SteadyFlowCase::execute_starter(const Spatial<freal,NVARS> *const prob, Vec 
 	// set up time discrization
 
 	const SteadySolverConfig starttconf {
-		opts.lognres, opts.logfile+"-init",
+		opts.lognres, opts.logfile+"-init", false,
 		opts.firstinitcfl, opts.firstendcfl, opts.firstrampstart, opts.firstrampend,
 		opts.firsttolerance, opts.firstmaxiter,
 	};
@@ -306,7 +306,7 @@ TimingData SteadyFlowCase::execute_main(const Spatial<freal,NVARS> *const prob, 
 	// set up time discrization
 
 	const SteadySolverConfig maintconf {
-		opts.lognres, opts.logfile,
+		opts.lognres, opts.logfile, opts.write_final_lin_sys,
 		opts.initcfl, opts.endcfl, opts.rampstart, opts.rampend,
 		opts.tolerance, opts.maxiter,
 	};

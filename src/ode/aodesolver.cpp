@@ -601,6 +601,33 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		throw Numerical_error("Steady backward Euler blew up!");
 	}
 
+	// If requested, write out final linear system
+	if(config.write_final_lin_sys)
+	{
+		const std::string matfile = config.logfile + "_lhs.pmat";
+		const std::string rhsfile = config.logfile + "_b.pmat";
+		const std::string solnfile = config.logfile + "_x.pmat";
+
+		PetscViewer matv, rhsv, solnv;
+		ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, matfile.c_str(), FILE_MODE_WRITE, &matv);
+		CHKERRQ(ierr);
+		ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, rhsfile.c_str(), FILE_MODE_WRITE, &rhsv);
+		CHKERRQ(ierr);
+		ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, solnfile.c_str(), FILE_MODE_WRITE, &solnv);
+		CHKERRQ(ierr);
+
+		// Mat M;
+		// ierr = KSPGetOperators(solver, NULL, &M); CHKERRQ(ierr);
+
+		ierr = MatView(M, matv); CHKERRQ(ierr);
+		ierr = VecView(rvec, rhsv); CHKERRQ(ierr);
+		ierr = VecView(duvec, solnv); CHKERRQ(ierr);
+
+		PetscViewerDestroy(&matv);
+		PetscViewerDestroy(&rhsv);
+		PetscViewerDestroy(&solnv);
+	}
+
 	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
 	ierr = VecDestroy(&duvec); CHKERRQ(ierr);
 	ierr = VecDestroy(&dtmvec); CHKERRQ(ierr);

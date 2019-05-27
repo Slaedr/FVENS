@@ -105,6 +105,14 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 		opts.meshfile = cmdvars["mesh_file"].as<std::string>();
 	}
 
+	if(cmdvars.count("write_final_linear_system")) {
+		opts.write_final_lin_sys = cmdvars["write_final_linear_system"].as<bool>();
+		if(opts.write_final_lin_sys)
+			std::cout << " Will write out the final linear system.\n";
+	} else {
+		opts.write_final_lin_sys = false;
+	}
+
 	opts.vtu_output_file = infopts.get<std::string>(c_io+".solution_output_file");
 	opts.logfile = infopts.get<std::string>(c_io+".log_file_prefix");
 	opts.lognres = infopts.get<bool>(c_io+".convergence_history_required");

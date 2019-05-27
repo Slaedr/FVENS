@@ -23,7 +23,9 @@ po::variables_map parse_cmd_options(const int argc, const char *const argv[],
 	desc.add_options()
 		("help", "Help message")
 		("mesh_file", po::value<std::string>(),
-		 "Mesh file to solve the problem on; overrides the corresponding option in the control file");
+		 "Mesh file to solve the problem on; overrides the corresponding option in the control file")
+		("write_final_linear_system", po::value<bool>(),
+		 "Whether to write out the final linear system solved in case of an implicit solver");
 
 	po::variables_map cmdvarmap;
 	po::parsed_options parsedopts =

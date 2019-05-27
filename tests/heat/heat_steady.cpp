@@ -139,13 +139,13 @@ int main(int argc, char* argv[])
 		}
 
 		const SteadySolverConfig tconf {
-			lognres, logfile,
+			lognres, logfile, false,
 			initcfl, endcfl, rampstart, rampend,
 			tolerance, maxiter
 		};
 
 		const SteadySolverConfig startconf {
-			lognres, logfile,
+			lognres, logfile, false,
 			firstinitcfl, firstendcfl, firstrampstart, firstrampend,
 			firsttolerance, firstmaxiter
 		};

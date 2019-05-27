@@ -18,6 +18,7 @@ namespace fvens {
 struct SteadySolverConfig {
 	bool lognres;                ///< Whether to output nonlinear residual history
 	std::string logfile;         ///< File in which to write nonlinear residual history if needed
+	bool write_final_lin_sys;    ///< Whether to write the final linear system (for implicit solvers)
 	freal cflinit;              ///< Initial CFL number, used for steps before \ref rampstart
 	freal cflfin;               ///< Final CFL, used for time steps after \ref rampend
 	int rampstart;               ///< Time step at which to begin CFL ramping

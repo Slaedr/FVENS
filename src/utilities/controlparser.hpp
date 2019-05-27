@@ -59,10 +59,11 @@ struct FlowParserOptions
 	short soln_init_type,
 		  usestarter;                     ///< Whether to start with a first-order solver initially
 
-	bool lognres,
-		 useconstvisc,
-		 viscsim,
-		 order2;                     ///< Whether 2nd order in space is required
+	bool lognres,                   ///< Whether to write out nonlinear residual history
+		write_final_lin_sys,        ///< Whether to write out the last solved linear system to files
+		useconstvisc,               ///< Whether to use constant viscosity instead of Sutherland
+		viscsim,                    ///< Whether to carry out a viscous flow simulation
+		order2;                     ///< Whether 2nd order in space is required
 
 	std::vector<int> lwalls,         ///< List of wall boundary markers for output
 		lothers;                     ///< List of other boundary markers for output
