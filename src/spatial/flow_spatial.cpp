@@ -150,9 +150,10 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 
 	const scalar pinf = physics.getFreestreamPressure();
 
-	// unit vector normal to the free-stream flow direction
-	// TODO: Generalize to 3D
+	// TODO: Generalize to 3D by using areas rather than 'lengths' of faces
 	static_assert(NDIM == 2, "surface data not implemented for 3D yet");
+
+	// unit vector normal to the free-stream flow direction
 	scalar flownormal[NDIM];
 	flownormal[0] = -wind[1]; flownormal[1] = wind[0];
 	if(NDIM == 3)
@@ -242,7 +243,7 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 			// 	muhat*((2.0*gradu[0][0]*n[0] +(gradu[0][1]+gradu[1][0])*n[1])*n[1]
 			// 	+ ((gradu[1][0]+gradu[0][1])*n[0] + 2.0*gradu[1][1]*n[1])*(-n[0]));
 
-			scalar force[NDIM];
+			scalar force[NDIM] /*,div=0*/ ;
 			for(int i = 0; i < NDIM; i++)
 			{
 				force[i] = 0;
@@ -256,22 +257,50 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 			// 	force[i] -= 2.0/3 * div*n[i];
 
 			const scalar tauw = muhat*dimDotProduct(force,tangf);
+			//const scalar viscdragforce = muhat*dimDotProduct(force,&wind[0]);
 
 			output(facecoun, NDIM+1) = 2*tauw;
+
+			// scalar totalforce = 0;
+			// {
+			// 	// Compute tota drag separately
+			// 	scalar sigma[NDIM][NDIM];
+			// 	for(int i = 0; i < NDIM; i++)
+			// 	{
+			// 		for(int j = 0; j < NDIM; j++)
+			// 			sigma[i][j] = 0;
+
+			// 		sigma[i][i] = physics.getPressureFromConserved(urec) -2.0/3 * muhat * div;
+
+			// 		for(int j = 0; j < NDIM; j++)
+			// 		{
+			// 			sigma[i][j] += muhat*(gradu[i][j] + gradu[j][i]);
+			// 		}
+			// 	}
+
+			// 	scalar force[NDIM] = {0,0};
+			// 	for(int i = 0; i < NDIM; i++)
+			// 		for(int j = 0; j < NDIM; j++)
+			// 			force[i] += sigma[i][j]*n[j];
+
+			// 	totalforce = dimDotProduct(force, &wind[0]);
+			// }
+			// Cd += 2*totalforce*len;
 
 			// add contributions to Cdp, Cdf and Cl
 
 			// face normal dot free-stream direction
-			const scalar ndotw = dimDotProduct(&n[0],&wind[0]); //n[0]*av[0]+n[1]*av[1];
+			const scalar ndotw = dimDotProduct(&n[0],&wind[0]);
 			// face normal dot "up" direction perpendicular to free stream
-			const scalar ndotnw = dimDotProduct(&n[0], flownormal); //n[0]*flownormal[0]+n[1]*flownormal[1];
+			const scalar ndotnw = dimDotProduct(&n[0], flownormal);
 			// face tangent dot free-stream direction
 			const scalar tdotw = dimDotProduct(tangf, &wind[0]);
 
 			totallen += len;
+			Cl += output(facecoun,NDIM)*ndotnw*len;
 			Cdp += output(facecoun,NDIM)*ndotw*len;
 			Cdf += output(facecoun,NDIM+1)*tdotw*len;
-			Cl += output(facecoun,NDIM)*ndotnw*len;
+			// Cdf += 2*viscdragforce * len;
 
 			facecoun++;
 		}
@@ -283,6 +312,8 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 
 	// Normalize drag and lift by reference area
 	Cdp /= totallen; Cdf /= totallen; Cl /= totallen;
+
+	// std::cout << " >> Total CD = " << Cd/totallen << std::endl;
 
 	return std::make_tuple(Cl, Cdp, Cdf);
 }
