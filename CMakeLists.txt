@@ -214,7 +214,16 @@ endif()
 
 # profiling
 if(PROFILE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -g")
+  message(STATUS "Building with profiling options")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+  if(CXX_COMPILER_GNUCLANG)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
+  elseif(CXX_COMPILER_INTEL)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared-intel -debug inline-debug-info -parallel-source-info=2")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -shared-intel -debug inline-debug-info -parallel-source-info=2")
+  endif()
 endif()
 
 # Boost
