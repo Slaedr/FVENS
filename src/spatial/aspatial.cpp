@@ -25,9 +25,6 @@
 #include "utilities/aerrorhandling.hpp"
 #include "utilities/mpiutils.hpp"
 #include "linalg/alinalg.hpp"
-#ifdef USE_ADOLC
-#include <adolc/adolc.h>
-#endif
 
 namespace fvens {
 
@@ -37,7 +34,7 @@ namespace fvens {
  * \sa compute_ghost_cell_coords_about_face
  */
 template<typename scalar, int nvars>
-Spatial<scalar,nvars>::Spatial(const UMesh<scalar,2> *const mesh) : m(mesh)
+Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh)
 {
 	StatusCode ierr = 0;
 
@@ -123,6 +120,7 @@ void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_midpoint(amat::Array
 
 /** The ghost cell is a reflection of the boundary cell about the boundary-face.
  * It is NOT the reflection about the midpoint of the boundary-face.
+ * \todo TODO Generalize to 3D
  */
 template<typename scalar, int nvars>
 void Spatial<scalar,nvars>::compute_ghost_cell_coords_about_face(amat::Array2d<scalar>& rchg)
@@ -345,8 +343,4 @@ StatusCode Spatial<scalar,nvars>::assemble_jacobian(const Vec uvec, Mat A) const
 template class Spatial<freal,NVARS>;
 template class Spatial<freal,1>;
 
-#ifdef USE_ADOLC
-template class Spatial<adouble,NVARS>;
-template class Spatial<adouble,1>;
-#endif
 }	// end namespace

@@ -23,7 +23,6 @@
 #include "physics/viscousphysics.hpp"
 #include "abctypemap.hpp"
 #include "utilities/afactory.hpp"
-#include "utilities/adolcutils.hpp"
 #include "utilities/mpiutils.hpp"
 #include "linalg/alinalg.hpp"
 #include "linalg/petscutils.hpp"
@@ -57,13 +56,6 @@ FlowFV_base<scalar>::FlowFV_base(const UMesh<scalar,NDIM> *const mesh,
 	for(auto it = pconfig.bcconf.begin(); it != pconfig.bcconf.end(); it++) {
 		std::cout << "  " << bcTypeMap.left.find(it->bc_type)->second << '\n';
 	}
-
-	// To get rid of unused function warning for ADOL-C include
-	//  Should be removed once ADOL-C instantiations are compiled and working
-#ifdef USE_ADOLC
-	adouble x = 3.0;
-	(void)getvalue<adouble>(x);
-#endif
 }
 
 template <typename scalar>
@@ -119,11 +111,12 @@ void FlowFV_base<scalar>::getGradients(const Vec uvec,
 	                            &grads[0](0,0));
 }
 
+/// Computes a unit vector in the given direction
+/** \todo For now, we assume the slipstream angle is zero. Add it as a parameter.
+ */
 template <typename scalar>
 static inline std::array<scalar,NDIM> flowDirectionVector(const scalar aoa)
 {
-	static_assert(NDIM == 2, "Flow direction not implemented for 3D yet");
-	// Take beta as a parameter and remove the above assert
 	const scalar beta = 0;
 
 	return getNormalizedFreeStreamVector(aoa, beta);
@@ -626,11 +619,11 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 		}
 
 #pragma omp atomic update
-		integ(lelem) += getvalue<scalar>(specradi);
+		integ(lelem) += specradi;
 
 		if(relem < m->gnelem()) {
 #pragma omp atomic update
-			integ(relem) += getvalue<scalar>(specradj);
+			integ(relem) += specradj;
 		}
 	}
 
@@ -641,7 +634,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 #endif
 	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
-		timesteps[iel] = getvalue<scalar>(m->garea(iel))/integ(iel);
+		timesteps[iel] = m->garea(iel)/integ(iel);
 	}
 }
 

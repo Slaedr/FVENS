@@ -63,7 +63,7 @@ class FlowFV_base : public Spatial<scalar,NVARS>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV_base(const UMesh<scalar,2> *const mesh,              ///< Mesh context
+	FlowFV_base(const UMesh<scalar,NDIM> *const mesh,    ///< Mesh context
 	            const FlowPhysicsConfig& pconfig,        ///< Physical data defining the problem
 	            const FlowNumericsConfig& nconfig        ///< Options defining the numerical method
 	            );
@@ -180,7 +180,7 @@ class FlowFV : public FlowFV_base<scalar>
 {
 public:
 	/// Sets data and initializes the numerics
-	FlowFV(const UMesh<scalar,2> *const mesh,                  ///< Mesh context
+	FlowFV(const UMesh<scalar,NDIM> *const mesh,           ///< Mesh context
 	       const FlowPhysicsConfig& pconfiguration,        ///< Physical data defining the problem
 	       const FlowNumericsConfig& nconfiguration        ///< Options defining the numerical method
 	);

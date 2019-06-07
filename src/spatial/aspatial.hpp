@@ -18,8 +18,8 @@
  *   along with FVENS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ASPATIAL_H
-#define ASPATIAL_H 1
+#ifndef FVENS_ASPATIAL_H
+#define FVENS_ASPATIAL_H 1
 
 #include <array>
 #include <tuple>
@@ -42,7 +42,7 @@ public:
 	/** Computes and stores cell centre coordinates, ghost cells' centres, and
 	 * quadrature point coordinates.
 	 */
-	Spatial(const UMesh<scalar,2> *const mesh);
+	Spatial(const UMesh<scalar,NDIM> *const mesh);
 
 	virtual ~Spatial();
 
@@ -99,7 +99,7 @@ public:
 
 protected:
 	/// Mesh context
-	const UMesh<scalar,2> *const m;
+	const UMesh<scalar,NDIM> *const m;
 
 	/// Cell centers of both real cells and connectivity ghost cells
 	Vec rcvec;
