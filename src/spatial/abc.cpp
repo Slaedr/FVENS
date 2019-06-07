@@ -122,10 +122,11 @@ void InOutFlow<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const 
 		gs[NDIM+1] = jphy.getEnergyFromPressure
 			( pinf, ins[0], dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]) );
 
-		dgs[3*NVARS+0] = -0.5*(ins[1]*ins[1]+ins[2]*ins[2])/(ins[0]*ins[0]);
-		dgs[3*NVARS+1] = ins[1]/ins[0];
-		dgs[3*NVARS+2] = ins[2]/ins[0];
-		dgs[3*NVARS+3] = 0;
+		dgs[(NDIM+1)*NVARS+0] = -0.5*dimDotProduct(&ins[1],&ins[1])/(ins[0]*ins[0]);
+		for(int j = 1; j < NDIM+1; j++)
+			dgs[(NDIM+1)*NVARS+j] = ins[j]/ins[0];
+		//dgs[3*NVARS+2] = ins[2]/ins[0];
+		dgs[(NDIM+1)*NVARS+NDIM+1] = 0;
 	}
 
 	// At supersonic outflow, everything is taken from the interior
@@ -224,7 +225,6 @@ void Slipwall<scalar,j_real>::computeGhostState(const scalar *const ins, const s
 	gs[3] = ins[3];
 }
 
-/// \todo Make this dimension-independent
 template <typename scalar, typename j_real>
 void Slipwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const ins, const j_real *const n,
                                                            j_real *const __restrict gs,
@@ -241,24 +241,24 @@ void Slipwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *const i
 	dvni[NDIM+1] = 0;
 
 	gs[0] = ins[0];
-
 	dgs[0] = 1.0;
 
-	gs[1] = ins[1] - 2.0*vni*n[0]*ins[0];
+	for(int i = 1; i < NDIM+1; i++)
+	{
+		gs[i] = ins[i] - 2.0*n[i-1]*vni*ins[0];
 
-	dgs[NVARS+0] = -2.0*n[0]*(dvni[0]*ins[0]+vni);
-	dgs[NVARS+1] = 1.0 - 2.0*n[0]*ins[0]*dvni[1];
-	dgs[NVARS+2] = -2.0*n[0]*ins[0]*dvni[2];
+		dgs[i*NVARS] = -2.0*n[i-1]*(dvni[0]*ins[0] + vni);
+		for(int j = 1; j < NDIM+1; j++)
+		{
+			if(i==j)
+				dgs[i*NVARS+j] = 1.0 - 2.0*n[i-1]*dvni[i]*ins[0];
+			else
+				dgs[i*NVARS+j] = -2.0*n[i-1]*dvni[j]*ins[0];
+		}
+	}
 
-	gs[2] = ins[2] - 2.0*vni*n[1]*ins[0];
-
-	dgs[2*NVARS+0] = -2.0*n[1]*(dvni[0]*ins[0]+vni);
-	dgs[2*NVARS+1] = -2.0*n[1]*ins[0]*dvni[1];
-	dgs[2*NVARS+2] = 1.0 - 2.0*n[1]*ins[0]*dvni[2];
-
-	gs[3] = ins[3];
-
-	dgs[3*NVARS+3] = 1.0;
+	gs[NDIM+1] = ins[NDIM+1];
+	dgs[(NDIM+1)*NVARS+NDIM+1] = 1.0;
 }
 
 template <typename scalar, typename j_real>
