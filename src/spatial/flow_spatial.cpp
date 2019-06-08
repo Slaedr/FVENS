@@ -137,8 +137,8 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 	// unit vector in the direction of flow
 	const std::array<scalar,NDIM> wind = flowDirectionVector(pconfig.aoa);
 
-	fint facecoun = 0;			// face iteration counter for this boundary marker
-	scalar totallen = 0;		// total area of the surface with this boundary marker
+	fint facecoun = 0;          // face iteration counter for this boundary marker
+	scalar totalarea = 0;       // total area of the surface with this boundary marker
 	scalar Cdf=0, Cdp=0, Cl=0;
 
 	const scalar pinf = physics.getFreestreamPressure();
@@ -159,7 +159,7 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 		{
 			const fint lelem = m->gintfac(iface,0);
 			const std::array<scalar,NDIM> n = m->gnormal(iface);
-			const scalar len = m->gfacemetric(iface,NDIM);
+			const scalar area = m->gfacemetric(iface,NDIM);
 
 			// tangent to the face - n x k
 			scalar tangf[NDIM];
@@ -278,7 +278,7 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 
 			// 	totalforce = dimDotProduct(force, &wind[0]);
 			// }
-			// Cd += 2*totalforce*len;
+			// Cd += 2*totalforce*area;
 
 			// add contributions to Cdp, Cdf and Cl
 
@@ -289,24 +289,22 @@ FlowFV_base<scalar>::computeSurfaceData (const amat::Array2dView<scalar> u,
 			// face tangent dot free-stream direction
 			const scalar tdotw = dimDotProduct(tangf, &wind[0]);
 
-			totallen += len;
-			Cl += output(facecoun,NDIM)*ndotnw*len;
-			Cdp += output(facecoun,NDIM)*ndotw*len;
-			Cdf += output(facecoun,NDIM+1)*tdotw*len;
-			// Cdf += 2*viscdragforce * len;
+			totalarea += area;
+			Cl += output(facecoun,NDIM)*ndotnw*area;
+			Cdp += output(facecoun,NDIM)*ndotw*area;
+			Cdf += output(facecoun,NDIM+1)*tdotw*area;
+			// Cdf += 2*viscdragforce * area;
 
 			facecoun++;
 		}
 	}
 
-	scalar funcs[] = {Cl, Cdp, Cdf, totallen};
+	scalar funcs[] = {Cl, Cdp, Cdf, totalarea};
 	mpi_all_reduce<scalar>(funcs, 4, MPI_SUM, MPI_COMM_WORLD);
-	Cl = funcs[0]; Cdp = funcs[1]; Cdf = funcs[2]; totallen = funcs[3];
+	Cl = funcs[0]; Cdp = funcs[1]; Cdf = funcs[2]; totalarea = funcs[3];
 
 	// Normalize drag and lift by reference area
-	Cdp /= totallen; Cdf /= totallen; Cl /= totallen;
-
-	// std::cout << " >> Total CD = " << Cd/totallen << std::endl;
+	Cdp /= totalarea; Cdf /= totalarea; Cl /= totalarea;
 
 	return std::make_tuple(Cl, Cdp, Cdf);
 }
@@ -326,7 +324,7 @@ FlowFV<scalar,secondOrderRequested,constVisc>::FlowFV(const UMesh<scalar,NDIM> *
 	std::cout << "RAnk " << mpirank << ": Starting constructing flow spatial.." << std::endl;
 #endif
 	if(secondOrderRequested) {
-		std::cout << "FlowFV: Second order solution requested.\n";
+		std::cout << " FlowFV: Second order solution requested.\n";
 		// for storing cell-centred gradients at interior cells and ghost cells
 		int ierr = createGhostedSystemVector(m, NVARS*NDIM, &gradvec);
 		fvens_throw(ierr, "Could not create storage for gradients!");
