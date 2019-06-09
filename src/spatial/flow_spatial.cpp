@@ -518,15 +518,13 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 #pragma omp parallel for default(shared)
 	for(fint ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
-		scalar n[NDIM];
-		n[0] = m->gfacemetric(ied,0);
-		n[1] = m->gfacemetric(ied,1);
-		const scalar len = m->gfacemetric(ied,2);
+		const std::array<scalar,NDIM> n = m->gnormal(ied);
+		const scalar len = m->gfacemetric(ied,NDIM);
 		const fint lelem = m->gintfac(ied,0);
 		const fint relem = m->gintfac(ied,1);
 		scalar fluxes[NVARS];
 
-		inviflux->get_flux(&uleft[ied*NVARS], &uright[ied*NVARS], n, fluxes);
+		inviflux->get_flux(&uleft[ied*NVARS], &uright[ied*NVARS], &n[0], fluxes);
 
 		// integrate over the face
 		for(int ivar = 0; ivar < NVARS; ivar++)
@@ -542,7 +540,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 			const GradBlock_t<scalar,NDIM,NVARS>& gradright = isPhyBoun ? grads[lelem] : grads[relem];
 
 			scalar vflux[NVARS];
-			compute_viscous_flux(n, &rc(lelem,0), rcr,
+			compute_viscous_flux(&n[0], &rc(lelem,0), rcr,
 			                     &u[lelem*NVARS], ucellright, grads[lelem], gradright,
 			                     &uleft[ied*NVARS], &uright[ied*NVARS], vflux);
 
@@ -581,18 +579,21 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 #pragma omp parallel for default(shared)
 	for(fint ied = m->gFaceStart(); ied < m->gFaceEnd(); ied++)
 	{
-		scalar n[NDIM];
-		n[0] = m->gfacemetric(ied,0);
-		n[1] = m->gfacemetric(ied,1);
-		const scalar len = m->gfacemetric(ied,2);
+		const std::array<scalar,NDIM> n = m->gnormal(ied);
+		// scalar n[NDIM];
+		// n[0] = m->gfacemetric(ied,0);
+		// n[1] = m->gfacemetric(ied,1);
+		const scalar len = m->gfacemetric(ied,NDIM);
 		const int lelem = m->gintfac(ied,0);
 		const int relem = m->gintfac(ied,1);
 		//calculate speeds of sound
 		const scalar ci = physics.getSoundSpeedFromConserved(&uleft(ied,0));
 		const scalar cj = physics.getSoundSpeedFromConserved(&uright(ied,0));
 		//calculate normal velocities
-		const scalar vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
-		const scalar vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
+		// const scalar vni = (uleft(ied,1)*n[0] +uleft(ied,2)*n[1])/uleft(ied,0);
+		// const scalar vnj = (uright(ied,1)*n[0] + uright(ied,2)*n[1])/uright(ied,0);
+		const scalar vni = dimDotProduct(&uleft(ied,1),&n[0])/uleft(ied,0);
+		const scalar vnj = dimDotProduct(&uright(ied,1),&n[0])/uright(ied,0);
 
 		scalar specradi = (fabs(vni)+ci)*len;
 		scalar specradj = (fabs(vnj)+cj)*len;
@@ -625,11 +626,7 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 		}
 	}
 
-#ifdef USE_ADOLC
-#pragma omp parallel for default(shared)
-#else
 #pragma omp parallel for simd default(shared)
-#endif
 	for(fint iel = 0; iel < m->gnelem(); iel++)
 	{
 		timesteps[iel] = m->garea(iel)/integ(iel);
@@ -829,20 +826,13 @@ void FlowFV<scalar,order2,constVisc>
 	assert(iface < m->gDomFaceEnd());
 
 	const std::array<freal,NDIM> n = m->gnormal(iface);
-	const freal len = m->gfacemetric(iface,2);
+	const freal len = m->gfacemetric(iface,NDIM);
 
 	// NOTE: the values of L and U get REPLACED here, not added to
 	jiflux->get_jacobian(ul, ur, &n[0], &L(0,0), &U(0,0));
 
 	if(pconfig.viscous_sim) {
-		// Vec rclocal;
-		// int ierr = VecGhostGetLocalForm(rcvec, &rclocal); petsc_throw(ierr, "Could not get rc local");
-		// const freal *const rcloc = getVecAsReadOnlyArray(rclocal);
-		//compute_viscous_flux_approximate_jacobian(iface, &uarr[lelem*NVARS], &uarr[relem*NVARS],
-		//		&L(0,0), &U(0,0));
 		compute_viscous_flux_jacobian(iface, ul, ur, &L(0,0), &U(0,0));
-
-		// ierr = VecGhostRestoreLocalForm(rcvec, &rclocal); petsc_throw(ierr, "Could not restore rc local");
 	}
 
 	L *= len; U *= len;
@@ -858,7 +848,7 @@ void FlowFV<scalar,order2,constVisc>
 	assert(iface < m->gPhyBFaceEnd());
 
 	const std::array<freal,NDIM> n = m->gnormal(iface);
-	const freal len = m->gfacemetric(iface,2);
+	const freal len = m->gfacemetric(iface,NDIM);
 
 	freal uface[NVARS];
 	Eigen::Matrix<freal,NVARS,NVARS,Eigen::RowMajor> drdl;

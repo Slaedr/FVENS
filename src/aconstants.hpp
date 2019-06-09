@@ -12,6 +12,13 @@
 #endif
 */
 
+// For #pragma FVCOMPILER unroll NVARS, #pragma FCOMPILER ivdep, etc.
+#ifdef __GNUC__
+#define FVCOMPILER GNU
+#elif defined __clang__
+#define FVCOMPILER
+#endif
+
 #define PI 3.14159265358979323846
 #define SQRT3 1.73205080756887729353
 
