@@ -113,6 +113,7 @@ void IdealGasPhysics<scalar>::getJacobianPressureWrtConserved(const scalar *cons
 	dp[NDIM+1] = (g-1.0);
 }
 
+// Depends on non-dimensionalization
 template <typename scalar>
 inline
 scalar IdealGasPhysics<scalar>::getTemperature(const scalar rho, const scalar p) const
@@ -120,6 +121,7 @@ scalar IdealGasPhysics<scalar>::getTemperature(const scalar rho, const scalar p)
   return p/rho * g*Minf*Minf;
 }
 
+// Depends on non-dimensionalization
 template <typename scalar>
 inline
 void IdealGasPhysics<scalar>::getJacobianTemperature(const scalar rho,
@@ -132,6 +134,7 @@ void IdealGasPhysics<scalar>::getJacobianTemperature(const scalar rho,
 		dT[i] += coef/rho * dp[i];
 }
 
+// independent of non-dimensionalization
 template <typename scalar>
 inline
 scalar IdealGasPhysics<scalar>::getSoundSpeed(const scalar rho, const scalar p) const
