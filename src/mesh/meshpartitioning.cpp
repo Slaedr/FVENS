@@ -371,13 +371,16 @@ ScotchRGMPartitioner::ScotchRGMPartitioner(const UMesh<freal,2>& globalmesh)
 void ScotchRGMPartitioner::compute_partition()
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	elemdist.resize(gm.gnelem());
+
 	if(rank == 0) {
 		SCOTCH_Graph *sgraph = SCOTCH_graphAlloc();
 
-		elemdist.resize(gm.gnelem());
-
 		SCOTCH_memFree(sgraph);
 	}
+
+	// boradcast the computed partition
+	MPI_Bcast(&elemdist[0], gm.gnelem(), FVENS_MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh<freal,2>& globalmesh)
