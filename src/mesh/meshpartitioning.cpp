@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <map>
+#include <scotch.h>
 #include "meshpartitioning.hpp"
 #include "utilities/mpiutils.hpp"
 
@@ -361,6 +362,22 @@ void TrivialReplicatedGlobalMeshPartitioner::compute_partition()
 	}
 	for(fint iel = nranks*numloceleminit; iel < gm.gnelem(); iel++)
 		elemdist[iel] = nranks-1;
+}
+
+ScotchRGMPartitioner::ScotchRGMPartitioner(const UMesh<freal,2>& globalmesh)
+	: ReplicatedGlobalMeshPartitioner(globalmesh)
+{ }
+
+void ScotchRGMPartitioner::compute_partition()
+{
+	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	if(rank == 0) {
+		SCOTCH_Graph *sgraph = SCOTCH_graphAlloc();
+
+		elemdist.resize(gm.gnelem());
+
+		SCOTCH_memFree(sgraph);
+	}
 }
 
 SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh<freal,2>& globalmesh)

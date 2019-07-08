@@ -95,6 +95,15 @@ public:
 	void compute_partition();
 };
 
+/// A simple partitioner that just serially partitions the mesh using Scotch
+class ScotchRGMPartitioner : public ReplicatedGlobalMeshPartitioner
+{
+public:
+	ScotchRGMPartitioner(const UMesh<freal,NDIM>& global_mesh);
+
+	void compute_partition();
+};
+
 /// A simple partitioner that just serially agglomerates cells into subdomains
 class SimpleRGMPartitioner : public ReplicatedGlobalMeshPartitioner
 {

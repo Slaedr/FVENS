@@ -37,11 +37,14 @@ add_library(fvens_base
   utilities/aarray2d.cpp utilities/mpiutils.cpp
   )
 
-target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${PETSC_LIB})
+target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${SCOTCH_LIB} ${SCOTCH_ERR_LIB}
+  ${PETSC_LIB})
+target_include_directories(fvens_base PRIVATE ${SCOTCH_DIR}/include)
 if(WITH_BLASTED)
   target_link_libraries(fvens_base ${BLASTED_LIB})
 endif()
-target_link_libraries(fvens_base ${MPI_C_LIBRARIES} ${MPI_C_LINK_FLAGS} ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS})
+target_link_libraries(fvens_base ${MPI_C_LIBRARIES} ${MPI_C_LINK_FLAGS}
+  ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS})
 # if(CXX_COMPILER_CLANG)
 #   target_compile_options(fvens_base PRIVATE "-Wno-error=pass-failed")
 # endif()
