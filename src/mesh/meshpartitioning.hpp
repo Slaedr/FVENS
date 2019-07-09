@@ -104,15 +104,6 @@ public:
 	void compute_partition();
 };
 
-/// A simple partitioner that just serially agglomerates cells into subdomains
-class SimpleRGMPartitioner : public ReplicatedGlobalMeshPartitioner
-{
-public:
-	SimpleRGMPartitioner(const UMesh<freal,NDIM>& global_mesh);
-
-	void compute_partition();
-};
-
 }
 
 #endif

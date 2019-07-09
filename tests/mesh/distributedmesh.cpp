@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <memory>
 #include "utilities/mpiutils.hpp"
 #include "mesh/meshpartitioning.hpp"
 #include "mesh/ameshutils.hpp"
@@ -47,13 +48,14 @@ int main(int argc, char *argv[])
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 	const int nranks = get_mpi_size(MPI_COMM_WORLD);
 
-	if(argc < 2*nranks+2) {
+	if(argc < 2*nranks+3) {
 		std::cout << "Not enough arguments!\n";
 		MPI_Finalize();
 		return -1;
 	}
 
-	const int basepos = 1;
+	const int basepos = 2;
+	const std::string algtotest = argv[basepos-1];
 
 	const std::string globalmeshfile = argv[basepos];
 	std::vector<std::string> localmeshfiles, distfiles;
@@ -68,9 +70,14 @@ int main(int argc, char *argv[])
 	UMesh<freal,NDIM> gm(readMesh(globalmeshfile));
 	gm.compute_topological();
 
-	TrivialReplicatedGlobalMeshPartitioner p(gm);
-	p.compute_partition();
-	const UMesh<freal,NDIM> lm = p.restrictMeshToPartitions();
+	std::shared_ptr<ReplicatedGlobalMeshPartitioner> p;
+	if(algtotest == "scotch")
+		p = std::make_shared<ScotchRGMPartitioner>(gm);
+	else
+		p = std::make_shared<TrivialReplicatedGlobalMeshPartitioner>(gm);
+
+	p->compute_partition();
+	const UMesh<freal,NDIM> lm = p->restrictMeshToPartitions();
 
 	// Read solution to check against
 	const UMesh<freal,NDIM> reflm(readMesh(localmeshfiles[rank]));

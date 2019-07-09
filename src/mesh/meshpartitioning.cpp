@@ -7,6 +7,8 @@
 #include <scotch.h>
 #include "meshpartitioning.hpp"
 #include "utilities/mpiutils.hpp"
+#include "utilities/listofarrays.hpp"
+#include "utilities/helper_algorithms.hpp"
 
 namespace fvens {
 
@@ -364,75 +366,117 @@ void TrivialReplicatedGlobalMeshPartitioner::compute_partition()
 		elemdist[iel] = nranks-1;
 }
 
-ScotchRGMPartitioner::ScotchRGMPartitioner(const UMesh<freal,2>& globalmesh)
+ScotchRGMPartitioner::ScotchRGMPartitioner(const UMesh<freal,NDIM>& globalmesh)
 	: ReplicatedGlobalMeshPartitioner(globalmesh)
 { }
+
+/// Computes the adjacency lists of the graph respresented by cells of the mesh
+/** \param m The mesh; assumes that the elements-surrounding-elements array esuel is already computed.
+ */
+ListOfArrays<fint> getCellAdjLists(const UMesh<freal,NDIM>& m)
+{
+	ListOfArrays<fint> loa;
+	loa.ptrs.resize(m.gnelem()+1);
+
+	loa.ptrs[0] = 0;
+	for(fint iel = 0; iel < m.gnelem(); iel++)
+	{
+		fint elnumadj = 0;
+		for(int j = 0; j < m.gnfael(iel); j++) {
+			if(m.gesuel(iel,j) >= 0 && m.gesuel(iel,j) < m.gnelem()) {
+				elnumadj++;
+			}
+		}
+		loa.ptrs[iel+1] = elnumadj;
+	}
+
+	inclusive_scan(loa.ptrs);
+	const fint adjsize = loa.ptrs.back();
+	loa.store.resize(adjsize);
+
+	for(fint iel = 0; iel < m.gnelem(); iel++)
+	{
+		int k = 0;
+		fint iloc = loa.ptrs[iel];
+		while(iloc < loa.ptrs[iel+1])
+		{
+			//printf(" Cell %d: Iloc is %d.\n", iel, iloc); fflush(stdout);
+			if(m.gesuel(iel,k) >= 0 && m.gesuel(iel,k) < m.gnelem()) {
+				loa.store[iloc] = m.gesuel(iel,k);
+				iloc++;
+			}
+			assert(k < m.gnfael(iel));
+			k++;
+		}
+		assert(iloc == loa.ptrs[iel+1]);
+	}
+
+#ifdef DEBUG
+	for(fint iel = 0; iel < m.gnelem(); iel++)
+	{
+		int k = 0;
+		for(int ifael = 0; ifael < m.gnfael(iel); ifael++)
+		{
+			if(m.gesuel(iel,ifael) >= 0 && m.gesuel(iel,ifael) < m.gnelem()) {
+				assert(m.gesuel(iel,ifael) == loa.store[loa.ptrs[iel]+k]);
+				k++;
+			}
+		}
+		assert(k == loa.ptrs[iel+1]-loa.ptrs[iel]);
+	}
+#endif
+
+	return loa;
+}
 
 void ScotchRGMPartitioner::compute_partition()
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
+
 	elemdist.resize(gm.gnelem());
 
 	if(rank == 0) {
+		printf(" Using Scotch to compute a partition..\n");
 		SCOTCH_Graph *sgraph = SCOTCH_graphAlloc();
+		const ListOfArrays<fint> loa = getCellAdjLists(gm);
+		int ierr = SCOTCH_graphBuild(sgraph, 0, gm.gnelem(), &loa.ptrs[0], NULL, NULL, NULL,
+		                             loa.ptrs.back(), &loa.store[0], NULL);
+		fvens_throw(ierr, "Scotch could not build the global graph!");
+		ierr = SCOTCH_graphCheck(sgraph); fvens_throw(ierr, "Scotch graph is not consistent!");
 
+		SCOTCH_Strat *strat = SCOTCH_stratAlloc();
+		ierr = SCOTCH_stratInit(strat); fvens_throw(ierr, "Scotch could not initialize strategy!");
+
+		ierr = SCOTCH_graphPart(sgraph, mpisize, strat, &elemdist[0]);
+		fvens_throw(ierr, "Scotch could not partition the graph!");
+
+		SCOTCH_graphExit(sgraph);
+		SCOTCH_stratExit(strat);
+		SCOTCH_memFree(strat);
 		SCOTCH_memFree(sgraph);
 	}
 
 	// boradcast the computed partition
 	MPI_Bcast(&elemdist[0], gm.gnelem(), FVENS_MPI_INT, 0, MPI_COMM_WORLD);
-}
 
-SimpleRGMPartitioner::SimpleRGMPartitioner(const UMesh<freal,2>& globalmesh)
-	: ReplicatedGlobalMeshPartitioner(globalmesh)
-{ }
-
-void SimpleRGMPartitioner::compute_partition()
-{
-	const int nranks = get_mpi_size(MPI_COMM_WORLD);
-	const int numloceleminit = gm.gnelem() / nranks;
-	elemdist.resize(gm.gnelem());
-
-	std::vector<bool> ismarked(gm.gnelem(), false);
-
-	fint startcell = 0;
-
-	for(int irank = 0; irank < nranks; irank++)
-	{
-		const fint ncellsrank = (irank == nranks-1) ?
-			(gm.gnelem()-numloceleminit*(nranks-1)) : numloceleminit;
-
-		bool endoftheline = false;        // True if no unmarked neighbors exist
-		fint nmarkedcells = 0;           // Number of cells marked
-
-		std::vector<fint> cellsinrank;   // Will contain this rank's cells
-		cellsinrank.reserve(ncellsrank);
-
-		fint baseidx = 0;                // Cell in cellsinrank from which to mark neighbors
-		ismarked[startcell] = true;
-		cellsinrank.push_back(startcell);
-		nmarkedcells++;
-
-		while(!endoftheline && nmarkedcells <= ncellsrank)
-		{
-			const fint basecell = cellsinrank[baseidx];
-			for(int iface = 0; iface < gm.gnfael(basecell); iface++)
-			{
-				if(nmarkedcells >= ncellsrank)
-					break;
-
-				const fint nbdcell = gm.gesuel(startcell,iface);
-				if(!ismarked[nbdcell] && nbdcell < gm.gnelem())
-				{
-					cellsinrank.push_back(nbdcell);
-					nmarkedcells++;
-					ismarked[nbdcell] = true;
-				}
-			}
-
-			baseidx++;
-		}
+#ifdef DEBUG
+	//printf(" Partition: >\n");
+	for(fint iel = 0; iel < gm.gnelem(); iel++) {
+		assert(elemdist[iel] >= 0);
+		assert(elemdist[iel] < mpisize);
+		printf(" %d ", elemdist[iel]);
 	}
+	//printf("\n"); fflush(stdout);
+#endif
+
+	// const int numloceleminit = gm.gnelem() / mpisize;
+	// for(int irank = 0; irank < mpisize; irank++) {
+	// 	for(fint iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
+	// 		elemdist[iel] = irank;
+	// }
+	// for(fint iel = mpisize*numloceleminit; iel < gm.gnelem(); iel++)
+	// 	elemdist[iel] = mpisize-1;
 }
 
 }

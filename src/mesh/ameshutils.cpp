@@ -120,6 +120,7 @@ UMesh<freal,NDIM> constructMesh(const std::string mesh_path)
 	if(mpirank == 0)
 		std::cout << "Distributing the mesh\n";
 	TrivialReplicatedGlobalMeshPartitioner p(gm);
+	//ScotchRGMPartitioner p(gm);
 	p.compute_partition();
 	UMesh<freal,NDIM> lm = p.restrictMeshToPartitions();
 
