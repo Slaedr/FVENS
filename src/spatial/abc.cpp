@@ -222,7 +222,7 @@ void Slipwall<scalar,j_real>::computeGhostState(const scalar *const ins, const s
 	gs[0] = ins[0];
 	for(int i = 1; i < NDIM+1; i++)
 		gs[i] = ins[i] - 2.0*vni*n[i-1]*ins[0];
-	gs[3] = ins[3];
+	gs[NDIM+1] = ins[NDIM+1];
 }
 
 template <typename scalar, typename j_real>
