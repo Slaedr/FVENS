@@ -41,40 +41,19 @@ amat::Array2d<fint> getConnMatrix(const fint nconnface, std::ifstream& fin)
 	return conn;
 }
 
-int main(int argc, char *argv[])
+// Checks a trivial distribution in which the cells are uniformly divided according to their index
+//  in the mesh file
+void checkTrivial(const std::string globalmeshfile, const std::vector<std::string>& localmeshfiles,
+                  const std::vector<std::string>& distfiles)
 {
-	MPI_Init(&argc, &argv);
-
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 	const int nranks = get_mpi_size(MPI_COMM_WORLD);
-
-	if(argc < 2*nranks+3) {
-		std::cout << "Not enough arguments!\n";
-		MPI_Finalize();
-		return -1;
-	}
-
-	const int basepos = 2;
-	const std::string algtotest = argv[basepos-1];
-
-	const std::string globalmeshfile = argv[basepos];
-	std::vector<std::string> localmeshfiles, distfiles;
-	for(int i = basepos+1; i < basepos+nranks+1; i++)
-		localmeshfiles.push_back(argv[i]);
-	for(int i = basepos+nranks+1; i < basepos+2*nranks+1; i++)
-		distfiles.push_back(argv[i]);
-
-	assert(localmeshfiles.size() == static_cast<size_t>(nranks));
-	assert(distfiles.size() == static_cast<size_t>(nranks));
 
 	UMesh<freal,NDIM> gm(readMesh(globalmeshfile));
 	gm.compute_topological();
 
 	std::shared_ptr<ReplicatedGlobalMeshPartitioner> p;
-	if(algtotest == "scotch")
-		p = std::make_shared<ScotchRGMPartitioner>(gm);
-	else
-		p = std::make_shared<TrivialReplicatedGlobalMeshPartitioner>(gm);
+	p = std::make_shared<TrivialReplicatedGlobalMeshPartitioner>(gm);
 
 	p->compute_partition();
 	const UMesh<freal,NDIM> lm = p->restrictMeshToPartitions();
@@ -116,6 +95,75 @@ int main(int argc, char *argv[])
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
+	}
+}
+
+/* For any supported partitioner, checks whether partitions are connected
+ * That is, every cell of a partition should have at least 1 neighbour in the same partition. 
+ */
+void checkConnectedness(const UMesh<freal,NDIM>& gm, const std::string algo)
+{
+
+	std::shared_ptr<ReplicatedGlobalMeshPartitioner> p;
+	if(algo == "scotch")
+		p = std::make_shared<ScotchRGMPartitioner>(gm);
+	else
+		p = std::make_shared<TrivialReplicatedGlobalMeshPartitioner>(gm);
+
+	p->compute_partition();
+
+	UMesh<freal,NDIM> lm = p->restrictMeshToPartitions();
+	lm.compute_topological();
+	lm.compute_areas();
+	lm.compute_face_data();
+}
+
+int main(int argc, char *argv[])
+{
+	MPI_Init(&argc, &argv);
+
+	if(argc < 2) {
+		std::cout << "Not enough arguments!\n";
+		MPI_Finalize();
+		return -1;
+	}
+
+	const int nranks = get_mpi_size(MPI_COMM_WORLD);
+
+	const std::string testtype = argv[1];
+	std::cout << "Test type is " << testtype << std::endl;
+
+	if(testtype == "checktrivial") {
+
+		if(argc < 2*nranks+3) {
+			std::cout << "Not enough arguments!\n";
+			MPI_Finalize();
+			return -1;
+		}
+
+		const int basepos = 3;
+		const std::string globalmeshfile = argv[basepos];
+		std::vector<std::string> localmeshfiles, distfiles;
+		for(int i = basepos+1; i < basepos+nranks+1; i++)
+			localmeshfiles.push_back(argv[i]);
+		for(int i = basepos+nranks+1; i < basepos+2*nranks+1; i++)
+			distfiles.push_back(argv[i]);
+
+		assert(localmeshfiles.size() == static_cast<size_t>(nranks));
+		assert(distfiles.size() == static_cast<size_t>(nranks));
+
+		checkTrivial(globalmeshfile, localmeshfiles, distfiles);
+	}
+	else if (testtype == "sanity")
+	{
+		const std::string algo = argv[2];
+		std::cout << " Santiy check for " << algo << " partitioning.." << std::endl;
+		const std::string globalmeshfile = argv[3];
+
+		UMesh<freal,NDIM> gm(readMesh(globalmeshfile));
+		gm.compute_topological();
+
+		checkConnectedness(gm, algo);
 	}
 
 	MPI_Finalize();

@@ -461,13 +461,13 @@ void ScotchRGMPartitioner::compute_partition()
 	MPI_Bcast(&elemdist[0], gm.gnelem(), FVENS_MPI_INT, 0, MPI_COMM_WORLD);
 
 #ifdef DEBUG
-	//printf(" Partition: >\n");
-	for(fint iel = 0; iel < gm.gnelem(); iel++) {
-		assert(elemdist[iel] >= 0);
-		assert(elemdist[iel] < mpisize);
-		printf(" %d ", elemdist[iel]);
-	}
-	//printf("\n"); fflush(stdout);
+	// printf(" Partition: >\n");
+	// for(fint iel = 0; iel < gm.gnelem(); iel++) {
+	// 	assert(elemdist[iel] >= 0);
+	// 	assert(elemdist[iel] < mpisize);
+	// 	printf(" %d ", elemdist[iel]);
+	// }
+	// printf("\n"); fflush(stdout);
 #endif
 
 	// const int numloceleminit = gm.gnelem() / mpisize;
