@@ -163,6 +163,9 @@ public:
 	/// Construct a flow case with parsed options
 	SteadyFlowCase(const FlowParserOptions& options);
 
+	/// Destroy the external preconditioner context, if necessary
+	~SteadyFlowCase();
+
 	/// Solve a case given a spatial discretization context
 	/** Throws a \ref Tolerance_error if the main solve does not converge.
 	 * \param output_reshistory If true, residual history is written to file
@@ -172,6 +175,7 @@ public:
 	/// Solve the 1st-order problem corresponding to the actual problem to be solved
 	/** Even if the solver does not converge to required tolerance, no exception is thrown.
 	 * Sets up all the implicit solver objects it needs and destroys them after it's done.
+	 * Also sets up and destroys its own external preconditioner.
 	 * \param[in] prob The original problem to be solved
 	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
 	 */
@@ -180,15 +184,25 @@ public:
 	/// Solve the steady-state problem from some (decent) initial condition
 	/** If the solver does not converge to required tolerance, a \ref Tolerance_error is thrown.
 	 * Sets up all the implicit solver objects it needs and destroys them after it's done.
+	 * Uses the class' external preconditioner context \ref bctx
 	 * \param[in] prob The problem to be solved
 	 * \param[in,out] u Solution vector - contains initial condition on input and solution on output
 	 * \return Time taken by various phases of the solve and whether or not it converged
 	 */
 	TimingData execute_main(const Spatial<freal,NVARS> *const prob, Vec u) const;
 
+#ifdef USE_BLASTED
+	/// Get the current BLASTed context
+	Blasted_data_list getBlastedDataList() const;
+#endif
+
 protected:
 
-	const bool mf_flg;
+	const bool mf_flg;                          ///< Flag for using a matrix-free solver
+
+#ifdef USE_BLASTED
+	mutable Blasted_data_list bctx;                     ///< External preconditioner context
+#endif
 };
 
 /// Solution procedure for an unsteady flow case

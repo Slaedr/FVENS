@@ -203,13 +203,23 @@ FlowCase::LinearProblemLHS FlowCase::setupImplicitSolver(const Spatial<freal,NVA
 SteadyFlowCase::SteadyFlowCase(const FlowParserOptions& options)
 	: FlowCase(options),
 	  mf_flg {parsePetscCmd_isDefined("-matrix_free_jacobian")}
+#ifdef USE_BLASTED
+	, bctx(newBlastedDataList())
+#endif
 { }
+
+SteadyFlowCase::~SteadyFlowCase()
+{
+#ifdef USE_BLASTED
+	destroyBlastedDataList(&bctx);
+#endif
+}
 
 int SteadyFlowCase::execute_starter(const Spatial<freal,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
-	
+
 	const UMesh<freal,NDIM> *const m = prob->mesh();
 
 	const FlowPhysicsConfig pconf = extract_spatial_physics_config(opts);
@@ -258,9 +268,9 @@ int SteadyFlowCase::execute_starter(const Spatial<freal,NVARS> *const prob, Vec 
 
 	// setup BLASTed preconditioning if requested
 #ifdef USE_BLASTED
-	Blasted_data_list bctx = newBlastedDataList();
+	Blasted_data_list bctx1 = newBlastedDataList();
 	if(opts.pseudotimetype == "IMPLICIT") {
-		ierr = setup_blasted<NVARS>(isol.ksp,u,startprob,bctx); CHKERRQ(ierr);
+		ierr = setup_blasted<NVARS>(isol.ksp,u,startprob,bctx1); CHKERRQ(ierr);
 	}
 #endif
 
@@ -289,7 +299,7 @@ int SteadyFlowCase::execute_starter(const Spatial<freal,NVARS> *const prob, Vec 
 	//  This will also reset the BLASTed timing counters.
 	ierr = isol.destroy(); CHKERRQ(ierr);
 #ifdef USE_BLASTED
-	destroyBlastedDataList(&bctx);
+	destroyBlastedDataList(&bctx1);
 #endif
 
 	delete startprob;
@@ -315,7 +325,8 @@ TimingData SteadyFlowCase::execute_main(const Spatial<freal,NVARS> *const prob, 
 	const NonlinearUpdate<NDIM+2> *nlupdate = nullptr;
 
 #ifdef USE_BLASTED
-	Blasted_data_list bctx = newBlastedDataList();
+	destroyBlastedDataList(&bctx);
+	bctx = newBlastedDataList();
 	if(opts.pseudotimetype == "IMPLICIT") {
 		ierr = setup_blasted<NVARS>(isol.ksp,u,prob,bctx); fvens_throw(ierr, "BLASTed not setup");
 	}
@@ -362,9 +373,6 @@ TimingData SteadyFlowCase::execute_main(const Spatial<freal,NVARS> *const prob, 
 	delete time;
 	delete nlupdate;
 	ierr = isol.destroy(); petsc_throw(ierr, "Could not destroy linear problen LHS");
-#ifdef USE_BLASTED
-	destroyBlastedDataList(&bctx);
-#endif
 
 	return tdata;
 }
