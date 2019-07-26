@@ -14,6 +14,7 @@ Examples are present (`.ctrl` files) in the various test cases' directories. Not
 Command Line Options
 --------------------
 * `--mesh_file` <string> If given, this overrides the mesh file specified in the control file.
+* `--write_final_linear_system <'true'/'false'>` If set to true, in case of implicit solves, the final linear system will be written out in PETSc's binary format.
 
 PETSc options for FVENS
 -----------------------

@@ -579,31 +579,12 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		std::cout << " CPU time = " << linctime << std::endl;
 	}
 
-#ifdef _OPENMP
-	tdata.num_threads = omp_get_max_threads();
-#endif
-	tdata.lin_walltime = linwtime; 
-	tdata.lin_cputime = linctime;
-
-	tdata.converged = false;
-	if(step < config.maxiter && (resi/initres <= config.tol))
-		tdata.converged = true;
-	else if (step >= config.maxiter){
-		if(mpirank == 0) {
-			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
-		}
-		throw Tolerance_error("Steady backward Euler did not converge to specified tolerance!");
-	}
-	else {
-		if(mpirank == 0) {
-			std::cout << "! SteadyBackwardEulerSolver: solve(): Blew up!\n";
-		}
-		throw Numerical_error("Steady backward Euler blew up!");
-	}
-
 	// If requested, write out final linear system
 	if(config.write_final_lin_sys)
 	{
+		if(mpirank == 0)
+			std::cout << " Writing final linear system to files in PETSc format." << std::endl;
+
 		const std::string matfile = config.logfile + "_lhs.pmat";
 		const std::string rhsfile = config.logfile + "_b.pmat";
 		const std::string solnfile = config.logfile + "_x.pmat";
@@ -626,6 +607,28 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		PetscViewerDestroy(&matv);
 		PetscViewerDestroy(&rhsv);
 		PetscViewerDestroy(&solnv);
+	}
+
+#ifdef _OPENMP
+	tdata.num_threads = omp_get_max_threads();
+#endif
+	tdata.lin_walltime = linwtime; 
+	tdata.lin_cputime = linctime;
+
+	tdata.converged = false;
+	if(step < config.maxiter && (resi/initres <= config.tol))
+		tdata.converged = true;
+	else if (step >= config.maxiter){
+		if(mpirank == 0) {
+			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
+		}
+		throw Tolerance_error("Steady backward Euler did not converge to specified tolerance!");
+	}
+	else {
+		if(mpirank == 0) {
+			std::cout << "! SteadyBackwardEulerSolver: solve(): Blew up!\n";
+		}
+		throw Numerical_error("Steady backward Euler blew up!");
 	}
 
 	ierr = VecDestroy(&rvec); CHKERRQ(ierr);
