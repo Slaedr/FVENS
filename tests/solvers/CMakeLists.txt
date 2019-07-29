@@ -10,7 +10,8 @@ if(WITH_BLASTED)
 	COMMAND sh testbench.sh
 	${CMAKE_CURRENT_SOURCE_DIR}/benchmark.ctrl 
 	-options_file ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.solverc
-	--mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh )
+	--mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh
+	-blasted_compute_preconditioner_info)
 endif()
 
 add_executable(testmatfree testmatrixfree.cpp)

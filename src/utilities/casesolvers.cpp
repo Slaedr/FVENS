@@ -215,6 +215,13 @@ SteadyFlowCase::~SteadyFlowCase()
 #endif
 }
 
+#ifdef USE_BLASTED
+Blasted_data_list SteadyFlowCase::getBlastedDataList() const
+{
+	return bctx;
+}
+#endif
+
 int SteadyFlowCase::execute_starter(const Spatial<freal,NVARS> *const prob, Vec u) const
 {
 	int ierr = 0;

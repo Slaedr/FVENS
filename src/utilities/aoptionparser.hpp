@@ -43,6 +43,12 @@ PetscReal parseOptionalPetscCmd_real(const std::string optionname, const PetscRe
  */
 bool parsePetscCmd_bool(const std::string optionname);
 
+/// Extracts a boolean corresponding to an optional argument from the default PETSc options database
+/** Returns false if the option was not set or if it could not be extracted.
+ * \param optionname The name of the option to get the value of; needs to include the preceding '-'
+ */
+bool parseOptionalPetscCmd_bool(const std::string optionname);
+
 /// Extracts a string corresponding to the argument from the default PETSc options database 
 /** Throws a string exception if the option was not set or if it could not be extracted.
  * \param optionname The name of the option to get the value of; needs to include the preceding '-'

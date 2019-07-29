@@ -90,6 +90,18 @@ bool parsePetscCmd_bool(const std::string optionname)
 	return (bool)output;
 }
 
+bool parseOptionalPetscCmd_bool(const std::string optionname)
+{
+	StatusCode ierr = 0;
+	PetscBool set = PETSC_FALSE;
+	PetscBool output = PETSC_FALSE;
+	ierr = PetscOptionsGetBool(NULL, NULL, optionname.c_str(), &output, &set);
+	petsc_throw(ierr, std::string("Could not get bool ")+ optionname);
+	if(set)
+		return (bool)output;
+	else
+		return false;
+}
 
 std::string parsePetscCmd_string(const std::string optionname, const size_t p_strlen)
 {

@@ -13,12 +13,14 @@
 #include "spatial/aoutput.hpp"
 #include "utilities/afactory.hpp"
 #include "utilities/aerrorhandling.hpp"
+#include "utilities/aoptionparser.hpp"
 #include "linalg/alinalg.hpp"
 #include "ode/aodesolver.hpp"
 #include "mesh/ameshutils.hpp"
 #include "utilities/casesolvers.hpp"
 
 #include <blasted_petsc.h>
+#include <preconditioner_diagnostics.hpp>
 
 #include "threads_async_tests.hpp"
 
@@ -72,6 +74,22 @@ static double std_deviation(const double *const vals, const double avg, const in
 	return deviate;
 }
 
+static void writePrecInfoHeader(std::ofstream& outf)
+{
+	outf << "#---\n";
+	outf << '#';
+	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
+		outf << std::setw(blasted::PrecInfoList::field_width) << blasted::PrecInfoList::descr[i];
+	outf << "\n#---\n";
+}
+
+static void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf)
+{
+	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
+		outf << std::setw(blasted::PrecInfoList::field_width) << pinfo.f_info[i];
+	outf << "\n";
+}
+
 /** Carries out a run of the 'main' solve for one factor- and apply-sweeps setting and one thread
  * setting.
  * The run is regarded as converged only if each repetition converged.
@@ -81,7 +99,8 @@ static std::array<double,3>
 runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS> *const prob,
                 const int nbswps, const int naswps, const int numthreads, const int numrepeat,
                 const double factor_basewtime, const double apply_basewtime, const double ode_basewtime,
-                const bool basecase, const bool conv_history_reqd, const std::string perflogprefix,
+                const bool basecase, const bool conv_history_reqd, const bool prec_info_reqd,
+                const std::string perflogprefix,
                 std::ofstream& perftestout)
 {
 	int mpirank;
@@ -94,7 +113,9 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 	std::vector<SteadyStepMonitor> cohis;           // convergence history
 	int monitortimesteps=0;                         // number of steps in the repeat that is written
 
-	std::ofstream convout;
+	blasted::PrecInfoList pinfol;                   // Preconditioner info history
+
+	std::ofstream convout, infoout;
 
 	if(conv_history_reqd && mpirank==0) {
 		// Prepare convergence history file for this sweeps+threads setting
@@ -114,6 +135,26 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 			convout << "# Case: ";
 		convout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
 		writeConvergenceHistoryHeader(convout);
+	}
+
+	if(prec_info_reqd && mpirank==0) {
+		// Prepare info history file for this sweeps+threads setting
+		const std::string precinfofile = perflogprefix
+			+ "-sweeps_" + std::to_string(nbswps) + "_" + std::to_string(naswps)
+			+ "-threads" + std::to_string(numthreads) + "-precinfo.conv";
+
+		infoout.open(precinfofile);
+		if(!infoout)
+			throw std::runtime_error("Could not open file to write prec info history!");
+
+		infoout << "# Perftest: sweeps and threads for async preconditioner from BLASTed\n";
+		infoout << "# Number of repeats per run = " << numrepeat << "\n";
+		if(basecase)
+			infoout << "# Base case: ";
+		else
+			infoout << "# Case: ";
+		infoout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
+		writePrecInfoHeader(infoout);
 	}
 
 	omp_set_num_threads(numthreads);
@@ -155,6 +196,12 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 
 		cohis = td.convhis;
 		monitortimesteps = td.num_timesteps;
+
+		if(prec_info_reqd) {
+			const Blasted_data_list blist
+				= reinterpret_cast<const SteadyFlowCase&>(flowcase).getBlastedDataList();
+			pinfol = *static_cast<blasted::PrecInfoList*>(blist.ctxlist->infolist);
+		}
 	}
 
 	tdata.lin_walltime /= (double)irpt;
@@ -199,6 +246,13 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 
 			convout.close();
 		}
+
+		if(prec_info_reqd) {
+			for(int istp = 0; istp < monitortimesteps; istp++)
+				writeStepToPrecInfoHistory(pinfol.infolist[istp], infoout);
+
+			infoout.close();
+		}
 	}
 
 
@@ -227,6 +281,11 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 
 	flowcase.execute_starter(prob, u);
 
+	const bool write_precinfo = parseOptionalPetscCmd_bool("-blasted_compute_preconditioner_info");
+	if(write_precinfo)
+		std::cout << " test_speedup_sweeps: preconditioner info history will be computed and written."
+		          << std::endl;
+
 	// Base run
 
 	int mpirank;
@@ -237,7 +296,8 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 
 	const std::array<double,3> basetimes =
 		runSweepThreads(u, flowcase, prob, config.basebuildsweeps, config.baseapplysweeps,
-		                config.basethreads, baserepeats, 1,1,1, true, opts.lognres, opts.logfile, outf);
+		                config.basethreads, baserepeats, 1,1,1, true, opts.lognres, write_precinfo,
+		                opts.logfile, outf);
 
 	const double factor_basewtime = basetimes[0];
 	const double apply_basewtime = basetimes[1];
@@ -253,13 +313,13 @@ StatusCode test_speedup_sweeps(const FlowParserOptions& opts, const FlowCase& fl
 		{
 			runSweepThreads(u, flowcase, prob, config.buildSwpSeq[i], config.applySwpSeq[i], numthreads,
 			                numrepeat, factor_basewtime, apply_basewtime, ode_basewtime,
-			                false, opts.lognres, opts.logfile, outf);
+			                false, opts.lognres, write_precinfo, opts.logfile, outf);
 		}
 	}
 
 	delete prob;
 	ierr = VecDestroy(&u); CHKERRQ(ierr);
-	
+
 	return ierr;
 }
 

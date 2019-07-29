@@ -31,7 +31,7 @@ struct SpeedupSweepsConfig {
 	int baseapplysweeps;             ///< No. of apply sweeps to use for base case
 };
 
-/// Find the dependence of the speed-up from a certain thread-count on the number of async sweeps
+/// Find the dependence of the speed-up using different thread-counts on the number of async sweeps
 /** Only for implicit solves.
  * Runs a nonlinear solve first with 1 thread and 1 sweep (for reference). Then, for each number of
  * threads requested, there's one run for each number of sweeps requested.
