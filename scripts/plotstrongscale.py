@@ -101,7 +101,7 @@ if __name__ == "__main__":
     opts = { \
             "marklist" : ['.', 'x', '+', '^', 'v', '<', '>', 'd'],
             "colorlist" : ['k', 'b', 'r', 'g', 'c', 'm', 'k'],
-            "linetype" : ['-', '--', '-.', '--', '--'],
+            "linetype" : ['-', '--', '-.', '--', '--','-.'],
             "linewidth" : 0.75,
             "marksize" : 5,
             "markedgewidth" : 1 \
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     parser.add_argument("files", nargs='+')
     parser.add_argument("--basethreads", default=1, type=int, help = "Number of threads for base case")
     parser.add_argument("--ht", default=1, type=int, help = "Number of hyper-threads used per core")
-    parser.add_argument("--phase", help = "Phase of preconditioner to consider (factor, apply, all)")
+    parser.add_argument("--phase", help = "Phase of preconditioner to consider (factor, apply, all,liniters,nliters)")
     parser.add_argument("--labels", nargs='+', help = "Legend strings")
     parser.add_argument("--labelstr", default="", help = "Common suffix for legend strings")
     parser.add_argument("--title", default="", help = "Title string for the plot")
