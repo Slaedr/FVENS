@@ -7,6 +7,8 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <ios>
+#include <boost/io/ios_state.hpp>
 #include <omp.h>
 #include <petscksp.h>
 
@@ -86,7 +88,13 @@ static void writePrecInfoHeader(std::ofstream& outf)
 static void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf)
 {
 	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
+	{
+		boost::io::ios_all_saver saver(outf);
+		if(i == 0 || i == 1) {
+			outf << std::scientific;
+		}
 		outf << std::setw(blasted::PrecInfoList::field_width) << pinfo.f_info[i];
+	}
 	outf << "\n";
 }
 
@@ -174,6 +182,15 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 
 		ierr = VecDestroy(&ut); petsc_throw(ierr, "Vec destroy");
 
+		cohis = td.convhis;
+		monitortimesteps = td.num_timesteps;
+
+		if(prec_info_reqd) {
+			const Blasted_data_list blist
+				= reinterpret_cast<const SteadyFlowCase&>(flowcase).getBlastedDataList();
+			pinfol = *static_cast<blasted::PrecInfoList*>(blist.ctxlist->infolist);
+		}
+
 		if(!td.converged) {
 			tdata.converged = false;
 			break;
@@ -193,15 +210,6 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 		precwalltime += td.precsetup_walltime + td.precapply_walltime;
 		preccputime += td.prec_cputime;
 		precwalltimearr[irpt] = td.precsetup_walltime + td.precapply_walltime;
-
-		cohis = td.convhis;
-		monitortimesteps = td.num_timesteps;
-
-		if(prec_info_reqd) {
-			const Blasted_data_list blist
-				= reinterpret_cast<const SteadyFlowCase&>(flowcase).getBlastedDataList();
-			pinfol = *static_cast<blasted::PrecInfoList*>(blist.ctxlist->infolist);
-		}
 	}
 
 	tdata.lin_walltime /= (double)irpt;
@@ -248,8 +256,9 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 		}
 
 		if(prec_info_reqd) {
-			for(int istp = 0; istp < monitortimesteps; istp++)
+			for(int istp = 0; istp < monitortimesteps; istp++) {
 				writeStepToPrecInfoHistory(pinfol.infolist[istp], infoout);
+			}
 
 			infoout.close();
 		}

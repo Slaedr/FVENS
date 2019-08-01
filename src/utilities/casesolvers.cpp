@@ -360,7 +360,8 @@ TimingData SteadyFlowCase::execute_main(const Spatial<freal,NVARS> *const prob, 
 	}
 	catch(Numerical_error& e) {
 		std::cout << "FVENS: Main solve failed: " << e.what() << std::endl;
-		TimingData tdata; tdata.converged = false;
+		TimingData tdata = time->getTimingData();
+		tdata.converged = false;
 		delete time;
 		return tdata;
 	}

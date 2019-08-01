@@ -620,7 +620,7 @@ StatusCode SteadyBackwardEulerSolver<nvars>::solve(Vec uvec)
 		tdata.converged = true;
 	else if (step >= config.maxiter){
 		if(mpirank == 0) {
-			std::cout << "! SteadyBackwardEulerSolver: solve(): Exceeded max iterations!\n";
+			std::cout << " ! SteadyBackwardEulerSolver: solve(): Exceeded max iterations.\n";
 		}
 		throw Tolerance_error("Steady backward Euler did not converge to specified tolerance!");
 	}
