@@ -36,67 +36,20 @@ using namespace fvens;
 /// Set -blasted_async_sweeps in the default Petsc options database and throw if not successful
 static void set_blasted_sweeps(const int nbswp, const int naswp);
 
-static void writeHeaderToFile(std::ofstream& outf, const int width)
-{
-	outf << '#' << std::setw(width) << "threads"
-	     << std::setw(width) << "b&a-sweeps"
-	     << std::setw(width+5) << "factor-speedup" << std::setw(width+5) << "apply-speedup"
-	     << std::setw(width+5) << "total-speedup" << std::setw(width+5) << "total-deviate"
-	     << std::setw(width) << "cpu-time" << std::setw(width+6) << "total-lin-iters"
-	     << std::setw(width+4) << "avg-lin-iters"
-	     << std::setw(width+1) << "time-steps"<< std::setw(width/2+1) << "conv?"
-	     << std::setw(width) << "nl-speedup"
-	     << "\n#---\n";
-}
+static double std_deviation(const double *const vals, const double avg, const int N);
+
+static void writeHeaderToFile(std::ofstream& outf, const int width);
 
 static void writeTimingToFile(std::ofstream& outf, const int w, const bool comment,
                               const TimingData& tdata, const int numthreads,
                               const int nbswps, const int naswps,
                               const double factorspeedup, const double applyspeedup,
                               const double precspeedup, const double precdeviate,
-                              const double preccputime, const double fvens_wall_spdp)
-{
-	outf << (comment ? '#' : ' ') << std::setw(w) << numthreads
-	     << std::setw(w/2) << nbswps << std::setw(w/2) << naswps
-	     << std::setw(w+5) << factorspeedup << std::setw(w+5) << applyspeedup
-	     << std::setw(w+5) << precspeedup << std::setw(w+5) << precdeviate
-	     << std::setw(w) << preccputime
-	     << std::setw(w+6) << tdata.total_lin_iters << std::setw(w+4) << tdata.avg_lin_iters
-	     << std::setw(w+1) << tdata.num_timesteps
-	     << std::setw(w/2+1) << (tdata.converged ? 1 : 0)
-	     << std::setw(w) << fvens_wall_spdp
-	     << (comment ? "\n#---\n" : "\n") << std::flush;
-}
+                              const double preccputime, const double fvens_wall_spdp);
 
-static double std_deviation(const double *const vals, const double avg, const int N) {
-	double deviate = 0;
-	for(int j = 0; j < N; j++)
-		deviate += (vals[j]-avg)*(vals[j]-avg);
-	deviate = std::sqrt(deviate/(double)N);
-	return deviate;
-}
-
-static void writePrecInfoHeader(std::ofstream& outf)
-{
-	outf << "#---\n";
-	outf << '#';
-	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
-		outf << std::setw(blasted::PrecInfoList::field_width) << blasted::PrecInfoList::descr[i];
-	outf << "\n#---\n";
-}
-
-static void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf)
-{
-	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
-	{
-		boost::io::ios_all_saver saver(outf);
-		if(i == 0 || i == 1) {
-			outf << std::scientific;
-		}
-		outf << std::setw(blasted::PrecInfoList::field_width) << pinfo.f_info[i];
-	}
-	outf << "\n";
-}
+static void writePrecInfoHistory(const FlowCase& flowcase, const int numthreads, const int numrepeats,
+                                 const std::string perflogprefix, const bool basecase,
+                                 const int nbswps, const int naswps, const int irepeat);
 
 /** Carries out a run of the 'main' solve for one factor- and apply-sweeps setting and one thread
  * setting.
@@ -145,26 +98,6 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 		writeConvergenceHistoryHeader(convout);
 	}
 
-	if(prec_info_reqd && mpirank==0) {
-		// Prepare info history file for this sweeps+threads setting
-		const std::string precinfofile = perflogprefix
-			+ "-sweeps_" + std::to_string(nbswps) + "_" + std::to_string(naswps)
-			+ "-threads" + std::to_string(numthreads) + "-precinfo.conv";
-
-		infoout.open(precinfofile);
-		if(!infoout)
-			throw std::runtime_error("Could not open file to write prec info history!");
-
-		infoout << "# Perftest: sweeps and threads for async preconditioner from BLASTed\n";
-		infoout << "# Number of repeats per run = " << numrepeat << "\n";
-		if(basecase)
-			infoout << "# Base case: ";
-		else
-			infoout << "# Case: ";
-		infoout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
-		writePrecInfoHeader(infoout);
-	}
-
 	omp_set_num_threads(numthreads);
 	set_blasted_sweeps(nbswps,naswps);
 	if(mpirank == 0) {
@@ -185,11 +118,9 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 		cohis = td.convhis;
 		monitortimesteps = td.num_timesteps;
 
-		if(prec_info_reqd) {
-			const Blasted_data_list blist
-				= reinterpret_cast<const SteadyFlowCase&>(flowcase).getBlastedDataList();
-			pinfol = *static_cast<blasted::PrecInfoList*>(blist.ctxlist->infolist);
-		}
+		if(prec_info_reqd && mpirank == 0)
+			writePrecInfoHistory(flowcase, numthreads, numrepeat, perflogprefix, basecase, nbswps,
+			                     naswps, irpt);
 
 		if(!td.converged) {
 			tdata.converged = false;
@@ -256,9 +187,9 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 		}
 
 		if(prec_info_reqd) {
-			for(int istp = 0; istp < monitortimesteps; istp++) {
-				writeStepToPrecInfoHistory(pinfol.infolist[istp], infoout);
-			}
+			// for(int istp = 0; istp < monitortimesteps; istp++) {
+			// 	writeStepToPrecInfoHistory(pinfol.infolist[istp], infoout);
+			// }
 
 			infoout.close();
 		}
@@ -347,6 +278,105 @@ void set_blasted_sweeps(const int nbswp, const int naswp)
 	petsc_throw(ierr, "Could not get int array!");
 	fvens_throw(checksweeps[0] != nbswp || checksweeps[1] != naswp, 
 			"Async sweeps not set properly!");
+}
+
+void writeHeaderToFile(std::ofstream& outf, const int width)
+{
+	outf << '#' << std::setw(width) << "threads"
+	     << std::setw(width) << "b&a-sweeps"
+	     << std::setw(width+5) << "factor-speedup" << std::setw(width+5) << "apply-speedup"
+	     << std::setw(width+5) << "total-speedup" << std::setw(width+5) << "total-deviate"
+	     << std::setw(width) << "cpu-time" << std::setw(width+6) << "total-lin-iters"
+	     << std::setw(width+4) << "avg-lin-iters"
+	     << std::setw(width+1) << "time-steps"<< std::setw(width/2+1) << "conv?"
+	     << std::setw(width) << "nl-speedup"
+	     << "\n#---\n";
+}
+
+void writeTimingToFile(std::ofstream& outf, const int w, const bool comment,
+                              const TimingData& tdata, const int numthreads,
+                              const int nbswps, const int naswps,
+                              const double factorspeedup, const double applyspeedup,
+                              const double precspeedup, const double precdeviate,
+                              const double preccputime, const double fvens_wall_spdp)
+{
+	outf << (comment ? '#' : ' ') << std::setw(w) << numthreads
+	     << std::setw(w/2) << nbswps << std::setw(w/2) << naswps
+	     << std::setw(w+5) << factorspeedup << std::setw(w+5) << applyspeedup
+	     << std::setw(w+5) << precspeedup << std::setw(w+5) << precdeviate
+	     << std::setw(w) << preccputime
+	     << std::setw(w+6) << tdata.total_lin_iters << std::setw(w+4) << tdata.avg_lin_iters
+	     << std::setw(w+1) << tdata.num_timesteps
+	     << std::setw(w/2+1) << (tdata.converged ? 1 : 0)
+	     << std::setw(w) << fvens_wall_spdp
+	     << (comment ? "\n#---\n" : "\n") << std::flush;
+}
+
+double std_deviation(const double *const vals, const double avg, const int N) {
+	double deviate = 0;
+	for(int j = 0; j < N; j++)
+		deviate += (vals[j]-avg)*(vals[j]-avg);
+	deviate = std::sqrt(deviate/(double)N);
+	return deviate;
+}
+
+static void writePrecInfoHeader(std::ofstream& outf);
+
+static void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf);
+
+void writePrecInfoHistory(const FlowCase& flowcase, const int numthreads, const int numrepeat,
+                          const std::string perflogprefix, const bool basecase,
+                          const int nbswps, const int naswps, const int irpt)
+{
+	const Blasted_data_list blist
+		= reinterpret_cast<const SteadyFlowCase&>(flowcase).getBlastedDataList();
+	const blasted::PrecInfoList pinfol = *static_cast<blasted::PrecInfoList*>(blist.ctxlist->infolist);
+
+	// Prepare info history file for this sweeps+threads setting
+	const std::string precinfofile = perflogprefix
+		+ "-sweeps_" + std::to_string(nbswps) + "_" + std::to_string(naswps)
+		+ "-threads" + std::to_string(numthreads) + "-precinfo-run" + std::to_string(irpt+1) + ".conv";
+
+	std::ofstream infoout(precinfofile);
+	if(!infoout)
+		throw std::runtime_error("Could not open file to write prec info history!");
+
+	infoout << "# Perftest: sweeps and threads for async preconditioner from BLASTed\n";
+	infoout << "# Number of repeats per setting = " << numrepeat << "\n";
+	if(basecase)
+		infoout << "# Base case: ";
+	else
+		infoout << "# Case: ";
+	infoout << "Sweeps=(" << nbswps << "," << naswps << "), threads=" << numthreads << "\n";
+	writePrecInfoHeader(infoout);
+
+	for(unsigned int istp = 0; istp < pinfol.infolist.size(); istp++) {
+		writeStepToPrecInfoHistory(pinfol.infolist[istp], infoout);
+	}
+
+	infoout.close();
+}
+
+void writePrecInfoHeader(std::ofstream& outf)
+{
+	outf << "#---\n";
+	outf << '#';
+	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
+		outf << std::setw(blasted::PrecInfoList::field_width) << blasted::PrecInfoList::descr[i];
+	outf << "\n#---\n";
+}
+
+void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf)
+{
+	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
+	{
+		boost::io::ios_all_saver saver(outf);
+		if(i == 0 || i == 1) {
+			outf << std::scientific;
+		}
+		outf << std::setw(blasted::PrecInfoList::field_width) << pinfo.f_info[i];
+	}
+	outf << "\n";
 }
 
 }
