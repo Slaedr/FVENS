@@ -8,9 +8,9 @@
 #include <iomanip>
 #include <string>
 #include <ios>
-#include <boost/io/ios_state.hpp>
 #include <omp.h>
 #include <petscksp.h>
+//#include <boost/io/ios_state.hpp>
 
 #include "spatial/aoutput.hpp"
 #include "utilities/afactory.hpp"
@@ -370,10 +370,10 @@ void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& ou
 {
 	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
 	{
-		boost::io::ios_all_saver saver(outf);
-		if(i == 0 || i == 1) {
-			outf << std::scientific;
-		}
+		// boost::io::ios_all_saver saver(outf);
+		// if(i == 0 || i == 1) {
+		// 	outf << std::scientific;
+		// }
 		outf << std::setw(blasted::PrecInfoList::field_width) << pinfo.f_info[i];
 	}
 	outf << "\n";
