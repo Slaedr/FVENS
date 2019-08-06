@@ -120,7 +120,7 @@ if __name__ == "__main__":
     parser.add_argument("--labels", nargs='+', help = "Legend strings")
     parser.add_argument("--labelstr", default="", help = "Common suffix for legend strings")
     parser.add_argument("--title", default="", help = "Title string for the plot")
-    parser.add_argument("--format", default="png", help = "Output format")
+    parser.add_argument("--format", default="eps", help = "Output format")
     args = parser.parse_args(sys.argv)
 
     plotstrongscaling(args.files[1:], args.basethreads, args.ht, args.phase, args.labels, args.labelstr,

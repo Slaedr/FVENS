@@ -94,7 +94,7 @@ if __name__ == "__main__":
     parser.add_argument("--labels", nargs='+', help = "Legend strings")
     parser.add_argument("--labelstr", default="", help = "Common suffix for legend strings")
     parser.add_argument("--start_iter", type=int, default=0, help = "Iteration to start plotting from")
-    parser.add_argument("--format", default="png", help = "Output format")
+    parser.add_argument("--format", default="eps", help = "Output format")
     args = parser.parse_args(sys.argv)
 
     plotquantity(args.files[1:], "residual", args.start_iter, args.labels, opts, args.format)
