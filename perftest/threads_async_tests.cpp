@@ -47,7 +47,8 @@ static void writeTimingToFile(std::ofstream& outf, const int w, const bool comme
                               const double precspeedup, const double precdeviate,
                               const double preccputime, const double fvens_wall_spdp);
 
-static void writePrecInfoHistory(const FlowCase& flowcase, const int numthreads, const int numrepeats,
+static void writePrecInfoHistory(const FlowCase& flowcase, std::vector<SteadyStepMonitor>& convhis,
+                                 const int numthreads, const int numrepeats,
                                  const std::string perflogprefix, const bool basecase,
                                  const int nbswps, const int naswps, const int irepeat);
 
@@ -119,8 +120,8 @@ runSweepThreads(const Vec u, const FlowCase& flowcase, const Spatial<freal,NVARS
 		monitortimesteps = td.num_timesteps;
 
 		if(prec_info_reqd && mpirank == 0)
-			writePrecInfoHistory(flowcase, numthreads, numrepeat, perflogprefix, basecase, nbswps,
-			                     naswps, irpt);
+			writePrecInfoHistory(flowcase, td.convhis, numthreads, numrepeat, perflogprefix, basecase,
+			                     nbswps, naswps, irpt);
 
 		if(!td.converged) {
 			tdata.converged = false;
@@ -322,9 +323,11 @@ double std_deviation(const double *const vals, const double avg, const int N) {
 
 static void writePrecInfoHeader(std::ofstream& outf);
 
-static void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf);
+static void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, const double cfl,
+                                       std::ofstream& outf);
 
-void writePrecInfoHistory(const FlowCase& flowcase, const int numthreads, const int numrepeat,
+void writePrecInfoHistory(const FlowCase& flowcase, std::vector<SteadyStepMonitor>& convhis,
+                          const int numthreads, const int numrepeat,
                           const std::string perflogprefix, const bool basecase,
                           const int nbswps, const int naswps, const int irpt)
 {
@@ -351,7 +354,7 @@ void writePrecInfoHistory(const FlowCase& flowcase, const int numthreads, const 
 	writePrecInfoHeader(infoout);
 
 	for(unsigned int istp = 0; istp < pinfol.infolist.size(); istp++) {
-		writeStepToPrecInfoHistory(pinfol.infolist[istp], infoout);
+		writeStepToPrecInfoHistory(pinfol.infolist[istp], convhis[istp].cfl, infoout);
 	}
 
 	infoout.close();
@@ -363,10 +366,11 @@ void writePrecInfoHeader(std::ofstream& outf)
 	outf << '#';
 	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
 		outf << std::setw(blasted::PrecInfoList::field_width) << blasted::PrecInfoList::descr[i];
+	outf << std::setw(blasted::PrecInfoList::field_width) << "CFL";
 	outf << "\n#---\n";
 }
 
-void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& outf)
+void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, const double cfl, std::ofstream& outf)
 {
 	for(size_t i = 0; i < blasted::PrecInfoList::descr.size(); i++)
 	{
@@ -376,7 +380,7 @@ void writeStepToPrecInfoHistory(const blasted::PrecInfo pinfo, std::ofstream& ou
 		// }
 		outf << std::setw(blasted::PrecInfoList::field_width) << pinfo.f_info[i];
 	}
-	outf << "\n";
+	outf << std::setw(blasted::PrecInfoList::field_width) << cfl << "\n";
 }
 
 }
