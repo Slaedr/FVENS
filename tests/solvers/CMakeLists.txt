@@ -11,7 +11,7 @@ if(WITH_BLASTED)
 	${CMAKE_CURRENT_SOURCE_DIR}/benchmark.ctrl 
 	-options_file ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.solverc
 	--mesh_file ${CMAKE_BINARY_DIR}/testcases/2dcylinder/grids/2dcylquad2.msh
-	-blasted_compute_preconditioner_info)
+	-blasted_compute_preconditioner_info -blasted_use_symmetric_scaling 0 )
 endif()
 
 add_executable(testmatfree testmatrixfree.cpp)
