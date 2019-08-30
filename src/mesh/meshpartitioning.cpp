@@ -25,6 +25,16 @@ UMesh<freal,2> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
 
+#ifdef DEBUG
+	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
+	//std::cout << "Rank " << rank << ": Elemdist = ";
+	for(fint i = 0; i < gm.gnelem(); i++) {
+		//std::cout << elemdist[i] << " ";
+		assert(elemdist[i] < mpisize);
+	}
+	//std::cout << std::endl;
+#endif
+
 	UMesh<freal,2> lm;
 	lm.nelem = 0;
 	for(fint iel = 0; iel < gm.nelem; iel++)
