@@ -116,6 +116,19 @@ void checkConnectedness(const UMesh<freal,NDIM>& gm, const std::string algo)
 	lm.compute_topological();
 	lm.compute_areas();
 	lm.compute_face_data();
+
+	printf(" Checking neighbours of each cell..\n");
+	for(fint iel = 0; iel < lm.gnelem(); iel++)
+	{
+		bool foundnb = false;
+		for(int j = 0; j < lm.gnfael(iel); j++)
+		{
+			const fint jel = lm.gesuel(iel,j);
+			if(jel >= 0 && jel < lm.gnelem())
+				foundnb = true;
+		}
+		assert(foundnb);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -154,10 +167,10 @@ int main(int argc, char *argv[])
 
 		checkTrivial(globalmeshfile, localmeshfiles, distfiles);
 	}
-	else if (testtype == "sanity")
+	else if (testtype == "connectedness")
 	{
 		const std::string algo = argv[2];
-		std::cout << " Santiy check for " << algo << " partitioning.." << std::endl;
+		std::cout << " Connectedness check for " << algo << " partitioning.." << std::endl;
 		const std::string globalmeshfile = argv[3];
 
 		UMesh<freal,NDIM> gm(readMesh(globalmeshfile));

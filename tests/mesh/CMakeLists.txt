@@ -72,7 +72,7 @@ add_test(NAME MeshPartition_SubdomainRestriction_Trivial WORKING_DIRECTORY ${CMA
   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid-distb_part3.dat
   )
 
-# add_test(NAME MeshPartition_SubdomainRestriction_Scotch WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-#   COMMAND ${MPIEXEC} -n 3 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh sanity scotch
-#   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid.msh
-#   )
+add_test(NAME MeshPartition_SubdomainRestriction_Scotch WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${MPIEXEC} -n 3 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh connectedness scotch
+  ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid.msh
+  )
