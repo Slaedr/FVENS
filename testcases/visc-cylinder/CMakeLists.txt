@@ -18,4 +18,4 @@ add_test(NAME MPI_SpatialFlow_Explicit_NS_2dcylinder_LeastSquares_HLLC_ResidualC
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMAND env OMP_NUM_THREADS=1 ${MPIEXEC} -n 4 ${CMAKE_BINARY_DIR}/tests/e_testflow 
   ${CMAKE_CURRENT_SOURCE_DIR}/laminar-expl.ctrl
-  --mesh_file ${CMAKE_CURRENT_BINARY_DIR}/../2dcylinder/grids/2dcylquad1.msh)
+  --mesh_file ${CMAKE_CURRENT_BINARY_DIR}/../2dcylinder/grids/2dcylquad0.msh)
