@@ -78,7 +78,7 @@ InviscidFlux<scalar>* create_mutable_inviscidflux(
 	}
 	else
 		if(mpirank == 0)
-			std::cout << " InviscidFluxFactory: ! Flux scheme not available!" << std::endl;
+			std::cout << " InviscidFluxFactory: ! Flux scheme " << type << " not available!" << std::endl;
 
 	return inviflux;
 }

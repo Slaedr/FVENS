@@ -204,6 +204,11 @@ FlowParserOptions parse_flow_controlfile(const int argc, const char *const argv[
 		opts.min_nl_update = infopts.get(c_pseudotime+"."+"min_nonlinear_relaxation_factor",
 		                                           0.2);
 	}
+	else {
+		// for explicit solvers, set this any way because an inviscid flux will be constructed for the
+		//  Jacobian anyway
+		opts.invfluxjac = opts.invflux;
+	}
 	
 	// check for some PETSc options
 	char petsclogfile[200];
