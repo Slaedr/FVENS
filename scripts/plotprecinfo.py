@@ -40,7 +40,7 @@ def plotquantity(filelist, quantname, numits, runs, labellist, opts, imageformat
             # number of points to plot
             pltdatalen = len(data[:,0])-numits
 
-            if quantname == "residual":
+            if quantname == "iluresidual":
                 if j == 1:
                     plt.plot(np.log10(data[numits:,0]/data[numits:,1]), \
                             lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
@@ -72,7 +72,7 @@ def plotquantity(filelist, quantname, numits, runs, labellist, opts, imageformat
                             mew=opts['markedgewidth'], \
                             markevery=list(range(0,pltdatalen,opts['markinterval'])))
                 ylabelstr = "Log max-norm of Jacobi iteration matrix of U-factor"
-                plt.gca().set_ylim([0,None])
+                #plt.gca().set_ylim([0,None])
             elif quantname == "ddom_min_lower":
                 if j == 1:
                     plt.plot(np.log10(1.0-data[numits:,4]), \
@@ -88,7 +88,22 @@ def plotquantity(filelist, quantname, numits, runs, labellist, opts, imageformat
                             mew=opts['markedgewidth'], \
                             markevery=list(range(0,pltdatalen,opts['markinterval'])))
                 ylabelstr = "Log max-norm of Jacobi iteration matrix of L-factor"
-                plt.gca().set_ylim([0,None])
+                #plt.gca().set_ylim([0,None])
+            elif quantname == "cfl":
+                if j == 1:
+                    plt.plot(data[numits:,6], \
+                            lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
+                            marker=opts['marklist'][i], ms=opts['marksize'], \
+                            mew=opts['markedgewidth'], \
+                            markevery=list(range(0,pltdatalen,opts['markinterval'])), \
+                            label=labellist[i])
+                else:
+                    plt.plot(data[numits:,6], \
+                            lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
+                            marker=opts['marklist'][i], ms=opts['marksize'], \
+                            mew=opts['markedgewidth'], \
+                            markevery=list(range(0,pltdatalen,opts['markinterval'])))
+                ylabelstr = "CFL number"
 
     plt.xlabel(xlabelstr, fontsize="medium")
     plt.ylabel(ylabelstr, fontsize="medium")
@@ -115,8 +130,8 @@ if __name__ == "__main__":
         print("Error. Please provide input file name.")
         sys.exit(-1)
 
-    parser = argparse.ArgumentParser(description = "Plots residual history w.r.t. iterations and wall time starting at a specified iteration")
-    parser.add_argument("files", nargs='+')
+    parser = argparse.ArgumentParser(description = "Plots BLASTed PCInfo history w.r.t. iterations. Note that we plot multiple runs of a setting using the same line type and symbol.")
+    parser.add_argument("files", nargs='+', help="Prefixes of files to plot, not including the run index")
     parser.add_argument("--labels", nargs='+', help = "Legend strings")
     parser.add_argument("--labelstr", default="", help = "Common suffix for legend strings")
     parser.add_argument("--maxruns", type=int, help = "Max. number of repeated runs for any setting")
@@ -124,7 +139,8 @@ if __name__ == "__main__":
     parser.add_argument("--format", default="eps", help = "Output format")
     args = parser.parse_args(sys.argv)
 
-    plotquantity(args.files[1:], "residual", args.start_iter, args.maxruns, args.labels, opts, args.format)
+    plotquantity(args.files[1:], "iluresidual", args.start_iter, args.maxruns, args.labels, opts, args.format)
     plotquantity(args.files[1:], "ddom_min_upper", args.start_iter, args.maxruns, args.labels, opts, args.format)
     plotquantity(args.files[1:], "ddom_min_lower", args.start_iter, args.maxruns, args.labels, opts, args.format)
+    plotquantity(args.files[1:], "cfl", args.start_iter, args.maxruns, args.labels, opts, args.format)
 
