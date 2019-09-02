@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     opts = { \
             "marklist" : ['.', 'x', '+', '^', 'v', '<', '>', 'd'],
-            "colorlist" : ['c', 'b', 'r', 'g', 'o', 'm', 'k'],
+            "colorlist" : ['b', 'r', 'g', 'c', 'm', 'k', 'c'],
             "linetype" : ['-', '--', '-.', ':', '--', '--', '--'],
             "linewidth" : 0.75,
             "marksize" : 5,
