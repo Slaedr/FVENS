@@ -61,7 +61,7 @@ def plotwalltimes(filelist, ht, phase, labellist, labelstr, titlestr, opts, imag
     maxspeedup = 1.0
 
     phasestring = ""
-    ylabelstr = "Wall time (s)"
+    ylabelstr = "Log (base 10) of wall time (log seconds)"
     plotcol = 0
     if phase == "factor":
         plotcol = 3
@@ -94,7 +94,7 @@ def plotwalltimes(filelist, ht, phase, labellist, labelstr, titlestr, opts, imag
         else:
             fulldata[1:,1:] = bsl[1:]/data[:,1:]
         
-        plt.plot(fulldata[:,0]/ht, fulldata[:,plotcol], \
+        plt.plot(fulldata[:,0]/ht, np.log10(fulldata[:,plotcol]), \
                 lw=opts['linewidth'], ls=opts['linetype'][i], color=opts['colorlist'][i], \
                 marker=opts['marklist'][i], ms=opts['marksize'], \
                 mew=opts['markedgewidth'], \

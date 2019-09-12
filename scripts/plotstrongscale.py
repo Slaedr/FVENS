@@ -32,14 +32,23 @@ def plotstrongscaling(filelist, basethreads, ht, phase, labellist, labelstr, tit
     if phase == "factor":
         plotcol = 3
         phasestring = "factorization"
-        ylabelstr = "Speedup x " + str(basethreads)
+        if basethreads > 1:
+            ylabelstr = "Speedup x " + str(basethreads)
+        else:
+            ylabelstr = "Speedup"
     elif phase == "apply":
         plotcol = 4
         phasestring = "application"
-        ylabelstr = "Speedup x " + str(basethreads)
+        if basethreads > 1:
+            ylabelstr = "Speedup x " + str(basethreads)
+        else:
+            ylabelstr = "Speedup"
     elif phase == "all":
         plotcol = 5
-        ylabelstr = "Speedup x " + str(basethreads)
+        if basethreads > 1:
+            ylabelstr = "Speedup x " + str(basethreads)
+        else:
+            ylabelstr = "Speedup"
     elif phase == "liniters":
         plotcol = 8
         ylabelstr = "Total linear solver iterations"
