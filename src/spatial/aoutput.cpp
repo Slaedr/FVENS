@@ -554,11 +554,14 @@ void writeScalarsVectorToVtu_PointData(std::string fname, const fvens::UMesh<fre
 /// Writes a hybrid mesh in VTU format.
 /** VTK does not have a 9-node quadrilateral, so we ignore the cell-centered note for output.
  */
-void writeMeshToVtu(std::string fname, const fvens::UMesh<freal,NDIM>& m)
+void writeMeshToVtu(const std::string fname, const fvens::UMesh<freal,NDIM>& m)
 {
-	std::cout << "Writing vtu output...\n";
-	std::ofstream out(fname);
-	
+	const int rank = get_mpi_rank(MPI_COMM_WORLD);
+	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
+
+	std::cout << "Writing vtu output piece for rank " << rank << "...\n";
+	std::ofstream out(fname+"-" + std::to_string(rank) + ".vtu");
+
 	out << std::setprecision(10);
 
 	out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -611,7 +614,34 @@ void writeMeshToVtu(std::string fname, const fvens::UMesh<freal,NDIM>& m)
 	out << "</UnstructuredGrid>\n";
 	out << "</VTKFile>";
 	out.close();
-	std::cout << "Vtu file written.\n";
+	std::cout << "Mesh Vtu file written for rank " << rank << ".\n";
+
+	// For a parallel run, output the "topo" file
+	if(mpisize > 1 && rank == 0)
+	{
+		std::ofstream pfile(fname + ".pvtu");
+
+		pfile << "<PVTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+		pfile << "<PUnstructuredGrid GhostLevel=\"0\">\n";
+
+		pfile << "\t<PPoints>\n";
+		pfile << "\t\t<PDataArray type=\"Float64\" NumberOfComponents=\"3\" Format=\"ascii\"/>\n";
+		pfile << "\t</PPoints>\n";
+
+		pfile << "\t<PCells>\n";
+		pfile << "\t\t<PDataArray type=\"UInt32\" Name=\"connectivity\" Format=\"ascii\"/>\n";
+		pfile << "\t\t<DataArray type=\"UInt32\" Name=\"offsets\" Format=\"ascii\"/>\n";
+		pfile << "\t\t<DataArray type=\"Int32\" Name=\"types\" Format=\"ascii\"/>\n";
+		pfile << "\t</PCells>\n";
+
+		for(int irnk = 0; irnk < mpisize; irnk++)
+			pfile << "\t<Piece Source=\"" + fname + std::to_string(irnk) + ".vtu\"/>\n";
+
+		pfile << "</PUnstructuredGrid>\n";
+		pfile << "</VTKFile>\n";
+
+		pfile.close();
+	}
 }
 
 void writeConvergenceHistoryHeader(std::ostream& outf)
