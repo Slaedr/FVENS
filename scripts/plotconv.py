@@ -72,7 +72,7 @@ def plotquantity(filelist, quantname, numits, labellist, opts, imageformatstring
         setAxisParams(ax,opts['linewidth'])
         plt.legend(loc="best", fontsize="medium")
 
-    plt.savefig(filename.split('/')[-1].split('.')[0]+"-"+quantname+"." + imageformatstring, dpi=200)
+    plt.savefig(filename.split('/')[-1].split('.')[0]+"-"+quantname+"." + imageformatstring, dpi=200, bbox_inches='tight')
 
 if __name__ == "__main__":
 
