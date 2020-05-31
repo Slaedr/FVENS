@@ -350,7 +350,7 @@ private:
 	/// Coordinates of nodes
 	amat::Array2d<scalar> coords;
 
-	/// Interconnectivity matrix: lists node numbers of nodes in each element
+	/// Interconnectivity matrix: lists node-numbers of nodes in each element
 	amat::Array2d<fint> inpoel;
 
 	/// Physical boundary face data
@@ -380,7 +380,8 @@ private:
 	 *   the index of the cell in this subdomain that it is a part of,
 	 *   the local face EIndex of the boundary face in that cell
 	 *   the index of the other subdomain that it connects to, and
-	 *   the global index of the cell in the other subdomain that it connects to, in that order.
+	 *   the global index of the cell in the other subdomain that it connects to, and
+	 *   the global face number of the connectivity face, in that order.
 	 */
 	amat::Array2d<fint> connface;
 

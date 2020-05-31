@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include <map>
-#include <scotch.h>
+#include <scotch/scotch.h>
 #include "meshpartitioning.hpp"
 #include "utilities/mpiutils.hpp"
 #include "utilities/listofarrays.hpp"
@@ -61,6 +61,7 @@ UMesh<freal,2> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 	lm.vol_regions.resize(lm.nelem, gm.vol_regions.cols());
 
 	lm.globalElemIndex = extractInpoel(lm);
+	// Now, the point indices in lm.inpoel are still global indices.
 
 	/*! 2. Copy required point coords into local mesh
 	 *     get global to local and local-to-global point maps
@@ -69,8 +70,13 @@ UMesh<freal,2> ReplicatedGlobalMeshPartitioner::restrictMeshToPartitions() const
 	const std::map<fint,fint> pointGlob2Loc = extractPointCoords(lm, pointLoc2Glob);
 
 #ifdef DEBUG
-	for(fint ip = 0; ip < lm.npoin; ip++)
+	//std::cout << "Rank " << rank << ": Global indices of local points: ";
+	for(fint ip = 0; ip < lm.npoin; ip++) {
 		assert(pointGlob2Loc.at(pointLoc2Glob[ip]) == ip);
+		assert(pointLoc2Glob[ip] < gm.npoin);
+		// std::cout << pointLoc2Glob[ip] << " ";
+	}
+	// std::cout << std::endl;
 #endif
 
 	//! 3. Convert inpoel entries from global indices to local
@@ -448,7 +454,7 @@ void ScotchRGMPartitioner::compute_partition()
 
 	if(rank == 0) {
 		printf(" Using Scotch to compute a partition..\n");
-		SCOTCH_Graph *sgraph = SCOTCH_graphAlloc();
+		SCOTCH_Graph *const sgraph = SCOTCH_graphAlloc();
 		const ListOfArrays<fint> loa = getCellAdjLists(gm);
 		int ierr = SCOTCH_graphBuild(sgraph, 0, gm.gnelem(), &loa.ptrs[0], NULL, NULL, NULL,
 		                             loa.ptrs.back(), &loa.store[0], NULL);
@@ -471,22 +477,15 @@ void ScotchRGMPartitioner::compute_partition()
 	MPI_Bcast(&elemdist[0], gm.gnelem(), FVENS_MPI_INT, 0, MPI_COMM_WORLD);
 
 #ifdef DEBUG
-	// printf(" Partition: >\n");
-	// for(fint iel = 0; iel < gm.gnelem(); iel++) {
-	// 	assert(elemdist[iel] >= 0);
-	// 	assert(elemdist[iel] < mpisize);
-	// 	printf(" %d ", elemdist[iel]);
-	// }
-	// printf("\n"); fflush(stdout);
+	//printf(" Partition: >\n");
+	for(fint iel = 0; iel < gm.gnelem(); iel++) {
+		if(elemdist[iel] < 0)
+			throw MPI_exception("Some element has negative partition index!");
+		if(elemdist[iel] >= mpisize)
+			throw MPI_exception("Some element has partition index out of range!");
+		//printf(" %d ", elemdist[iel]);
+	}
 #endif
-
-	// const int numloceleminit = gm.gnelem() / mpisize;
-	// for(int irank = 0; irank < mpisize; irank++) {
-	// 	for(fint iel = irank*numloceleminit; iel < (irank+1)*numloceleminit; iel++)
-	// 		elemdist[iel] = irank;
-	// }
-	// for(fint iel = mpisize*numloceleminit; iel < gm.gnelem(); iel++)
-	// 	elemdist[iel] = mpisize-1;
 }
 
 }

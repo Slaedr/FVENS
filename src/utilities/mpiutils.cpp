@@ -20,10 +20,10 @@ void mpi_all_reduce(freal *const arr, const fint count, MPI_Op op, MPI_Comm comm
 void wait_for_debugger()
 {
 	const int rank = get_mpi_rank(MPI_COMM_WORLD);
-	if(std::getenv("FVENS_MPI_DEBUG") != NULL && rank == 0)
+	if(std::getenv("FVENS_MPI_DEBUG") != NULL)
 	{
 		volatile int debugger_attached = 0;
-		std::fprintf(stderr, "PID %ld waiting for debugger...\n", (long)getpid());
+		std::fprintf(stderr, "PID %ld (rank %d) waiting for debugger...\n", (long)getpid(), rank);
 		while(debugger_attached == 0) {  }
 	}
 	// if(std::getenv("FVENS_MPI_DEBUG"))

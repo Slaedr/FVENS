@@ -173,7 +173,6 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 	if(mpirank == 0)
 		writeConvergenceHistoryHeader(std::cout);
 
-
 	while(resi/initres > config.tol && step < config.maxiter)
 	{
 		{
@@ -204,6 +203,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 #pragma omp parallel for default(shared)
 			for(fint iel = 0; iel < m->gnelem(); iel++)
 			{
+				assert(m->garea(iel) > DBL_EPSILON);
 				for(int i = 0; i < nvars; i++)
 					u(iel,i) += config.cflinit*dtm[iel] * 1.0/m->garea(iel)*residual(iel,i);
 			}
@@ -220,6 +220,11 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			{
 				locresenergy += residual(iel,nvars-1)*residual(iel,nvars-1)*m->garea(iel);
 			}
+		}
+
+		if(!(locresenergy > 0)) {
+			std::cout << "! Rank " << mpirank << std::endl;
+			throw std::runtime_error("Local energy is non-positive!");
 		}
 
 		// Reduce across and communicate to all processes: the residual norm
@@ -250,7 +255,7 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 		if(!std::isfinite(resi))
 			throw Numerical_error("Steady forward Euler diverged - residual is Nan or inf!");
 	}
-	
+
 	const double finalwtime = MPI_Wtime();
 	const double finalctime = (double)clock() / (double)CLOCKS_PER_SEC;
 	tdata.ode_walltime += (finalwtime-initialwtime); tdata.ode_cputime += (finalctime-initialctime);

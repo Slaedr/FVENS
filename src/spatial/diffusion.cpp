@@ -1,12 +1,9 @@
 #include <iostream>
+#include "utilities/mpiutils.hpp"
 #include "diffusion.hpp"
 #include "utilities/afactory.hpp"
 #include "linalg/petscutils.hpp"
 #include "linalg/alinalg.hpp"
-
-#ifdef USE_ADOLC
-#include <adolc/adolc.h>
-#endif
 
 namespace fvens {
 
@@ -79,6 +76,8 @@ inline void DiffusionMA<nvars>::compute_flux_interior(const fint iface,
 {
 	const fint lelem = m->gintfac(iface,0);
 	const fint relem = m->gintfac(iface,1);
+	assert(lelem >= 0); assert(lelem < m->gnelem());
+	assert(relem >= 0); assert(relem < m->gnelem()+m->gnConnFace());
 	const freal len = m->gfacemetric(iface,2);
 
 	freal gradl[NDIM*nvars], gradr[NDIM*nvars];
@@ -99,8 +98,22 @@ inline void DiffusionMA<nvars>::compute_flux_interior(const fint iface,
 		// compute nu*(-grad u . n) * l
 		freal flux = 0;
 		for(int idim = 0; idim < NDIM; idim++)
+		{
 			flux += gradf[idim][ivar]*m->gfacemetric(iface,idim);
+#ifdef DEBUG
+			if(!(gradf[idim][ivar] > -1e15)) {
+				throw std::runtime_error( ">> Mod. grad = " + std::to_string(gradf[idim][ivar]));
+			}
+#endif
+		}
+
 		flux *= (-diffusivity*len);
+
+#ifdef DEBUG
+		if(!(flux > -1000)) {
+			std::cout << " >>!! flux = " << flux << std::endl;
+		}
+#endif
 
 		/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
@@ -118,6 +131,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
                                                 const bool gettimesteps, Vec timesteps) const
 {
 	StatusCode ierr = 0;
+	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -141,12 +155,17 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
 		const fint ielem = m->gintfac(ied,0);
+		assert(ielem >= 0);
+		assert(ielem < m->gnelem());
 		for(int ivar = 0; ivar < nvars; ivar++)
 			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
 
-	if(m->gnbface() > 0)
+	if(m->gnbface() > 0) {
 		compute_boundary_states(&uleft(0,0), &ug(0,0));
+		for(fint ied = 0; ied < m->gnbface(); ied++)
+			assert(ug(ied,0) != 2000);
+	}
 
 	Vec gradvec;
 	ierr = createGhostedSystemVector(m, NDIM*nvars, &gradvec); CHKERRQ(ierr);
@@ -157,12 +176,23 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 		gradcomp->compute_gradients(ua, amat::Array2dView<freal>(ugptr,m->gnbface(),nvars),
 		                            gradarray);
+
+#ifdef DEBUG
+		for(fint iel = 0; iel < m->gnelem()+m->gnConnFace(); iel++) {
+			for(int jdim = 0; jdim < NDIM; jdim++)
+				if(!(gradarray[iel*NDIM + jdim]*gradarray[iel*NDIM+jdim] >= 0))
+					throw std::runtime_error(std::to_string(mpirank) + ": bad gradient!");
+		}
+#endif
 	}
 	//std::cout << "Computed gradients." << std::endl;
 
 	ierr = VecGhostUpdateBegin(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 	{
+// #ifdef DEBUG
+// 		std::cout << "Rank " << mpirank << ": Fluxes across phy boundary faces..\n";
+// #endif
 		MutableGhostedVecHandler<freal> rvh(rvec);
 		freal *const rarr = rvh.getArray();
 		amat::Array2dMutableView<freal> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
@@ -178,6 +208,9 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 			const fint ibpface = iface - m->gPhyBFaceStart();
 			const freal len = m->gfacemetric(iface,2);
 
+			assert(lelem >= 0 && lelem < m->gnelem());
+			assert(ibpface >= 0 && ibpface < m->gnbface());
+
 			freal gradl[NDIM*nvars], gradr[NDIM*nvars];
 			for(int ivar = 0; ivar < nvars; ivar++) {
 				for(int idim = 0; idim < NDIM; idim++) {
@@ -186,6 +219,10 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 				}
 			}
 
+			assert(rc(lelem,0) > -1000);
+			assert(rc(lelem,1) > -1000);
+			assert(rcbp(ibpface,0) > -1000);
+			assert(rcbp(ibpface,1) > -1000);
 			freal gradf[NDIM][nvars];
 			getFaceGradient_modifiedAverage(&rc(lelem,0), &rcbp(ibpface,0),
 			                                &uarr[lelem*nvars], &ug(ibpface,0), gradl, gradr, gradf);
@@ -201,13 +238,20 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 				/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
 				residual(lelem,ivar) -= flux;
+				assert(residual(lelem,ivar) > -1000);
 			}
 		}
+// #ifdef DEBUG
+// 		std::cout << "Rank " << mpirank << ": Fluxes across phy boundary faces done.\n";
+// #endif
 	}
 
 	ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
 
 	{
+// #ifdef DEBUG
+// 		std::cout << "Rank " << mpirank << ": Fluxes across domain faces..\n";
+// #endif
 		MutableGhostedVecHandler<freal> rvh(rvec);
 		freal *const rarr = rvh.getArray();
 		amat::Array2dMutableView<freal> residual(rarr, m->gnelem()+m->gnConnFace(), nvars);
@@ -221,6 +265,9 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 		{
 			compute_flux_interior(iface, rc, uarr, grads, residual);
 		}
+// #ifdef DEBUG
+// 		std::cout << "Rank " << mpirank << ": Fluxes across domain faces done.\n";
+// #endif
 	}
 
 	ierr = VecDestroy(&gradvec); CHKERRQ(ierr);
@@ -374,7 +421,6 @@ StatusCode scalar_postprocess_point(const UMesh<freal,NDIM> *const m, const Vec 
 
 // template instantiations
 
-//CHANGE HERE
 template class Diffusion<1>;
 template class DiffusionMA<1>;
 template StatusCode scalar_postprocess_point<1>(const UMesh<freal,NDIM> *const m, const Vec uvec,

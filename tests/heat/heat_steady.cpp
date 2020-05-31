@@ -32,6 +32,13 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+	//po::options_description desc("Options");
+	//desc.add_options()
+	//	("mpi_debug", "Every process waits for a debugger to attach and change variable debugger_attached");
+	//po::variables_map vm;
+	//po::store(po::parse_command_line(argc, argv, desc), vm);
+	//po::notify(vm); 
+
 	// Read control file
 	ifstream control(argv[1]);
 
@@ -78,16 +85,21 @@ int main(int argc, char* argv[])
 
 	if(mpirank == 0)
 		std::cout << "Diffusion coeff = " << diffcoeff << ", boundary value = " << bvalue << std::endl;
-	
+
+	// if(vm.count("mpi_debug")) {
+	// 	std::cout << " Waiting for debugger..." << std::endl;
+	wait_for_debugger();
+	//}
+
 	// rhs and exact soln
-	
-	std::function<void(const freal *const, const freal, const freal *const, freal *const)> rhs 
-		= [diffcoeff](const freal *const r, const freal t, const freal *const u, 
+
+	std::function<void(const freal *const, const freal, const freal *const, freal *const)> rhs
+		= [diffcoeff](const freal *const r, const freal t, const freal *const u,
 				freal *const sourceterm)
-		{ 
-			sourceterm[0] = diffcoeff*8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]); 
+		{
+			sourceterm[0] = diffcoeff*8.0*PI*PI*sin(2*PI*r[0])*sin(2*PI*r[1]);
 		};
-	
+
 	auto uexact = [](const freal *const r)->freal { return sin(2*PI*r[0])*sin(2*PI*r[1]); };
 
 	std::vector<double> lh(nmesh), lerrors(nmesh), slopes(nmesh-1);
@@ -99,21 +111,15 @@ int main(int argc, char* argv[])
 		const UMesh<freal,NDIM> m = constructMesh(meshfile);
 
 		// set up problem
-		
+
 		if(mpirank == 0)
 			std::cout << "Setting up spatial scheme.\n";
-		
+
 		Diffusion<1>* prob = nullptr;
 		Diffusion<1>* startprob = nullptr;
-		if(visflux == "MODIFIEDAVERAGE") {
-			prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
-			if(usestarter != 0)
-				startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, "NONE");
-		}
-		else {
-			std::cout << " ! Viscous scheme not available!\n";
-			std::abort();
-		}
+		prob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, reconst);
+		if(usestarter != 0)
+			startprob = new DiffusionMA<1>(&m, diffcoeff, bvalue, rhs, "NONE");
 
 		if(mpirank == 0)
 			std::cout << "***\n";
@@ -159,8 +165,8 @@ int main(int argc, char* argv[])
 		FlowParserOptions opts;
 		opts.nl_update_scheme = "FULL";
 		const NonlinearUpdate<1> *const nlu = create_const_nonlinearUpdateScheme<1>(opts);
-		
-		if(timesteptype == "IMPLICIT") 
+
+		if(timesteptype == "IMPLICIT")
 		{
 			time = new SteadyBackwardEulerSolver<1>(prob, tconf, ksp, nlu);
 
@@ -256,8 +262,8 @@ int main(int argc, char* argv[])
 		for(int i = 0; i < nmesh-1; i++)
 			std::cout << "   " << slopes[i] << std::endl;
 	}
-		
-	if(reconst == "LEASTSQUARES") 
+
+	if(reconst == "LEASTSQUARES")
 	{
 		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.9) {
 			if(mpirank == 0)
@@ -266,7 +272,7 @@ int main(int argc, char* argv[])
 		else
 			throw "Order not correct!";
 	}
-	
+
 	if(mpirank == 0)
 		cout << "\n--------------- End --------------------- \n\n";
 	ierr = PetscFinalize();

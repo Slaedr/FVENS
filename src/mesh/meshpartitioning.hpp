@@ -52,7 +52,7 @@ protected:
 	 * \return The local point indices of global points required by this rank
 	 */
 	std::map<fint,fint> extractPointCoords(UMesh<freal,NDIM>& lm,
-	                                         std::vector<fint>& locpoints) const;
+	                                       std::vector<fint>& locpoints) const;
 
 	/// Extracts the physical boundary faces which are a part of the subdomain on this rank
 	/** \param pointGlobal2Local Map from global to local indices for points present in this rank.

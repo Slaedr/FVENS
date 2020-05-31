@@ -25,6 +25,7 @@
 #include "utilities/aerrorhandling.hpp"
 #include "utilities/mpiutils.hpp"
 #include "linalg/alinalg.hpp"
+#include "linalg/tracevector.hpp"
 
 namespace fvens {
 
@@ -44,8 +45,23 @@ Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh)
 	update_subdomain_cell_centres();
 	petsc_throw(ierr, "Could not compute subdomain cell-centres!");
 
-	ierr = VecGhostUpdateBegin(rcvec, INSERT_VALUES, SCATTER_FORWARD);
-	petsc_throw(ierr, "Cell centre scatter could not begin!");
+	// ierr = VecGhostUpdateBegin(rcvec, INSERT_VALUES, SCATTER_FORWARD);
+	// petsc_throw(ierr, "Cell centre scatter could not begin!");
+
+	// Use L2 trace vector to exchange cell centres
+	L2TraceVector<scalar,NDIM> rtv(*m);
+	{
+		scalar *const leftrc = rtv.getLocalArrayLeft();
+		const ConstGhostedVecHandler<scalar> rch(rcvec);
+		const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+		for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
+		{
+			const fint lelem = m->gintfac(icface,0);
+			for(int idim = 0; idim < NDIM; idim++)
+				leftrc[icface*NDIM+idim] = rc(lelem,idim);
+		}
+		rtv.updateSharedFacesBegin();
+	}
 
 	// Compute coords of face centres
 	gr.resize(m->gnaface(), NDIM);
@@ -60,8 +76,42 @@ Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh)
 			gr(ied,idim) /= m->gnnofa(ied);
 	}
 
-	ierr = VecGhostUpdateEnd(rcvec, INSERT_VALUES, SCATTER_FORWARD);
-	petsc_throw(ierr, "Cell-centre scatter could not be completed!");
+	// ierr = VecGhostUpdateEnd(rcvec, INSERT_VALUES, SCATTER_FORWARD);
+	// petsc_throw(ierr, "Cell-centre scatter could not be completed!");
+	rtv.updateSharedFacesEnd();
+	{
+		MutableGhostedVecHandler<scalar> rchm(rcvec);
+		amat::Array2dMutableView<scalar> rc(rchm.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+		const scalar *const rightrc = rtv.getLocalArrayRight();
+		for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
+		{
+			const fint relem = m->gintfac(icface,1);
+			for(int idim = 0; idim < NDIM; idim++)
+				rc(relem,idim) = rightrc[icface*NDIM+idim];
+		}
+	}
+
+#ifdef DEBUG
+	{
+		ConstGhostedVecHandler<scalar> rchm(rcvec);
+		const scalar *const rc = rchm.getArray();
+		const int rank = get_mpi_rank(MPI_COMM_WORLD);
+		std::cout << "Rank " << rank << ": nelem = " << m->gnelem() << std::endl;
+		for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
+		{
+			const fint lelem = m->gintfac(icface,0);
+			const fint relem = m->gintfac(icface,1);
+			scalar dist = 0;
+			for(int jdim = 0; jdim < NDIM; jdim++)
+				dist += (rc[lelem*NDIM+jdim]-rc[relem*NDIM+jdim])*(rc[lelem*NDIM+jdim]-rc[relem*NDIM+jdim]);
+			dist = std::sqrt(dist);
+			if(dist < 2.2e-15) {
+				std::cout << "Rank " << rank << ": Lelem = " << lelem << ", relem = " << relem << std::endl;
+				throw std::runtime_error("Wrong connectivity ghost cell centre");
+			}
+		}
+	}
+#endif
 
 	rch.setVec(rcvec);
 
@@ -181,7 +231,17 @@ getFaceGradient_modifiedAverage(const scalar *const rcl, const scalar *const rcr
 		dr[i] = rcr[i]-rcl[i];
 		dist += dr[i]*dr[i];
 	}
+// #ifdef DEBUG
+// 	if(!(dist > 0)) {
+// 		std::cout << " >>!! Dist = " << dist << std::endl;
+// 	}
+// #endif
 	dist = sqrt(dist);
+// #ifdef DEBUG
+// 	if(!(dist > 0)) {
+// 		std::cout << " >>!! Sqrt dist = " << dist << std::endl;
+// 	}
+// #endif
 	for(int i = 0; i < NDIM; i++) {
 		dr[i] /= dist;
 	}
@@ -190,10 +250,25 @@ getFaceGradient_modifiedAverage(const scalar *const rcl, const scalar *const rcr
 	{
 		scalar davg[NDIM];
 
-		for(int j = 0; j < NDIM; j++)
+		for(int j = 0; j < NDIM; j++) {
 			davg[j] = 0.5*(gradl[j*nvars+i] + gradr[j*nvars+i]);
+#ifdef DEBUG
+			if(!(davg[j] > -1e16)) {
+				throw std::runtime_error(" >>!! avg grad = " + std::to_string(davg[j]));
+			}
+#endif
+		}
 
 		const scalar corr = (ucr[i]-ucl[i])/dist;
+#ifdef DEBUG
+		// const scalar ajmp = std::abs(ucr[i]-ucl[i]);
+		// if(!(ajmp > 0)) {
+		// 	std::cout << " >>!! Abs jump = " << ajmp << std::endl;
+		// }
+		if(!(corr > -1e16)) {
+			std::cout << " >>!! Corr = " << corr << std::endl;
+		}
+#endif
 
 		const scalar ddr = dimDotProduct(davg,dr);
 

@@ -26,10 +26,6 @@
 #include "mesh.hpp"
 #include "utilities/mpiutils.hpp"
 
-#ifdef USE_ADOLC
-#include <adolc/adolc.h>
-#endif
-
 namespace fvens {
 
 template <typename scalar, int ndim>

@@ -209,6 +209,8 @@ const scalar *L2TraceVector<scalar,nvars>::getLocalArrayRight() const
 
 /** A more general implementation would use MPI_BYTE and manually serialize the array of scalars.
  * But the easier way would be to define templated MPI communication functions and use those below.
+ *
+ * NOTE: The storage buffers use an array-of-structures layout.
  */
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
@@ -340,6 +342,7 @@ void L2TraceVector<scalar,nvars>::updateSharedFacesEnd()
 }
 
 template class L2TraceVector<freal,1>;
+template class L2TraceVector<freal,NDIM>;
 template class L2TraceVector<freal,NVARS>;
 
 }

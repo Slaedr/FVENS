@@ -131,7 +131,7 @@ MatrixFreeSpatialJacobian<nvars>::MatrixFreeSpatialJacobian(const Spatial<freal,
 
 template<int nvars>
 int MatrixFreeSpatialJacobian<nvars>::set_state(const Vec u_state, const Vec r_state,
-		const Vec dtms) 
+                                                const Vec dtms) 
 {
 	u = u_state;
 	res = r_state;
