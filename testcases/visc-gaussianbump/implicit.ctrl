@@ -1,0 +1,85 @@
+io {
+	mesh_file                    "../testcases/visc-gaussianbump/grids/fm0.msh"
+	solution_output_file         "ibump.vtu"
+	log_file_prefix              "ibump-log"
+	convergence_history_required false
+}
+
+flow_conditions {
+	;; euler or navierstokes flow
+	flow_type                 navierstokes
+	adiabatic_index               1.4
+	angle_of_attack               0.0
+	freestream_Mach_number        0.5
+	freestream_Reynolds_number    2500.0
+	freestream_temperature        290.19
+	Prandtl_number                0.708
+	use_constant_viscosity        false
+}
+
+bc
+{
+	bc0 {
+		type            slipwall
+		marker          3
+	}
+	bc1 {
+		type              farfield
+		marker            4
+	}
+	bc2 {
+		type            farfield
+		marker          5
+	}
+	bc3 {
+		type                     adiabaticwall
+		marker                   2
+		; Tangential velocity at wall
+		boundary_values          0.0
+	}
+	
+	;; List of boundary markers at which surface output is required
+	;;  and are to be treated as walls, ie, CL and CD are computed
+	listof_output_wall_boundaries    2
+	
+	surface_output_file_prefix       "ibump"
+}
+
+time {
+	;; steady or unsteady
+	simulation_type           steady
+}
+
+spatial_discretization {
+	;; Numerical flux to use- LLF,VanLeer,HLL,AUSM,Roe,HLLC
+	inviscid_flux                    hllc
+	gradient_method                  leastsquares
+	limiter                          none
+	limiter_parameter                20.0
+}
+
+;; Psuedo-time continuation settings for the nonlinear solver
+pseudotime 
+{
+	pseudotime_stepping_type    implicit
+	
+	;; The solver which computes the final solution
+	main {
+		cfl_min                  50.0
+		cfl_max                  5000.0
+		tolerance                1e-6
+		max_timesteps            500
+	}
+	
+	;; The solver which computes an initial guess for the main solver
+	initialization {	
+		cfl_min                  25.0
+		cfl_max                  500.0
+		tolerance                1e-1
+		max_timesteps            100
+	}
+	
+	nonlinear_update_scheme    robust_flow
+}
+
+Jacobian_inviscid_flux     consistent
