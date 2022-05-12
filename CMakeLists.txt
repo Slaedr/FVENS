@@ -312,6 +312,7 @@ if(${SCOTCH_ERR_LIB} STREQUAL "SCOTCH_ERR_LIB-NOTFOUND")
 else()
   message(STATUS "Building with Scotch error lib found at ${SCOTCH_ERR_LIB}")
 endif()
+include_directories(${SCOTCH_DIR}/include)
 
 # ADOLC
 if(WITH_ADOLC)
