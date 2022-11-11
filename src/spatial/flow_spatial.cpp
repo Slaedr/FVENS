@@ -360,33 +360,25 @@ void FlowFV<scalar,secondOrderRequested,constVisc>
 	// left and right gradients; zero for first order scheme
 	scalar gradl[NDIM*NVARS], gradr[NDIM*NVARS];
 
-	// const scalar *in_gradl = nullptr, *in_gradr = nullptr;
-
 	if(secondOrderRequested) {
-		// in_gradl = &grads[lelem](0,0);
-		// in_gradr = &grads[relem](0,0);
-		for(int i = 0; i < NDIM; i++)
+		for(int i = 0; i < NDIM; i++) {
 			for(int j = 0; j < NVARS; j++) {
 				gradl[i*NVARS+j] = gradsl(i,j);
 				gradr[i*NVARS+j] = gradsr(i,j);
 			}
-	}
-
-	// getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, in_ucr,
-	//                                                                   in_gradl, in_gradr,
-	//                                                                   uctl, uctr, gradl, gradr);
-
-	getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, ucell_r,
-	                                                                  gradl, gradr,
-	                                                                  uctl, uctr, gradl, gradr);
-
-	if(!secondOrderRequested) {
-		for(int i = 0; i < NDIM; i++)
+		}
+	} else {
+		for(int i = 0; i < NDIM; i++) {
 			for(int j = 0; j < NVARS; j++) {
 				gradl[i*NVARS+j] = 0;
 				gradr[i*NVARS+j] = 0;
 			}
+		}
 	}
+
+	getPrimitive2StatesAndGradients<scalar,NDIM,secondOrderRequested>(physics, ucell_l, ucell_r,
+	                                                                  gradl, gradr,
+	                                                                  uctl, uctr, gradl, gradr);
 
 	scalar grad[NDIM][NVARS];
 	getFaceGradient_modifiedAverage(rcl, rcr, uctl, uctr, gradl, gradr, grad);
