@@ -7,37 +7,41 @@
 #include "aerrorhandling.hpp"
 
 namespace fvens {
-	
-MPI_exception::MPI_exception(const std::string& msg) 
+
+MPI_exception::MPI_exception(const std::string& msg)
 	: std::runtime_error(std::string("MPI error: ")+msg)
 { }
 
-MPI_exception::MPI_exception(const char *const msg) 
+MPI_exception::MPI_exception(const char *const msg)
 	: std::runtime_error(std::string("MPI error: ") + std::string(msg))
 { }
-	
-Petsc_exception::Petsc_exception(const std::string& msg) 
+
+Petsc_exception::Petsc_exception(const std::string& msg)
 	: std::runtime_error(std::string("PETSc error: ")+msg)
 { }
 
-Petsc_exception::Petsc_exception(const char *const msg) 
+Petsc_exception::Petsc_exception(const char *const msg)
 	: std::runtime_error(std::string("PETSc error: ") + std::string(msg))
 { }
 
-Numerical_error::Numerical_error(const std::string& msg) 
+Numerical_error::Numerical_error(const std::string& msg)
 	: std::logic_error(msg)
 { }
 
-Tolerance_error::Tolerance_error(const std::string& msg) 
+Tolerance_error::Tolerance_error(const std::string& msg)
 	: Numerical_error(msg)
 { }
 
-InputNotGivenError::InputNotGivenError(const std::string& msg) 
+InputNotGivenError::InputNotGivenError(const std::string& msg)
 	: std::runtime_error(std::string("Input not given: ")+msg)
 { }
 
 UnsupportedOptionError::UnsupportedOptionError(const std::string& msg)
 	: std::runtime_error(std::string("Unsupported option: ")+msg)
+{ }
+
+InvalidCommError::InvalidCommError(const std::string& msg)
+	: std::runtime_error(std::string("Invalid communication: ") + msg)
 { }
 
 void open_file_toRead(const std::string file, std::ifstream& fin)

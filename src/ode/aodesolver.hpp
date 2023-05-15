@@ -92,6 +92,7 @@ protected:
 	const Spatial<freal,nvars> *const space;
 	const SteadySolverConfig& config;
 	TimingData tdata;
+	GhostedBlockVecComm<nvars> gbcomm;
 
 	/// Linear CFL ramping
 	freal linearRamp(const freal cstart, const freal cend, const int itstart, const int itend,
@@ -101,7 +102,7 @@ protected:
 	freal expResidualRamp(const freal cflmin, const freal cflmax, const freal prevcfl,
 	                       const freal resratio, const freal paramup, const freal paramdown);
 };
-	
+
 /// A driver class for explicit time-stepping to steady state using forward Euler integration
 /** \note Make sure compute_topological(), compute_face_data() and compute_areas()
  * have been called on the mesh object prior to initialzing an object of this class.
@@ -134,6 +135,7 @@ private:
 	using SteadySolver<nvars>::space;
 	using SteadySolver<nvars>::config;
 	using SteadySolver<nvars>::tdata;
+	using SteadySolver<nvars>::gbcomm;
 	using SteadySolver<nvars>::linearRamp;
 	using SteadySolver<nvars>::expResidualRamp;
 };

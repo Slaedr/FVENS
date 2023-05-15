@@ -74,7 +74,7 @@ TimingData::TimingData()
 
 template <int nvars>
 SteadySolver<nvars>::SteadySolver(const Spatial<freal,nvars> *const spatial, const SteadySolverConfig& conf)
-	: space{spatial}, config{conf}
+	: space{spatial}, config{conf}, gbcomm(spatial->mesh())
 {
 	tdata.nelem = spatial->mesh()->gnelem();
 }
@@ -187,11 +187,16 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 
 		ierr = space->compute_residual(uvec, rvec, true, dtmvec); CHKERRQ(ierr);
 
-		ierr = VecGhostUpdateBegin(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
-		ierr = VecGhostUpdateEnd(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+		// ierr = VecGhostUpdateBegin(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+		// ierr = VecGhostUpdateEnd(rvec, ADD_VALUES, SCATTER_REVERSE); CHKERRQ(ierr);
+		gbcomm.setVec(rvec);
+		gbcomm.setModes(GHOST_TO_DOMAIN, ADD_VALUES);
+		gbcomm.vecUpdateBegin();
+		gbcomm.vecUpdateEnd();
 
 		curCFL = expResidualRamp(config.cflinit, config.cflfin, curCFL, resiold/resi, 0.3, 0.25);
 
+		// TODO: Overlap computation and communication by splitting the update loop into two
 		{
 			ConstVecHandler<PetscScalar> dth(dtmvec);
 			const PetscScalar *const dtm = dth.getArray();
@@ -209,7 +214,10 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			}
 		}
 
-		ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		//ierr = VecGhostUpdateBegin(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		gbcomm.setVec(uvec);
+		gbcomm.setModes(DOMAIN_TO_GHOST, INSERT_VALUES);
+		gbcomm.vecUpdateBegin();
 
 		freal locresenergy = 0;
 		{
@@ -249,7 +257,8 @@ StatusCode SteadyForwardEulerSolver<nvars>::solve(Vec uvec)
 			if(mpirank==0)
 				writeStepToConvergenceHistory(convstep, std::cout);
 
-		ierr = VecGhostUpdateEnd(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		//ierr = VecGhostUpdateEnd(uvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+		gbcomm.vecUpdateEnd();
 
 		// test for nan
 		if(!std::isfinite(resi))

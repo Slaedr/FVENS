@@ -8,7 +8,7 @@ MPI
 
 3D
 --
-- Generalize mesh to 3D (no need of internal faces - we will only need boundary faces)
+- Generalize mesh to 3D (no need of internal faces - we will only need boundary faces if we only use cell-based loops)
 - Make physics dimension-agnostic and/or 3D
 
 Residual computation

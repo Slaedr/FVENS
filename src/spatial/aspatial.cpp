@@ -35,7 +35,7 @@ namespace fvens {
  * \sa compute_ghost_cell_coords_about_face
  */
 template<typename scalar, int nvars>
-Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh)
+Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh), dimcomm(mesh)
 {
 	StatusCode ierr = 0;
 
@@ -49,19 +49,22 @@ Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh)
 	// petsc_throw(ierr, "Cell centre scatter could not begin!");
 
 	// Use L2 trace vector to exchange cell centres
-	L2TraceVector<scalar,NDIM> rtv(*m);
-	{
-		scalar *const leftrc = rtv.getLocalArrayLeft();
-		const ConstGhostedVecHandler<scalar> rch(rcvec);
-		const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
-		for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
-		{
-			const fint lelem = m->gintfac(icface,0);
-			for(int idim = 0; idim < NDIM; idim++)
-				leftrc[icface*NDIM+idim] = rc(lelem,idim);
-		}
-		rtv.updateSharedFacesBegin();
-	}
+	// L2TraceVector<scalar,NDIM> rtv(*m);
+	// {
+	// 	scalar *const leftrc = rtv.getLocalArrayLeft();
+	// 	const ConstGhostedVecHandler<scalar> rch(rcvec);
+	// 	const amat::Array2dView<scalar> rc(rch.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+	// 	for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
+	// 	{
+	// 		const fint lelem = m->gintfac(icface,0);
+	// 		for(int idim = 0; idim < NDIM; idim++)
+	// 			leftrc[icface*NDIM+idim] = rc(lelem,idim);
+	// 	}
+	// 	rtv.updateSharedFacesBegin();
+	// }
+	dimcomm.setVec(rcvec);
+	dimcomm.setModes(DOMAIN_TO_GHOST, INSERT_VALUES);
+	dimcomm.vecUpdateBegin();
 
 	// Compute coords of face centres
 	gr.resize(m->gnaface(), NDIM);
@@ -78,18 +81,20 @@ Spatial<scalar,nvars>::Spatial(const UMesh<scalar,NDIM> *const mesh) : m(mesh)
 
 	// ierr = VecGhostUpdateEnd(rcvec, INSERT_VALUES, SCATTER_FORWARD);
 	// petsc_throw(ierr, "Cell-centre scatter could not be completed!");
-	rtv.updateSharedFacesEnd();
-	{
-		MutableGhostedVecHandler<scalar> rchm(rcvec);
-		amat::Array2dMutableView<scalar> rc(rchm.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
-		const scalar *const rightrc = rtv.getLocalArrayRight();
-		for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
-		{
-			const fint relem = m->gintfac(icface,1);
-			for(int idim = 0; idim < NDIM; idim++)
-				rc(relem,idim) = rightrc[icface*NDIM+idim];
-		}
-	}
+
+	// rtv.updateSharedFacesEnd();
+	// {
+	// 	MutableGhostedVecHandler<scalar> rchm(rcvec);
+	// 	amat::Array2dMutableView<scalar> rc(rchm.getArray(), m->gnelem()+m->gnConnFace(), NDIM);
+	// 	const scalar *const rightrc = rtv.getLocalArrayRight();
+	// 	for(fint icface = m->gConnBFaceStart(); icface < m->gConnBFaceEnd(); icface++)
+	// 	{
+	// 		const fint relem = m->gintfac(icface,1);
+	// 		for(int idim = 0; idim < NDIM; idim++)
+	// 			rc(relem,idim) = rightrc[icface*NDIM+idim];
+	// 	}
+	// }
+	dimcomm.vecUpdateEnd();
 
 #ifdef DEBUG
 	{

@@ -31,6 +31,8 @@ add_library(fvens_base
   spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
   spatial/aoutput.cpp spatial/diffusion.cpp
 
+  comm/ghostveccomm.cpp
+
   mesh/ameshutils.cpp mesh/mesh.cpp mesh/meshpartitioning.cpp mesh/meshreaders.cpp
   mesh/meshordering.cpp
 

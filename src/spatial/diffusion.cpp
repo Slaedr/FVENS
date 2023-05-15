@@ -109,20 +109,20 @@ inline void DiffusionMA<nvars>::compute_flux_interior(const fint iface,
 
 		flux *= (-diffusivity*len);
 
-#ifdef DEBUG
-		if(!(flux > -1000)) {
-			std::cout << " >>!! flux = " << flux << std::endl;
-		}
-#endif
+// #ifdef DEBUG
+// 		if(!(flux > -1000)) {
+// 			std::cout << " >>!! flux = " << flux << std::endl;
+// 		}
+// #endif
 
 		/// We assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
 		residual(lelem,ivar) -= flux;
 
-		if(relem < m->gnelem()) {
+		//if(relem < m->gnelem()) {
 #pragma omp atomic
 			residual(relem,ivar) += flux;
-		}
+			//}
 	}
 }
 
@@ -131,7 +131,9 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
                                                 const bool gettimesteps, Vec timesteps) const
 {
 	StatusCode ierr = 0;
+#ifdef DEBUG
 	const int mpirank = get_mpi_rank(PETSC_COMM_WORLD);
+#endif
 
 	PetscInt locnelem;
 	ierr = VecGetLocalSize(uvec, &locnelem); CHKERRQ(ierr);
@@ -163,8 +165,8 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 
 	if(m->gnbface() > 0) {
 		compute_boundary_states(&uleft(0,0), &ug(0,0));
-		for(fint ied = 0; ied < m->gnbface(); ied++)
-			assert(ug(ied,0) != 2000);
+		// for(fint ied = 0; ied < m->gnbface(); ied++)
+		// 	assert(ug(ied,0) != 2000);
 	}
 
 	Vec gradvec;
@@ -219,10 +221,10 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 				}
 			}
 
-			assert(rc(lelem,0) > -1000);
-			assert(rc(lelem,1) > -1000);
-			assert(rcbp(ibpface,0) > -1000);
-			assert(rcbp(ibpface,1) > -1000);
+			// assert(rc(lelem,0) > -1000);
+			// assert(rc(lelem,1) > -1000);
+			// assert(rcbp(ibpface,0) > -1000);
+			// assert(rcbp(ibpface,1) > -1000);
 			freal gradf[NDIM][nvars];
 			getFaceGradient_modifiedAverage(&rc(lelem,0), &rcbp(ibpface,0),
 			                                &uarr[lelem*nvars], &ug(ibpface,0), gradl, gradr, gradf);
@@ -238,7 +240,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 				/// NOTE: we assemble the negative of the residual r in 'M du/dt + r(u) = 0'
 #pragma omp atomic
 				residual(lelem,ivar) -= flux;
-				assert(residual(lelem,ivar) > -1000);
+				//assert(residual(lelem,ivar) > -1000);
 			}
 		}
 // #ifdef DEBUG
@@ -247,6 +249,19 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 	}
 
 	ierr = VecGhostUpdateEnd(gradvec, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+// #ifdef DEBUG
+// 	// ONly for zero gradient
+// 	{
+// 		ConstGhostedVecHandler<freal> grh(gradvec);
+// 		const freal *const gradarray = grh.getArray();
+// 		for(fint iel = 0; iel < m->gnelem()+m->gnConnFace(); iel++) {
+// 			for(int jdim = 0; jdim < NDIM; jdim++)
+// 				if(std::abs(gradarray[iel*NDIM + jdim]*gradarray[iel*NDIM+jdim]) >= 1e-15)
+// 					throw std::runtime_error(std::to_string(mpirank) + ": nonzero gradient!");
+// 		}
+// 	}
+// #endif
 
 	{
 // #ifdef DEBUG

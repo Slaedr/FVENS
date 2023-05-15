@@ -31,6 +31,8 @@
 
 #include "mesh/mesh.hpp"
 
+#include "comm/ghostveccomm.hpp"
+
 namespace fvens {
 
 /// Base class for finite volume spatial discretization
@@ -92,7 +94,7 @@ public:
 	virtual void getGradients(const Vec u, GradBlock_t<freal,NDIM,nvars> *const grads) const = 0;
 
 	/// Exposes access to the mesh context
-	const UMesh<scalar,2>* mesh() const
+	const UMesh<scalar,NDIM>* mesh() const
 	{
 		return m;
 	}
@@ -118,6 +120,9 @@ protected:
 	/** Required to deal with the case where a subdomain has no physical boundary faces.
 	 */
 	const scalar *rcbptr;
+
+	/// Communication context for ghosted PETSc vectors
+	GhostedBlockVecComm<NDIM> dimcomm;
 
 	/// Faces' Gauss points' coords, stored a 3D array of dimensions
 	/// naface x nguass x ndim (in that order)

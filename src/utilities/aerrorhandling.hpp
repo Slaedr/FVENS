@@ -34,7 +34,7 @@ public:
 	MPI_exception(const std::string& msg);
 	MPI_exception(const char *const msg);
 };
-	
+
 /// An exception to throw for errors from PETSc; takes a custom message
 class Petsc_exception : public std::runtime_error
 {
@@ -57,12 +57,19 @@ public:
 	UnsupportedOptionError(const std::string& msg);
 };
 
+/// Exception thrown to indicate some invalid communication was requested
+class InvalidCommError : public std::runtime_error
+{
+public:
+	InvalidCommError(const std::string& mdg);
+};
+
 /// Throw an error from an error code
 /** \param ierr An expression which, if true, triggers the exception
  * \param str A short string message describing the error
  */
 inline void fvens_throw(const int ierr, const std::string str) {
-	if(ierr != 0) 
+	if(ierr != 0)
 		throw std::runtime_error(str);
 }
 
