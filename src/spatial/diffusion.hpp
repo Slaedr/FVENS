@@ -7,8 +7,8 @@
 
 #include <vector>
 #include <petscvec.h>
-#include "spatial/aspatial.hpp"
 #include "agradientschemes.hpp"
+#include "aspatial.hpp"
 
 namespace fvens {
 
@@ -44,8 +44,12 @@ protected:
 
 	std::vector<freal> h;			///< Size of cells
 
-	/// Dirichlet BC for a boundary face ied
-	void compute_boundary_state(const int ied, const freal *const ins, freal *const bs) const;
+	/// Constant Dirichlet BC for a boundary face ied
+	void compute_boundary_state(const int ied, const freal *const ins, freal *const bs) const
+	{
+		for(int ivar = 0; ivar < nvars; ivar++)
+			bs[ivar] = 2.0*bval - ins[ivar];
+	}
 	
 	/// Dirichlet BC for all boundaries
 	void compute_boundary_states(const freal *const instates, 

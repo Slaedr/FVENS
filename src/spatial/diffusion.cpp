@@ -35,15 +35,6 @@ template<int nvars>
 Diffusion<nvars>::~Diffusion()
 { }
 
-// Currently, all boundaries are constant Dirichlet
-template<int nvars>
-inline void Diffusion<nvars>::compute_boundary_state(const int ied,
-		const freal *const ins, freal *const bs) const
-{
-	for(int ivar = 0; ivar < nvars; ivar++)
-		bs[ivar] = 2.0*bval - ins[ivar];
-}
-
 template<int nvars>
 void Diffusion<nvars>::compute_boundary_states(const freal *const instates,
                                                freal *const bounstates) const
@@ -145,8 +136,7 @@ StatusCode DiffusionMA<nvars>::compute_residual(const Vec uvec, Vec rvec,
 			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
 
-	if(m->gnbface() > 0)
-		compute_boundary_states(&uleft(0,0), &ug(0,0));
+	compute_boundary_states(&uleft(0,0), &ug(0,0));
 
 	Vec gradvec;
 	ierr = createGhostedSystemVector(m, NDIM*nvars, &gradvec); CHKERRQ(ierr);
@@ -328,11 +318,15 @@ void DiffusionMA<nvars>::getGradients(const Vec uvec,
 	amat::Array2d<freal> ug(m->gnbface(),nvars);
 	ConstGhostedVecHandler<freal> uh(uvec);
 	const amat::Array2dView<freal> u(uh.getArray(), m->gnelem()+m->gnConnFace(), nvars);
-	for(fint iface = 0; iface < m->gnbface(); iface++)
+	amat::Array2d<freal> uleft(m->gnbface(), nvars);
+	for(fint ied = m->gPhyBFaceStart(); ied < m->gPhyBFaceEnd(); ied++)
 	{
-		const fint lelem = m->gintfac(iface+m->gPhyBFaceStart(),0);
-		compute_boundary_state(iface, &u(lelem,0), &ug(iface,0));
+		const fint ielem = m->gintfac(ied,0);
+		for(int ivar = 0; ivar < nvars; ivar++)
+			uleft(ied - m->gPhyBFaceStart(),ivar) = u(ielem,ivar);
 	}
+
+	compute_boundary_states(&uleft(0,0), &ug(0,0));
 
 	gradcomp->compute_gradients(u, amat::Array2dView<freal>(&ug(0,0),m->gnbface(),nvars),
 	                            &grads[0](0,0));

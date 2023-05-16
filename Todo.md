@@ -15,4 +15,5 @@ Residual computation
 -----------------------
 - Convert all operations to cell-based loops. 
   For face-unique operations: (option 1) visit each face of the cell and check whether the neighboring cell has lower index; if it has lower index, the face's operation must already have been done; (option 2) double-compute face-unique quantities.
-- Make boundary conditions compute ghost states for all relevant faces
+- Make boundary conditions compute ghost states for all relevant faces or at least multiple faces at a time.
+  This would require data stuctures like facemetric to be stored in a SoA fashion rather than the current AoS.
