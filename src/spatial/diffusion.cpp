@@ -17,19 +17,8 @@ Diffusion<nvars>::Diffusion(const UMesh<freal,NDIM> *const mesh,
 								void(const freal *const, const freal, const freal *const,
 								     freal *const)
                             > sourcefunc)
-	: Spatial<freal,nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc)
-{
-	h.resize(m->gnelem());
-	for(fint iel = 0; iel < m->gnelem(); iel++) {
-		h[iel] = 0;
-		// max face length
-		for(int ifael = 0; ifael < m->gnfael(iel); ifael++) {
-			const fint face = m->gelemface(iel,ifael);
-			if(h[iel] < m->gfacemetric(face,NDIM))
-				h[iel] = m->gfacemetric(face,NDIM);
-		}
-	}
-}
+	: Spatial<freal,nvars>(mesh), diffusivity{diffcoeff}, bval{bvalue}, source(sourcefunc), h(mesh->getCellSizes())
+{ }
 
 template<int nvars>
 Diffusion<nvars>::~Diffusion()
@@ -336,7 +325,7 @@ template<int nvars>
 StatusCode scalar_postprocess_point(const UMesh<freal,NDIM> *const m, const Vec uvec,
                                     amat::Array2d<freal>& up)
 {
-	std::cout << "Diffusion: postprocess_point(): Creating output arrays\n";
+	std::cout << "postprocess_point(): Creating output arrays\n";
 
 	std::vector<freal> areasum(m->gnpoin(),0);
 	up.resize(m->gnpoin(), nvars);

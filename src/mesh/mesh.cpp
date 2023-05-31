@@ -903,6 +903,22 @@ void UMesh<scalar,ndim>::compute_pointsSurroundingPoints()
 	}
 }
 
+template <typename scalar, int ndim>
+std::vector<freal> UMesh<scalar,ndim>::getCellSizes() const
+{
+	std::vector<freal> h(nelem);
+	for(fint iel = 0; iel < nelem; iel++) {
+		h[iel] = 0;
+		// max face length
+		for(int ifael = 0; ifael < nfael[iel]; ifael++) {
+			const fint face = elemface(iel,ifael);
+			if(h[iel] < facemetric(face,NDIM))
+				h[iel] = facemetric(face,NDIM);
+		}
+	}
+	return h;
+}
+
 template class UMesh<freal,2>;
 
 } // end namespace

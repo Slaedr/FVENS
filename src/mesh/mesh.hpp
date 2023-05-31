@@ -230,6 +230,11 @@ public:
 	// }
 	std::vector<fint> getConnectivityGlobalIndices() const;
 
+	/// Computes the maximum linear dimension of every cell and returns it
+	/** Currently, this is the maximum face length.
+	 */
+	std::vector<freal> getCellSizes() const;
+
 	/// Checks whether boundary faces are oriented to "point outwards"
 	/** This can be done on the subdomains individually.
 	 */
