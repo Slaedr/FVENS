@@ -25,7 +25,7 @@ std::string get_petsc_error_message(const int error_code)
 {
 	const char *error_msg_s;
 	char *context_s;
-    int ierr = PetscErrorMessage(error_code, &error_msg_s, &context_s);
+	int ierr = PetscErrorMessage(error_code, &error_msg_s, &context_s);
 	if(ierr) {
 		std::cout << "Could not get PETSc error message!" << std::endl;
 	}

@@ -14,7 +14,7 @@ using namespace fvens;
 
 int main(int argc, char *argv[])
 {
-	int ierr = PetscInitialize(&argc, &argv, NULL, NULL); CHKERRQ(ierr);
+    int ierr = PetscInitialize(&argc, &argv, NULL, NULL); CHKERRQ(ierr);
     Vec x{};
     ierr = VecCreate(PETSC_COMM_WORLD, &x);
     bool encountered_exception = false;
@@ -32,6 +32,6 @@ int main(int argc, char *argv[])
     }
     assert(encountered_exception);
     ierr = VecDestroy(&x);
-	ierr = PetscFinalize(); CHKERRQ(ierr);
-	return ierr;
+    ierr = PetscFinalize(); CHKERRQ(ierr);
+    return ierr;
 }
