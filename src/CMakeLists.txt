@@ -29,7 +29,7 @@ add_library(fvens_base
 
   spatial/flow_spatial.cpp spatial/aspatial.cpp spatial/agradientschemes.cpp
   spatial/musclreconstruction.cpp spatial/limitedlinearreconstruction.cpp spatial/areconstruction.cpp
-  spatial/aoutput.cpp spatial/diffusion.cpp
+  spatial/aoutput.cpp spatial/diffusion.cpp spatial/convdiff.cpp spatial/bc_convdiff.cpp
 
   mesh/ameshutils.cpp mesh/mesh.cpp mesh/meshpartitioning.cpp mesh/meshreaders.cpp
   mesh/meshordering.cpp

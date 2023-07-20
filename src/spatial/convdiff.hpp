@@ -8,28 +8,16 @@
 #include <vector>
 #include <functional>
 #include <petscvec.h>
+
+#include "../linalg/tracevector.hpp"
 #include "agradientschemes.hpp"
-#include "diffusion.hpp"
+#include "areconstruction.hpp"
+#include "aspatial.hpp"
+#include "bc_convdiff.hpp"
 
 namespace fvens {
 namespace convdiff {
 
-
-/// Types of boundary conditions available for the convection-diffusion problem
-enum class BCType {
-    dirichlet,
-	neumann
-};
-
-/// Definition of boundary condition at one particular boundary
-/** This is essentially raw data read from the control file.
- */
-struct BCConfig
-{
-	int bc_tag;                   ///< Boundary marker in mesh file
-	BCType bc_type;               ///< Type of boundary
-	std::vector<freal> bc_vals;   ///< Boundary value(s)
-};
 
 /// Physical parameters of the convection diffusion problem
 struct PhysicsConfig {
@@ -50,7 +38,7 @@ struct NumericsConfig
 {
 	std::string gradientscheme;       ///< Method to use to compute gradients
 	std::string reconstruction;       ///< Method to use to reconstruct the solution
-	freal limiter_param;             ///< Parameter that is required for some limiters
+	freal limiter_param;              ///< Parameter that is required for some limiters
 	bool order2;                      ///< Whether to compute a second-order solution
 };
 
@@ -101,12 +89,16 @@ protected:
 
 	std::vector<freal> h;			///< Size of cells
 
-	const GradientScheme<freal,nvars> *const gradcomp;
+	/// Gradient computation method
+	std::unique_ptr<const GradientScheme<freal,nvars>> gradcomp;
+
+	/// Reconstruction context
+	std::unique_ptr<const SolutionReconstruction<freal,nvars>> lim;
 
 	/// The different boundary conditions required for all the boundaries
-	const std::map<int,BCType> bcs;
+	const std::map<int,std::unique_ptr<const BC>> bcs;
 
-	bool secondOrderRequested = true;
+	//bool secondOrderRequested = true;
 
 	/// Reconstructed states at all faces
 	/** Ideally, this would be local inside compute_residual. However, its setup is non-trivial and
@@ -115,27 +107,35 @@ protected:
 	 * \note If memory for implicit solves is an issue, this can be moved inside \ref compute_residual
 	 *  in order to free up space during the implicit solve.
 	 */
-	mutable L2TraceVector<scalar,NVARS> uface;
+	mutable L2TraceVector<freal,nvars> uface;
 
-	void compute_flux_interior(const fint iface,
-	                           const amat::Array2dView<freal>& rc,
-	                           const freal *const uarr,
-	                           const GradBlock_t<freal,NDIM,nvars> *const grads,
-	                           amat::Array2dMutableView<freal>& residual) const;
+	/// Gradients at cell centres
+	/** This could be local to compute_residual, but same reason as for \ref uface applies here as well.
+	 */
+	mutable Vec gradvec;
 
-	/// Boundary condition calculation for a single boundary face
-	void compute_boundary_state(const int ied, const freal *const ins, freal *const bs) const
-	{
-		const std::array<scalar,NDIM> n = m->gnormal(ied);
-		const auto tag = bcs.at(m->gbtags(ied,0));
-		if(tag == BCType::dirichlet) {
-			for(int ivar = 0; ivar < nvars; ivar++)
-				bs[ivar] = 2.0*bval - ins[ivar];
-		} else {
-			for(int ivar = 0; ivar < nvars; ivar++)
-				bs[ivar] = ins[ivar];
-		}
-	}
+	/// Compute advective flux across one face
+	/** In the future, this should be replaced by a call to a numerical flux method depending
+	 * on the selected advective physics - linear or nonlinear.
+	 */
+	void compute_advective_flux(const freal *uleft, const freal *urght,
+								const freal *normal,
+								freal *__restrict__ fluxes) const;
+
+	/// Compute diffusive flux across one face
+    void compute_viscous_flux(const freal *normal, const freal *rcl, const freal *rcr,
+                       const freal *ucell_l, const freal *ucell_r,
+                       const GradBlock_t<freal,NDIM,nvars>& gradsl,
+                       const GradBlock_t<freal,NDIM,nvars>& gradsr,
+                       freal *__restrict__ vflux) const;
+
+	void compute_fluxes(const freal *u, const freal *gradients,
+                 const freal *uleft, const freal *uright, const freal *ug, freal *res) const;
+
+	void compute_boundary_states(const freal *ins, freal *gs) const;
+
+	void compute_max_timestep(amat::Array2dView<freal> uleft, amat::Array2dView<freal> uright,
+							  freal *timesteps) const;
 };
 
 template<int nvars>

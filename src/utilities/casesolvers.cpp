@@ -390,7 +390,7 @@ int SteadyFlowCase::execute(const Spatial<freal,NVARS> *const prob, const bool o
 	int ierr = 0;
 	
 	ierr = execute_starter(prob, u); fvens_throw(ierr, "Startup solve failed!");
-	TimingData td = execute_main(prob, u); fvens_throw(ierr, "Steady case solver failed!");
+	const TimingData td = execute_main(prob, u);
 	if(!td.converged)
 		throw Tolerance_error("Main flow solve did not converge!");
 

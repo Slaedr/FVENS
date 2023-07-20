@@ -20,5 +20,11 @@ enum BCType {
 	ADIABATIC_WALL_BC
 };
 
+/// Types of boundary conditions for convection-diffusion type problems
+enum class ConvDiffBCType {
+    DIRICHLET,           ///< Otherwise known as "inflow"
+	EXTRAPOLATION
+};
+
 }
 #endif

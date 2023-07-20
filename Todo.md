@@ -1,5 +1,9 @@
+Bugfixes
+========
+- Fix inconsistent scalar types for parameters of numerical methods like WENO
+
 Next steps
-==============
+==========
 
 MPI
 ---
