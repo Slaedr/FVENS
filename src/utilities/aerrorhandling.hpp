@@ -39,8 +39,8 @@ public:
 class Petsc_exception : public std::runtime_error
 {
 public:
-	Petsc_exception(const std::string& msg);
-	Petsc_exception(const char *const msg);
+	Petsc_exception(int ierr, const std::string& msg);
+	Petsc_exception(int ierr, const char *msg);
 };
 
 /// Exception thrown when a required input was not provided
@@ -81,7 +81,7 @@ inline void mpi_throw(const int ierr, const std::string str) {
  */
 inline void petsc_throw(const int ierr, const std::string str) {
 	if(ierr != 0) 
-		throw fvens::Petsc_exception(str);
+		throw fvens::Petsc_exception(ierr, str);
 }
 
 /// Opens a file for reading but aborts in case of an error

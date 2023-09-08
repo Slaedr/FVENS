@@ -23,6 +23,10 @@ cmake_minimum_required(VERSION 3.0)
 
 project (fvens)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # detect C++ compiler
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(CXX_COMPILER_GNUCLANG TRUE)
@@ -48,7 +52,7 @@ endif()
 
 # Basic options
 if(CXX_COMPILER_GNUCLANG OR CXX_COMPILER_INTEL)
-  set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -Wfloat-conversion -Werror")
+  set (CMAKE_CXX_FLAGS "-Wall -Wfloat-conversion -Werror")
   set (CMAKE_CXX_FLAGS_DEBUG "-g")
   set (CMAKE_CXX_FLAGS_RELEASE "-O3")
   if(CXX_COMPILER_GNUCLANG)
@@ -57,20 +61,16 @@ if(CXX_COMPILER_GNUCLANG OR CXX_COMPILER_INTEL)
     set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1")
   endif()
 elseif(CXX_COMPILER_PGI)
-  set (CMAKE_CXX_FLAGS "-std=c++14")
   set (CMAKE_CXX_FLAGS_DEBUG "-g -O1")
   set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 elseif(CXX_COMPILER_CRAY)
-  set (CMAKE_CXX_FLAGS "-h std=c++14 -h error_on_warning")
+  set (CMAKE_CXX_FLAGS "-h error_on_warning")
   set (CMAKE_CXX_FLAGS_DEBUG "-g -O1")
   set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG=1")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UDEBUG -DNDEBUG")
-
-# Disable C - this should cause C compilation to fail
-set(CMAKE_C_FLAGS "-std=c++14")
 
 # to compile with OpenMP
 if(NOOMP)
