@@ -316,7 +316,7 @@ void Adiabaticwall<scalar,j_real>::computeGhostState(const scalar *const ins, co
 {
 	gs[0] = ins[0];
 	for(int i= 1; i< NDIM+1; i++)
-		gs[i] =  2.0*ins[0]*wallvel[i] - ins[i];
+		gs[i] =  2.0*ins[0]*wallvel[i-1] - ins[i];
 	gs[NDIM+1] = ins[NDIM+1];
 }
 
@@ -333,9 +333,9 @@ void Adiabaticwall<scalar,j_real>::computeGhostStateAndJacobian(const j_real *co
 	dgs[0] = 1.0;
 
 	for(int i= 1; i< NDIM+1; i++) {
-		gs[i] =  2.0*ins[0]*wallvel[i] - ins[i];
+		gs[i] =  2.0*ins[0]*wallvel[i-1] - ins[i];
 
-		dgs[i*NVARS+0] = 2.0*wallvel[i];
+		dgs[i*NVARS+0] = 2.0*wallvel[i-1];
 		dgs[i*NVARS+i] = -1.0;
 	}
 

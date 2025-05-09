@@ -427,7 +427,7 @@ UnsteadyFlowCase::UnsteadyFlowCase(const FlowParserOptions& options)
 
 /** \todo Implement an unsteady integrator factory and use that here.
  */
-int UnsteadyFlowCase::execute(const Spatial<freal,NVARS> *const prob, Vec u) const
+int UnsteadyFlowCase::execute(const Spatial<freal,NVARS> *const prob, const bool outhist, Vec u) const
 {
 	int ierr = 0;
 
@@ -438,6 +438,10 @@ int UnsteadyFlowCase::execute(const Spatial<freal,NVARS> *const prob, Vec u) con
 		return ierr;
 	} else {
 		throw "Nothing but TVDRK is implemented yet!";
+	}
+
+	if(outhist) {
+		std::cout << "Convergence history not available for explicit time stepper." << std::endl;
 	}
 
 	return ierr;

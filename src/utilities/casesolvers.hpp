@@ -33,11 +33,11 @@ namespace fvens {
 /// Integrated quantities of interest in the solution of a flow problem
 struct FlowSolutionFunctionals
 {
-	freal meshSizeParameter;   ///< Not a solution functional but needed for verification studies
-	freal entropy;             ///< Any measure of entropy difference from the free-stream
-	freal CL;                  ///< Lift coefficient
-	freal CDp;                 ///< Coefficient of drag induced by pressure
-	freal CDsf;                ///< Coefficient of drag caused by skin-friction
+	freal meshSizeParameter{};   ///< Not a solution functional but needed for verification studies
+	freal entropy{};             ///< Any measure of entropy difference from the free-stream
+	freal CL{};                  ///< Lift coefficient
+	freal CDp{};                 ///< Coefficient of drag induced by pressure
+	freal CDsf{};                ///< Coefficient of drag caused by skin-friction
 };
 
 /// Construct a mesh from the base mesh name in the [options database](\ref FlowParserOptions)
@@ -216,7 +216,8 @@ public:
 	UnsteadyFlowCase(const FlowParserOptions& options);
 
 	/// Solve a case given a spatial discretization context
-	int execute(const Spatial<freal,NVARS> *const prob, Vec u) const;
+	int execute(const Spatial<freal,NVARS> *const prob, const bool output_conv_history,
+				Vec u) const;
 };
 
 }
