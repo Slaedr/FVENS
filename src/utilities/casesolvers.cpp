@@ -93,7 +93,7 @@ FlowSolutionFunctionals FlowCase::run_output(const bool surface_file_needed,
 
 	const FlowFV_base<freal> *const prob = createFlowSpatial(opts, m);
 
-	const freal h = 1.0 / ( std::pow((freal)m.gnelem(), 1.0/NDIM) );
+	const freal h = 1.0 / ( std::pow((freal)m.gnelemglobal(), 1.0/NDIM) );
 
 	try {
 		ierr = execute(prob, opts.lognres, u);

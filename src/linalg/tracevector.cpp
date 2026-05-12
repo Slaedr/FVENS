@@ -213,8 +213,6 @@ const scalar *L2TraceVector<scalar,nvars>::getLocalArrayRight() const
 template <typename scalar, int nvars>
 void L2TraceVector<scalar,nvars>::updateSharedFacesBegin()
 {
-	std::vector<MPI_Request> sreq(nbdranks.size());
-
 // #ifdef DEBUG
 // 	const int mpirank = get_mpi_rank(MPI_COMM_WORLD);
 // 	const int mpisize = get_mpi_size(MPI_COMM_WORLD);
