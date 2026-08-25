@@ -76,3 +76,13 @@ add_test(NAME MeshPartition_SubdomainRestriction_Trivial WORKING_DIRECTORY ${CMA
 #   COMMAND ${MPIEXEC} -n 3 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh sanity scotch
 #   ${CMAKE_CURRENT_SOURCE_DIR}/../common-input/testhybrid.msh
 #   )
+
+# Cross-checks the PETSc ghost-vector route and the L2TraceVector face route for the same
+#  connectivity faces, on a reordered (-mesh_reorder rcm) mesh. Fails if reorder_cells leaves
+#  connface(:,0)/(:,3) or globalElemIndex stale relative to the mesh's current (post-reorder)
+#  local cell layout.
+add_test(NAME MPI_Mesh_ReorderedGhostConsistency WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND env OMP_NUM_THREADS=1 ${MPIEXEC} -n 3 ${CMAKE_CURRENT_BINARY_DIR}/exec_disttestmesh
+  ghostconsistency ${CMAKE_SOURCE_DIR}/tests/heat/grids/squareunsquad3.msh
+  -mesh_reorder rcm
+  )

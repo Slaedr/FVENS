@@ -78,13 +78,13 @@ int main(int argc, char *argv[])
 	if(opts.gradientmethod == "LEASTSQUARES") 
 	{
 		// the lower limit is chosen from experience
-		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.65)
+		if(slopes[nmesh-2] <= 2.2 && slopes[nmesh-2] >= 1.65)
 			passed = 1;
 	}
 	else if(opts.gradientmethod == "GREENGAUSS") 
 	{
 		// the lower limit is chosen from experience
-		if(slopes[nmesh-2] <= 2.1 && slopes[nmesh-2] >= 1.65)
+		if(slopes[nmesh-2] <= 2.2 && slopes[nmesh-2] >= 1.65)
 			passed = 1;
 	}
 

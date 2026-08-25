@@ -47,27 +47,38 @@ public:
 		return inpoel.get(elemnum, localnodenum);
 	}
 
-	/// Access to physical boundary face information in this subdomain (if any)
-	/** Returns global node indices or boundary tags corresponding to local node indices of a face
+	/**
+	 * Access to physical boundary face information in this subdomain (if any)
+	 *
 	 * \note The face indexing here could be different from the indexing in the
 	 * [face data structure](\ref intfac) \sa gintfac
+	 * \return global node indices or boundary tags corresponding to local node
+	 *         indices of a face
 	 */
 	fint gbface(const fint facenum, const int locindex) const
 	{
 		return bface.get(facenum, locindex);
 	}
 
-	/// Access to the connectivity boundary face information in case of multiprocess runs
-	/** \param[in] icface Connectivity face index in arbirtray order
-	 * \param[in] infoindex To query information about the face:
+	///
+	/**
+	 * Access to the connectivity boundary face information in case of
+	 * multiprocess runs.
+	 *
+	 * @param[in] icface Connectivity face index in arbirtray order
+	 * @param[in] infoindex To query information about the face:
 	 *  - 0: Index of the element (in this subdomain) that this face belongs to
 	 *  - 1: The EIndex of the face in the element it belongs to
 	 *  - 2: The subdomain rank of the other adjacent element which is external (to this subdomain)
-	 *  - 3: The global element index of the external neighboring element
+	 *  - 3: The global cell index (@sa gglobalElemIndex) of the external neighboring element, as
+	 *    currently assigned on its owning rank. Kept up to date by \ref assignGlobalIndices.
 	 *  - 4: The global face index of the connectivity face, as determined from the global mesh.
+	 *    Stable across partitioning and reordering; used by @ref assignGlobalIndices and
+	 *    @ref L2TraceVector to match faces across ranks.
 	 */
-	fint gconnface(const fint icface, const int infoindex) const
-	{ return connface(icface, infoindex); }
+	fint gconnface(const fint icface, const int infoindex) const {
+		return connface(icface, infoindex);
+	}
 
 	/// Returns elements surrounding points; to be used with \ref gesup_p
 	fint gesup(const fint i) const { return esup.get(i); }
@@ -81,8 +92,11 @@ public:
 	/// Returns the index for \ref gpsup to access the list of points surrounding point i
 	fint gpsup_p(const fint i) const { return psup_p.get(i); }
 
-	/// Returns the element adjacent to a given element corresponding to the given local face
-	/** Note that in 2D, the local face number `j' would be the one between local node j and
+	/**
+	 * @return The element adjacent to a given element corresponding to
+	 *         the given local face.
+	 *
+	 * Note that in 2D, the local face number `j' would be the one between local node j and
 	 * local node (j+1) % nfael, where nfael is the total number of faces bounding the given
 	 * element.
 	 *
@@ -95,27 +109,41 @@ public:
 	 */
 	fint gesuel(const fint ielem, const int jface) const { return esuel.get(ielem, jface); }
 
-	/// Returns the face number in the [face data structure](\ref intfac) corresponding to
-	/// the local face index of an element
-	/** For a connectivity ghost cell, only elemface(ielem,0) is defined.
+	/**
+	 * @return The face number in the [face data structure](@ref intfac) corresponding to
+	 * the local face index of an element.
+	 *
+	 * For a connectivity ghost cell, only elemface(ielem,0) is defined.
 	 */
-	fint gelemface(const fint ielem, const EIndex ifael) const { return elemface.get(ielem,ifael); }
+	fint gelemface(const fint ielem, const EIndex ifael) const {
+		return elemface.get(ielem,ifael);
+	}
 
-	/// Returns the global element index of an element of this subdomain
+	/**
+	 * @return The global cell index of an element of this subdomain.
+	 *
+	 * The global cell index is this rank's exclusive-scan offset in element
+	 * count, plus the element's local index \p iel.
+	 *
+	 * @warning This is this rank's global cell offset plus local position, *not* an index into
+	 *  the original, unpartitioned global mesh (\ref assignGlobalIndices).
+	 */
 	fint gglobalElemIndex(const fint iel) const { return globalElemIndex[iel]; }
 
-	/// Returns an entry from the face data structure \ref intfac
-	/** \param face Index of the face about which data is needed.
-	 *  Boundary faces, connectivity faces or interior faces are to be accessed using \ref FaceIterators.
-	 * \param i An integer which specifies what information is returned:
-	 *  - 0: Left cell index
-	 *  - 1: Right cell index (or for a boundary face, \ref nelem + face index)
-	 *  - 2: Global index of `first' or `starting' node of the face
-	 *  - 3: Global index of the `second' or `ending' node of the face
+	/**
+	 * Boundary faces, connectivity faces or interior faces are to be accessed
+	 * using @ref FaceIterators.
+	 * @param face Index of the face about which data is needed.
+	 * @param i An integer which specifies what information is returned:
+	 *          0: Left cell index
+	 *          1: Right cell index (or for a boundary face, \ref nelem + face index)
+	 *          2: Global index of `first' or `starting' node of the face
+	 *          3: Global index of the `second' or `ending' node of the face
+	 * @return An entry from the face data structure \ref intfac.
 	 */
 	fint gintfac(const fint face, const int i) const { return intfac.get(face,i); }
 
-	/** \defgroup FaceIterators Iterators over faces
+	/** @defgroup FaceIterators Iterators over faces
 	 * Use these 'iterators' for accessing faces indexed according to \ref gintfac.
 	 */ 
 	/// @{
@@ -138,8 +166,10 @@ public:
 	/// One past the end of subdomain faces
 	fint gSubDomFaceEnd() const { return subDomFaceEnd; }
 
-	/// Start of connection boundary and interior subdomain faces
-	/** Beginning of the list of all faces other than physical boundary faces in \ref intfac.
+	/**
+	 * Start of connection boundary and interior subdomain faces.
+	 *
+	 * Beginning of the list of all faces other than physical boundary faces in \ref intfac.
 	 * Note that it's guaranteed that conection boundary faces and subdomain faces will be stored
 	 * contiguously.
 	 */
@@ -156,8 +186,10 @@ public:
 
 	/// @}
 
-	/// Returns the boundary marker of a boundary face indexed by \ref intfac.
-	/** Note that the index passed here must be in the range gPhyBFaceStart to gPhyBFaceEnd.
+	/**
+	 * @return the boundary marker of a boundary face indexed by \ref intfac.
+	 *
+	 * @note The index passed here must be in the range gPhyBFaceStart to gPhyBFaceEnd.
 	 */
 	int gbtags(const fint face, const int i) const { return btags.get(face-gPhyBFaceStart(),i); }
 
@@ -175,9 +207,6 @@ public:
 			return {facemetric.get(iface,0), facemetric.get(iface,1), facemetric.get(iface,2)};
 #endif
 	}
-
-	/// Returns 1 or 0 for a point depending on whether or not it lies on a boundary, respectively
-	//int gflag_bpoin(const fint pointno) const { return flag_bpoin.get(pointno); }
 
 	/// Returns the total number of elements in the entire distributed mesh
 	fint gnelemglobal() const { return nelemglobal; }
@@ -221,22 +250,23 @@ public:
 	/// Returns the maximum number of faces in a cell over all cells (not just this subdomain)
 	fint gmaxnfael() const { return maxnfael; }
 
-	/// Returns the array of global element indices corresponding to external elements across
-	///  connectivity boundary faces of this subdomain
-	// const fint *getConnectivityGlobalIndices() const
-	// {
-	// 	assert(connGlobalIndices.size() > 0);
-	// 	return &connGlobalIndices[0];
-	// }
+	/**
+	 * @return Array of global element indices corresponding to
+	 * external elements across connectivity boundary faces of this subdomain.
+	 */
 	std::vector<fint> getConnectivityGlobalIndices() const;
 
-	/// Checks whether boundary faces are oriented to "point outwards"
-	/** This can be done on the subdomains individually.
+	/**
+	 * Checks whether boundary faces are oriented to "point outwards".
+	 *
+	 * This can be done on the subdomains individually.
 	 */
 	void correctBoundaryFaceOrientation();
 
-	/// Set coordinates of a certain point
-	/** 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
+	/**
+	 * Set coordinates of a certain point.
+	 *
+	 * 'set' counterpart of the 'get' function [gcoords](@ref gcoords).
 	 */
 	void scoords(const fint pointno, const int dim, const scalar value)
 	{
@@ -245,15 +275,37 @@ public:
 		coords(pointno,dim) = value;
 	}
 
-	/// Re-orders cells according to some permutation vector locally in the subdomain
-	/** \warning If reordering is needed, this function must be called immediately after reading
-	 * and distributing the mesh.
-	 * \todo TODO: Update connectivity data between subdomains after reordering the cells!
+	/**
+	 * Re-orders cells according to some permutation vector locally in the subdomain.
+	 *
+	 * Permutes all cell-indexed local data (\ref inpoel, \ref nnode, \ref nfael,
+	 * \ref vol_regions) and remaps the local owner-cell index of each connectivity face
+	 * (\ref connface column 0) to its new position.
+	 * \warning Does *not* update \ref globalElemIndex or connface column 3 (the external
+	 *  neighbour's global index) - those become correct again only after \ref assignGlobalIndices
+	 *  is called (on *all* ranks) following this call and a subsequent \ref compute_topological.
 	 */
 	void reorder_cells(const PetscInt *const permvec);
 
-	/** Stores (in array bpointsb) for each boundary point: the associated global point number
-	 * and the two bfaces associated with it.
+	/**
+	 * (Re)computes \ref globalElemIndex as this rank's global cell offset plus local
+	 * position, and refreshes connface column 3 (the external neighbour's global index)
+	 * to match.
+	 *
+	 * This done via an MPI exchange with neighbouring subdomains keyed on connface column 4
+	 * (the global face index, which is set at partition time and is stable thereafter).
+	 * Must be called collectively, by every rank in \c PETSC_COMM_WORLD, after any operation
+	 * that may change which local position a cell occupies (partitioning, \ref reorder_cells).
+	 * Safe (and required) to call even when no reordering has taken place, since it also
+	 * corrects \ref globalElemIndex for partitioners (eg. Scotch) whose per-rank element
+	 * assignment is not a contiguous block of the original global mesh numbering.
+	 */
+	void assignGlobalIndices();
+
+	/**
+	 * Stores (in array bpointsb) for each boundary point:
+	 * - the associated global point number, and
+	 * - the two bfaces associated with it.
 	 */
 	void compute_boundary_points();
 
@@ -265,14 +317,18 @@ public:
 	/// Computes areas of linear triangles and quads
 	void compute_areas();
 
-	/// Computes locations of cell centres
-	/** \param[in,out] centres Should be logically of size nelem x ndim. Contains cell-centre coords
-	 *    on output.
+	/**
+	 * Computes locations of cell centres.
+	 *
+	 * @param[in,out] centres Should be logically of size nelem x ndim.
+	 *                        Contains cell-centre coords on output.
 	 */
 	void compute_cell_centres(scalar *const centres) const;
 
-	/// Computes some connectivity structures among mesh entities
-	/** Computes data structures for
+	/**
+	 * Computes some connectivity structures among mesh entities.
+	 *
+	 * Computes data structures for
 	 * elements surrounding point (esup),
 	 * points surrounding point (psup),
 	 * elements surrounding elements (esuel),
@@ -282,19 +338,23 @@ public:
 	 */
 	void compute_topological();
 
-	/// Computes unit normals and lengths, and sets boundary face tags for all faces in btags
-	/** \note Uses intfac, so call only after compute_topological, only for linear mesh
-	 * \note The normal vector is the UNIT normal vector.
-	 * \sa facemetric
-	 * \warning Use only for linear meshes
+	/**
+	 * Computes unit normals, lengths, and boundary face tags for all faces.
+	 *
+	 * Sets boundary face tags in @ref btags.
+	 * @note Uses intfac, so call only after compute_topological, only for linear mesh
+	 * @note The normal vector is the UNIT normal vector.
+	 * @sa facemetric
+	 * @warning Use only for linear meshes
 	 */
 	void compute_face_data();
 
-	/// Generates the correspondance between the faces of two periodic boundaries
-	/** Sets the indices of ghost cells to corresponding real cells.
+	/**
+	 * Generates the correspondance between the faces of two periodic boundaries.
+	 *
+	 * Sets the indices of ghost cells to corresponding real cells.
 	 * \note We assume that there exists precisely one matching face for each face on the
 	 *  periodic boundaries, such that their face-centres are aligned.
-	 *
 	 * \warning Requires \ref compute_topological and \ref compute_face_data to have been called
 	 * beforehand, because \ref intfac and \ref btags is needed.
 	 *
@@ -304,9 +364,11 @@ public:
 	 */
 	void compute_periodic_map(const int bcm, const int axis);
 
-	/// Get the index of a node w.r.t. an element (ie., get the node's "EIndex") from
-	///  its index in a face of that element
-	/** \param ielem Element index in the subdomain
+	/**
+	 * Get the index of a node w.r.t. an element.
+	 *
+	 * Gets the node's "EIndex" from its index in a face of that element.
+	 * \param ielem Element index in the subdomain
 	 * \param faceEIndex Index of a face in the element w.r.t. the element (ie., the face's EIndex)
 	 * \param nodeFIndex Index of a node in the face above w.r.t. the face (ie., the node's FIndex)
 	 *
@@ -317,12 +379,13 @@ public:
 		return (iface + inode) % nnode[ielem];
 	}
 
-	/// Returns the EIndex of a face in a certain element
-	/** Returns negative if the face is not present in that element.
-	 * \warning If iface is a physical boundary face, this function will always work. But if iface is
+	/**
+	 * @warning If iface is a physical boundary face, this function will always work. But if iface is
 	 *  an interior face defined according to \ref intfac, obviously intfac must be available.
-	 * \param[in] phyboundary If true, iface is interpreted as a bface index between 0 and nbface.
+	 * @param[in] phyboundary If true, iface is interpreted as a bface index between 0 and nbface.
 	 *   If false, iface is interpreted as an intfac index.
+	 * @return The EIndex of a face in a certain element.
+	 *         Returns negative if the face is not present in that element.
 	 */
 	EIndex getFaceEIndex(const bool phyboundary, const fint iface, const fint elem) const;
 
@@ -375,43 +438,60 @@ private:
 	fint phyBFaceStart;            ///< Start of the list of physical boundary faces
 	fint phyBFaceEnd;              ///< One past the end of the list of physical boundary faces
 
-	/// Connection boundary face data
-	/** Contains, for each connectivity boundary face,
-	 *   the index of the cell in this subdomain that it is a part of,
-	 *   the local face EIndex of the boundary face in that cell
-	 *   the index of the other subdomain that it connects to, and
-	 *   the global index of the cell in the other subdomain that it connects to, in that order.
+	/**
+	 * Connection boundary face data.
+	 *
+	 * Contains, for each connectivity boundary face,
+	 * - the index of the cell in this subdomain that it is a part of,
+	 * - the local face EIndex of the boundary face in that cell
+	 * - the index of the other subdomain that it connects to, and
+	 * - the global index of the cell in the other subdomain that it connects to, in that order.
+	 * @sa gconnface
 	 */
 	amat::Array2d<fint> connface;
 
-	/// Stores global element indices of each element in this subdomain
-	/** Computed by the partitioner.
+	/**
+	 * Global cell index of each element in this subdomain.
+	 *
+	 * Initially computed by the partitioner (\ref ReplicatedGlobalMeshPartitioner) as this
+	 * rank's contiguous offset plus local position, which coincides with the element's index
+	 * in the original global mesh only for an unreordered, contiguous (trivial) partition.
+	 * Kept correct thereafter by \ref assignGlobalIndices, which must be called again after
+	 * \ref reorder_cells or after any partitioner that does not assign contiguous blocks.
 	 */
 	std::vector<fint> globalElemIndex;
 
 	/// List of indices of [esup](@ref esup) corresponding to nodes
 	amat::Array2d<fint> esup_p;
 
-	/// List of elements surrounding each point
-	/** Integers pointing to particular points' element lists are stored in [esup_p](@ref esup_p).
+	/**
+	 * List of elements surrounding each point.
+	 *
+	 * Integers pointing to particular points' element lists are stored
+	 * in [esup_p](@ref esup_p).
 	 */
 	amat::Array2d<fint> esup;
 
 	/// Lists of indices of psup corresponding to nodes (points)
 	amat::Array2d<fint> psup_p;
 
-	/// List of nodes surrounding nodes
-	/** Integers pointing to particular nodes' node lists are stored in [psup_p](@ref psup_p)
+	/**
+	 * List of nodes surrounding nodes.
+	 *
+	 * Integers pointing to particular nodes' node lists are stored
+	 * in [psup_p](@ref psup_p)
 	 */
 	amat::Array2d<fint> psup;
 
 	/// Elements surrounding elements \sa gesuel
 	amat::Array2d<fint> esuel;
 
-	/// Face data structure - contains info about elements and nodes associated with a face
-	/** Currently stores physical boundary faces first, followed by connectivity faces and then
-	 * subdomain faces.
-	 * For details, see \ref gintfac, the accessor function for intfac.
+	/**
+	 * Face data structure with info about elements and nodes associated with a face.
+	 *
+	 * Currently stores physical boundary faces first, followed by connectivity faces
+	 * and then subdomain faces.
+	 * For details, see @ref gintfac, the accessor function for intfac.
 	 */
 	amat::Array2d<fint> intfac;
 
@@ -421,8 +501,11 @@ private:
 	/// Holds face numbers of faces making up an element
 	amat::Array2d<fint> elemface;
 
-	/// Relates boundary faces in intfac with bface, ie, bifmap(intfac no.) = bface no.
-	/** Computed in \ref compute_boundary_maps.
+	/**
+	 * Relates boundary faces in intfac with bface.
+	 *
+	 * `bifmap(intfac no.) = bface no.`.
+	 * Computed in @ref compute_boundary_maps.
 	 */
 	amat::Array2d<int> bifmap;
 
@@ -433,11 +516,14 @@ private:
 
 	bool isBoundaryMaps;			///< Specifies whether bface-intfac maps have been created
 
-	/** \brief Boundary points list
+	/**
+	 * @brief Boundary points list.
 	 *
 	 * bpoints contains: bpoints(0) = global point number,
-	 * bpoints(1) = first containing intfac face (face with intfac's second point as this point),
-	 * bpoints(2) = second containing intfac face (face with intfac's first point as this point)
+	 * bpoints(1) = first containing intfac face
+	 *   (face with intfac's second point as this point),
+	 * bpoints(2) = second containing intfac face
+	 *   (face with intfac's first point as this point)
 	 */
 	amat::Array2d<int > bpoints;
 	/// Like bpoints, but stores bface numbers corresponding to each face, rather than intfac faces
@@ -448,8 +534,10 @@ private:
 	/// Contains area of each element (either triangle or quad)
 	amat::Array2d<scalar> area;
 
-	/// Stores lengths and unit normals for linear mesh faces
-	/** For each face, the first two entries are x- and y-components of the unit normal,
+	/**
+	 * Stores lengths and unit normals for linear mesh faces.
+	 *
+	 * For each face, the first two entries are x- and y-components of the unit normal,
 	 * the third component is the length.
 	 * The unit normal points towards the cell with greater index.
 	 */
@@ -457,26 +545,39 @@ private:
 
 	std::vector<fint> connGlobalIndices;
 
-	/// Compute lists of elements (cells) surrounding each point \sa esup
-	/** \note This function is required to be called before some other topology-related computations.
+	/**
+	 * Compute lists of elements (cells) surrounding each point
+	 *
+	 * @sa esup
+	 * @note This function is required to be called before some other
+	 *       topology-related computations.
 	 */
 	void compute_elementsSurroundingPoints();
 
-	/// Compute lists of elements (cells) surrounding each element \sa esuel
-	/** \warning Requires \ref esup and \ref esup_p to be computed beforehand.
-	 * \sa compute_elementsSurroundingPoints
+	/**
+	 * Compute lists of elements (cells) surrounding each element.
+	 *
+	 * \warning Requires \ref esup and \ref esup_p to be computed beforehand.
+	 * \sa compute_elementsSurroundingPoints \sa esuel
 	 */
 	void compute_elementsSurroundingElements();
 
-	/// Computes the interior element associated with each physical boundary face of this subdomain
-	/** \return A pair with the interior element index as the first entry and
-	 *    the EIndex of the face in that element as the second entry.
+	/**
+	 * Computes the interior element associated with each physical boundary
+	 * face of this subdomain.
+	 *
+	 * @return A pair with the interior element index as the first entry and
+	 *         the EIndex of the face in that element as the second entry.
 	 */
 	std::vector<std::pair<fint,EIndex>> compute_phyBFaceNeighboringElements() const;
 
-	/** \brief Computes, for each face, the elements on either side, the starting node and
-	 * the ending node of the face. These are stored in \ref intfac.
-	 * Also computes \ref elemface and modifies \ref esuel .
+	/**
+	 * Computes, for each face:
+	 * - the elements on either side,
+	 * - the starting node
+	 * - the ending node.
+	 * These are stored in @ref intfac.
+	 * Also computes @ref elemface and modifies @ref esuel .
 	 *
 	 * The orientation of the face is such that the element with smaller index is
 	 * always to the left of the face, while the element with greater index
@@ -486,10 +587,10 @@ private:
 	 * this means the vector starting at node 0 and pointing towards node 1 would
 	 * rotate clockwise by 90 degrees to point to the cell with greater index.
 	 *
-	 * Also computes element-face connectivity array \ref elemface in the same loop
+	 * Also computes element-face connectivity array @ref elemface in the same loop
 	 * which computes intfac.
 	 *
-	 * \note After the following portion, \ref esuel holds (nelem + face no.) for each ghost cell,
+	 * @note After the following portion, @ref esuel holds (nelem + face no.) for each ghost cell,
 	 * instead of -1 as before.
 	 */
 	void compute_faceConnectivity();

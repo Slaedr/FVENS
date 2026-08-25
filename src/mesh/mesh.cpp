@@ -21,6 +21,7 @@
 #include <iomanip>
 #include <fstream>
 #include <algorithm>
+#include <set>
 #include <boost/algorithm/string.hpp>
 
 #include "mesh.hpp"
@@ -88,6 +89,7 @@ void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
 	const amat::Array2d<fint> tempelems = inpoel;
 	const std::vector<int> tempnnode = nnode;
 	const std::vector<int> tempnfael = nfael;
+	const amat::Array2d<int> tempvolregions = vol_regions;
 
 	for(fint i = 0; i < nelem; i++)
 	{
@@ -95,6 +97,111 @@ void UMesh<scalar,ndim>::reorder_cells(const PetscInt *const permvec)
 			inpoel(i,j) = tempelems(permvec[i],j);
 		nnode[i] = tempnnode[permvec[i]];
 		nfael[i] = tempnfael[permvec[i]];
+		for(int j = 0; j < vol_regions.cols(); j++)
+			vol_regions(i,j) = tempvolregions(permvec[i],j);
+	}
+
+	// Remap the local owner-cell index of each connectivity face (an *old* local cell index)
+	//  to the new position of that same cell.
+	//  NOTE: globalElemIndex and connface column 3 are NOT fixed up here - see assignGlobalIndices.
+	if(nconnface > 0)
+	{
+		std::vector<fint> invperm(nelem);
+		for(fint i = 0; i < nelem; i++)
+			invperm[permvec[i]] = i;
+
+		for(fint icface = 0; icface < nconnface; icface++)
+			connface(icface,0) = invperm[connface(icface,0)];
+	}
+}
+
+template <typename scalar, int ndim>
+void UMesh<scalar,ndim>::assignGlobalIndices()
+{
+	// 1. Recompute globalElemIndex as this rank's global cell offset plus local position.
+	//    This is the invariant that createGhostedSystemVector/setJacobianSizes (which lay out
+	//    Vec/Mat using local sizes only) implicitly rely on for every local cell.
+
+	fint offset = 0;
+	const int mpiret = MPI_Exscan(&nelem, &offset, 1, FVENS_MPI_INT, MPI_SUM, PETSC_COMM_WORLD);
+	mpi_throw(mpiret, "assignGlobalIndices: MPI_Exscan failed!");
+	// MPI_Exscan leaves the result on rank 0 undefined; rank 0's offset is always 0.
+	if(get_mpi_rank(PETSC_COMM_WORLD) == 0)
+		offset = 0;
+
+	globalElemIndex.resize(nelem);
+	for(fint i = 0; i < nelem; i++)
+		globalElemIndex[i] = offset + i;
+
+	if(nconnface == 0)
+		return;
+
+	// 2. Refresh connface column 3 (external neighbour's global row index) via an MPI exchange
+	//    with neighbouring subdomains, keyed on connface column 4 (the global face index, which
+	//    is stable across partitioning and reordering on either side).
+	//    This mirrors the neighbour-discovery / face-matching structure of
+	//    L2TraceVector::update_comm_pattern() (src/linalg/tracevector.cpp).
+
+	std::set<int> nbds;
+	for(fint icface = 0; icface < nconnface; icface++)
+		nbds.insert(connface(icface,2));
+	std::vector<int> nbdranks(nbds.begin(), nbds.end());
+
+	std::vector<std::vector<fint>> facesOfRank(nbdranks.size());
+	for(fint icface = 0; icface < nconnface; icface++)
+	{
+		const int rankindex = static_cast<int>(
+			std::lower_bound(nbdranks.begin(), nbdranks.end(), connface(icface,2))
+			- nbdranks.begin());
+		facesOfRank[rankindex].push_back(icface);
+	}
+
+	// Pack (global face id, this cell's new global row) per neighbour and exchange.
+	std::vector<std::vector<fint>> sendbufs(nbdranks.size());
+	std::vector<std::vector<fint>> recvbufs(nbdranks.size());
+	std::vector<MPI_Request> sreqs(nbdranks.size()), rreqs(nbdranks.size());
+
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+	{
+		sendbufs[irank].resize(facesOfRank[irank].size()*2);
+		for(size_t i = 0; i < facesOfRank[irank].size(); i++) {
+			const fint icface = facesOfRank[irank][i];
+			sendbufs[irank][i*2]   = connface(icface,4);
+			sendbufs[irank][i*2+1] = offset + connface(icface,0);
+		}
+		recvbufs[irank].resize(facesOfRank[irank].size()*2);
+
+		MPI_Isend(&sendbufs[irank][0], static_cast<int>(sendbufs[irank].size()), FVENS_MPI_INT,
+		          nbdranks[irank], static_cast<int>(irank), PETSC_COMM_WORLD, &sreqs[irank]);
+	}
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+		MPI_Irecv(&recvbufs[irank][0], static_cast<int>(recvbufs[irank].size()), FVENS_MPI_INT,
+		          nbdranks[irank], MPI_ANY_TAG, PETSC_COMM_WORLD, &rreqs[irank]);
+
+	MPI_Waitall(static_cast<int>(sreqs.size()), &sreqs[0], MPI_STATUSES_IGNORE);
+	MPI_Waitall(static_cast<int>(rreqs.size()), &rreqs[0], MPI_STATUSES_IGNORE);
+
+	for(size_t irank = 0; irank < nbdranks.size(); irank++)
+	{
+		const size_t nf = facesOfRank[irank].size();
+		for(size_t i = 0; i < nf; i++)
+		{
+			const fint rgface = recvbufs[irank][i*2];
+			const fint rgrow  = recvbufs[irank][i*2+1];
+
+			bool matched = false;
+			for(size_t j = 0; j < nf; j++)
+			{
+				const fint icface = facesOfRank[irank][j];
+				if(connface(icface,4) == rgface) {
+					connface(icface,3) = rgrow;
+					matched = true;
+					break;
+				}
+			}
+			assert(matched);
+			(void)matched;
+		}
 	}
 }
 
@@ -746,6 +853,12 @@ void UMesh<scalar,ndim>::compute_faceConnectivity()
 		const fint icface = iface - connBFaceStart;
 		const fint inelem = connface(icface,0);
 		intfac(iface,0) = inelem;
+#ifdef DEBUG
+		// A stale or mis-inverted connface(:,0) (eg. after reorder_cells) would either write into
+		//  a slot already claimed by another face, or leave some slot at its sentinel -1 forever;
+		//  esuel is initialized to -1 everywhere, so an unclaimed slot here means "not -1" is a bug.
+		assert(esuel(inelem,connface(icface,1)) == -1);
+#endif
 		esuel(inelem,connface(icface,1)) = nelem+icface;
 		elemface(inelem,connface(icface,1)) = iface;
 		intfac(iface,1) = nelem+icface;

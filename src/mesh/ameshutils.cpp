@@ -96,6 +96,12 @@ StatusCode preprocessMesh(UMesh<scalar,NDIM>& m)
 	m.compute_areas();
 	m.compute_face_data();
 
+	// Must run unconditionally (not just when reordering was requested): it also re-establishes
+	//  globalElemIndex == (this rank's PETSc offset) + (local index) for partitioners whose
+	//  per-rank element assignment is not a contiguous block of the original mesh numbering
+	//  (eg. Scotch). Collective over PETSC_COMM_WORLD.
+	m.assignGlobalIndices();
+
 	return ierr;
 }
 
