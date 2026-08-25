@@ -60,7 +60,6 @@ public:
 		return bface.get(facenum, locindex);
 	}
 
-	///
 	/**
 	 * Access to the connectivity boundary face information in case of
 	 * multiprocess runs.

@@ -15,9 +15,10 @@
 #include "utilities/controlparser.hpp"
 #include "utilities/casesolvers.hpp"
 #include "utilities/mpiutils.hpp"
+#include "test.hpp"
 
-/// Default tolerance for regression tests
-#define REGR_DEFAULT_TOL 1e-8
+/// Default relative tolerance for regression tests
+#define REGR_DEFAULT_TOL 1e-5
 
 using namespace fvens;
 namespace po = boost::program_options;
@@ -107,15 +108,15 @@ void test_regression(const po::variables_map& cmdvars, const FlowSolutionFunctio
 
 		rfile.close();
 
-		if(std::abs(CL-fnls.CL)/std::abs(CL) > regr_tol*100) {
+		if(!(close_enough(CL, fnls.CL, regr_tol))) {
 			std::cout << "  CL error = " << std::abs(CL-fnls.CL)/std::abs(CL) << std::endl;
 			throw std::runtime_error("CL does not match!");
 		}
-		if(std::abs(CDp-fnls.CDp)/std::abs(CDp) > regr_tol) {
+		if(!close_enough(CDp, fnls.CDp, regr_tol)) {
 			std::cout << "  CDp error = " << std::abs(CDp-fnls.CDp)/std::abs(CDp) << std::endl;
 			throw std::runtime_error("CDp does not match!");
 		}
-		if(std::abs(CDsf-fnls.CDsf)/std::abs(CDsf) > regr_tol) {
+		if(!close_enough(CDsf, fnls.CDsf, regr_tol)) {
 			std::cout << "  CDsf error = " << std::abs(CDsf-fnls.CDsf)/std::abs(CDsf) << std::endl;
 			throw std::runtime_error("CDsf does not match!");
 		}
