@@ -92,7 +92,12 @@ StatusCode setupSystemMatrix(const UMesh<freal,NDIM> *const m, Mat *const A)
 {
 	StatusCode ierr = 0;
 	ierr = MatCreate(PETSC_COMM_WORLD, A); CHKERRQ(ierr);
-	ierr = MatSetType(*A, MATMPIBAIJ); CHKERRQ(ierr);
+	// Use the generic "baij" root name (not MATMPIBAIJ) so PETSc's MatSetType alias
+	// resolution picks MATSEQBAIJ vs MATMPIBAIJ based on comm size. If this were forced to
+	// MATMPIBAIJ here, a later "-mat_type baij" in MatSetFromOptions() below would not be
+	// able to downgrade it to MATSEQBAIJ even at 1 rank, since PETSc refuses to turn an
+	// already-"mpi"-typed matrix into a sequential one (see MatSetType() in matreg.c).
+	ierr = MatSetType(*A, MATBAIJ); CHKERRQ(ierr);
 
 	ierr = setJacobianSizes<nvars>(m, *A); CHKERRQ(ierr);
 
