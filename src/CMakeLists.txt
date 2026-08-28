@@ -7,7 +7,7 @@ add_library(fvens_parsing_errh utilities/aoptionparser.cpp
   utilities/controlparser.cpp
   utilities/aerrorhandling.cpp
   spatial/abctypemap.cpp)
-target_link_libraries(fvens_parsing_errh ${PETSC_LIB} ${Boost_LIBRARIES})
+target_link_libraries(fvens_parsing_errh ${PETSC_LIB} Eigen3::Eigen ${Boost_LIBRARIES})
 if(CXX_COMPILER_INTEL)
   target_compile_options(fvens_parsing_errh PRIVATE "-Wno-return-type")
 endif()
@@ -18,6 +18,7 @@ add_library(ens_gasdynamics
   physics/viscousphysics.cpp physics/aphysics.cpp
   )
 set_property(TARGET ens_gasdynamics PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(ens_gasdynamics Eigen3::Eigen)
 
 add_library(fvens_base
 
@@ -37,8 +38,8 @@ add_library(fvens_base
   utilities/aarray2d.cpp utilities/mpiutils.cpp
   )
 
-target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics ${SCOTCH_LIB} ${SCOTCH_ERR_LIB}
-  ${PETSC_LIB})
+target_link_libraries(fvens_base fvens_parsing_errh ens_gasdynamics 
+	${SCOTCH_LIB} ${SCOTCH_ERR_LIB} ${PETSC_LIB} Eigen3::Eigen)
 target_include_directories(fvens_base PRIVATE ${SCOTCH_DIR}/include)
 if(WITH_BLASTED)
   target_link_libraries(fvens_base ${BLASTED_LIB})

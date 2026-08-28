@@ -17,10 +17,7 @@ int main(int argc, char *argv[])
 
 	int ierr = 0;
 
-	UMesh<freal,NDIM> m(readMesh(argv[1]));
-	m.compute_topological();
-	m.compute_areas();
-	m.compute_face_data();
+	UMesh<freal,NDIM> m(constructMesh(argv[1]));
 
 	{
 		TestSpatial ts(&m);

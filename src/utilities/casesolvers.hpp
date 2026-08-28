@@ -147,7 +147,8 @@ protected:
 	 * \param[in] use_mfjac Whether a matrix-free Jacobian should be set up (true) or not (false)
 	 * \return Objects required for implicit solution of the problem
 	 */
-	static LinearProblemLHS setupImplicitSolver(const Spatial<freal,NVARS> *const s, const bool use_mfjac);
+	static LinearProblemLHS setupImplicitSolver(const Spatial<freal,NVARS> *const s,
+												const bool use_mfjac);
 
 	/// Sets up only the KSP context, assuming the Mats have been set up
 	static void setupKSP(LinearProblemLHS& solver, const bool use_matrix_free);

@@ -185,7 +185,8 @@ FlowCase::LinearProblemLHS FlowCase::setupImplicitSolver(const Spatial<freal,NVA
 	const UMesh<freal,NDIM> *const mesh = space->mesh();
 
 	// Initialize Jacobian for implicit schemes
-	int ierr = setupSystemMatrix<NVARS>(mesh, &solver.M); fvens_throw(ierr, "Setup system matrix");
+	int ierr = setupSystemMatrix<NVARS>(mesh, &solver.M);
+	fvens_throw(ierr, "Setup system matrix");
 
 	// setup matrix-free Jacobian if requested
 	if(use_mfjac) {

@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include <map>
-#include <scotch.h>
+#include <scotch/scotch.h>
 #include "meshpartitioning.hpp"
 #include "utilities/mpiutils.hpp"
 #include "utilities/listofarrays.hpp"

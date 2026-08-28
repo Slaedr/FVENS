@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 # EIGEN3_ROOT needs to be set to the path of the Eigen top-level directory.
+# Eigen3_DIR needs to be set to the Eigen3 cmake directory.
 # PETSC_DIR and PETSC_ARCH need to be set.
 # ADOLC_DIR should be set if needed.
 # BLASTED_DIR may be set to the root of the BLASTed linear algebra library.
@@ -225,12 +226,13 @@ include_directories(${Boost_INCLUDE_DIRS})
 message(STATUS "Found Boost libraries at ${Boost_LIBRARIES}")
 
 # Eigen
-find_path(EIGEN3_INCLUDE_DIR signature_of_eigen3_matrix_library
-  PATHS ENV EIGEN3_ROOT DOC "Eigen3 include directory")
-if(${EIGEN3_INCLUDE_DIR} STREQUAL "EIGEN3_INCLUDE_DIR-NOTFOUND")
-  message(SEND_ERROR "Eigen3 not found!")
-endif()
-include_directories(${EIGEN3_INCLUDE_DIR})
+find_package (Eigen3 REQUIRED NO_MODULE)
+#find_path(EIGEN3_INCLUDE_DIR signature_of_eigen3_matrix_library
+#  PATHS ENV EIGEN3_ROOT DOC "Eigen3 include directory")
+#if(${EIGEN3_INCLUDE_DIR} STREQUAL "EIGEN3_INCLUDE_DIR-NOTFOUND")
+#  message(SEND_ERROR "Eigen3 not found!")
+#endif()
+#include_directories(${EIGEN3_INCLUDE_DIR})
 message(STATUS "Found Eigen 3 at ${EIGEN3_INCLUDE_DIR}")
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_DONT_PARALLELIZE")
